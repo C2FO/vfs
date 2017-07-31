@@ -1,0 +1,25 @@
+package: github.com/c2fo/vfs
+import:
+- package: cloud.google.com/go
+  version: 085c05ca074a8de9107005f9baa6308eae7eaf41
+  subpackages:
+  - storage
+- package: github.com/aws/aws-sdk-go
+  version: ~1.10.18
+  subpackages:
+  - aws/awserr
+  - aws/request
+  - service/s3
+  - service/s3/s3iface
+  - service/s3/s3manager
+- package: github.com/stretchr/testify
+  version: ~1.1.4
+  subpackages:
+  - mock
+- package: golang.org/x/net
+  subpackages:
+  - context
+- package: google.golang.org/api
+  version: 48e49d1645e228d1c50c3d54fb476b2224477303
+  subpackages:
+  - iterator
