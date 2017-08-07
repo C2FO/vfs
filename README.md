@@ -6,17 +6,16 @@ The vfs library includes interfaces which allow you to interact with files and l
 * Amazon S3
 * GCS
 
-These interfaces are composed of standard Go library interfaces, allowing for simple file manipulation within, and between
-the supported file systems.
+These interfaces are composed of standard Go library interfaces, allowing for simple file manipulation within, and between the supported file systems.
 
 At C2FO we have created a factory system that is integrated with our app configuration that allows for simply initializing the various locations we tend to do file work in. You can build your own similar system directly on top of the various file  system implementations and the provided generic interfaces, or you can use the simple interface included in the vfs package.
 The usage examples below will detail this simple interface. We will eventually be providing a version of our factory as an  example of how this library can be used in a more complex project.
 
-A couple notes on configuration for this interface (vfs.NewFile and vfs.NewLocation):
+A couple notes on configuration for this interface (vfssimple.NewFile and vfssimple.NewLocation):
 * Before calling either function you must initialize any file systems you expect to be using.
-* Local: The local file system requires no configuration. Simply call vfs.InitializeLocalFileSystem so the internals are prepared to expect "file:///" URIs.
-* S3: The vfs.InitializeS3FileSystem() method requires authentication parameters for the user, see godoc for this function.
-* GCS: In addition to calling vfs.InitializeGSFileSystem, you are expected to have authenticated with GCS using the Google Cloud Shell for the user running the app. We will be looking into more flexible forms of authentication (similar to the S3 library) in the future, but this was an ideal use case for us to start with, and therefore, all that is currently provided.
+* Local: The local file system requires no configuration. Simply call vfssimple.InitializeLocalFileSystem so the internals are prepared to expect "file:///" URIs.
+* S3: The vfssimple.InitializeS3FileSystem() method requires authentication parameters for the user, see godoc for this function.
+* GCS: In addition to calling vfssimple.InitializeGSFileSystem, you are expected to have authenticated with GCS using the Google Cloud Shell for the user running the app. We will be looking into more flexible forms of authentication (similar to the S3 library) in the future, but this was an ideal use case for us to start with, and therefore, all that is currently provided.
 
 ## Installation
 
@@ -29,31 +28,31 @@ glide install github.com/c2fo/vfs
 ## Usage example
 
 ```go
-import "github.com/c2fo/vfs"
+import "github.com/c2fo/vfs/vfssimple"
 
-// The following functions tell vfs we expect to handle a particular file system in subsequent calls to
-// vfs.NewFile() and vfs.NewLocation
+// The following functions tell vfssimple we expect to handle a particular file system in subsequent calls to
+// vfssimple.NewFile() and vfssimple.NewLocation
 // Local files, ie: "file:///"
-vfs.InitializeLocalFileSystem()
+vfssimple.InitializeLocalFileSystem()
 
 // Google Cloud Storage, ie: "gs://"
 vfs.InitializeGSFileSystem()
 
 // Amazon S3, ie: "s3://"
-vfs.InitializeS3FileSystem(accessKeyId, secreteAccessKey, token)
+vfssimple.InitializeS3FileSystem(accessKeyId, secreteAccessKey, token)
 
 // alternative to above for S3, if you've already initialized a client of interface s3iface.S3API
-vfs.SetS3Client(client)
+vfssimple.SetS3Client(client)
 ```
 
 You can then use those file systems to initialize locations which you'll be referencing frequently, or initialize files directly
 
 ```go
-osFile, err := vfs.NewFile("file:///path/to/file.txt")
-s3File, err := vfs.NewFile("s3://bucket/prefix/file.txt")
+osFile, err := vfssimple.NewFile("file:///path/to/file.txt")
+s3File, err := vfssimple.NewFile("s3://bucket/prefix/file.txt")
 
-osLocation, err := vfs.NewLocation("file:///tmp")
-s3Location, err := vfs.NewLocation("s3://bucket")
+osLocation, err := vfssimple.NewLocation("file:///tmp")
+s3Location, err := vfssimple.NewLocation("s3://bucket")
 
 osTmpFile, err := osLocation.NewFile("anotherFile.txt") // file at /tmp/anotherFile.txt
 ```
