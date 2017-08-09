@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/c2fo/vfs"
 	"github.com/c2fo/vfs/mocks"
-	"github.com/c2fo/vfs/utils"
 )
 
 type locationTestSuite struct {
@@ -103,7 +103,7 @@ func (lt *locationTestSuite) TestListByPrefix() {
 	bucket := "bucket"
 	locPath := "dir1/"
 	prefix := "fil"
-	apiCallPrefix := utils.EnsureTrailingSlash(path.Join(locPath, prefix))
+	apiCallPrefix := vfs.EnsureTrailingSlash(path.Join(locPath, prefix))
 	delimiter := "/"
 	isTruncated := false
 	lt.s3apiMock.On("ListObjects", &s3.ListObjectsInput{

@@ -4,7 +4,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 
 	"github.com/c2fo/vfs"
-	"github.com/c2fo/vfs/utils"
 )
 
 //Scheme defines the filesystem type.
@@ -26,7 +25,7 @@ func (fs FileSystem) NewFile(volume string, name string) (vfs.File, error) {
 
 // NewLocation function returns the s3 implementation of vfs.Location.
 func (fs FileSystem) NewLocation(volume string, name string) (vfs.Location, error) {
-	name = utils.CleanPrefix(name)
+	name = vfs.CleanPrefix(name)
 	return &Location{
 		fileSystem: &fs,
 		prefix:     name,

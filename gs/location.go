@@ -12,7 +12,6 @@ import (
 	"google.golang.org/api/iterator"
 
 	"github.com/c2fo/vfs"
-	"github.com/c2fo/vfs/utils"
 )
 
 // Implements vfs.Location
@@ -56,7 +55,7 @@ func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error) {
 			return nil, err
 		}
 		//only include objects, not "directories"
-		if objAttrs.Prefix == "" && objAttrs.Name != l.prefix{
+		if objAttrs.Prefix == "" && objAttrs.Name != l.prefix {
 			fileNames = append(fileNames, strings.TrimPrefix(objAttrs.Name, l.prefix))
 		}
 	}
@@ -86,7 +85,7 @@ func (l *Location) Volume() string {
 
 // Path returns the path of the file at the current location, starting with a leading '/'
 func (l *Location) Path() string {
-	return "/" + utils.EnsureTrailingSlash(l.prefix)
+	return "/" + vfs.EnsureTrailingSlash(l.prefix)
 }
 
 // Exists returns whether the location exists or not. In the case of an error, false is returned.
@@ -114,7 +113,7 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 // ChangeDir changes the current location's path to the new, relative path.
 func (l *Location) ChangeDir(relativePath string) error {
 	newPrefix := path.Join(l.prefix, relativePath)
-	l.prefix = utils.EnsureTrailingSlash(utils.CleanPrefix(newPrefix))
+	l.prefix = vfs.EnsureTrailingSlash(vfs.CleanPrefix(newPrefix))
 	return nil
 }
 
@@ -140,7 +139,7 @@ func (l *Location) DeleteFile(fileName string) error {
 
 // URI returns a URI string for the GCS file.
 func (l *Location) URI() string {
-	return utils.GetLocationURI(l)
+	return vfs.GetLocationURI(l)
 }
 
 // getBucketHandle returns cached Bucket struct for file
@@ -152,7 +151,7 @@ func (l *Location) getBucketHandle() *storage.BucketHandle {
 	return l.bucketHandle
 }
 
-// getObjectAttrs returns the file's attributes
+// getBucketAttrs returns the bucket's attributes
 func (l *Location) getBucketAttrs() (*storage.BucketAttrs, error) {
 	return l.getBucketHandle().Attrs(l.fileSystem.ctx)
 }

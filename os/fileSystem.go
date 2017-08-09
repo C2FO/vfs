@@ -2,7 +2,6 @@ package os
 
 import (
 	"github.com/c2fo/vfs"
-	"github.com/c2fo/vfs/utils"
 )
 
 //Scheme defines the filesystem type.
@@ -23,7 +22,7 @@ func (fs FileSystem) NewFile(volume string, name string) (vfs.File, error) {
 func (fs FileSystem) NewLocation(volume string, name string) (vfs.Location, error) {
 	return &Location{
 		fileSystem: vfs.FileSystem(fs),
-		name:       utils.AddTrailingSlash(name),
+		name:       vfs.AddTrailingSlash(name),
 	}, nil
 }
 

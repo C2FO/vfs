@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 
 	"github.com/c2fo/vfs"
-	"github.com/c2fo/vfs/utils"
 )
 
 //Location implements the vfs.Location interface specific to S3 fs.
@@ -23,14 +22,14 @@ type Location struct {
 // set to the location's path. This will make a call to the s3 API for every 1000 keys to return.
 // If you have many thousands of keys at the given location, this could become quite expensive.
 func (l *Location) List() ([]string, error) {
-	listObjectsInput := l.getListObjectsInput().SetPrefix(utils.EnsureTrailingSlash(l.prefix))
+	listObjectsInput := l.getListObjectsInput().SetPrefix(vfs.EnsureTrailingSlash(l.prefix))
 	return l.fullLocationList(listObjectsInput)
 }
 
 // ListByPrefix calls the s3 API with the location's prefix modified relatively by the prefix arg passed to the
 // function. The resource considerations of List() apply to this function as well.
 func (l *Location) ListByPrefix(prefix string) ([]string, error) {
-	if err := utils.ValidateFilePrefix(prefix); err != nil {
+	if err := vfs.ValidateFilePrefix(prefix); err != nil {
 		return nil, err
 	}
 	searchPrefix := path.Join(l.prefix, prefix)
@@ -62,7 +61,7 @@ func (l *Location) Volume() string {
 
 // Path returns the prefix the location references in most s3 calls.
 func (l *Location) Path() string {
-	return "/" + utils.EnsureTrailingSlash(l.prefix)
+	return "/" + vfs.EnsureTrailingSlash(l.prefix)
 }
 
 // Exists returns true if the bucket exists, and the user in the underlying s3.fileSystem.Client has the appropriate
@@ -99,7 +98,7 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 // so the only return is any error. For this implementation there are no errors.
 func (l *Location) ChangeDir(relativePath string) error {
 	newPrefix := path.Join(l.prefix, relativePath)
-	l.prefix = utils.CleanPrefix(newPrefix)
+	l.prefix = vfs.CleanPrefix(newPrefix)
 	return nil
 }
 
@@ -109,7 +108,7 @@ func (l *Location) NewFile(filePath string) (vfs.File, error) {
 	newFile := &File{
 		fileSystem: l.fileSystem,
 		bucket:     l.bucket,
-		key:        utils.CleanPrefix(path.Join(l.prefix, filePath)),
+		key:        vfs.CleanPrefix(path.Join(l.prefix, filePath)),
 	}
 	return newFile, nil
 }
@@ -131,7 +130,7 @@ func (l *Location) FileSystem() vfs.FileSystem {
 
 // URI returns the Location's URI as a string.
 func (l *Location) URI() string {
-	return utils.GetLocationURI(l)
+	return vfs.GetLocationURI(l)
 }
 
 // String implement fmt.Stringer, returning the location's URI as the default string.
@@ -150,7 +149,7 @@ func (l *Location) fullLocationList(input *s3.ListObjectsInput) ([]string, error
 		if err != nil {
 			return []string{}, err
 		}
-		newKeys := getNamesFromObjectSlice(listObjectsOutput.Contents, utils.EnsureTrailingSlash(l.prefix))
+		newKeys := getNamesFromObjectSlice(listObjectsOutput.Contents, vfs.EnsureTrailingSlash(l.prefix))
 		keys = append(keys, newKeys...)
 
 		// if s3 response "IsTruncated" we need to call List again with

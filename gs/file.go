@@ -13,8 +13,6 @@ import (
 	"cloud.google.com/go/storage"
 
 	"github.com/c2fo/vfs"
-	_errors "github.com/c2fo/vfs/errors"
-	"github.com/c2fo/vfs/utils"
 )
 
 const (
@@ -35,7 +33,7 @@ type File struct {
 // local temp file, and triggers a write to GCS of anything in the f.writeBuffer if it has been created.
 func (f *File) Close() (rerr error) {
 	//setup multi error return using named error rerr
-	errs := _errors.NewMutliErr()
+	errs := vfs.NewMutliErr()
 	defer func() { rerr = errs.OrNil() }()
 
 	if f.tempFile != nil {
@@ -118,14 +116,13 @@ func (f *File) Exists() (bool, error) {
 	return true, nil
 }
 
-
 // Location returns a Location instance for the file's current location.
 //
 // TODO should this be including trailing slash?
 func (f *File) Location() vfs.Location {
 	return vfs.Location(&Location{
 		fileSystem: f.fileSystem,
-		prefix:     utils.EnsureTrailingSlash(utils.CleanPrefix(path.Dir(f.key))),
+		prefix:     vfs.EnsureTrailingSlash(vfs.CleanPrefix(path.Dir(f.key))),
 		bucket:     f.bucket,
 	})
 }
@@ -251,7 +248,7 @@ func (f *File) Name() string {
 
 // URI returns a full GCS URI string of the file.
 func (f *File) URI() string {
-	return utils.GetFileURI(vfs.File(f))
+	return vfs.GetFileURI(vfs.File(f))
 }
 
 func (f *File) checkTempFile() error {
@@ -347,7 +344,7 @@ func newFile(fs *FileSystem, bucket, key string) (*File, error) {
 	if bucket == "" || key == "" {
 		return nil, errors.New("non-empty strings for Bucket and Key are required")
 	}
-	key = utils.CleanPrefix(key)
+	key = vfs.CleanPrefix(key)
 	return &File{
 		fileSystem: fs,
 		bucket:     bucket,

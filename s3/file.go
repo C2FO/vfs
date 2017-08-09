@@ -15,8 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
 	"github.com/c2fo/vfs"
-	_errors "github.com/c2fo/vfs/errors"
-	"github.com/c2fo/vfs/utils"
 )
 
 //File implements vfs.File interface for S3 fs.
@@ -36,7 +34,7 @@ func newFile(fs *FileSystem, bucket, key string) (*File, error) {
 	if bucket == "" || key == "" {
 		return nil, errors.New("non-empty strings for bucket and key are required")
 	}
-	key = utils.CleanPrefix(key)
+	key = vfs.CleanPrefix(key)
 	return &File{
 		fileSystem: fs,
 		bucket:     bucket,
@@ -197,7 +195,7 @@ func (f *File) Delete() error {
 // local temp file, and triggers a write to s3 of anything in the f.writeBuffer if it has been created.
 func (f *File) Close() (rerr error) {
 	//setup multi error return using named error
-	errs := _errors.NewMutliErr()
+	errs := vfs.NewMutliErr()
 	defer func() { rerr = errs.OrNil() }()
 
 	if f.tempFile != nil {
@@ -265,7 +263,7 @@ func (f *File) Write(data []byte) (res int, err error) {
 
 // URI returns the File's URI as a string.
 func (f *File) URI() string {
-	return utils.GetFileURI(f)
+	return vfs.GetFileURI(f)
 }
 
 // String implement fmt.Stringer, returning the file's URI as the default string.

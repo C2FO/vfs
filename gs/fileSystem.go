@@ -5,7 +5,6 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/c2fo/vfs"
-	"github.com/c2fo/vfs/utils"
 )
 
 //Scheme defines the filesystem type.
@@ -28,7 +27,7 @@ func (fs *FileSystem) NewLocation(volume string, path string) (loc vfs.Location,
 	loc = &Location{
 		fileSystem: fs,
 		bucket:     volume,
-		prefix:     utils.EnsureTrailingSlash(path),
+		prefix:     vfs.EnsureTrailingSlash(path),
 	}
 	return
 }

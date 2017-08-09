@@ -9,10 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs"
-	"github.com/c2fo/vfs/utils"
 	"io/ioutil"
 	"os"
+
+	"github.com/c2fo/vfs"
 )
 
 /**********************************
@@ -72,7 +72,7 @@ func (s *osLocationTest) TestListByPrefix() {
 	s.Equal(expected, actual)
 
 	_, err := s.testFile.Location().ListByPrefix("bad/prefix")
-	s.EqualError(err, utils.BadFilePrefix, "got expected error")
+	s.EqualError(err, vfs.BadFilePrefix, "got expected error")
 }
 
 func (s *osLocationTest) TestListByRegex() {

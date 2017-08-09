@@ -15,6 +15,9 @@ const (
 	BadFilePrefix = "expecting only a filename prefix, which may not include slashes or backslashes"
 )
 
+// regexp matching an initial slash, used to check for them in paths
+var prefixSlashRegex = regexp.MustCompile("^[/.]*")
+
 // regex to ensure prefix doesn't have leading '/', '.', '..', etc...
 var prefixCleanRegex = regexp.MustCompile("^[/.]*")
 
@@ -71,4 +74,14 @@ func ValidateFilePrefix(filenamePrefix string) error {
 		return errors.New(BadFilePrefix)
 	}
 	return nil
+}
+
+// Methods to ensure consistency between implementations
+
+func StandardizePath(path string) string {
+	if prefixSlashRegex.MatchString(path) {
+		return path
+	} else {
+		return "/" + path
+	}
 }

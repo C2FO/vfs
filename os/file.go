@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/c2fo/vfs"
-	"github.com/c2fo/vfs/utils"
 )
 
 //File implements vfs.File interface for S3 fs.
@@ -30,7 +29,7 @@ func newFile(name string) (*File, error) {
 
 	fullPath = filepath.Dir(fullPath)
 
-	fullPath = utils.AddTrailingSlash(fullPath)
+	fullPath = vfs.AddTrailingSlash(fullPath)
 
 	location := Location{fileSystem: vfs.FileSystem(new(FileSystem)), name: fullPath}
 	return &File{name: fileName, location: &location}, nil
@@ -188,7 +187,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 // URI returns the File's URI as a string.
 func (f *File) URI() string {
-	return utils.GetFileURI(f)
+	return vfs.GetFileURI(f)
 }
 
 // String implement fmt.Stringer, returning the file's URI as the default string.
