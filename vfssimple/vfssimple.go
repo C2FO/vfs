@@ -22,11 +22,22 @@ var (
 	fileSystems map[string]vfs.FileSystem
 )
 
+func init() {
+	fileSystems = map[string]vfs.FileSystem{}
+}
+
 func InitializeLocalFileSystem() {
+	if _, ok := fileSystems[os.Scheme]; ok {
+		return
+	}
 	fileSystems[os.Scheme] = vfs.FileSystem(os.FileSystem{})
+	return
 }
 
 func InitializeGSFileSystem() error {
+	if _, ok := fileSystems[gs.Scheme]; ok {
+		return nil
+	}
 	ctx := context.Background()
 	client, err := storage.NewClient(ctx)
 	if err != nil {
@@ -42,15 +53,21 @@ func InitializeGSFileSystem() error {
 // to have set this up ahead of time. If you require more in depth configuration of the s3 Client you
 // may set one up yourself and pass the resulting s3iface.S3API to vfs.SetS3Client which will also
 // fulfil this requirement.
-func InitializeS3FileSystem(accessKeyId, secretAccessKey, token string) error {
+func InitializeS3FileSystem(accessKeyId, secretAccessKey, region, token string) error {
+	if _, ok := fileSystems[_s3.Scheme]; ok {
+		return nil
+	}
 	if accessKeyId == "" {
 		return errors.New("accessKeyId argument of InitializeS3FileSystem cannot be an empty string.")
 	}
 	if secretAccessKey == "" {
 		return errors.New("secretAccessKey argument of InitializeS3FileSystem cannot be an empty string.")
 	}
+	if region == "" {
+		region = "us-west-2"
+	}
 	auth := credentials.NewStaticCredentials(accessKeyId, secretAccessKey, token)
-	awsConfig := aws.NewConfig().WithCredentials(auth)
+	awsConfig := aws.NewConfig().WithCredentials(auth).WithRegion(region)
 	awsSession, err := session.NewSession(awsConfig)
 	if err != nil {
 		return err
