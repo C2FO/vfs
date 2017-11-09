@@ -2,15 +2,14 @@ package os
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-
-	"io/ioutil"
-	"os"
 
 	"github.com/c2fo/vfs"
 )
@@ -39,7 +38,7 @@ func (s *osLocationTest) SetupTest() {
 
 func (s *osLocationTest) TestList() {
 
-	expected := []string{"prefix-file.txt", "test.txt"}
+	expected := []string{"empty.txt", "prefix-file.txt", "test.txt"}
 	actual, _ := s.testFile.Location().List()
 	s.Equal(expected, actual)
 }

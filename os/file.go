@@ -3,7 +3,6 @@ package os
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -201,7 +200,7 @@ func (f *File) copyWithName(name string, location vfs.Location) (vfs.File, error
 		return nil, err
 	}
 
-	if _, err := io.Copy(newFile, f); err != nil {
+	if err := vfs.TouchCopy(newFile, f); err != nil {
 		return nil, err
 	}
 	fCloseErr := f.Close()

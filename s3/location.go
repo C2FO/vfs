@@ -155,7 +155,7 @@ func (l *Location) fullLocationList(input *s3.ListObjectsInput) ([]string, error
 		// if s3 response "IsTruncated" we need to call List again with
 		// an updated Marker (s3 version of paging)
 		if *listObjectsOutput.IsTruncated {
-			input.Marker = listObjectsOutput.Marker
+			input.SetMarker(*listObjectsOutput.NextMarker)
 		} else {
 			break
 		}

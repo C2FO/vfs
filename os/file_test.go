@@ -127,6 +127,38 @@ func (s *osFileTest) TestCopyToFile() {
 	otherFile.AssertCalled(s.T(), "Write", []uint8(expectedText))
 }
 
+func (s *osFileTest) TestEmptyCopyToFile() {
+	expectedText := ""
+	otherFs := new(mocks.FileSystem)
+	otherFile := new(mocks.File)
+
+	location := Location{"/some/path", otherFs}
+
+	// Expected behavior
+	otherFile.On("Write", mock.Anything).Return(len(expectedText), nil)
+	otherFile.On("Close").Return(nil)
+	otherFile.On("Name").Return("other.txt")
+	otherFile.On("Location").Return(vfs.Location(&location))
+
+	otherFs.On("NewFile", mock.Anything, mock.Anything).Return(otherFile, nil)
+
+	emptyFile, err := s.fileSystem.NewFile("", "test_files/empty.txt")
+
+	if err != nil {
+		s.Fail("No file was opened")
+	}
+
+	err = emptyFile.CopyToFile(otherFile)
+
+	if err != nil {
+		s.Fail(err.Error())
+	}
+
+	otherFs.AssertCalled(s.T(), "NewFile", "", "/some/path/other.txt")
+	otherFile.AssertExpectations(s.T())
+	otherFile.AssertCalled(s.T(), "Write", []uint8(expectedText))
+}
+
 func (s *osFileTest) TestCopyToLocationIgnoreExtraSeparator() {
 	expectedText := "hello world"
 	otherFs := new(mocks.FileSystem)

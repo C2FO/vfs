@@ -6,10 +6,10 @@ import (
 	"github.com/c2fo/vfs"
 )
 
-//Scheme defines the filesystem type.
+// Scheme defines the filesystem type.
 const Scheme = "s3"
 
-// fileSystem implements vfs.Filesystem for the S3 filesystem.
+// FileSystem implements vfs.Filesystem for the S3 filesystem.
 type FileSystem struct {
 	Client s3iface.S3API
 }

@@ -15,10 +15,10 @@ import (
 func NewStringFile(data, fileName string) *ReadWriteFile {
 	buffer := &bytes.Buffer{}
 	file := &ReadWriteFile{
-		File:   File{},
-		Reader: strings.NewReader(data),
-		Writer: buffer,
-		Buffer: buffer,
+		File:          File{},
+		Reader:        strings.NewReader(data),
+		Writer:        buffer,
+		Buffer:        buffer,
 		ReaderContent: data,
 	}
 
@@ -39,10 +39,10 @@ func NewMockFromFilepath(filePath string) *ReadWriteFile {
 	}
 	buffer := &bytes.Buffer{}
 	file := &ReadWriteFile{
-		File:   File{},
-		Reader: strings.NewReader(string(data)),
-		Writer: buffer,
-		Buffer: buffer,
+		File:          File{},
+		Reader:        strings.NewReader(string(data)),
+		Writer:        buffer,
+		Buffer:        buffer,
 		ReaderContent: string(data),
 	}
 
@@ -59,9 +59,9 @@ func NewMockFromFilepath(filePath string) *ReadWriteFile {
 // easily mocking file contents.
 type ReadWriteFile struct {
 	File
-	Reader io.Reader
-	Writer io.Writer
-	Buffer *bytes.Buffer
+	Reader        io.Reader
+	Writer        io.Writer
+	Buffer        *bytes.Buffer
 	ReaderContent string
 }
 

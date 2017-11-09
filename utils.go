@@ -1,12 +1,12 @@
 package vfs
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"path"
 	"regexp"
 	"runtime"
-
-	"errors"
 	"strings"
 )
 
@@ -84,4 +84,19 @@ func StandardizePath(path string) string {
 	} else {
 		return "/" + path
 	}
+}
+
+// TouchCopy is a wrapper around io.Copy which ensures that even empty source files (reader) will get written as an
+// empty file. It guarantees a Write() call on the target file.
+func TouchCopy(writer File, reader File) error {
+	if size, err := reader.Size(); err != nil {
+		return err
+	} else if size == 0 {
+		writer.Write([]byte{})
+	} else {
+		if _, err := io.Copy(writer, reader); err != nil {
+			return err
+		}
+	}
+	return nil
 }

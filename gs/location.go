@@ -151,7 +151,7 @@ func (l *Location) getBucketHandle() *storage.BucketHandle {
 	return l.bucketHandle
 }
 
-// getBucketAttrs returns the bucket's attributes
+// getObjectAttrs returns the file's attributes
 func (l *Location) getBucketAttrs() (*storage.BucketAttrs, error) {
 	return l.getBucketHandle().Attrs(l.fileSystem.ctx)
 }

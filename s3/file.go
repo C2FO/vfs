@@ -108,7 +108,7 @@ func (f *File) CopyToFile(targetFile vfs.File) error {
 		return f.copyWithinS3ToFile(tf)
 	}
 
-	if _, err := io.Copy(targetFile, f); err != nil {
+	if err := vfs.TouchCopy(targetFile, f); err != nil {
 		return err
 	}
 	//Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read

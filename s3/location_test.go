@@ -70,7 +70,7 @@ func (lt *locationTestSuite) TestList_pagedCall() {
 	}).Return(&s3.ListObjectsOutput{
 		Contents:    convertKeysToS3Objects(firstKeyList),
 		IsTruncated: &isTruncatedTrue,
-		Marker:      &firstCallOutputMarker,
+		NextMarker:  &firstCallOutputMarker,
 		Prefix:      &locPath,
 	}, nil)
 

@@ -55,7 +55,7 @@ func (ts *fileTestSuite) TestRead() {
 		ts.Fail("Shouldn't fail creating new file")
 	}
 
-	var localFile *bytes.Buffer = bytes.NewBuffer([]byte{})
+	var localFile = bytes.NewBuffer([]byte{})
 
 	_, copyErr := io.Copy(localFile, file)
 	assert.NoError(ts.T(), copyErr, "no error expected")
@@ -95,7 +95,7 @@ func (ts *fileTestSuite) TestSeek() {
 	_, seekErr := file.Seek(6, 0)
 	assert.NoError(ts.T(), seekErr, "no error expected")
 
-	var localFile *bytes.Buffer = bytes.NewBuffer([]byte{})
+	var localFile = bytes.NewBuffer([]byte{})
 
 	s3apiMock.AssertExpectations(ts.T())
 
@@ -170,6 +170,22 @@ func (ts *fileTestSuite) TestCopyToFile() {
 	err := testFile.CopyToFile(targetFile)
 	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
 	s3apiMock.AssertExpectations(ts.T())
+}
+
+func (ts *fileTestSuite) TestEmptyCopyToFile() {
+	targetFile := &mocks.File{}
+	targetFile.On("Write", mock.Anything).Return(0, nil)
+	targetFile.On("Close").Return(nil)
+
+	expectedSize := int64(0)
+	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{ContentLength: &expectedSize}, nil, nil)
+
+	err := testFile.CopyToFile(targetFile)
+	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
+	s3apiMock.AssertExpectations(ts.T())
+
+	// Assert that file was still written to and closed when the reader size is 0 bytes.
+	targetFile.AssertExpectations(ts.T())
 }
 
 func (ts *fileTestSuite) TestMoveToFile() {
