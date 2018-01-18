@@ -95,7 +95,7 @@ go test $(glide novendor)
 * 1.0.0
     * Apply last of bugfixes from old repo
 * 1.1.0
-    * Enable server-side encryption
+    * Enable server-side encryption on S3 (matching GCS) as a more sane, secure default for files is at rest
 
 ## Meta
 
