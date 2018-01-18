@@ -92,6 +92,10 @@ go test $(glide novendor)
     * The first release
     * Support for local file system, s3, and gcs
     * Initial README.md
+* 1.0.0
+    * Apply last of bugfixes from old repo
+* 1.0.1
+    * Enable server-side encryption
 
 ## Meta
 
