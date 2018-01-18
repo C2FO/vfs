@@ -342,10 +342,13 @@ func (f *File) putObject(reader io.ReadSeeker) error {
 	return err
 }
 
+//TODO: need to provide an implementation-agnostic container for providing config options such as SSE
 func (f *File) uploadInput() *s3manager.UploadInput {
+	sseType := "AES256"
 	return &s3manager.UploadInput{
 		Bucket: &f.bucket,
 		Key:    &f.key,
+		ServerSideEncryption: &sseType,
 	}
 }
 
