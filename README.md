@@ -94,7 +94,7 @@ go test $(glide novendor)
     * Initial README.md
 * 1.0.0
     * Apply last of bugfixes from old repo
-* 1.0.1
+* 1.1.0
     * Enable server-side encryption
 
 ## Meta
