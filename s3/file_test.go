@@ -49,6 +49,7 @@ func (ts *fileTestSuite) TestRead() {
 	s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{
 		Body: nopCloser{bytes.NewBufferString(contents)},
 	}, nil)
+	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 
 	file, err := fs.NewFile("bucket", "/some/path/file.txt")
 	if err != nil {
@@ -91,21 +92,15 @@ func (ts *fileTestSuite) TestSeek() {
 	s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{
 		Body: nopCloser{bytes.NewBufferString(contents)},
 	}, nil)
+	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 
 	_, seekErr := file.Seek(6, 0)
 	assert.NoError(ts.T(), seekErr, "no error expected")
 
 	var localFile = bytes.NewBuffer([]byte{})
 
-	s3apiMock.AssertExpectations(ts.T())
-
 	_, copyErr := io.Copy(localFile, file)
 	assert.NoError(ts.T(), copyErr, "no error expected")
-
-	defer func() {
-		closeErr := file.Close()
-		assert.NoError(ts.T(), closeErr, "no error expected")
-	}()
 
 	ts.Equal("world!", localFile.String(), "Seeking should download the file and move the cursor as expected")
 
@@ -116,6 +111,10 @@ func (ts *fileTestSuite) TestSeek() {
 	_, copyErr2 := io.Copy(localFile, file)
 	assert.NoError(ts.T(), copyErr2, "no error expected")
 	ts.Equal(contents, localFile.String(), "Subsequent calls to seek work on temp file as expected")
+
+	closeErr := file.Close()
+	assert.NoError(ts.T(), closeErr, "no error expected")
+	s3apiMock.AssertExpectations(ts.T())
 }
 
 func (ts *fileTestSuite) TestGetLocation() {
@@ -199,6 +198,7 @@ func (ts *fileTestSuite) TestMoveToFile() {
 
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
 	s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
+	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 
 	err := testFile.MoveToFile(targetFile)
 	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
@@ -234,6 +234,7 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 	s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{
 		Body: nopCloser{bytes.NewBufferString(expectedText)},
 	}, nil)
+	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 	file, err := fs.NewFile("bucket", "/hello.txt")
 	if err != nil {
 		ts.Fail("Shouldn't return error creating test s3.File instance.")
@@ -271,22 +272,21 @@ func (ts *fileTestSuite) TestCopyToLocationWithinS3() {
 	location.On("Volume", mock.Anything).Return("newBucket").Twice()
 
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
+	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 
 	file, err := fs.NewFile("bucket", "/hello.txt")
 	if err != nil {
 		ts.Fail("Shouldn't return error creating test s3.File instance.")
 	}
 
-	defer func() {
-		closeErr := file.Close()
-		assert.NoError(ts.T(), closeErr, "no error expected")
-	}()
-
 	otherFs.On("Scheme").Return(Scheme)
 	otherFs.On("NewFile", "newBucket", "new/file/path/hello.txt").Return(otherFile, nil)
 
 	_, err = file.CopyToLocation(location)
 	assert.NoError(ts.T(), err, "no error expected")
+
+	closeErr := file.Close()
+	assert.NoError(ts.T(), closeErr, "no error expected")
 
 	s3apiMock.AssertExpectations(ts.T())
 	otherFs.AssertExpectations(ts.T())
@@ -306,6 +306,7 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
 	s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
+	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 
 	file, err := fs.NewFile("bucket", "/hello.txt")
 	if err != nil {
@@ -338,19 +339,18 @@ func (ts *fileTestSuite) TestMoveToLocationFail() {
 	location.On("Volume", mock.Anything).Return("newBucket").Once()
 
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(nil, errors.New("didn't copy, oh noes"))
+	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 
 	file, err := fs.NewFile("bucket", "/hello.txt")
 	if err != nil {
 		ts.Fail("Shouldn't return error creating test s3.File instance.")
 	}
 
-	defer func() {
-		closeErr := file.Close()
-		assert.NoError(ts.T(), closeErr, "no close error expected")
-	}()
-
 	_, merr := file.MoveToLocation(location)
 	assert.Error(ts.T(), merr, "MoveToLocation error not expected")
+
+	closeErr := file.Close()
+	assert.NoError(ts.T(), closeErr, "no close error expected")
 
 	s3apiMock.AssertExpectations(ts.T())
 	s3apiMock.AssertNotCalled(ts.T(), "DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput"))
@@ -360,7 +360,7 @@ func (ts *fileTestSuite) TestMoveToLocationFail() {
 
 func (ts *fileTestSuite) TestDelete() {
 	s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
-
+	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 	err := testFile.Delete()
 	ts.Nil(err, "Successful delete should not return an error.")
 	s3apiMock.AssertExpectations(ts.T())
