@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
 	"github.com/c2fo/vfs"
+	"github.com/c2fo/vfs/mocks"
 )
 
 //File implements vfs.File interface for S3 fs.
@@ -220,6 +221,10 @@ func (f *File) Close() (rerr error) {
 	}
 
 	f.writeBuffer = nil
+
+	if err := waitUntilFileExists(f, 5); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -346,8 +351,8 @@ func (f *File) putObject(reader io.ReadSeeker) error {
 func (f *File) uploadInput() *s3manager.UploadInput {
 	sseType := "AES256"
 	return &s3manager.UploadInput{
-		Bucket: &f.bucket,
-		Key:    &f.key,
+		Bucket:               &f.bucket,
+		Key:                  &f.key,
 		ServerSideEncryption: &sseType,
 	}
 }
@@ -363,4 +368,42 @@ func (f *File) getObject() (io.ReadCloser, error) {
 	}
 
 	return getOutput.Body, nil
+}
+
+//WaitUntilFileExists attempts to ensure that a recently written file is available before moving on.  This is helpful for
+// attempting to overcome race conditions withe S3's "eventual consistency".
+// WaitUntilFileExists accepts vfs.File and an int representing the number of times to retry(once a second).
+// error is returned if the file is still not available after the specified retries.
+// nil is returned once the file is available.
+func waitUntilFileExists(file vfs.File, retries int) error {
+	// Ignore in-memory VFS files
+	if _, ok := file.(*mocks.ReadWriteFile); ok {
+		return nil
+	}
+
+	// Return as if file was found when retries is set to -1. Useful mainly for testing.
+	if retries == -1 {
+		return nil
+	}
+	var retryCount = 0
+	for {
+		if retryCount == retries {
+			return errors.New(fmt.Sprintf("Failed to find file %s after %d", file, retries))
+		}
+
+		//check for existing file
+		found, err := file.Exists()
+		if err != nil {
+			return errors.New("unable to check for file on S3")
+		}
+
+		if found {
+			break
+		}
+
+		retryCount++
+		time.Sleep(time.Second * 1)
+	}
+
+	return nil
 }

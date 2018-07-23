@@ -96,6 +96,8 @@ go test $(glide novendor)
     * Apply last of bugfixes from old repo
 * 1.1.0
     * Enable server-side encryption on S3 (matching GCS) as a more sane, secure default for files is at rest
+* 1.2.0
+    * For the S3 implementation of the File interface, ensure the file exists in S3 after it is written before continuing.
 
 ## Meta
 
