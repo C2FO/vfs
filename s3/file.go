@@ -14,7 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
-	"github.com/c2fo/goutils/errorstack"
 	"github.com/c2fo/vfs"
 	"github.com/c2fo/vfs/mocks"
 )
@@ -389,13 +388,13 @@ func waitUntilFileExists(file vfs.File, retries int) error {
 	var retryCount = 0
 	for {
 		if retryCount == retries {
-			return errorstack.NewErrorf("Failed to find file %s after %d", file, retries)
+			return errors.New(fmt.Sprintf("Failed to find file %s after %d", file, retries))
 		}
 
 		//check for existing file
 		found, err := file.Exists()
 		if err != nil {
-			return errorstack.NewBuilder(err).AddMessage("Unable to check for file on S3").Build()
+			return errors.New("unable to check for file on S3")
 		}
 
 		if found {
