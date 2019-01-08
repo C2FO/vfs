@@ -98,7 +98,7 @@ or implementation details.
 
   * none so far
 
-Feel free to send a pr if you want to add your backend to the list.
+Feel free to send a pull request if you want to add your backend to the list.
 
 
 ### Ideas
@@ -107,9 +107,9 @@ Things to add:
 
 * Add SFTP backend
 * Add Azure storage backend
-* More complete in-memory backend
+* Add in-memory backend
 * Provide better List() functionality with more abstracted filering and paging (iterator?) Retrun File structs vs URIs?
-* Add better context suport
+* Add better/any context.Context() support
 * update s3 and google sdk libs
 * provide for go mod and/or dep installs
 
