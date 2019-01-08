@@ -38,5 +38,5 @@ func (fs *FileSystem) Scheme() string {
 }
 
 func init() {
-	backend.Register(name, &FileSystem{})
+	backend.Register(Scheme, &FileSystem{})
 }

@@ -90,5 +90,5 @@ func NewFileSystem() *FileSystem {
 
 func init() {
 	//registers a default Filesystem
-	backend.Register(name, NewFileSystem())
+	backend.Register(Scheme, NewFileSystem())
 }

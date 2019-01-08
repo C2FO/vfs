@@ -45,9 +45,9 @@ func parseSupportedURI(uri string) (vfs.FileSystem, string, string, error) {
 	path := u.Path
 
 	var fs vfs.FileSystem
-	for _, backendName := range backend.RegisteredBackends() {
-		if u.Scheme == backend.Backend(backendName).Scheme() {
-			fs = backend.Backend(backendName)
+	for _, backendScheme := range backend.RegisteredBackends() {
+		if u.Scheme == backendScheme {
+			fs = backend.Backend(backendScheme)
 		}
 	}
 

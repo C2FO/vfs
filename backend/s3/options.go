@@ -21,10 +21,6 @@ type Options struct {
 	SecretAccessKey string `json:"secretAccessKey,omitempty"`
 	SessionToken    string `json:"sessionToken,omitempty"`
 	Region          string `json:"region,omitempty"`
-	//ACL                  string `json:"acl,omitempty"`
-	//ServerSideEncryption string `json:"serverSideEncryption,omitempty"`
-	//StorageClass         string `json:"storageClass,omitempty"`
-	//UploadConcurrency    int    `json:"uploadConcurrency"`
 }
 
 func getClient(opt Options) (s3iface.S3API, error) {

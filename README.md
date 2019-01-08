@@ -19,11 +19,11 @@ the effect of
           // do some native os.xxx operation
       }
 
-Not only was ugly but because we the behaviors of each "filesystem" were
+Not only was ugly but because the behaviors of each "filesystem" were
 different and we had to constantly alter the file locations and pass a bucket
 string (even if the fs didn't know what a bucket was).
 
-We found a handful a third-party libraries that were interesting but none of
+We found a handful of third-party libraries that were interesting but none of
 them had everything we needed/wanted. Of particular inspiration was
 https://github.com/spf13/afero in its composition of the super-powerful stdlib
 io.* interfaces. Unforunately, it didn't support Google Cloud Storage and there
@@ -33,7 +33,7 @@ filesystem backends.
 
 ###### What we needed/wanted was the following(and more):
 
-* self-contained set up structs that could be passed around like a file/dir handle
+* self-contained set of structs that could be passed around like a file/dir handle
 * the struct would represent an existing or nonexistant file/dir
 * provide common (and only common) functionality across all filesystem so that after initialization, we don't care
       what the underlying filesystem is and can therefore write our code agnostically/portably

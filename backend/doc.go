@@ -2,8 +2,7 @@
 Package backend provides a means of allowing bankend filesystems to self-register on load via an init() call to
 backend.Register("some name", vfs.Filesystem)
 
-In this way, a caller of vfs backends can simply load the backend filesystem (and ONLY those needed) ans begin
-using it:
+In this way, a caller of vfs backends can simply load the backend filesystem (and ONLY those needed) and begin using it:
 
   package main
 
@@ -19,12 +18,12 @@ using it:
      var osfile, s3file vfs.File
 
       // THEN begin using the filesystems
-      osfile, err = backend.Backend("os").NewFile("", "/path/to/file.txt")
+      osfile, err = backend.Backend(os.Scheme).NewFile("", "/path/to/file.txt")
       if err != nil {
           panic(err)
       }
 
-      s3file, err = backend.Backend("os").NewFile("", "/some/file.txt")
+      s3file, err = backend.Backend(os.Scheme).NewFile("", "/some/file.txt")
       if err != nil {
           panic(err)
       }
@@ -70,7 +69,7 @@ Then do use it in some other package do
   ...
 
   func useNewBackend() error {
-      myExoticFs, err = backend.Backend("My Exotic Filesystem")
+      myExoticFs, err = backend.Backend(myexoticfilesystem.Scheme)
       ...
   }
 
