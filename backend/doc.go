@@ -1,5 +1,5 @@
 /*
-Package backend provides a means of allowing bankend filesystems to self-register on load via an init() call to
+Package backend provides a means of allowing backend filesystems to self-register on load via an init() call to
 backend.Register("some name", vfs.Filesystem)
 
 In this way, a caller of vfs backends can simply load the backend filesystem (and ONLY those needed) and begin using it:
