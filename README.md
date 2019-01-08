@@ -140,7 +140,7 @@ https://github.com/c2fo/
 Distributed under the MIT license. See `http://github.com/c2fo/vfs/License.md
 for more information.
 
-## Usage
+## Interfaces
 
 #### type File
 
