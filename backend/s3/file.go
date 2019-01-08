@@ -16,6 +16,7 @@ import (
 
 	"github.com/c2fo/vfs"
 	"github.com/c2fo/vfs/mocks"
+	"github.com/c2fo/vfs/utils"
 )
 
 //File implements vfs.File interface for S3 fs.
@@ -35,7 +36,7 @@ func newFile(fs *FileSystem, bucket, key string) (*File, error) {
 	if bucket == "" || key == "" {
 		return nil, errors.New("non-empty strings for bucket and key are required")
 	}
-	key = vfs.CleanPrefix(key)
+	key = utils.CleanPrefix(key)
 	return &File{
 		fileSystem: fs,
 		bucket:     bucket,
@@ -109,7 +110,7 @@ func (f *File) CopyToFile(targetFile vfs.File) error {
 		return f.copyWithinS3ToFile(tf)
 	}
 
-	if err := vfs.TouchCopy(targetFile, f); err != nil {
+	if err := utils.TouchCopy(targetFile, f); err != nil {
 		return err
 	}
 	//Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
@@ -185,7 +186,12 @@ func (f *File) Delete() error {
 		return err
 	}
 
-	_, err := f.fileSystem.Client.DeleteObject(&s3.DeleteObjectInput{
+	client, err := f.fileSystem.Client()
+	if err != nil {
+		return err
+	}
+
+	_, err = client.DeleteObject(&s3.DeleteObjectInput{
 		Key:    &f.key,
 		Bucket: &f.bucket,
 	})
@@ -194,29 +200,32 @@ func (f *File) Delete() error {
 
 // Close cleans up underlying mechanisms for reading from and writing to the file. Closes and removes the
 // local temp file, and triggers a write to s3 of anything in the f.writeBuffer if it has been created.
-func (f *File) Close() (rerr error) {
-	//setup multi error return using named error
-	errs := vfs.NewMutliErr()
-	defer func() { rerr = errs.OrNil() }()
+func (f *File) Close() error {
 
 	if f.tempFile != nil {
-		defer errs.DeferFunc(f.tempFile.Close)
+		defer f.tempFile.Close()
 
 		err := os.Remove(f.tempFile.Name())
 		if err != nil && !os.IsNotExist(err) {
-			return errs.Append(err)
+			return err
 		}
 
 		f.tempFile = nil
 	}
 
 	if f.writeBuffer != nil {
-		uploader := s3manager.NewUploaderWithClient(f.fileSystem.Client)
+		client, err := f.fileSystem.Client()
+		if err != nil {
+			return err
+		}
+
+		uploader := s3manager.NewUploaderWithClient(client)
 		uploadInput := f.uploadInput()
 		uploadInput.Body = f.writeBuffer
-		_, err := uploader.Upload(uploadInput)
+
+		_, err = uploader.Upload(uploadInput)
 		if err != nil {
-			return errs.Append(err)
+			return err
 		}
 	}
 
@@ -268,7 +277,7 @@ func (f *File) Write(data []byte) (res int, err error) {
 
 // URI returns the File's URI as a string.
 func (f *File) URI() string {
-	return vfs.GetFileURI(f)
+	return utils.GetFileURI(f)
 }
 
 // String implement fmt.Stringer, returning the file's URI as the default string.
@@ -281,19 +290,32 @@ func (f *File) String() string {
 */
 func (f *File) getHeadObject() (*s3.HeadObjectOutput, error) {
 	headObjectInput := new(s3.HeadObjectInput).SetKey(f.key).SetBucket(f.bucket)
-	return f.fileSystem.Client.HeadObject(headObjectInput)
+	client, err := f.fileSystem.Client()
+	if err != nil {
+		return nil, err
+	}
+	return client.HeadObject(headObjectInput)
 }
 
 func (f *File) copyWithinS3ToFile(targetFile *File) error {
 	copyInput := new(s3.CopyObjectInput).SetKey(targetFile.key).SetBucket(targetFile.bucket).SetCopySource(path.Join(f.bucket, f.key))
-	_, err := f.fileSystem.Client.CopyObject(copyInput)
+	client, err := f.fileSystem.Client()
+	if err != nil {
+		return err
+	}
+	_, err = client.CopyObject(copyInput)
 
 	return err
 }
 
 func (f *File) copyWithinS3ToLocation(location vfs.Location) (vfs.File, error) {
 	copyInput := new(s3.CopyObjectInput).SetKey(path.Join(location.Path(), f.Name())).SetBucket(location.Volume()).SetCopySource(path.Join(f.bucket, f.key))
-	_, err := f.fileSystem.Client.CopyObject(copyInput)
+
+	client, err := f.fileSystem.Client()
+	if err != nil {
+		return nil, err
+	}
+	_, err = client.CopyObject(copyInput)
 	if err != nil {
 		return nil, err
 	}
@@ -337,16 +359,6 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 	return tmpFile, nil
 }
 
-func (f *File) putObjectInput() *s3.PutObjectInput {
-	return new(s3.PutObjectInput).SetBucket(f.bucket).SetKey(f.key)
-}
-
-func (f *File) putObject(reader io.ReadSeeker) error {
-	_, err := f.fileSystem.Client.PutObject(f.putObjectInput().SetBody(reader))
-
-	return err
-}
-
 //TODO: need to provide an implementation-agnostic container for providing config options such as SSE
 func (f *File) uploadInput() *s3manager.UploadInput {
 	sseType := "AES256"
@@ -362,7 +374,11 @@ func (f *File) getObjectInput() *s3.GetObjectInput {
 }
 
 func (f *File) getObject() (io.ReadCloser, error) {
-	getOutput, err := f.fileSystem.Client.GetObject(f.getObjectInput())
+	client, err := f.fileSystem.Client()
+	if err != nil {
+		return nil, err
+	}
+	getOutput, err := client.GetObject(f.getObjectInput())
 	if err != nil {
 		return nil, err
 	}
@@ -388,7 +404,7 @@ func waitUntilFileExists(file vfs.File, retries int) error {
 	var retryCount = 0
 	for {
 		if retryCount == retries {
-			return errors.New(fmt.Sprintf("Failed to find file %s after %d", file, retries))
+			return fmt.Errorf("failed to find file %s after %d", file, retries)
 		}
 
 		//check for existing file

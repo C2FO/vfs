@@ -1,7 +1,6 @@
 package os
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -9,6 +8,7 @@ import (
 	"time"
 
 	"github.com/c2fo/vfs"
+	"github.com/c2fo/vfs/utils"
 )
 
 //File implements vfs.File interface for S3 fs.
@@ -28,9 +28,9 @@ func newFile(name string) (*File, error) {
 
 	fullPath = filepath.Dir(fullPath)
 
-	fullPath = vfs.AddTrailingSlash(fullPath)
+	fullPath = utils.AddTrailingSlash(fullPath)
 
-	location := Location{fileSystem: vfs.FileSystem(new(FileSystem)), name: fullPath}
+	location := Location{fileSystem: &FileSystem{}, name: fullPath}
 	return &File{name: fileName, location: &location}, nil
 }
 
@@ -93,7 +93,7 @@ func (f *File) Read(p []byte) (int, error) {
 	if exists, err := f.Exists(); err != nil {
 		return 0, err
 	} else if !exists {
-		return 0, errors.New(fmt.Sprintf("Failed to read. File does not exist at %s", f))
+		return 0, fmt.Errorf("failed to read. File does not exist at %s", f)
 	}
 
 	file, err := f.openFile()
@@ -186,7 +186,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 // URI returns the File's URI as a string.
 func (f *File) URI() string {
-	return vfs.GetFileURI(f)
+	return utils.GetFileURI(f)
 }
 
 // String implement fmt.Stringer, returning the file's URI as the default string.
@@ -200,7 +200,7 @@ func (f *File) copyWithName(name string, location vfs.Location) (vfs.File, error
 		return nil, err
 	}
 
-	if err := vfs.TouchCopy(newFile, f); err != nil {
+	if err := utils.TouchCopy(newFile, f); err != nil {
 		return nil, err
 	}
 	fCloseErr := f.Close()

@@ -1,5 +1,5 @@
-hash: 2f63863ba5da2ced393ce0c2a7ba24a66d7abb10a52156af19fb5cdbcb3cb389
-updated: 2017-08-10T16:03:45.974114809-05:00
+hash: 40edffbeb064f4052e268f49a03f6c0d25e6fbabe93eeff1ba1f6f66b4778c8f
+updated: 2019-01-02T16:45:31.776034-06:00
 imports:
 - name: cloud.google.com/go
   version: 085c05ca074a8de9107005f9baa6308eae7eaf41
@@ -11,7 +11,7 @@ imports:
   - internal/version
   - storage
 - name: github.com/aws/aws-sdk-go
-  version: d05c000e0b41647375a4093373eb1301e02c8a4e
+  version: b69f447375c7fa0047ebcdd8ae5d585d5aac2f71
   subpackages:
   - aws
   - aws/awserr
@@ -44,6 +44,8 @@ imports:
   version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
   subpackages:
   - spew
+- name: github.com/fatih/color
+  version: 5b77d2a35fb0ede96d138fc9a99f5c9b6aef11b4
 - name: github.com/go-ini/ini
   version: 887c8d36f8411bededfd2281daa3907f5f36552e
 - name: github.com/golang/protobuf
@@ -69,8 +71,6 @@ imports:
   - mock
   - require
   - suite
-- name: github.com/urfave/cli
-  version: 0bdeddeeb0f650497d603c4ad7b20cfe685682f6
 - name: golang.org/x/net
   version: ffcf1bedda3b04ebb15a168a59800a73d6dc0f4d
   subpackages:

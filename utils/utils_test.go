@@ -1,4 +1,4 @@
-package vfs_test
+package utils_test
 
 import (
 	"testing"
@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	. "github.com/c2fo/vfs" // mocks also imports vfs resulting in circular dependency. See: https://github.com/golang/go/wiki/CodeReviewComments#import-dot
 	"github.com/c2fo/vfs/mocks"
+	"github.com/c2fo/vfs/utils"
 )
 
 /**********************************
@@ -49,7 +49,7 @@ func (s *utilsTest) TestAddTrailingSlash() {
 	}
 
 	for _, slashtest := range tests {
-		s.Equal(slashtest.expected, AddTrailingSlash(slashtest.path), slashtest.message)
+		s.Equal(slashtest.expected, utils.AddTrailingSlash(slashtest.path), slashtest.message)
 	}
 }
 
@@ -81,12 +81,12 @@ func (s *utilsTest) TestGetURI() {
 	mockFile2.On("Location").Return(mockLoc2)
 
 	//GetFileURI
-	s.Equal("file:///some/path/to/file.txt", GetFileURI(mockFile1), "os file uri matches ")
-	s.Equal("s3://mybucket/this/path/to/file.txt", GetFileURI(mockFile2), "s3 file uri matches ")
+	s.Equal("file:///some/path/to/file.txt", utils.GetFileURI(mockFile1), "os file uri matches ")
+	s.Equal("s3://mybucket/this/path/to/file.txt", utils.GetFileURI(mockFile2), "s3 file uri matches ")
 
 	//GetLocationURI
-	s.Equal("file:///some/path/to/", GetLocationURI(mockLoc1), "os location uri matches ")
-	s.Equal("s3://mybucket/this/path/to/", GetLocationURI(mockLoc2), "s3 location uri matches ")
+	s.Equal("file:///some/path/to/", utils.GetLocationURI(mockLoc1), "os location uri matches ")
+	s.Equal("s3://mybucket/this/path/to/", utils.GetLocationURI(mockLoc2), "s3 location uri matches ")
 }
 
 func TestUtils(t *testing.T) {

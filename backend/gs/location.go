@@ -1,6 +1,3 @@
-// Google Cloud Storage VFS implementation.
-//
-// See: https://github.com/GoogleCloudPlatform/google-cloud-go.
 package gs
 
 import (
@@ -12,9 +9,10 @@ import (
 	"google.golang.org/api/iterator"
 
 	"github.com/c2fo/vfs"
+	"github.com/c2fo/vfs/utils"
 )
 
-// Implements vfs.Location
+// Location implements vfs.Location for gs fs.
 type Location struct {
 	fileSystem   *FileSystem
 	prefix       string
@@ -43,7 +41,12 @@ func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error) {
 		Versions:  false,
 	}
 
-	it := l.getBucketHandle().Objects(l.fileSystem.ctx, q)
+	handle, err := l.getBucketHandle()
+	if err != nil {
+		return nil, err
+	}
+
+	it := handle.Objects(l.fileSystem.ctx, q)
 
 	var fileNames []string
 	for {
@@ -62,14 +65,14 @@ func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error) {
 	return fileNames, nil
 }
 
-// ListByPrefix returns a list of file names at the location which match the provided regular expression.
+// ListByRegex returns a list of file names at the location which match the provided regular expression.
 func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 	keys, err := l.List()
 	if err != nil {
 		return []string{}, err
 	}
 
-	filteredKeys := []string{}
+	var filteredKeys []string
 	for _, key := range keys {
 		if regex.MatchString(key) {
 			filteredKeys = append(filteredKeys, key)
@@ -85,7 +88,7 @@ func (l *Location) Volume() string {
 
 // Path returns the path of the file at the current location, starting with a leading '/'
 func (l *Location) Path() string {
-	return "/" + vfs.EnsureTrailingSlash(l.prefix)
+	return "/" + utils.EnsureTrailingSlash(l.prefix)
 }
 
 // Exists returns whether the location exists or not. In the case of an error, false is returned.
@@ -113,7 +116,7 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 // ChangeDir changes the current location's path to the new, relative path.
 func (l *Location) ChangeDir(relativePath string) error {
 	newPrefix := path.Join(l.prefix, relativePath)
-	l.prefix = vfs.EnsureTrailingSlash(vfs.CleanPrefix(newPrefix))
+	l.prefix = utils.EnsureTrailingSlash(utils.CleanPrefix(newPrefix))
 	return nil
 }
 
@@ -139,19 +142,28 @@ func (l *Location) DeleteFile(fileName string) error {
 
 // URI returns a URI string for the GCS file.
 func (l *Location) URI() string {
-	return vfs.GetLocationURI(l)
+	return utils.GetLocationURI(l)
 }
 
 // getBucketHandle returns cached Bucket struct for file
-func (l *Location) getBucketHandle() *storage.BucketHandle {
+func (l *Location) getBucketHandle() (*storage.BucketHandle, error) {
 	if l.bucketHandle != nil {
-		return l.bucketHandle
+		return l.bucketHandle, nil
 	}
-	l.bucketHandle = l.fileSystem.client.Bucket(l.bucket)
-	return l.bucketHandle
+
+	client, err := l.fileSystem.Client()
+	if err != nil {
+		return nil, err
+	}
+	l.bucketHandle = client.Bucket(l.bucket)
+	return l.bucketHandle, nil
 }
 
 // getObjectAttrs returns the file's attributes
 func (l *Location) getBucketAttrs() (*storage.BucketAttrs, error) {
-	return l.getBucketHandle().Attrs(l.fileSystem.ctx)
+	handle, err := l.getBucketHandle()
+	if err != nil {
+		return nil, err
+	}
+	return handle.Attrs(l.fileSystem.ctx)
 }

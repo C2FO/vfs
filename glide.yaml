@@ -23,5 +23,5 @@ import:
   version: 48e49d1645e228d1c50c3d54fb476b2224477303
   subpackages:
   - iterator
-- package: github.com/urfave/cli
-  version: ^1.19.1
+- package: github.com/fatih/color
+  version: ^1.7.0

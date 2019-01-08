@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"fmt"
 	"github.com/c2fo/vfs"
 	"github.com/c2fo/vfs/mocks"
 )
@@ -22,11 +21,19 @@ import (
 type osFileTest struct {
 	suite.Suite
 	testFile   vfs.File
-	fileSystem FileSystem
+	fileSystem *FileSystem
+}
+
+func (s *osFileTest) SetupSuite() {
+	setupTestFiles()
+}
+
+func (s *osFileTest) TearDownSuite() {
+	teardownTestFiles()
 }
 
 func (s *osFileTest) SetupTest() {
-	fs := FileSystem{}
+	fs := &FileSystem{}
 	file, err := fs.NewFile("", "test_files/test.txt")
 
 	if err != nil {
@@ -103,7 +110,7 @@ func (s *osFileTest) TestCopyToLocation() {
 
 func (s *osFileTest) TestCopyToFile() {
 	expectedText := "hello world"
-	otherFs := new(mocks.FileSystem)
+	otherFs := &mocks.FileSystem{}
 	otherFile := new(mocks.File)
 
 	location := Location{"/some/path", otherFs}
@@ -361,10 +368,69 @@ func (s *osFileTest) TestURI() {
 
 func (s *osFileTest) TestStringer() {
 	file, _ := s.fileSystem.NewFile("", "/some/file/test.txt")
-	s.Equal("file:///some/file/test.txt", fmt.Sprintf("%s", file))
+	s.Equal("file:///some/file/test.txt", file.String())
 }
 
 func TestOSFile(t *testing.T) {
 	suite.Run(t, new(osFileTest))
 	_ = os.Remove("test_files/new.txt")
+}
+
+/*
+	Setup TEST FILES
+*/
+func setupTestFiles() {
+
+	// setup "test_files" dir
+	createDir("test_files")
+
+	// setup "test_files/test.txt"
+	writeStringFile("test_files/empty.txt", ``)
+
+	// setup "test_files/test.txt"
+	writeStringFile("test_files/prefix-file.txt", `hello, Dave`)
+
+	// setup "test_files/test.txt"
+	writeStringFile("test_files/test.txt", `hello world`)
+
+	// setup "test_files/subdir" dir
+	createDir("test_files/subdir")
+
+	// setup "test_files/subdir/test.txt"
+	writeStringFile("test_files/subdir/test.txt", `hello world too`)
+}
+
+func teardownTestFiles() {
+	err := os.RemoveAll("test_files")
+	if err != nil {
+		panic(err)
+	}
+}
+
+func createDir(dirname string) {
+
+	perm := os.FileMode(0755)
+	err := os.Mkdir(dirname, perm)
+	if err != nil {
+		teardownTestFiles()
+		panic(err)
+	}
+}
+
+func writeStringFile(filename, data string) {
+	f, err := os.Create(filename)
+	if err != nil {
+		teardownTestFiles()
+		panic(err)
+	}
+	_, err = f.WriteString(data)
+	if err != nil {
+		teardownTestFiles()
+		panic(err)
+	}
+	err = f.Close()
+	if err != nil {
+		teardownTestFiles()
+		panic(err)
+	}
 }

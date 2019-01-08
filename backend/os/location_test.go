@@ -1,7 +1,6 @@
 package os
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -12,6 +11,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs"
+	"github.com/c2fo/vfs/utils"
 )
 
 /**********************************
@@ -21,11 +21,19 @@ import (
 type osLocationTest struct {
 	suite.Suite
 	testFile   vfs.File
-	fileSystem FileSystem
+	fileSystem *FileSystem
+}
+
+func (s *osLocationTest) SetupSuite() {
+	setupTestFiles()
+}
+
+func (s *osLocationTest) TearDownSuite() {
+	teardownTestFiles()
 }
 
 func (s *osLocationTest) SetupTest() {
-	fs := FileSystem{}
+	fs := &FileSystem{}
 	file, err := fs.NewFile("", "test_files/test.txt")
 
 	if err != nil {
@@ -71,7 +79,7 @@ func (s *osLocationTest) TestListByPrefix() {
 	s.Equal(expected, actual)
 
 	_, err := s.testFile.Location().ListByPrefix("bad/prefix")
-	s.EqualError(err, vfs.BadFilePrefix, "got expected error")
+	s.EqualError(err, utils.BadFilePrefix, "got expected error")
 }
 
 func (s *osLocationTest) TestListByRegex() {
@@ -140,15 +148,15 @@ func (s *osLocationTest) TestURI() {
 func (s *osLocationTest) TestStringer() {
 	file, _ := s.fileSystem.NewFile("", "/some/file/test.txt")
 	location := file.Location()
-	s.Equal("file:///some/file/", fmt.Sprintf("%s", location))
+	s.Equal("file:///some/file/", location.String())
 }
 
 func (s *osLocationTest) TestDeleteFile() {
 	dir, err := ioutil.TempDir("test_files", "example")
 	s.NoError(err, "Setup not expected to fail.")
 	defer func() {
-		err := os.RemoveAll(dir)
-		s.NoError(err, "Cleanup shouldn't fail.")
+		derr := os.RemoveAll(dir)
+		s.NoError(derr, "Cleanup shouldn't fail.")
 	}()
 
 	expectedText := "file to delete"

@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"fmt"
 	"github.com/c2fo/vfs"
 	"github.com/c2fo/vfs/mocks"
 )
@@ -31,7 +30,7 @@ var (
 func (ts *fileTestSuite) SetupTest() {
 	var err error
 	s3apiMock = &mocks.S3API{}
-	fs = FileSystem{Client: s3apiMock}
+	fs = FileSystem{client: s3apiMock}
 	testFile, err = fs.NewFile("bucket", "some/path/to/file.txt")
 	if err != nil {
 		ts.Fail("Shouldn't return error creating test s3.File instance.")
@@ -68,7 +67,6 @@ func (ts *fileTestSuite) TestRead() {
 }
 
 // TODO: Write on Close() (actual s3 calls wait until file is closed to be made.)
-
 func (ts *fileTestSuite) TestWrite() {
 	file, err := fs.NewFile("bucket", "hello.txt")
 	if err != nil {
@@ -158,7 +156,7 @@ func (ts *fileTestSuite) TestNotExists() {
 func (ts *fileTestSuite) TestCopyToFile() {
 	targetFile := &File{
 		fileSystem: &FileSystem{
-			Client: s3apiMock,
+			client: s3apiMock,
 		},
 		bucket: "TestBucket",
 		key:    "testKey.txt",
@@ -190,7 +188,7 @@ func (ts *fileTestSuite) TestEmptyCopyToFile() {
 func (ts *fileTestSuite) TestMoveToFile() {
 	targetFile := &File{
 		fileSystem: &FileSystem{
-			Client: s3apiMock,
+			client: s3apiMock,
 		},
 		bucket: "TestBucket",
 		key:    "testKey.txt",
@@ -208,7 +206,7 @@ func (ts *fileTestSuite) TestMoveToFile() {
 func (ts *fileTestSuite) TestMoveToFile_CopyError() {
 	targetFile := &File{
 		fileSystem: &FileSystem{
-			Client: s3apiMock,
+			client: s3apiMock,
 		},
 		bucket: "TestBucket",
 		key:    "testKey.txt",
@@ -399,16 +397,16 @@ func (ts *fileTestSuite) TestPath() {
 
 func (ts *fileTestSuite) TestURI() {
 	s3apiMock = &mocks.S3API{}
-	fs = FileSystem{Client: s3apiMock}
+	fs = FileSystem{client: s3apiMock}
 	file, _ := fs.NewFile("mybucket", "/some/file/test.txt")
 	expected := "s3://mybucket/some/file/test.txt"
 	ts.Equal(expected, file.URI(), "%s does not match %s", file.URI(), expected)
 }
 
 func (ts *fileTestSuite) TestStringer() {
-	fs = FileSystem{Client: &mocks.S3API{}}
+	fs = FileSystem{client: &mocks.S3API{}}
 	file, _ := fs.NewFile("mybucket", "/some/file/test.txt")
-	ts.Equal("s3://mybucket/some/file/test.txt", fmt.Sprintf("%s", file))
+	ts.Equal("s3://mybucket/some/file/test.txt", file.String())
 }
 
 func TestFile(t *testing.T) {

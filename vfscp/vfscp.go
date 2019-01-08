@@ -1,102 +1,117 @@
 package main
 
 import (
-	"errors"
+	"flag"
 	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
 
+	"github.com/fatih/color"
+
 	"github.com/c2fo/vfs/vfssimple"
-	"github.com/urfave/cli"
 )
 
+const usageTemplate = `
+%[1]s copies a file from one place to another, even between supported remote systems.
+Complete URI (scheme://authority/path) required except for local filesystem.
+See github.com/c2fo/vfs docs for authentication.
+
+Usage:  %[1]s <uri> <uri>
+
+    ie,        %[1]s /some/local/file.txt s3://mybucket/path/to/myfile.txt
+    same as    %[1]s file:///some/local/file.txt s3://mybucket/path/to/myfile.txt
+    gcs to s3  %[1]s gs://googlebucket/some/path/photo.jpg s3://awsS3bucket/path/to/photo.jpg
+
+    -help
+        prints this message
+
+`
+
 func main() {
-	app := cli.NewApp()
-	app.Name = "vfscp"
-	app.Usage = "Copies a file from one place to another, even between supported remote systems"
-	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:   "awsKeyId",
-			Usage:  "aws access key id for user",
-			EnvVar: "AWS_ACCESS_KEY_ID",
-		},
-		cli.StringFlag{
-			Name:   "awsSecretKey",
-			Usage:  "aws secret key for user",
-			EnvVar: "AWS_ACCESS_KEY",
-		},
-		cli.StringFlag{
-			Name:   "awsSessionToken",
-			Usage:  "aws session token",
-			EnvVar: "AWS_SESSION_TOKEN",
-		},
-		cli.StringFlag{
-			Name:   "awsRegion",
-			Usage:  "aws region",
-			EnvVar: "AWS_REGION",
-		},
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stdout, usageTemplate, os.Args[0])
 	}
-	app.Action = func(c *cli.Context) error {
-		err := checkArgs(c.Args().Get(0), c.Args().Get(1))
+	var help bool
+	flag.BoolVar(&help, "help", false, "prints this message")
+	flag.Parse()
+
+	if help {
+		flag.Usage()
+		os.Exit(0)
+	}
+
+	if len(flag.Args()) != 2 {
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	fmt.Println("")
+
+	srcFileURI, err := normalizeArgs(flag.Arg(0))
+	if err != nil {
+		panic(err)
+	}
+	targetFileURI, err := normalizeArgs(flag.Arg(1))
+	if err != nil {
+		panic(err)
+	}
+
+	copyFiles(srcFileURI, targetFileURI)
+}
+
+func copyFiles(srcFileURI, targetFileURI string) {
+	green := color.New(color.FgHiGreen).Add(color.Bold)
+
+	copyMessage(srcFileURI, targetFileURI)
+
+	srcFile, err := vfssimple.NewFile(srcFileURI)
+	if err != nil {
+		failMessage(err)
+	}
+	targetFile, err := vfssimple.NewFile(targetFileURI)
+	if err != nil {
+		failMessage(err)
+	}
+	err = srcFile.CopyToFile(targetFile)
+	if err != nil {
+		failMessage(err)
+	}
+
+	fmt.Print(green.Sprint("done\n\n"))
+
+}
+
+func normalizeArgs(str string) (string, error) {
+	var normalizedArg string
+	u, err := url.Parse(str)
+	if err != nil {
+		return "", err
+	}
+	if u.IsAbs() {
+		normalizedArg = str
+	} else {
+		absPath, err := filepath.Abs(str)
 		if err != nil {
-			return err
+			return "", err
 		}
-		srcFileURI, targetFileURI, err := normalizeArgs(c)
-		// TODO: if file is empty, create an empty file at targetFile. This should probably be done by vfs by default
-		// TODO: add support for S3 URIs. All relative paths or otherwise incomplete URIs should be interpreted as local paths.
-		fmt.Println(fmt.Sprintf("Copying %s to %s", srcFileURI, targetFileURI))
-		srcFile, _ := vfssimple.NewFile(srcFileURI)
-		targetFile, _ := vfssimple.NewFile(targetFileURI)
-		return srcFile.CopyToFile(targetFile)
+		normalizedArg = "file://" + absPath
 	}
-
-	app.Run(os.Args)
+	return normalizedArg, err
 }
 
-func checkArgs(a1, a2 string) error {
-	if a1 == "" || a2 == "" {
-		return errors.New("vfscp requires 2 non-empty arguments")
-	}
-	return nil
+func failMessage(err error) {
+	red := color.New(color.FgHiRed).Add(color.Bold)
+	fmt.Printf(red.Sprint("failed\n\n")+"\n%s\n\n", err.Error())
+	os.Exit(1)
 }
 
-func normalizeArgs(c *cli.Context) (string, string, error) {
-	a1 := c.Args().Get(0)
-	a2 := c.Args().Get(1)
-	normalizedArgs := make([]string, 2)
-	for i, a := range []string{a1, a2} {
-		u, err := url.Parse(a)
-		if err != nil {
-			return "", "", err
-		}
-		if u.IsAbs() {
-			normalizedArgs[i] = a
-			if err := initializeFS(u.Scheme, c); err != nil {
-				return "", "", err
-			}
-		} else {
-			absPath, err := filepath.Abs(a)
-			if err != nil {
-				return "", "", err
-			}
-			normalizedArgs[i] = "file://" + absPath
-			if err := initializeFS("file", c); err != nil {
-				return "", "", err
-			}
-		}
-	}
-	return normalizedArgs[0], normalizedArgs[1], nil
-}
-
-func initializeFS(scheme string, c *cli.Context) error {
-	switch scheme {
-	case "gs":
-		return vfssimple.InitializeGSFileSystem()
-	case "s3":
-		return vfssimple.InitializeS3FileSystem(c.String("awsKeyId"), c.String("awsSecretKey"), c.String("awsRegion"), c.String("awsSessionToken"))
-	case "file":
-		vfssimple.InitializeLocalFileSystem()
-	}
-	return nil
+func copyMessage(src, dest string) {
+	white := color.New(color.FgHiWhite).Add(color.Bold)
+	blue := color.New(color.FgHiBlue).Add(color.Bold)
+	fmt.Print(white.Sprint("Copying ") +
+		blue.Sprint(src) +
+		white.Sprint(" to ") +
+		blue.Sprint(dest) +
+		white.Sprint(" ... "))
 }

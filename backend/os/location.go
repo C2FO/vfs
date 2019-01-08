@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/c2fo/vfs"
+	"github.com/c2fo/vfs/utils"
 )
 
 //Location implements the vfs.Location interface specific to OS fs.
@@ -42,7 +43,7 @@ func (l *Location) List() ([]string, error) {
 
 // ListByPrefix returns a slice of all files starting with "prefix" in the top directory of of the location.
 func (l *Location) ListByPrefix(prefix string) ([]string, error) {
-	if err := vfs.ValidateFilePrefix(prefix); err != nil {
+	if err := utils.ValidateFilePrefix(prefix); err != nil {
 		return nil, err
 	}
 	return l.fileList(func(name string) bool {
@@ -109,7 +110,7 @@ func (l *Location) Exists() (bool, error) {
 
 // URI returns the Location's URI as a string.
 func (l *Location) URI() string {
-	return vfs.GetLocationURI(l)
+	return utils.GetLocationURI(l)
 }
 
 // String implement fmt.Stringer, returning the location's URI as the default string.
@@ -126,7 +127,7 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 		return nil, err
 	}
 
-	fullPath = vfs.AddTrailingSlash(fullPath)
+	fullPath = utils.AddTrailingSlash(fullPath)
 	return &Location{
 		name:       fullPath,
 		fileSystem: l.fileSystem,

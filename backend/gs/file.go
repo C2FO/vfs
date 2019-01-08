@@ -13,35 +13,31 @@ import (
 	"cloud.google.com/go/storage"
 
 	"github.com/c2fo/vfs"
+	"github.com/c2fo/vfs/utils"
 )
 
 const (
 	doesNotExistError = "storage: object doesn't exist"
 )
 
+//File implements vfs.File interface for GS fs.
 type File struct {
-	fileSystem   *FileSystem
-	bucket       string
-	key          string
-	tempFile     *os.File
-	writeBuffer  *bytes.Buffer
-	bucketHandle *storage.BucketHandle
-	objectHandle *storage.ObjectHandle
+	fileSystem  *FileSystem
+	bucket      string
+	key         string
+	tempFile    *os.File
+	writeBuffer *bytes.Buffer
 }
 
 // Close cleans up underlying mechanisms for reading from and writing to the file. Closes and removes the
 // local temp file, and triggers a write to GCS of anything in the f.writeBuffer if it has been created.
-func (f *File) Close() (rerr error) {
-	//setup multi error return using named error rerr
-	errs := vfs.NewMutliErr()
-	defer func() { rerr = errs.OrNil() }()
-
+func (f *File) Close() error {
 	if f.tempFile != nil {
-		defer errs.DeferFunc(f.tempFile.Close)
+		defer f.tempFile.Close()
 
 		err := os.Remove(f.tempFile.Name())
 		if err != nil && !os.IsNotExist(err) {
-			return errs.Append(err)
+			return err
 		}
 
 		f.tempFile = nil
@@ -49,13 +45,18 @@ func (f *File) Close() (rerr error) {
 
 	if f.writeBuffer != nil {
 
-		w := f.getObjectHandle().NewWriter(f.fileSystem.ctx)
+		handle, err := f.getObjectHandle()
+		if err != nil {
+			return err
+		}
+
+		w := handle.NewWriter(f.fileSystem.ctx)
 		if _, err := io.Copy(w, f.writeBuffer); err != nil {
 			//CloseWithError always returns nil
 			_ = w.CloseWithError(err)
-			return errs.Append(err)
+			return err
 		}
-		defer errs.DeferFunc(w.Close)
+		defer w.Close()
 	}
 
 	f.writeBuffer = nil
@@ -122,7 +123,7 @@ func (f *File) Exists() (bool, error) {
 func (f *File) Location() vfs.Location {
 	return vfs.Location(&Location{
 		fileSystem: f.fileSystem,
-		prefix:     vfs.EnsureTrailingSlash(vfs.CleanPrefix(path.Dir(f.key))),
+		prefix:     utils.EnsureTrailingSlash(utils.CleanPrefix(path.Dir(f.key))),
 		bucket:     f.bucket,
 	})
 }
@@ -170,7 +171,7 @@ func (f *File) CopyToFile(targetFile vfs.File) error {
 		return f.copyWithinGCSToFile(tf)
 	}
 
-	if err := vfs.TouchCopy(targetFile, f); err != nil {
+	if err := utils.TouchCopy(targetFile, f); err != nil {
 		return err
 	}
 	//Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
@@ -215,7 +216,11 @@ func (f *File) Delete() error {
 	if err := f.Close(); err != nil {
 		return err
 	}
-	return f.getObjectHandle().Delete(f.fileSystem.ctx)
+	handle, err := f.getObjectHandle()
+	if err != nil {
+		return err
+	}
+	return handle.Delete(f.fileSystem.ctx)
 }
 
 // LastModified returns the 'Updated' property from the GCS attributes.
@@ -227,7 +232,7 @@ func (f *File) LastModified() (*time.Time, error) {
 	return &attr.Updated, nil
 }
 
-// LastModified returns the 'Size' property from the GCS attributes.
+// Size returns the 'Size' property from the GCS attributes.
 func (f *File) Size() (uint64, error) {
 	attr, err := f.getObjectAttrs()
 	if err != nil {
@@ -248,7 +253,7 @@ func (f *File) Name() string {
 
 // URI returns a full GCS URI string of the file.
 func (f *File) URI() string {
-	return vfs.GetFileURI(vfs.File(f))
+	return utils.GetFileURI(vfs.File(f))
 }
 
 func (f *File) checkTempFile() error {
@@ -268,7 +273,12 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 		return nil, err
 	}
 
-	outputReader, err := f.getObjectHandle().NewReader(f.fileSystem.ctx)
+	handle, err := f.getObjectHandle()
+	if err != nil {
+		return nil, err
+	}
+
+	outputReader, err := handle.NewReader(f.fileSystem.ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -293,32 +303,35 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 	return tmpFile, nil
 }
 
-// getBucketHandle returns cached Bucket struct for file
-func (f *File) getBucketHandle() *storage.BucketHandle {
-	if f.bucketHandle != nil {
-		return f.bucketHandle
-	}
-	f.bucketHandle = f.fileSystem.client.Bucket(f.bucket)
-	return f.bucketHandle
-}
-
 // getObjectHandle returns cached Object struct for file
-func (f *File) getObjectHandle() *storage.ObjectHandle {
-	if f.objectHandle != nil {
-		return f.objectHandle
+func (f *File) getObjectHandle() (*storage.ObjectHandle, error) {
+	client, err := f.fileSystem.Client()
+	if err != nil {
+		return nil, err
 	}
-	f.objectHandle = f.getBucketHandle().Object(f.key)
-	return f.objectHandle
+	return client.Bucket(f.bucket).Object(f.key), nil
 }
 
 // getObjectAttrs returns the file's attributes
 func (f *File) getObjectAttrs() (*storage.ObjectAttrs, error) {
-	return f.getObjectHandle().Attrs(f.fileSystem.ctx)
+	handle, err := f.getObjectHandle()
+	if err != nil {
+		return nil, err
+	}
+	return handle.Attrs(f.fileSystem.ctx)
 }
 
 func (f *File) copyWithinGCSToFile(targetFile *File) error {
+	tHandle, err := targetFile.getObjectHandle()
+	if err != nil {
+		return err
+	}
+	fHandle, err := f.getObjectHandle()
+	if err != nil {
+		return err
+	}
 	// Copy content and modify metadata.
-	copier := targetFile.getObjectHandle().CopierFrom(f.getObjectHandle())
+	copier := tHandle.CopierFrom(fHandle)
 	attrs, gerr := f.getObjectAttrs()
 	if gerr != nil {
 		return gerr
@@ -330,7 +343,7 @@ func (f *File) copyWithinGCSToFile(targetFile *File) error {
 	}
 
 	// Just copy content.
-	_, err := targetFile.getObjectHandle().CopierFrom(f.getObjectHandle()).Run(f.fileSystem.ctx)
+	_, err = tHandle.CopierFrom(fHandle).Run(f.fileSystem.ctx)
 
 	return err
 }
@@ -344,7 +357,7 @@ func newFile(fs *FileSystem, bucket, key string) (*File, error) {
 	if bucket == "" || key == "" {
 		return nil, errors.New("non-empty strings for Bucket and Key are required")
 	}
-	key = vfs.CleanPrefix(key)
+	key = utils.CleanPrefix(key)
 	return &File{
 		fileSystem: fs,
 		bucket:     bucket,

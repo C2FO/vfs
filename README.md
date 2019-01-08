@@ -1,105 +1,120 @@
-# vfs - Virtual File System
-> Go library to generalize commands and behavior when interacting with various file systems.
+# vfs
 
-The vfs library includes interfaces which allow you to interact with files and locations on various file systems in a generic way. Currently supported file systems:
-* Local fs (Windows, OS X, Linux)
-* Amazon S3
-* GCS
+--
 
-These interfaces are composed of standard Go library interfaces, allowing for simple file manipulation within, and between the supported file systems.
+Package vfs provides a platform-independent, generalized set of filesystem
+functionality across a number of filesystem types such as os, S3, and GCS.
 
-At C2FO we have created a factory system that is integrated with our app configuration that allows for simply initializing the various locations we tend to do file work in. You can build your own similar system directly on top of the various file  system implementations and the provided generic interfaces, or you can use the simple interface included in the vfs package.
-The usage examples below will detail this simple interface. We will eventually be providing a version of our factory as an  example of how this library can be used in a more complex project.
 
-A couple notes on configuration for this interface (vfssimple.NewFile and vfssimple.NewLocation):
-* Before calling either function you must initialize any file systems you expect to be using.
-* Local: The local file system requires no configuration. Simply call vfssimple.InitializeLocalFileSystem so the internals are prepared to expect "file:///" URIs.
-* S3: The vfssimple.InitializeS3FileSystem() method requires authentication parameters for the user, see godoc for this function.
-* GCS: In addition to calling vfssimple.InitializeGSFileSystem, you are expected to have authenticated with GCS using the Google Cloud Shell for the user running the app. We will be looking into more flexible forms of authentication (similar to the S3 library) in the future, but this was an ideal use case for us to start with, and therefore, all that is currently provided.
+### Philosophy
 
-## Installation
+When building our platform, initially we wrote a library that was something to
+the effect of
 
-OS X, Linux, and Windows:
+      if config.DISK == "S3" {
+    	  // do some s3 filesystem operation
+      } else if config.DISK == "mock" {
+          // fake something
+      } else {
+          // do some native os.xxx operation
+      }
 
-```sh
-glide install github.com/c2fo/vfs
-```
+Not only was ugly but because we the behaviors of each "filesystem" were
+different and we had to constantly alter the file locations and pass a bucket
+string (even if the fs didn't know what a bucket was).
 
-## Usage example
+We found a handful a third-party libraries that were interesting but none of
+them had everything we needed/wanted. Of particular inspiration was
+https://github.com/spf13/afero in its composition of the super-powerful stdlib
+io.* interfaces. Unforunately, it didn't support Google Cloud Storage and there
+was still a lot of passing around of strings and structs. Few, if any, of the
+vfs-like libraries provided interfaces to easily and confidently create new
+filesystem backends.
 
-```go
-import "github.com/c2fo/vfs/vfssimple"
+###### What we needed/wanted was the following(and more):
 
-// The following functions tell vfssimple we expect to handle a particular file system in subsequent calls to
-// vfssimple.NewFile() and vfssimple.NewLocation
-// Local files, ie: "file:///"
-vfssimple.InitializeLocalFileSystem()
+* self-contained set up structs that could be passed around like a file/dir handle
+* the struct would represent an existing or nonexistant file/dir
+* provide common (and only common) functionality across all filesystem so that after initialization, we don't care
+      what the underlying filesystem is and can therefore write our code agnostically/portably
+* use io.* interfaces such as io.Reader and io.Writer without needing to call a separate function
+* extensibility to easily add other needed filesytems like Micrsoft Azure Cloud File Storage or SFTP
+* prefer native atomic functions when possible (ie S3 to S3 copying would use the native copy api call rather than
+      copy-delete)
+* a uniform way of addressing files regardless of filesystem.  This is why we use complete URI's in vfssimple
+* stringer interface so that the file struct passed to a log message (or other Stringer use) would show the URI
+* mockable filesystem
+* pluggability so that third-party implemenations of our interfaces could be used
 
-// Google Cloud Storage, ie: "gs://"
-vfs.InitializeGSFileSystem()
 
-// Amazon S3, ie: "s3://"
-vfssimple.InitializeS3FileSystem(accessKeyId, secreteAccessKey, token)
+### Install
 
-// alternative to above for S3, if you've already initialized a client of interface s3iface.S3API
-vfssimple.SetS3Client(client)
-```
+Go install:
 
-You can then use those file systems to initialize locations which you'll be referencing frequently, or initialize files directly
+    go get -u github.com/c2fo/vfs/...
 
-```go
-osFile, err := vfssimple.NewFile("file:///path/to/file.txt")
-s3File, err := vfssimple.NewFile("s3://bucket/prefix/file.txt")
+Glide installation:
 
-osLocation, err := vfssimple.NewLocation("file:///tmp")
-s3Location, err := vfssimple.NewLocation("s3://bucket")
+    glide install github.com/c2fo/vfs
 
-osTmpFile, err := osLocation.NewFile("anotherFile.txt") // file at /tmp/anotherFile.txt
-```
 
-With a number of files and locations between s3 and the local file system you can perform a number of actions without any consideration for the system's api or implementation details.
+### Usage
 
-```go
-osFileExists, err := osFile.Exists() // true, nil
-s3FileExists, err := s3File.Exists() // false, nil
-err = osFile.CopyToFile(s3File) // nil
-s3FileExists, err = s3File.Exists() // true, nil
+We provde vfssimple as basic way of initializing filesystem backends (see each
+implemnations's docs about authentiation). vfssimple pulls in every c2fo/vfs
+backend. If you need to reduce the backend requirements (and app memory
+footprint) or add a third party backend, you'll need to implement your own
+"factory". See backend doc for more info.
 
-movedOsFile, err := osFile.MoveToLocation(osLocation)
-osFileExists, err = osFile.Exists() // false, nil (move actions delete the original file)
-movedOsFileExists, err := movedOsFile.Exists() // true, nil
+You can then use those file systems to initialize locations which you'll be
+referencing frequently, or initialize files directly
 
-s3FileUri := s3File.URI() // s3://bucket/prefix/file.txt
-s3FileName := s3File.Name() // file.txt
-s3FilePath := s3File.Path() // /prefix/file.txt
+    osFile, err := vfssimple.NewFile("file:///path/to/file.txt")
+    s3File, err := vfssimple.NewFile("s3://bucket/prefix/file.txt")
 
-// vfs.File and vfs.Location implement fmt.Stringer, returning x.URI()
-fmt.Sprintf("Working on file: %s", s3File) // "Working on file: s3://bucket/prefix/file.txt"
-```
+    osLocation, err := vfssimple.NewLocation("file:///tmp")
+    s3Location, err := vfssimple.NewLocation("s3://bucket")
 
-## Development setup
+    osTmpFile, err := osLocation.NewFile("anotherFile.txt") // file at /tmp/anotherFile.txt
 
-Fork the project and clone it locally, then in the cloned directory...
+With a number of files and locations between s3 and the local file system you
+can perform a number of actions without any consideration for the system's api
+or implementation details.
 
-```sh
-glide install
-go test $(glide novendor)
-```
+    osFileExists, err := osFile.Exists() // true, nil
+    s3FileExists, err := s3File.Exists() // false, nil
+    err = osFile.CopyToFile(s3File) // nil
+    s3FileExists, err = s3File.Exists() // true, nil
 
-## Release History
+    movedOsFile, err := osFile.MoveToLocation(osLocation)
+    osFileExists, err = osFile.Exists() // false, nil (move actions delete the original file)
+    movedOsFileExists, err := movedOsFile.Exists() // true, nil
 
-* 0.1.0
-    * The first release
-    * Support for local file system, s3, and gcs
-    * Initial README.md
-* 1.0.0
-    * Apply last of bugfixes from old repo
-* 1.1.0
-    * Enable server-side encryption on S3 (matching GCS) as a more sane, secure default for files is at rest
-* 1.2.0
-    * For the S3 implementation of the File interface, ensure the file exists in S3 after it is written before continuing.
+    s3FileUri := s3File.URI() // s3://bucket/prefix/file.txt
+    s3FileName := s3File.Name() // file.txt
+    s3FilePath := s3File.Path() // /prefix/file.txt
 
-## Meta
+### Third-party Backends
+
+  * none so far
+
+Feel free to send a pr if you want to add your backend to the list.
+
+
+### Ideas
+
+Things to add:
+
+* Add SFTP backend
+* Add Azure storage backend
+* More complete in-memory backend
+* Provide better List() functionality with more abstracted filering and paging (iterator?) Retrun File structs vs URIs?
+* Add better context suport
+* update s3 and google sdk libs
+* provide for go mod and/or dep installs
+
+
+### Contrubutors
 
 Brought to you by the Enterprise Pipeline team at C2FO:
 
@@ -109,14 +124,165 @@ Jason Coble - [@jasonkcoble](https://twitter.com/jasonkcoble) - jason@c2fo.com
 
 Chris Roush – chris.roush@c2fo.com
 
-Distributed under the MIT license. See ``LICENSE`` for more information.
+https://github.com/c2fo/
 
-[https://github.com/c2fo/](https://github.com/c2fo/)
-
-## Contributing
+### Contributing
 
 1. Fork it (<https://github.com/c2fo/vfs/fork>)
-2. Create your feature branch (`git checkout -b feature/fooBar`)
-3. Commit your changes (`git commit -am 'Add some fooBar'`)
-4. Push to the branch (`git push origin feature/fooBar`)
-5. Create a new Pull Request
+1. Create your feature branch (`git checkout -b feature/fooBar`)
+1. Commit your changes (`git commit -am 'Add some fooBar'`)
+1. Push to the branch (`git push origin feature/fooBar`)
+1. Create a new Pull Request
+
+
+### License
+
+Distributed under the MIT license. See `http://github.com/c2fo/vfs/License.md
+for more information.
+
+## Usage
+
+#### type File
+
+```go
+type File interface {
+	io.Closer
+	io.Reader
+	io.Seeker
+	io.Writer
+	fmt.Stringer
+
+	// Exists returns boolean if the file exists on the file system.  Also returns an error if any.
+	Exists() (bool, error)
+
+	// Location returns the vfs.Location for the File.
+	Location() Location
+
+	// CopyToLocation will copy the current file to the provided location. If the file already exists at the location,
+	// the contents will be overwritten with the current file's contents. In the case of an error, nil is returned
+	// for the file.
+	CopyToLocation(location Location) (File, error)
+
+	// CopyToFile will copy the current file to the provided file instance. If the file already exists,
+	// the contents will be overwritten with the current file's contents. In the case of an error, nil is returned
+	// for the file.
+	CopyToFile(File) error
+
+	// MoveToLocation will move the current file to the provided location. If the file already exists at the location,
+	// the contents will be overwritten with the current file's contents. In the case of an error, nil is returned
+	// for the file.
+	MoveToLocation(location Location) (File, error)
+
+	// MoveToFile will move the current file to the provided file instance. If a file with the current file's name already exists,
+	// the contents will be overwritten with the current file's contents. The current instance of the file will be removed.
+	MoveToFile(File) error
+
+	// Delete unlinks the File on the filesystem.
+	Delete() error
+
+	// LastModified returns the timestamp the file was last modified (as *time.Time).
+	LastModified() (*time.Time, error)
+
+	// Size returns the size of the file in bytes.
+	Size() (uint64, error)
+
+	// Path returns absolute path (with leading slash) including filename, ie /some/path/to/file.txt
+	Path() string
+
+	// Name returns the base name of the file path.  For file:///some/path/to/file.txt, it would return file.txt
+	Name() string
+
+	// URI returns the fully qualified URI for the File.  IE, s3://bucket/some/path/to/file.txt
+	URI() string
+}
+```
+
+File represents a file on a filesystem. A File may or may not actually exist on
+the filesystem.
+
+#### type FileSystem
+
+```go
+type FileSystem interface {
+	// NewFile initializes a File on the specified volume at path 'name'. On error, nil is returned
+	// for the file.
+	NewFile(volume string, name string) (File, error)
+
+	// NewLocation initializes a Location on the specified volume with the given path. On error, nil is returned
+	// for the location.
+	NewLocation(volume string, path string) (Location, error)
+
+	// Name returns the name of the FileSystem ie: s3, disk, gcs, etc...
+	Name() string
+
+	// Scheme, related to Name, is the uri scheme used by the FileSystem: s3, file, gs, etc...
+	Scheme() string
+}
+```
+
+FileSystem represents a filesystem with any authentication accounted for.
+
+#### type Location
+
+```go
+type Location interface {
+	fmt.Stringer
+
+	// List returns a slice of strings representing the base names of the files found at the Location. All implementations
+	// are expected to return ([]string{}, nil) in the case of a non-existent directory/prefix/location. If the user
+	// cares about the distinction between an empty location and a non-existent one, Location.Exists() should be checked
+	// first.
+	List() ([]string, error)
+
+	// ListByPrefix returns a slice of strings representing the base names of the files found in Location whose
+	// filenames match the given prefix. An empty slice will be returned even for locations that don't exist.
+	ListByPrefix(prefix string) ([]string, error)
+
+	// ListByRegex returns a slice of strings representing the base names of the files found in Location that
+	// matched the given regular expression. An empty slice will be returned even for locations that don't exist.
+	ListByRegex(regex *regexp.Regexp) ([]string, error)
+
+	// Returns the volume as string.  Some filesystems may not have a volume and will return "".  In URI parlance,
+	// volume equates to authority.  For example s3://mybucket/path/to/file.txt, volume would return "mybucket".
+	Volume() string
+
+	//Path returns absolute path to the Location with leading and trailing slashes, ie /some/path/to/
+	Path() string
+
+	// Exists returns boolean if the file exists on the file system. Also returns an error if any.
+	Exists() (bool, error)
+
+	// NewLocation is an initializer for a new Location relative to the existing one. For instance, for location:
+	// file://some/path/to/, calling NewLocation("../../") would return a new vfs.Location representing file://some/.
+	// The new location instance should be on the same file system volume as the location it originated from.
+	NewLocation(relativePath string) (Location, error)
+
+	// ChangeDir updates the existing Location's path to the provided relative path. For instance, for location:
+	// file://some/path/to/, calling ChangeDir("../../") update the location instance to file://some/.
+	ChangeDir(relativePath string) error
+
+	//FileSystem returns the underlying vfs.FileSystem struct for Location.
+	FileSystem() FileSystem
+
+	// NewFile will instantiate a vfs.File instance at the current location's path. In the case of an error,
+	// nil will be returned.
+	NewFile(fileName string) (File, error)
+
+	// DeleteFile deletes the file of the given name at the location. This is meant to be a short cut for
+	// instantiating a new file and calling delete on that, with all the necessary error handling overhead.
+	DeleteFile(fileName string) error
+
+	// URI returns the fully qualified URI for the Location.  IE, file://bucket/some/path/
+	URI() string
+}
+```
+
+Location represents a filesystem path which serves as a start point for
+directory-like functionality. A location may or may not actually exist on the
+filesystem.
+
+#### type Options
+
+```go
+type Options interface{}
+```

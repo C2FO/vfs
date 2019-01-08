@@ -1,4 +1,4 @@
-package vfs
+package utils
 
 import (
 	"errors"
@@ -8,10 +8,14 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+
+	"github.com/c2fo/vfs"
 )
 
 const (
-	Windows       = "windows"
+	// Windows constant represents a target operating system running a version of Microsoft Windows
+	Windows = "windows"
+	// BadFilePrefix constant is returned when path has leading slash or backslash
 	BadFilePrefix = "expecting only a filename prefix, which may not include slashes or backslashes"
 )
 
@@ -43,13 +47,13 @@ func AddTrailingSlash(path string) string {
 	return path
 }
 
-// GetFile returns a File URI
-func GetFileURI(f File) string {
+// GetFileURI returns a File URI
+func GetFileURI(f vfs.File) string {
 	return fmt.Sprintf("%s://%s%s", f.Location().FileSystem().Scheme(), f.Location().Volume(), f.Path())
 }
 
-// GetFile returns a Location URI
-func GetLocationURI(l Location) string {
+// GetLocationURI returns a Location URI
+func GetLocationURI(l vfs.Location) string {
 	return fmt.Sprintf("%s://%s%s", l.FileSystem().Scheme(), l.Volume(), l.Path())
 }
 
@@ -67,7 +71,7 @@ func CleanPrefix(prefix string) string {
 	return prefixCleanRegex.ReplaceAllString(prefix, "")
 }
 
-// Performs a validation check on a prefix. The prefix should not include "/" or "\\" characters. An
+// ValidateFilePrefix performs a validation check on a prefix. The prefix should not include "/" or "\\" characters. An
 // error is returned if either of those conditions are true.
 func ValidateFilePrefix(filenamePrefix string) error {
 	if strings.Contains(filenamePrefix, "/") || strings.Contains(filenamePrefix, "\\") {
@@ -76,23 +80,16 @@ func ValidateFilePrefix(filenamePrefix string) error {
 	return nil
 }
 
-// Methods to ensure consistency between implementations
-
-func StandardizePath(path string) string {
-	if prefixSlashRegex.MatchString(path) {
-		return path
-	} else {
-		return "/" + path
-	}
-}
-
 // TouchCopy is a wrapper around io.Copy which ensures that even empty source files (reader) will get written as an
 // empty file. It guarantees a Write() call on the target file.
-func TouchCopy(writer File, reader File) error {
+func TouchCopy(writer, reader vfs.File) error {
 	if size, err := reader.Size(); err != nil {
 		return err
 	} else if size == 0 {
-		writer.Write([]byte{})
+		_, err = writer.Write([]byte{})
+		if err != nil {
+			return err
+		}
 	} else {
 		if _, err := io.Copy(writer, reader); err != nil {
 			return err

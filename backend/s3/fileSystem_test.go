@@ -17,17 +17,12 @@ var (
 )
 
 func (ts *fileSystemTestSuite) SetupTest() {
-	var err error
 	s3apiMock = &mocks.S3API{}
-	s3fs, err = NewFileSystem(s3apiMock)
-	if err != nil {
-		ts.Fail("Shouldn't return an error creating NewFileSystem.")
-	}
+	s3fs = &FileSystem{}
 }
 
 func (ts *fileSystemTestSuite) TestNewFileSystem() {
-	newFS, err := NewFileSystem(s3apiMock)
-	ts.Nil(err, "s3.NewFileSystem() shouldn't return an error")
+	newFS := NewFileSystem().WithClient(s3apiMock)
 	ts.NotNil(newFS, "Should return a new fileSystem for s3")
 }
 

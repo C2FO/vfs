@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs"
 	"github.com/c2fo/vfs/mocks"
+	"github.com/c2fo/vfs/utils"
 )
 
 type locationTestSuite struct {
@@ -23,7 +23,7 @@ type locationTestSuite struct {
 
 func (lt *locationTestSuite) SetupTest() {
 	lt.s3apiMock = &mocks.S3API{}
-	lt.fs = &FileSystem{lt.s3apiMock}
+	lt.fs = &FileSystem{client: lt.s3apiMock}
 }
 
 func (lt *locationTestSuite) TestList() {
@@ -103,7 +103,7 @@ func (lt *locationTestSuite) TestListByPrefix() {
 	bucket := "bucket"
 	locPath := "dir1/"
 	prefix := "fil"
-	apiCallPrefix := vfs.EnsureTrailingSlash(path.Join(locPath, prefix))
+	apiCallPrefix := utils.EnsureTrailingSlash(path.Join(locPath, prefix))
 	delimiter := "/"
 	isTruncated := false
 	lt.s3apiMock.On("ListObjects", &s3.ListObjectsInput{
@@ -248,6 +248,7 @@ func (lt *locationTestSuite) TestNewLocation() {
 }
 
 func (lt *locationTestSuite) TestDeleteFile() {
+	lt.s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 	lt.s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
 	loc := &Location{lt.fs, "old", "bucket"}
 
