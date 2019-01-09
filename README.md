@@ -60,11 +60,11 @@ Glide installation:
 
 ### Usage
 
-We provde vfssimple as basic way of initializing filesystem backends (see each
-implemnations's docs about authentiation). vfssimple pulls in every c2fo/vfs
+We provde [vfssimple](docs/vfssimple.md) as basic way of initializing filesystem backends (see each
+implemnations's docs about authentiation). [vfssimple](docs/vfssimple.md) pulls in every c2fo/vfs
 backend. If you need to reduce the backend requirements (and app memory
 footprint) or add a third party backend, you'll need to implement your own
-"factory". See backend doc for more info.
+"factory". See [backend](docs/backend.md) doc for more info.
 
 You can then use those file systems to initialize locations which you'll be
 referencing frequently, or initialize files directly
@@ -142,7 +142,7 @@ for more information.
 
 ## Interfaces
 
-#### type File
+#### [type File](#vfs-file)
 
 ```go
 type File interface {
@@ -200,7 +200,7 @@ type File interface {
 File represents a file on a filesystem. A File may or may not actually exist on
 the filesystem.
 
-#### type FileSystem
+[#### type FileSystem](#vfs-filesystem)
 
 ```go
 type FileSystem interface {
@@ -222,7 +222,7 @@ type FileSystem interface {
 
 FileSystem represents a filesystem with any authentication accounted for.
 
-#### type Location
+#### [type Location](vfs-location)
 
 ```go
 type Location interface {
@@ -280,7 +280,7 @@ type Location interface {
 Location represents a filesystem path which serves as a start point for
 directory-like functionality. A location may or may not actually exist on the
 filesystem.
-
+[ ](#vfs-options)
 #### type Options
 
 ```go
