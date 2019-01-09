@@ -44,10 +44,8 @@ In this way, a caller of vfs backends can simply load the backend filesystem
 ### Development
 
 To create your own backend, you must create a package that implements both
-[vfs.Filesystem](../README.md#vfs-filesystem), [vfs.Location](../README.md#vfs-location), and 
-[vfs.File](../README.md#vfs-file) interfaces. Then ensure it registers itself on load:
-
-[vfs.Option](../README.md#vfs-options)
+[vfs.Filesystem](../README.md#type-filesystem), [vfs.Location](../README.md#type-location), and 
+[vfs.File](../README.md#type-file) interfaces. Then ensure it registers itself on load:
 
     pacakge myexoticfilesystem
 

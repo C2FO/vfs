@@ -142,7 +142,7 @@ for more information.
 
 ## Interfaces
 
-#### [type File](#vfs-file)
+#### type File
 
 ```go
 type File interface {
@@ -200,7 +200,7 @@ type File interface {
 File represents a file on a filesystem. A File may or may not actually exist on
 the filesystem.
 
-[#### type FileSystem](#vfs-filesystem)
+[#### type FileSystem
 
 ```go
 type FileSystem interface {
@@ -222,7 +222,7 @@ type FileSystem interface {
 
 FileSystem represents a filesystem with any authentication accounted for.
 
-#### [type Location](vfs-location)
+#### type Location
 
 ```go
 type Location interface {
@@ -280,7 +280,7 @@ type Location interface {
 Location represents a filesystem path which serves as a start point for
 directory-like functionality. A location may or may not actually exist on the
 filesystem.
-[ ](#vfs-options)
+
 #### type Options
 
 ```go
