@@ -39,7 +39,7 @@ filesystem backends.
       what the underlying filesystem is and can therefore write our code agnostically/portably
 * use [io.*](https://godoc.org/io) interfaces such as [io.Reader](https://godoc.org/io#Reader) and [io.Writer](https://godoc.org/io#Writer) without needing to call a separate function
 * extensibility to easily add other needed filesytems like Micrsoft Azure Cloud File Storage or SFTP
-* prefer native atomic functions when possible (ie S3 to S3 copying would use the native copy api call rather than
+* prefer native atomic functions when possible (ie S3 to S3 moving would use the native move api call rather than
       copy-delete)
 * a uniform way of addressing files regardless of filesystem.  This is why we use complete URI's in [vfssimple](docs/vfssimple.md)
 * [fmt.Stringer](https://godoc.org/fmt#Stringer) interface so that the file struct passed to a log message (or other [Stringer](https://godoc.org/fmt#Stringer) use) would show the URI
