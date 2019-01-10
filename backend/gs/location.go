@@ -20,7 +20,7 @@ type Location struct {
 	bucketHandle *storage.BucketHandle
 }
 
-// String returns the full URI of the file.
+// String returns the full URI of the location.
 func (l *Location) String() string {
 	return l.URI()
 }
@@ -140,7 +140,7 @@ func (l *Location) DeleteFile(fileName string) error {
 	return file.Delete()
 }
 
-// URI returns a URI string for the GCS file.
+// URI returns a URI string for the GCS location.
 func (l *Location) URI() string {
 	return utils.GetLocationURI(l)
 }

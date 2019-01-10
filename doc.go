@@ -31,7 +31,7 @@ What we needed/wanted was the following(and more):
   * prefer native atomic functions when possible (ie S3 to S3 copying would use the native copy api call rather than
     copy-delete)
   * a uniform way of addressing files regardless of filesystem.  This is why we use complete URI's in vfssimple
-  * stringer interface so that the file struct passed to a log message (or other Stringer use) would show the URI
+  * fmt.Stringer interface so that the file struct passed to a log message (or other Stringer use) would show the URI
   * mockable filesystem
   * pluggability so that third-party implemenations of our interfaces could be used
 

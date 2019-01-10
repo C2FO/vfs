@@ -84,7 +84,7 @@ func (l *Location) fileList(testEval fileTest) ([]string, error) {
 	return files, nil
 }
 
-// Volume returns if any of of the location. Given "C:\foo\bar" it returns "C:" on Windows. On other platforms it returns "".
+// Volume returns the volume, if any, of the location. Given "C:\foo\bar" it returns "C:" on Windows. On other platforms it returns "".
 func (l *Location) Volume() string {
 	return filepath.VolumeName(l.name)
 }

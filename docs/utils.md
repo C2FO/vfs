@@ -56,7 +56,7 @@ GetLocationURI returns a Location URI
 ```go
 func TouchCopy(writer, reader vfs.File) error
 ```
-TouchCopy is a wrapper around io.Copy which ensures that even empty source files
+TouchCopy is a wrapper around [io.Copy](https://godoc.org/io#Copy) which ensures that even empty source files
 (reader) will get written as an empty file. It guarantees a Write() call on the
 target file.
 

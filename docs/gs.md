@@ -8,7 +8,7 @@ Package gs Google Cloud Storage VFS implementation.
 
 ### Usage
 
-Rely on github.com/c2fo/vfs/backend
+Rely on [github.com/c2fo/vfs/backend](backend.md)
 
     import(
         "github.com/c2fo/vfs/backend"
@@ -29,8 +29,8 @@ Or call directly:
         ...
     }
 
-gs can be augmented with the following implementation-specific methods. Backend
-returns vfs.Filesystem interface so it would have to be cast as gs.Filesystem to
+gs can be augmented with the following implementation-specific methods. [Backend](backend.md)
+returns [vfs.FileSystem](../README.md#type-filesystem) interface so it would have to be cast as gs.Filesystem to
 use the following:
 
     func DoSomething() {
@@ -62,7 +62,7 @@ use the following:
 
 ### Authentication
 
-Authentication, by default, occurs automatically when Client() is called. It
+Authentication, by default, occurs automatically when [Client()](#func-filesystem-client) is called. It
 looks for credentials in the following places, preferring the first location
 found:
 
@@ -94,7 +94,7 @@ type File struct {
 }
 ```
 
-File implements vfs.File interface for GS fs.
+File implements [vfs.File](../README.md#type-file) interface for GS fs.
 
 #### func (*File) Close
 
@@ -111,7 +111,7 @@ in the f.writeBuffer if it has been created.
 func (f *File) CopyToFile(targetFile vfs.File) error
 ```
 CopyToFile puts the contents of File into the targetFile passed. Uses the GCS
-CopierFrom method if the target file is also on GCS, otherwise uses io.Copy.
+CopierFrom method if the target file is also on GCS, otherwise uses [io.Copy](https://godoc.org/io#Copy).
 
 #### func (*File) CopyToLocation
 
@@ -120,7 +120,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error)
 ```
 CopyToLocation creates a copy of *File, using the file's current name as the new
 file's name at the given location. If the given location is also GCS, the GCS
-API for copying files will be utilized, otherwise, standard io.Copy will be done
+API for copying files will be utilized, otherwise, standard [io.Copy](https://godoc.org/io#Copy) will be done
 to the new file.
 
 #### func (*File) Delete
@@ -193,7 +193,7 @@ Path returns full path with leading slash of the GCS file key.
 ```go
 func (f *File) Read(p []byte) (n int, err error)
 ```
-Read implements the standard for io.Reader. For this to work with an GCS file, a
+Read implements the standard for [io.Reader](https://godoc.org/io#Reader). For this to work with an GCS file, a
 temporary local copy of the file is created, and reads work on that. This file
 is closed and removed upon calling f.Close()
 
@@ -232,8 +232,8 @@ URI returns a full GCS URI string of the file.
 ```go
 func (f *File) Write(data []byte) (n int, err error)
 ```
-Write implements the standard for io.Writer. A buffer is added to with each
-subsequent write. Calling Close() will write the contents back to GCS.
+Write implements the standard for [io.Writer](https://godoc.org/io#Writer). A buffer is added to with each
+subsequent write. Calling [Close()](#func-file-close) will write the contents back to GCS.
 
 #### type FileSystem
 
@@ -242,14 +242,14 @@ type FileSystem struct {
 }
 ```
 
-FileSystem implements vfs.Filesystem for the GCS filesystem.
+FileSystem implements [vfs.FileSystem](../README.md#type-filesystem) for the GCS filesystem.
 
 #### func  NewFileSystem
 
 ```go
 func NewFileSystem() *FileSystem
 ```
-NewFileSystem intializer for FileSystem struct accepts google cloud storage
+NewFileSystem intializer for [FileSystem](#type-filesystem) struct accepts google cloud storage
 client and returns Filesystem or error.
 
 #### func (*FileSystem) Client
@@ -258,7 +258,7 @@ client and returns Filesystem or error.
 func (fs *FileSystem) Client() (*storage.Client, error)
 ```
 Client returns the underlying google storage client, creating it (lazily), if
-necessary See Overview for authentication resolution
+necessary See [Authenication](#authentication) section for authentication resolution
 
 #### func (*FileSystem) Name
 
@@ -272,14 +272,14 @@ Name returns "Google Cloud Storage"
 ```go
 func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error)
 ```
-NewFile function returns the gcs implementation of vfs.File.
+NewFile function returns the gcs implementation of [vfs.File](../README.md#type-file).
 
 #### func (*FileSystem) NewLocation
 
 ```go
 func (fs *FileSystem) NewLocation(volume string, path string) (loc vfs.Location, err error)
 ```
-NewLocation function returns the s3 implementation of vfs.Location.
+NewLocation function returns the s3 implementation of [vfs.Location](../README.md#type-location).
 
 #### func (*FileSystem) Scheme
 
@@ -317,7 +317,7 @@ type Location struct {
 }
 ```
 
-Location implements vfs.Location for gs fs.
+Location implements [vfs.Location](../README.md#type-location) for gs fs.
 
 #### func (*Location) ChangeDir
 
@@ -362,7 +362,7 @@ func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error)
 ```
 ListByPrefix returns a slice of file base names and any error, if any prefix
 means filename prefix and therefore should not have slash List functions return
-only files List functions return only basenames
+only files [List](#func-location-list) functions return only basenames
 
 #### func (*Location) ListByRegex
 
@@ -401,14 +401,14 @@ leading '/'
 ```go
 func (l *Location) String() string
 ```
-String returns the full URI of the file.
+String returns the full URI of the location.
 
 #### func (*Location) URI
 
 ```go
 func (l *Location) URI() string
 ```
-URI returns a URI string for the GCS file.
+URI returns a URI string for the GCS location.
 
 #### func (*Location) Volume
 

@@ -26,7 +26,7 @@ string (even if the fs didn't know what a bucket was).
 We found a handful of third-party libraries that were interesting but none of
 them had everything we needed/wanted. Of particular inspiration was
 https://github.com/spf13/afero in its composition of the super-powerful stdlib
-io.* interfaces. Unforunately, it didn't support Google Cloud Storage and there
+[io.*](https://godoc.org/io) interfaces. Unforunately, it didn't support Google Cloud Storage and there
 was still a lot of passing around of strings and structs. Few, if any, of the
 vfs-like libraries provided interfaces to easily and confidently create new
 filesystem backends.
@@ -37,12 +37,12 @@ filesystem backends.
 * the struct would represent an existing or nonexistant file/dir
 * provide common (and only common) functionality across all filesystem so that after initialization, we don't care
       what the underlying filesystem is and can therefore write our code agnostically/portably
-* use io.* interfaces such as io.Reader and io.Writer without needing to call a separate function
+* use [io.*](https://godoc.org/io) interfaces such as [io.Reader](https://godoc.org/io#Reader) and [io.Writer](https://godoc.org/io#Writer) without needing to call a separate function
 * extensibility to easily add other needed filesytems like Micrsoft Azure Cloud File Storage or SFTP
 * prefer native atomic functions when possible (ie S3 to S3 copying would use the native copy api call rather than
       copy-delete)
 * a uniform way of addressing files regardless of filesystem.  This is why we use complete URI's in vfssimple
-* stringer interface so that the file struct passed to a log message (or other Stringer use) would show the URI
+* [fmt.Stringer](https://godoc.org/fmt#Stringer) interface so that the file struct passed to a log message (or other [Stringer](https://godoc.org/fmt#Stringer) use) would show the URI
 * mockable filesystem
 * pluggability so that third-party implemenations of our interfaces could be used
 
@@ -200,7 +200,7 @@ type File interface {
 File represents a file on a filesystem. A File may or may not actually exist on
 the filesystem.
 
-[#### type FileSystem
+#### type FileSystem
 
 ```go
 type FileSystem interface {

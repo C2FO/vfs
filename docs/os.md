@@ -47,14 +47,14 @@ type File struct {
 }
 ```
 
-File implements vfs.File interface for S3 fs.
+File implements [vfs.File](../README.md#type-file) interface for S3 fs.
 
 #### func (*File) Close
 
 ```go
 func (f *File) Close() error
 ```
-Close implements the io.Closer interface, closing the underlying *os.File. its
+Close implements the [io.Closer](https://godoc.org/io#Closer) interface, closing the underlying *os.File. its
 an error, if any.
 
 #### func (*File) CopyToFile
@@ -62,7 +62,7 @@ an error, if any.
 ```go
 func (f *File) CopyToFile(target vfs.File) error
 ```
-CopyToFile copies the file to a new File. It accepts a vfs.File and returns an
+CopyToFile copies the file to a new File. It accepts a [vfs.File](../README.md#type-file) and returns an
 error, if any.
 
 #### func (*File) CopyToLocation
@@ -71,7 +71,7 @@ error, if any.
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error)
 ```
 CopyToLocation copies existing File to new Location with the same name. It
-accepts a vfs.Location and returns a vfs.File and error, if any.
+accepts a [vfs.Location](../README.md#type-location) and returns a [vfs.File](../README.md#type-file) and error, if any.
 
 #### func (*File) Delete
 
@@ -100,7 +100,7 @@ LastModified returns the timestamp of the file's mtime or error, if any.
 ```go
 func (f *File) Location() vfs.Location
 ```
-Location returns the underlying os.Location.
+Location returns the underlying [os.Location](#type-location).
 
 #### func (*File) MoveToFile
 
@@ -108,7 +108,9 @@ Location returns the underlying os.Location.
 func (f *File) MoveToFile(target vfs.File) error
 ```
 MoveToFile move a file. It accepts a target vfs.File and returns an error, if
-any. TODO we might consider using os.Rename() for efficiency when
+any.
+ 
+__TODO:__ we might consider using os.Rename() for efficiency when
 target.Location().FileSystem().Scheme equals f.Location().FileSystem().Scheme()
 
 #### func (*File) MoveToLocation
@@ -117,8 +119,9 @@ target.Location().FileSystem().Scheme equals f.Location().FileSystem().Scheme()
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error)
 ```
 MoveToLocation moves a file to a new Location. It accepts a target vfs.Location
-and returns a vfs.File and an error, if any. TODO we might consider using
-os.Rename() for effenciency when location.FileSystem().Scheme() equals
+and returns a vfs.File and an error, if any. 
+
+__TODO:__ we might consider using os.Rename() for effenciency when location.FileSystem().Scheme() equals
 f.Location().FileSystem().Scheme()
 
 #### func (*File) Name
@@ -126,21 +129,21 @@ f.Location().FileSystem().Scheme()
 ```go
 func (f *File) Name() string
 ```
-Name returns the full name of the File relative to Location.Name().
+Name returns the full name of the File relative to [Location.Name()](#func-filesystem-name).
 
 #### func (*File) Path
 
 ```go
 func (f *File) Path() string
 ```
-Path returns the the path of the File relative to Location.Name().
+Path returns the the path of the File relative to [Location.Name()](#func-filesystem-name).
 
 #### func (*File) Read
 
 ```go
 func (f *File) Read(p []byte) (int, error)
 ```
-Read implements the io.Reader interface. It returns the bytes read and an error,
+Read implements the [io.Reader](https://godoc.org/io#Reader) interface. It returns the bytes read and an error,
 if any.
 
 #### func (*File) Seek
@@ -158,28 +161,28 @@ if any.
 ```go
 func (f *File) Size() (uint64, error)
 ```
-Size returns the size (in bytes) of the File or any error.
+Size returns the size (in bytes) of the [File](#type-file) or any error.
 
 #### func (*File) String
 
 ```go
 func (f *File) String() string
 ```
-String implement fmt.Stringer, returning the file's URI as the default string.
+String implement [fmt.Stringer](https://godoc.org/fmt#Stringer), returning the file's URI as the default string.
 
 #### func (*File) URI
 
 ```go
 func (f *File) URI() string
 ```
-URI returns the File's URI as a string.
+URI returns the [File](#type-file)'s URI as a string.
 
 #### func (*File) Write
 
 ```go
 func (f *File) Write(p []byte) (n int, err error)
 ```
-Write implements the io.Writer interface. It accepts a slice of bytes and
+Write implements the [io.Writer](https://godoc.org/io#Writer) interface. It accepts a slice of bytes and
 returns the number of btyes written and an error, if any.
 
 #### type FileSystem
@@ -188,7 +191,7 @@ returns the number of btyes written and an error, if any.
 type FileSystem struct{}
 ```
 
-FileSystem implements vfs.Filesystem for the OS filesystem.
+FileSystem implements [vfs.FileSystem](../README.md#type-filesystem) for the OS filesystem.
 
 #### func (*FileSystem) Name
 
@@ -202,14 +205,14 @@ Name returns "os"
 ```go
 func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error)
 ```
-NewFile function returns the os implementation of vfs.File.
+NewFile function returns the os implementation of [vfs.File](../README.md#type-file).
 
 #### func (*FileSystem) NewLocation
 
 ```go
 func (fs *FileSystem) NewLocation(volume string, name string) (vfs.Location, error)
 ```
-NewLocation function returns the os implementation of vfs.Location.
+NewLocation function returns the os implementation of [vfs.Location](../README.md#type-location).
 
 #### func (*FileSystem) Scheme
 
@@ -225,14 +228,14 @@ type Location struct {
 }
 ```
 
-Location implements the vfs.Location interface specific to OS fs.
+Location implements the  [vfs.Location](../README.md#type-location) interface specific to OS fs.
 
 #### func (*Location) ChangeDir
 
 ```go
 func (l *Location) ChangeDir(relativePath string) error
 ```
-ChangeDir takes a relative path, and modifies the underlying Location's path.
+ChangeDir takes a relative path, and modifies the underlying [Location](#type-location)'s path.
 The caller is modified by this so the only return is any error. For this
 implementation there are no errors.
 
@@ -260,7 +263,7 @@ from the OS.
 ```go
 func (l *Location) FileSystem() vfs.FileSystem
 ```
-FileSystem returns a vfs.FileSystem interface of the location's underlying
+FileSystem returns a  [vfs.FileSystem](../README.md#type-filesystem) interface of the location's underlying
 fileSystem.
 
 #### func (*Location) List
@@ -291,8 +294,8 @@ of of the location.
 ```go
 func (l *Location) NewFile(fileName string) (vfs.File, error)
 ```
-NewFile uses the properties of the calling location to generate a vfs.File
-(backed by an os.File). A string argument is expected to be a relative path to
+NewFile uses the properties of the calling location to generate a  [vfs.File](../README.md#type-file)
+(backed by an [os.File](#type-file)). A string argument is expected to be a relative path to
 the location's current path.
 
 #### func (*Location) NewLocation
@@ -300,7 +303,7 @@ the location's current path.
 ```go
 func (l *Location) NewLocation(relativePath string) (vfs.Location, error)
 ```
-NewLocation makes a copy of the underlying Location, then modifies its path by
+NewLocation makes a copy of the underlying [Location](#type-location), then modifies its path by
 calling ChangeDir with the relativePath argument, returning the resulting
 location. The only possible errors come from the call to ChangeDir.
 
@@ -316,7 +319,7 @@ Path returns the location path.
 ```go
 func (l *Location) String() string
 ```
-String implement fmt.Stringer, returning the location's URI as the default
+String implement [fmt.Stringer](https://godoc.org/fmt#Stringer), returning the location's URI as the default
 string.
 
 #### func (*Location) URI
@@ -324,12 +327,12 @@ string.
 ```go
 func (l *Location) URI() string
 ```
-URI returns the Location's URI as a string.
+URI returns the [Location](#type-location)'s URI as a string.
 
 #### func (*Location) Volume
 
 ```go
 func (l *Location) Volume() string
 ```
-Volume returns if any of of the location. Given "C:\foo\bar" it returns "C:" on
+Volume returns the volume, if any, of the location. Given "C:\foo\bar" it returns "C:" on
 Windows. On other platforms it returns "".
