@@ -100,6 +100,15 @@ or implementation details.
 
 Feel free to send a pull request if you want to add your backend to the list.
 
+### See also docs for:
+* [vfscp](docs/vfscp.md)
+* [vfssimple](docs/vfssimple.md)
+* [backend](docs/backend.md)
+  * [os backend](docs/os.md)
+  * [gs backend](docs/gs.md)
+  * [s3 backend](docs/s3.md)
+* [utils](docs/utils.md)
+
 
 ### Ideas
 
