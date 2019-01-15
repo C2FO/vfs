@@ -21,6 +21,7 @@ type Options struct {
 	SecretAccessKey string `json:"secretAccessKey,omitempty"`
 	SessionToken    string `json:"sessionToken,omitempty"`
 	Region          string `json:"region,omitempty"`
+	Endpoint        string `json:"endpoint,omitempty"`
 }
 
 func getClient(opt Options) (s3iface.S3API, error) {
@@ -79,6 +80,7 @@ func getClient(opt Options) (s3iface.S3API, error) {
 	} else if val, ok := os.LookupEnv("AWS_DEFAULT_REGION"); ok {
 		awsConfig = *awsConfig.WithRegion(val)
 	}
+	awsConfig = *awsConfig.WithEndpoint(opt.Endpoint)
 
 	awsConfig = *awsConfig.WithCredentials(credentials.NewChainCredentials(p))
 
