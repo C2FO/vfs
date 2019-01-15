@@ -5,15 +5,23 @@ import:
   subpackages:
   - storage
 - package: github.com/aws/aws-sdk-go
-  version: ~1.10.18
+  version: ^1.16.19
   subpackages:
+  - aws
   - aws/awserr
+  - aws/credentials
+  - aws/credentials/ec2rolecreds
+  - aws/defaults
+  - aws/ec2metadata
   - aws/request
+  - aws/session
   - service/s3
   - service/s3/s3iface
   - service/s3/s3manager
+- package: github.com/fatih/color
+  version: ^1.7.0
 - package: github.com/stretchr/testify
-  version: ~1.1.4
+  version: ^1.3.0
   subpackages:
   - mock
 - package: golang.org/x/net
@@ -23,5 +31,4 @@ import:
   version: 48e49d1645e228d1c50c3d54fb476b2224477303
   subpackages:
   - iterator
-- package: github.com/fatih/color
-  version: ^1.7.0
+  - option
