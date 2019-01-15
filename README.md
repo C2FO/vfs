@@ -100,7 +100,7 @@ or implementation details.
 
 Feel free to send a pull request if you want to add your backend to the list.
 
-### See also docs for:
+### See also:
 * [vfscp](docs/vfscp.md)
 * [vfssimple](docs/vfssimple.md)
 * [backend](docs/backend.md)
@@ -117,11 +117,8 @@ Things to add:
 * Add SFTP backend
 * Add Azure storage backend
 * Add in-memory backend
-* Provide better List() functionality with more abstracted filering and paging (iterator?) Retrun File structs vs URIs?
-* Add better/any context.Context() support
-* update s3 and google sdk libs
-* provide for go mod and/or dep installs
-
+* Provide better List() functionality with more abstracted filtering and paging (iterator?) Return File structs vs URIs?
+* Add better/any context.Context() support for deadline and cancellation
 
 ### Contrubutors
 
