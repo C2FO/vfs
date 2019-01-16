@@ -45,7 +45,7 @@ func (fs *FileSystem) Scheme() string {
 	return Scheme
 }
 
-// Client returns the underlying google storage client, creating it (lazily), if necessary
+// Client returns the underlying google storage client, creating it, if necessary
 // See Overview for authentication resolution
 func (fs *FileSystem) Client() (*storage.Client, error) {
 	if fs.client == nil {

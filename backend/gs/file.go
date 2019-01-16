@@ -2,6 +2,7 @@ package gs
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -50,10 +51,11 @@ func (f *File) Close() error {
 			return err
 		}
 
-		w := handle.NewWriter(f.fileSystem.ctx)
+		ctx, cancel := context.WithCancel(f.fileSystem.ctx)
+		w := handle.NewWriter(ctx)
 		if _, err := io.Copy(w, f.writeBuffer); err != nil {
-			//CloseWithError always returns nil
-			_ = w.CloseWithError(err)
+			//cancel context (replaces CloseWithError)
+			cancel()
 			return err
 		}
 		defer w.Close()

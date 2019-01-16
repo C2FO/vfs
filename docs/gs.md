@@ -257,7 +257,7 @@ client and returns Filesystem or error.
 ```go
 func (fs *FileSystem) Client() (*storage.Client, error)
 ```
-Client returns the underlying google storage client, creating it (lazily), if
+Client returns the underlying google storage client, creating it, if
 necessary See [Authenication](#authentication) section for authentication resolution
 
 #### func (*FileSystem) Name

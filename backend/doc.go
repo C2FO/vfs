@@ -36,7 +36,7 @@ In this way, a caller of vfs backends can simply load the backend filesystem (an
 
 Development
 
-To create your own backend, you must create a package that implements both vfs.Filesystem, vfs.Location, and vfs.File interfaces.
+To create your own backend, you must create a package that implements the interfaces: vfs.Filesystem, vfs.Location, and vfs.File.
 Then ensure it registers itself on load:
 
   pacakge myexoticfilesystem

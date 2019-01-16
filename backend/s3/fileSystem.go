@@ -45,7 +45,7 @@ func (fs *FileSystem) Scheme() string {
 	return Scheme
 }
 
-// Client returns the underlying aws s3 client, creating (lazily) it if necessary
+// Client returns the underlying aws s3 client, creating it, if necessary
 // See Overview for authentication resolution
 func (fs *FileSystem) Client() (s3iface.S3API, error) {
 	if fs.client == nil {

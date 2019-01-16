@@ -21,6 +21,3 @@ Copy a file from Google Cloud Storage to Amazon S3
   vfscp gs://googlebucket/some/path/photo.jpg s3://awsS3bucket/path/to/photo.jpg
 */
 package main
-
-
-

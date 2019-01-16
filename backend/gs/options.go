@@ -8,10 +8,10 @@ import (
 
 // Options holds Google Cloud Storage -specific options.  Currently only client options are used.
 type Options struct {
-	APIKey                string   `json:"apiKey,omitempty"`
-	CredentialFile        string   `json:"credentialFilePath,omitempty"`
-	Endpoint              string   `json:"endpoint,omitempty"`
-	Scopes                []string `json:"WithoutAuthentication,omitempty"`
+	APIKey         string   `json:"apiKey,omitempty"`
+	CredentialFile string   `json:"credentialFilePath,omitempty"`
+	Endpoint       string   `json:"endpoint,omitempty"`
+	Scopes         []string `json:"WithoutAuthentication,omitempty"`
 }
 
 func parseClientOptions(opts vfs.Options) []option.ClientOption {
