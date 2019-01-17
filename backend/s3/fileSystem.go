@@ -70,7 +70,7 @@ func (fs *FileSystem) Client() (s3iface.S3API, error) {
 func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 
 	// only set options if vfs.Options is s3.Options
-	if opts, ok := fs.options.(Options); ok {
+	if opts, ok := opts.(Options); ok {
 		fs.options = opts
 		//we set client to nil to ensure that a new client is created using the new context when Client() is called
 		fs.client = nil
