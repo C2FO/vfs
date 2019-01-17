@@ -1,5 +1,3 @@
-// Package vfs provides a platform-independent interface to generalized set of filesystem
-// functionality across a number of filesystem types such as os, S3, and GCS.
 package vfs
 
 import (
@@ -130,3 +128,5 @@ type File interface {
 	// URI returns the fully qualified URI for the File.  IE, s3://bucket/some/path/to/file.txt
 	URI() string
 }
+
+type Options interface{}

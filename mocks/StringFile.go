@@ -67,12 +67,18 @@ type ReadWriteFile struct {
 
 func (f *ReadWriteFile) Read(p []byte) (n int, err error) {
 	// Deal with mocks for potential assertions
-	f.File.Read(p)
+	n, err = f.File.Read(p)
+	if err != nil {
+		return
+	}
 	return f.Reader.Read(p)
 }
 
 func (f *ReadWriteFile) Write(p []byte) (n int, err error) {
-	f.File.Write(p)
+	n, err = f.File.Write(p)
+	if err != nil {
+		return
+	}
 	return f.Writer.Write(p)
 }
 func (f *ReadWriteFile) Content() string {
