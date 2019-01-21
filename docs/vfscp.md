@@ -1,6 +1,6 @@
 # vfscp
 
---
+---
 
 vfscp copies a file from one place to another, even between supported remote
 systems. Complete URI (scheme:// authority/path) required except for local

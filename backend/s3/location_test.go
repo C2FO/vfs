@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/mocks"
-	"github.com/c2fo/vfs/utils"
 )
 
 type locationTestSuite struct {
@@ -96,14 +95,12 @@ func (lt *locationTestSuite) TestList_pagedCall() {
 }
 
 func (lt *locationTestSuite) TestListByPrefix() {
-	//TODO this should probably be an 'fsdevsonly' test using real calls to s3
-	lt.T().Skip("this test only tests that the files exected are returned by the mock object")
 	expectedFileList := []string{"file1.txt", "file2.txt"}
 	keyListFromAPI := []string{"dir1/file1.txt", "dir1/file2.txt"}
 	bucket := "bucket"
 	locPath := "dir1/"
 	prefix := "fil"
-	apiCallPrefix := utils.EnsureTrailingSlash(path.Join(locPath, prefix))
+	apiCallPrefix := path.Join(locPath, prefix)
 	delimiter := "/"
 	isTruncated := false
 	lt.s3apiMock.On("ListObjects", &s3.ListObjectsInput{
@@ -245,6 +242,11 @@ func (lt *locationTestSuite) TestNewLocation() {
 	newRelLoc, err := newLoc.NewLocation("../../some/path")
 	lt.NoError(err)
 	lt.Equal("/old/some/path/", newRelLoc.Path(), "NewLocation works with rel dot paths")
+}
+
+func (lt *locationTestSuite) TestStringURI() {
+	loc := &Location{fileSystem: lt.fs, prefix: "some/path/to/location", bucket: "mybucket"}
+	lt.Equal("s3://mybucket/some/path/to/location/", loc.String(), "uri is returned")
 }
 
 func (lt *locationTestSuite) TestDeleteFile() {

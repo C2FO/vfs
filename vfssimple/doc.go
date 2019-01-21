@@ -40,9 +40,10 @@ vfssimple is largely an example of how to initialize a set of backend filesystem
 initialization of the individual file systems.  See backend docs for specific authentication info for each backend but
 generally speaking, most backends can use Environment variables to set credentials or client options.
 
-File systems can only use one set of options. If you would like to configure more than one file system of the same type/schema with separate credentials,
-you can register and map file system options to locations or individual objects. The vfssimple library will automatically try to
-resolve the provided URI in NewFile() or NewLocation() to the registered file system.
+File systems can only use one set of options. If you would like to configure more than one file system of the same
+type/schema with separate credentials, you can register and map file system options to locations or individual objects.
+The vfssimple library will automatically try to resolve the provided URI in NewFile() or NewLocation() to the registered
+file system.
 
   package main
 

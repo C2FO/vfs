@@ -3,9 +3,9 @@ package s3
 import (
 	"testing"
 
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/c2fo/vfs/mocks"
 )
 
 type fileSystemTestSuite struct {
@@ -16,9 +16,14 @@ var (
 	s3fs *FileSystem
 )
 
+type mockClient struct {
+	*s3.S3
+}
+
 func (ts *fileSystemTestSuite) SetupTest() {
-	s3apiMock = &mocks.S3API{}
-	s3fs = &FileSystem{}
+	sess := session.Must(session.NewSession())
+	client := mockClient{s3.New(sess)}
+	s3fs = &FileSystem{client: client}
 }
 
 func (ts *fileSystemTestSuite) TestNewFileSystem() {
@@ -38,6 +43,37 @@ func (ts *fileSystemTestSuite) TestNewFile_Error() {
 	file, err := s3fs.NewFile("", filePath)
 	ts.Error(err, "NewFile(%s)", filePath)
 	ts.Nil(file, "NewFile(%s) shouldn't return a file", filePath)
+}
+
+func (ts *fileSystemTestSuite) TestName_Error() {
+	ts.Equal(name, s3fs.Name(), "Name() is s3.name const")
+}
+
+func (ts *fileSystemTestSuite) TestWithOptions() {
+	//ignore non-s3.Options
+	fs := s3fs.WithOptions("just a string")
+	ts.Equal(s3fs, fs, "no change for non-s3.Options")
+
+	// with option
+	fs = s3fs.WithOptions(Options{
+		Region: "us-east-1",
+	})
+	ts.NotNil(fs.options, "fs.options is not nil")
+}
+
+func (ts *fileSystemTestSuite) TestClient() {
+	//client already set
+	client, err := s3fs.Client()
+	ts.NoError(err, "no error")
+	ts.Equal(s3fs.client, client, "client was already set")
+
+
+	s3fs = &FileSystem{}
+	client, err = s3fs.Client()
+	ts.NoError(err, "no error")
+	ts.NotNil(client, "client was set")
+	ts.NotNil(s3fs.client, "client was set")
+
 }
 
 func TestFileSystem(t *testing.T) {

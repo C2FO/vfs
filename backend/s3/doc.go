@@ -7,11 +7,11 @@ Rely on github.com/c2fo/vfs/backend
 
   import(
       "github.com/c2fo/vfs/backend"
-      _ "github.com/c2fo/vfs/backend/s3"
+      "github.com/c2fo/vfs/backend/s3"
   )
 
   func UseFs() error {
-      fs, err := backend.Backend("AWS S3")
+      fs, err := backend.Backend(s3.Scheme)
       ...
   }
 
@@ -20,7 +20,7 @@ Or call directly:
   import "github.com/c2fo/vfs/backend/s3"
 
   func DoSomething() {
-      fs := gs.NewFilesystem()
+      fs := s3.NewFilesystem()
       ...
   }
 

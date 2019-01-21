@@ -19,9 +19,6 @@ const (
 	BadFilePrefix = "expecting only a filename prefix, which may not include slashes or backslashes"
 )
 
-// regexp matching an initial slash, used to check for them in paths
-var prefixSlashRegex = regexp.MustCompile("^[/.]*")
-
 // regex to ensure prefix doesn't have leading '/', '.', '..', etc...
 var prefixCleanRegex = regexp.MustCompile("^[/.]*")
 

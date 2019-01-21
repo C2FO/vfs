@@ -3,15 +3,14 @@ package mocks
 import (
 	"bytes"
 	"io"
+	"io/ioutil"
+	"path/filepath"
 	"strings"
 
 	"github.com/stretchr/testify/mock"
-
-	"io/ioutil"
-	"path/filepath"
 )
 
-// Create a new ReadWriteFile instance that can be read from the provided string as it's contents.
+// NewStringFile creates a new ReadWriteFile instance that can be read from the provided string as it's contents.
 func NewStringFile(data, fileName string) *ReadWriteFile {
 	buffer := &bytes.Buffer{}
 	file := &ReadWriteFile{
@@ -31,7 +30,7 @@ func NewStringFile(data, fileName string) *ReadWriteFile {
 	return file
 }
 
-// Create a new ReadWriteFile instance that can read a file from the provided path.
+// NewMockFromFilepath creates a new ReadWriteFile instance that can read a file from the provided path.
 func NewMockFromFilepath(filePath string) *ReadWriteFile {
 	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
@@ -55,7 +54,7 @@ func NewMockFromFilepath(filePath string) *ReadWriteFile {
 	return file
 }
 
-// Custom mock which allows the consumer to assign a custom reader and writer for
+// ReadWriteFile is a custom mock which allows the consumer to assign a custom reader and writer for
 // easily mocking file contents.
 type ReadWriteFile struct {
 	File
@@ -65,6 +64,7 @@ type ReadWriteFile struct {
 	ReaderContent string
 }
 
+// Read statisfieds io.Reader interface
 func (f *ReadWriteFile) Read(p []byte) (n int, err error) {
 	// Deal with mocks for potential assertions
 	n, err = f.File.Read(p)
@@ -74,6 +74,7 @@ func (f *ReadWriteFile) Read(p []byte) (n int, err error) {
 	return f.Reader.Read(p)
 }
 
+// Write statisfieds io.Writer interface
 func (f *ReadWriteFile) Write(p []byte) (n int, err error) {
 	n, err = f.File.Write(p)
 	if err != nil {
@@ -81,6 +82,8 @@ func (f *ReadWriteFile) Write(p []byte) (n int, err error) {
 	}
 	return f.Writer.Write(p)
 }
+
+// Content returns the data held by the ReadWriteFile struct
 func (f *ReadWriteFile) Content() string {
 	return f.Buffer.String()
 }

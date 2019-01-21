@@ -7,11 +7,11 @@ Rely on github.com/c2fo/vfs/backend
 
   import(
       "github.com/c2fo/vfs/backend"
-      _ "github.com/c2fo/vfs/backend/gs"
+      "github.com/c2fo/vfs/backend/gs"
   )
 
   func UseFs() error {
-      fs, err := backend.Backend("Google Cloud Storage")
+      fs, err := backend.Backend(gs.Scheme)
       ...
   }
 
@@ -65,7 +65,7 @@ preferring the first location found:
   3. On Google App Engine it uses the appengine.AccessToken function.
   4. On Google Compute Engine and Google App Engine Managed VMs, it fetches credentials from the metadata server.
 
-See https://cloud.google.com/docs/authentication/production for more autho info
+See https://cloud.google.com/docs/authentication/production for more auth info
 
 See Also
 

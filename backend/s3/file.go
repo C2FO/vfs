@@ -118,10 +118,7 @@ func (f *File) CopyToFile(targetFile vfs.File) error {
 		return cerr
 	}
 	//Close file (f) reader
-	if cerr := f.Close(); cerr != nil {
-		return cerr
-	}
-	return nil
+	return f.Close()
 }
 
 // MoveToFile puts the contents of File into the targetFile passed using File.CopyToFile.
@@ -220,7 +217,7 @@ func (f *File) Close() error {
 		}
 
 		uploader := s3manager.NewUploaderWithClient(client)
-		uploadInput := f.uploadInput()
+		uploadInput := uploadInput(f)
 		uploadInput.Body = f.writeBuffer
 
 		_, err = uploader.Upload(uploadInput)
@@ -231,10 +228,7 @@ func (f *File) Close() error {
 
 	f.writeBuffer = nil
 
-	if err := waitUntilFileExists(f, 5); err != nil {
-		return err
-	}
-	return nil
+	return waitUntilFileExists(f, 5)
 }
 
 // Read implements the standard for io.Reader. For this to work with an s3 file, a temporary local copy of
@@ -359,16 +353,6 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 	return tmpFile, nil
 }
 
-//TODO: need to provide an implementation-agnostic container for providing config options such as SSE
-func (f *File) uploadInput() *s3manager.UploadInput {
-	sseType := "AES256"
-	return &s3manager.UploadInput{
-		Bucket:               &f.bucket,
-		Key:                  &f.key,
-		ServerSideEncryption: &sseType,
-	}
-}
-
 func (f *File) getObjectInput() *s3.GetObjectInput {
 	return new(s3.GetObjectInput).SetBucket(f.bucket).SetKey(f.key)
 }
@@ -384,6 +368,16 @@ func (f *File) getObject() (io.ReadCloser, error) {
 	}
 
 	return getOutput.Body, nil
+}
+
+//TODO: need to provide an implementation-agnostic container for providing config options such as SSE
+func uploadInput(f *File) *s3manager.UploadInput {
+	sseType := "AES256"
+	return &s3manager.UploadInput{
+		Bucket:               &f.bucket,
+		Key:                  &f.key,
+		ServerSideEncryption: &sseType,
+	}
 }
 
 //WaitUntilFileExists attempts to ensure that a recently written file is available before moving on.  This is helpful for

@@ -1,10 +1,16 @@
 # vfs
 
---
+---
 
-Package vfs provides a platform-independent, generalized set of filesystem
-functionality across a number of filesystem types such as os, S3, and GCS.
+[![GitHub tag](https://img.shields.io/github/tag/c2fo/vfs.svg?style=flat)](https://github.com/c2fo/vfs/releases)
+[![Build Status](https://travis-ci.org/c2fo/vfs.svg?branch=master)](https://travis-ci.org/c2fo/vfs)
+[![GoDoc](https://godoc.org/github.com/c2fo/vfs?status.png)](http://godoc.org/github.com/c2fo/vfs)
+[![codecov](https://codecov.io/gh/c2fo/vfs/branch/master/graph/badge.svg)](https://codecov.io/gh/c2fo/vfs)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](License.md)
+[![Go Report Card](https://goreportcard.com/badge/github.com/c2fo/vfs)](https://goreportcard.com/report/github.com/c2fo/vfs)
 
+Package vfs provides a pluggable, extensible, and opinionated set of filesystem
+functionality for Go across a number of filesystem types such as os, S3, and GCS.
 
 ### Philosophy
 
@@ -26,7 +32,7 @@ string (even if the fs didn't know what a bucket was).
 We found a handful of third-party libraries that were interesting but none of
 them had everything we needed/wanted. Of particular inspiration was
 https://github.com/spf13/afero in its composition of the super-powerful stdlib
-[io.*](https://godoc.org/io) interfaces. Unforunately, it didn't support Google Cloud Storage and there
+[io.*](https://godoc.org/io) interfaces. Unfortunately, it didn't support Google Cloud Storage and there
 was still a lot of passing around of strings and structs. Few, if any, of the
 vfs-like libraries provided interfaces to easily and confidently create new
 filesystem backends.
@@ -36,9 +42,9 @@ filesystem backends.
 * self-contained set of structs that could be passed around like a file/dir handle
 * the struct would represent an existing or nonexistant file/dir
 * provide common (and only common) functionality across all filesystem so that after initialization, we don't care
-      what the underlying filesystem is and can therefore write our code agnostically/portably
+      what the underlying filesystem is and can therefore write our code agnosticly/portably
 * use [io.*](https://godoc.org/io) interfaces such as [io.Reader](https://godoc.org/io#Reader) and [io.Writer](https://godoc.org/io#Writer) without needing to call a separate function
-* extensibility to easily add other needed filesytems like Micrsoft Azure Cloud File Storage or SFTP
+* extensibility to easily add other needed filesystems like Microsoft Azure Cloud File Storage or SFTP
 * prefer native atomic functions when possible (ie S3 to S3 moving would use the native move api call rather than
       copy-delete)
 * a uniform way of addressing files regardless of filesystem.  This is why we use complete URI's in [vfssimple](docs/vfssimple.md)
@@ -211,14 +217,21 @@ the filesystem.
 ```go
 type FileSystem interface {
 	// NewFile initializes a File on the specified volume at path 'name'. On error, nil is returned
-	// for the file.
+	// for the file.  
+	// 
+	// Note that not all filesystems will have a "volume":
+	// file:///path/to/file has a volume of "" and name path/to/file
+	// whereas
+	// s3://mybucket/path/to file has a volume of mybucket
 	NewFile(volume string, name string) (File, error)
 
 	// NewLocation initializes a Location on the specified volume with the given path. On error, nil is returned
 	// for the location.
+	//
+	// See NewFile for note on volume.
 	NewLocation(volume string, path string) (Location, error)
 
-	// Name returns the name of the FileSystem ie: s3, disk, gcs, etc...
+	// Name returns the name of the FileSystem ie: Amazon S3, os, Google Cloud Storage, etc...
 	Name() string
 
 	// Scheme, related to Name, is the uri scheme used by the FileSystem: s3, file, gs, etc...
@@ -292,3 +305,5 @@ filesystem.
 ```go
 type Options interface{}
 ```
+
+Options are structs that contain various options specific to the filesystem

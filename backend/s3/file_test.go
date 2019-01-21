@@ -369,10 +369,18 @@ func (ts *fileTestSuite) TestLastModified() {
 	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{
 		LastModified: &now,
 	}, nil)
-
 	modTime, err := testFile.LastModified()
 	ts.Nil(err, "Error should be nil when correctly returning time of object.")
 	ts.Equal(&now, modTime, "Returned time matches expected LastModified time.")
+}
+
+func (ts *fileTestSuite) TestLastModifiedFail() {
+	//setup error on HEAD
+	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(nil,
+		errors.New("boom"))
+	m, e := testFile.LastModified()
+	ts.Error(e, "got error as exepcted")
+	ts.Nil(m, "nil ModTime returned")
 }
 
 func (ts *fileTestSuite) TestName() {
@@ -407,6 +415,36 @@ func (ts *fileTestSuite) TestStringer() {
 	fs = FileSystem{client: &mocks.S3API{}}
 	file, _ := fs.NewFile("mybucket", "/some/file/test.txt")
 	ts.Equal("s3://mybucket/some/file/test.txt", file.String())
+}
+
+func (ts *fileTestSuite) TestUploadInput() {
+	fs = FileSystem{client: &mocks.S3API{}}
+	file, _ := fs.NewFile("mybucket", "/some/file/test.txt")
+	ts.Equal("AES256", *uploadInput(file.(*File)).ServerSideEncryption, "sse was set")
+	ts.Equal("some/file/test.txt", *uploadInput(file.(*File)).Key, "key was set")
+	ts.Equal("mybucket", *uploadInput(file.(*File)).Bucket, "bucket was set")
+}
+
+func (ts *fileTestSuite) TestNewFile() {
+	// fs is nil
+	_, err := newFile(nil, "", "")
+	ts.Errorf(err, "non-nil s3.fileSystem pointer is required")
+
+	fs := &FileSystem{}
+	// bucket is ""
+	_, err = newFile(fs, "", "asdf")
+	ts.Errorf(err, "non-empty strings for bucket and key are required")
+	// key is ""
+	_, err = newFile(fs, "asdf", "")
+	ts.Errorf(err, "non-empty strings for bucket and key are required")
+
+	//
+	file, err := newFile(fs, "mybucket", "/path/to/key")
+	ts.NoError(err, "newFile should succeed")
+	ts.IsType(&File{}, file, "newFile returned a File struct")
+	ts.Equal("mybucket", file.bucket)
+	ts.Equal("path/to/key", file.key)
+
 }
 
 func TestFile(t *testing.T) {

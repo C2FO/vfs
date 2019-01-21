@@ -1,17 +1,16 @@
 package vfssimple
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"strings"
 
 	"github.com/c2fo/vfs"
 	"github.com/c2fo/vfs/backend"
-	_ "github.com/c2fo/vfs/backend/all"
+	_ "github.com/c2fo/vfs/backend/all" //register all backends
 )
 
-// NewLocation is a convenience function that allows for instantiating a location based on a uri string.Any
+// NewLocation is a convenience function that allows for instantiating a location based on a uri string. Any
 // backend filesystem is supported, though some may require prior configuration. See the docs for
 // specific requirements of each
 func NewLocation(uri string) (vfs.Location, error) {
@@ -65,7 +64,7 @@ func parseSupportedURI(uri string) (vfs.FileSystem, string, string, error) {
 	}
 
 	if fs == nil {
-		err = errors.New(fmt.Sprintf("%s is an unsupported uri scheme", u.Scheme))
+		err = fmt.Errorf("%s is an unsupported uri scheme", u.Scheme)
 	}
 
 	return fs, host, path, err

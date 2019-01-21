@@ -25,7 +25,7 @@ func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
 	return newFile(fs, volume, name)
 }
 
-// NewLocation function returns the s3 implementation of vfs.Location.
+// NewLocation function returns the GCS implementation of vfs.Location.
 func (fs *FileSystem) NewLocation(volume string, path string) (loc vfs.Location, err error) {
 	loc = &Location{
 		fileSystem: fs,
