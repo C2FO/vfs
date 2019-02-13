@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/c2fo/vfs"
 	"github.com/c2fo/vfs/backend"
@@ -46,6 +47,18 @@ func parseSupportedURI(uri string) (vfs.FileSystem, string, string, error) {
 
 	var fs vfs.FileSystem
 	for _, backendScheme := range backend.RegisteredBackends() {
+		// Object-level backend
+		if strings.Index(uri, backendScheme) > 1 {
+			fs = backend.Backend(backendScheme)
+			break
+		}
+		// Bucket-level backend
+		volume := fmt.Sprintf("%s://%s/", u.Scheme, u.Host)
+		if volume == backendScheme {
+			fs = backend.Backend(backendScheme)
+			break
+		}
+		// Scheme-level backend
 		if u.Scheme == backendScheme {
 			fs = backend.Backend(backendScheme)
 		}
