@@ -48,6 +48,7 @@ resolve the provided URI in NewFile() or NewLocation() to the registered file sy
 
   import(
 	"github.com/c2fo/vfs/vfssimple"
+	"github.com/c2fo/vfs/backend"
 	"github.com/c2fo/vfs/backend/s3"
   )
 
@@ -66,10 +67,10 @@ resolve the provided URI in NewFile() or NewLocation() to the registered file sy
 		Region:          "us-west-2",
 	})
 
-	backend.Register("s3://bucket1/, bucket1)
+	backend.Register("s3://bucket1/, bucketAuth)
 	backend.Register("s3://bucket2/file.txt, fileAuth)
 
-    secureFile, _ := vfssimple.NewFile("s3://bucket2/file.txt")
+	secureFile, _ := vfssimple.NewFile("s3://bucket2/file.txt")
 	publicLocation, _ := vfssimple.NewLocation("s3://bucket1/")
 
 	secureFile.CopyToLocation(publicLocation)
