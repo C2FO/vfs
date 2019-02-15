@@ -76,7 +76,5 @@ resolve the provided URI in NewFile() or NewLocation() to the registered file sy
 	secureFile.CopyToLocation(publicLocation)
   }
 
-To do more, especially if you need to pass in specific vfs.Option's via WithOption() or perhaps a mock client for testing via
-WithClient() or something else, you'd need to implement your own factory.  See github.com/c2fo/vfs/backend for more information.
 */
 package vfssimple
