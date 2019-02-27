@@ -11,7 +11,7 @@ import (
 	"github.com/c2fo/vfs/utils"
 )
 
-//File implements vfs.File interface for S3 fs.
+//File implements vfs.File interface for os fs.
 type File struct {
 	file     *os.File
 	name     string

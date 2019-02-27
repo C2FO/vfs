@@ -75,15 +75,14 @@ func (l *Location) Exists() (bool, error) {
 		return false, err
 	}
 	_, err = client.HeadBucket(headBucketInput)
-	if err == nil {
-		return true, nil
+	if err != nil {
+		if err.(awserr.Error).Code() == s3.ErrCodeNoSuchBucket {
+			return false, nil
+		}
+		return false, err
 	}
 
-	if err.(awserr.Error).Code() == s3.ErrCodeNoSuchBucket {
-		return false, nil
-	}
-
-	return false, err
+	return true, err
 }
 
 // NewLocation makes a copy of the underlying Location, then modifies its path by calling ChangeDir with the

@@ -1,6 +1,6 @@
 # backend
 
---
+---
 
 
 Package backend provides a means of allowing backend filesystems to
@@ -15,8 +15,8 @@ In this way, a caller of vfs backends can simply load the backend filesystem
     // import backend and each backend you intend to use
     import(
         "github.com/c2fo/vfs/backend"
-        _ "github.com/c2fo/vfs/backend/os"
-        _ "github.com/c2fo/vfs/backend/s3"
+        "github.com/c2fo/vfs/backend/os"
+        "github.com/c2fo/vfs/backend/s3"
     )
 
     func main() {
@@ -29,7 +29,7 @@ In this way, a caller of vfs backends can simply load the backend filesystem
             panic(err)
         }
 
-        s3file, err = backend.Backend(os.Scheme).NewFile("", "/some/file.txt")
+        s3file, err = backend.Backend(s3.Scheme).NewFile("mybucket", "/some/file.txt")
         if err != nil {
             panic(err)
         }
@@ -47,7 +47,7 @@ To create your own backend, you must create a package that implements the interf
 [vfs.FileSystem](../README.md#type-filesystem), [vfs.Location](../README.md#type-location), and 
 [vfs.File](../README.md#type-file). Then ensure it registers itself on load:
 
-    pacakge myexoticfilesystem
+    package myexoticfilesystem
 
     import(
         ...
@@ -60,19 +60,16 @@ To create your own backend, you must create a package that implements the interf
 
     // register backend
     func init() {
-        backend.Register(
-            "My Exotic Filesystem",
-            &MyExoticFilesystem{},
-        )
+        backend.Register("exfs", &MyExoticFilesystem{})
     }
 
 Then do use it in some other package do
 
-    pacakge MyExoticFilesystem
+    package MyExoticFilesystem
 
     import(
         "github.com/c2fo/vfs/backend"
-        _ "github.com/acme/myexoticfilesystem"
+        "github.com/acme/myexoticfilesystem"
     )
 
     ...

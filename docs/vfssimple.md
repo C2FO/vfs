@@ -1,6 +1,6 @@
 # vfssimple
 
---
+---
 
 Package vfssimple provides a basic and easy to use set of functions to any
 supported backend filesystem by using full URI's:

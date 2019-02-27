@@ -1,6 +1,6 @@
 /*
-Package vfs provides a platform-independent, generalized set of filesystem functionality across a number of
-filesystem types such as os, S3, and GCS.
+Package vfs provides a pluggable, extensible, and opinionated set of filesystem
+functionality for Go across a number of filesystem types such as os, S3, and GCS.
 
 Philosophy
 
@@ -18,16 +18,16 @@ file locations and pass a bucket string (even if the fs didn't know what a bucke
 
 We found a handful of third-party libraries that were interesting but none of them had everything we needed/wanted. Of
 particular inspiration was https://github.com/spf13/afero in its composition of the super-powerful stdlib io.* interfaces.
-Unforunately, it didn't support Google Cloud Storage and there was still a lot of passing around of strings and structs.
+Unfortunately, it didn't support Google Cloud Storage and there was still a lot of passing around of strings and structs.
 Few, if any, of the vfs-like libraries provided interfaces to easily and confidently create new filesystem backends.
 
 What we needed/wanted was the following(and more):
   * self-contained set of structs that could be passed around like a file/dir handle
   * the struct would represent an existing or nonexistant file/dir
   * provide common (and only common) functionality across all filesystem so that after initialization, we don't care
-    what the underlying filesystem is and can therefore write our code agnostically/portably
+    what the underlying filesystem is and can therefore write our code agnosticly/portably
   * use io.* interfaces such as io.Reader and io.Writer without needing to call a separate function
-  * extensibility to easily add other needed filesytems like Micrsoft Azure Cloud File Storage or SFTP
+  * extensibility to easily add other needed filesystems like Microsoft Azure Cloud File Storage or SFTP
   * prefer native atomic functions when possible (ie S3 to S3 moving would use the native move api call rather than
     copy-delete)
   * a uniform way of addressing files regardless of filesystem.  This is why we use complete URI's in vfssimple

@@ -52,14 +52,14 @@ func (s *osFileTest) TeardownTest() {
 func (s *osFileTest) TestExists() {
 	doesExist, err := s.testFile.Exists()
 	if err != nil {
-		s.Fail("Failed to check for file existance")
+		s.Fail("Failed to check for file existence")
 	}
 	s.True(doesExist)
 
 	otherFile, err := s.fileSystem.NewFile("", "test_files/foo.txt")
 
 	if err != nil {
-		s.Fail("Failed to check for file existance")
+		s.Fail("Failed to check for file existence")
 	}
 
 	otherFileExists, _ := otherFile.Exists()

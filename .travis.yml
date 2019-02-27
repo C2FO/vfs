@@ -1,0 +1,28 @@
+language: go
+
+env:
+  - GO111MODULE=on
+
+git:
+  depth: 1
+
+install: true
+
+notifications:
+  email: false
+
+go:
+  - 1.9.x
+  - 1.10.x
+  - 1.11.x
+
+before_install:
+  - go version | grep 1.11 || (go get -u github.com/golang/dep/cmd/dep && dep ensure -v)
+  - go get github.com/mattn/goveralls
+
+script:
+  - bash ./travis_test.sh
+
+after_success:
+  - goveralls -v -debug -coverprofile=coverage.txt -service=travis-ci
+  - bash <(curl -s https://codecov.io/bash)

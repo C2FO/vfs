@@ -7,11 +7,11 @@ Rely on github.com/c2fo/vfs/backend
 
   import(
       "github.com/c2fo/vfs/backend"
-      _ "github.com/c2fo/vfs/backend/os"
+      "github.com/c2fo/vfs/backend/os"
   )
 
   func UseFs() error {
-      fs, err := backend.Backend("os")
+      fs, err := backend.Backend(os.Scheme)
       ...
   }
 

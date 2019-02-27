@@ -11,13 +11,20 @@ import (
 type FileSystem interface {
 	// NewFile initializes a File on the specified volume at path 'name'. On error, nil is returned
 	// for the file.
+	//
+	// Note that not all filesystems will have a "volume":
+	// file:///path/to/file has a volume of "" and name path/to/file
+	// whereas
+	// s3://mybucket/path/to file has a volume of mybucket
 	NewFile(volume string, name string) (File, error)
 
 	// NewLocation initializes a Location on the specified volume with the given path. On error, nil is returned
 	// for the location.
+	//
+	// See NewFile for note on volume.
 	NewLocation(volume string, path string) (Location, error)
 
-	// Name returns the name of the FileSystem ie: s3, disk, gcs, etc...
+	// Name returns the name of the FileSystem ie: Amazon S3, os, Google Cloud Storage, etc...
 	Name() string
 
 	// Scheme, related to Name, is the uri scheme used by the FileSystem: s3, file, gs, etc...
@@ -129,4 +136,5 @@ type File interface {
 	URI() string
 }
 
+// Options are structs that contain various options specific to the filesystem
 type Options interface{}

@@ -9,8 +9,8 @@ In this way, a caller of vfs backends can simply load the backend filesystem (an
   // import backend and each backend you intend to use
   import(
       "github.com/c2fo/vfs/backend"
-      _ "github.com/c2fo/vfs/backend/os"
-      _ "github.com/c2fo/vfs/backend/s3"
+      "github.com/c2fo/vfs/backend/os"
+      "github.com/c2fo/vfs/backend/s3"
   )
 
   func main() {
@@ -23,7 +23,7 @@ In this way, a caller of vfs backends can simply load the backend filesystem (an
           panic(err)
       }
 
-      s3file, err = backend.Backend(os.Scheme).NewFile("", "/some/file.txt")
+      s3file, err = backend.Backend(s3.Scheme).NewFile("mybucket", "/some/file.txt")
       if err != nil {
           panic(err)
       }
@@ -39,7 +39,7 @@ Development
 To create your own backend, you must create a package that implements the interfaces: vfs.Filesystem, vfs.Location, and vfs.File.
 Then ensure it registers itself on load:
 
-  pacakge myexoticfilesystem
+  package myexoticfilesystem
 
   import(
       ...
@@ -52,18 +52,15 @@ Then ensure it registers itself on load:
 
   // register backend
   func init() {
-      backend.Register(
-          "My Exotic Filesystem",
-          &MyExoticFilesystem{},
-      )
+      backend.Register("exfs", &MyExoticFilesystem{})
   }
 
 Then do use it in some other package do
-  pacakge MyExoticFilesystem
+  package MyExoticFilesystem
 
   import(
       "github.com/c2fo/vfs/backend"
-      _ "github.com/acme/myexoticfilesystem"
+      "github.com/acme/myexoticfilesystem"
   )
 
   ...

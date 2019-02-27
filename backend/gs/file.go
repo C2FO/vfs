@@ -52,13 +52,13 @@ func (f *File) Close() error {
 		}
 
 		ctx, cancel := context.WithCancel(f.fileSystem.ctx)
+		defer func() { cancel() }()
 		w := handle.NewWriter(ctx)
+		defer w.Close()
 		if _, err := io.Copy(w, f.writeBuffer); err != nil {
 			//cancel context (replaces CloseWithError)
-			cancel()
 			return err
 		}
-		defer w.Close()
 	}
 
 	f.writeBuffer = nil
@@ -181,10 +181,7 @@ func (f *File) CopyToFile(targetFile vfs.File) error {
 		return cerr
 	}
 	//Close file (f) reader
-	if cerr := f.Close(); cerr != nil {
-		return cerr
-	}
-	return nil
+	return f.Close()
 }
 
 // MoveToLocation works by first calling File.CopyToLocation(vfs.Location) then, if that
@@ -212,7 +209,7 @@ func (f *File) MoveToFile(targetFile vfs.File) error {
 }
 
 // Delete clears any local temp file, or write buffer from read/writes to the file, then makes
-// a DeleteObject call to s3 for the file. Returns any error returned by the API.
+// a DeleteObject call to GCS for the file. Returns any error returned by the API.
 func (f *File) Delete() error {
 	f.writeBuffer = nil
 	if err := f.Close(); err != nil {
