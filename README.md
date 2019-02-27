@@ -3,7 +3,7 @@
 ---
 
 [![GitHub tag](https://img.shields.io/github/tag/c2fo/vfs.svg?style=flat)](https://github.com/c2fo/vfs/releases)
-[![Build Status](https://travis-ci.org/c2fo/vfs.svg?branch=master)](https://travis-ci.org/c2fo/vfs)
+[![Build Status](https://travis-ci.org/C2FO/vfs.svg?branch=master)](https://travis-ci.org/C2FO/vfs)
 [![GoDoc](https://godoc.org/github.com/c2fo/vfs?status.png)](http://godoc.org/github.com/c2fo/vfs)
 [![codecov](https://codecov.io/gh/c2fo/vfs/branch/master/graph/badge.svg)](https://codecov.io/gh/c2fo/vfs)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](License.md)
