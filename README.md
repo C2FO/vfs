@@ -8,6 +8,7 @@
 [![codecov](https://codecov.io/gh/c2fo/vfs/branch/master/graph/badge.svg)](https://codecov.io/gh/c2fo/vfs)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](License.md)
 [![Go Report Card](https://goreportcard.com/badge/github.com/c2fo/vfs)](https://goreportcard.com/report/github.com/c2fo/vfs)
+[![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)
 
 Package vfs provides a pluggable, extensible, and opinionated set of filesystem
 functionality for Go across a number of filesystem types such as os, S3, and GCS.
@@ -40,9 +41,9 @@ filesystem backends.
 ###### What we needed/wanted was the following(and more):
 
 * self-contained set of structs that could be passed around like a file/dir handle
-* the struct would represent an existing or nonexistant file/dir
+* the struct would represent an existing or nonexistent file/dir
 * provide common (and only common) functionality across all filesystem so that after initialization, we don't care
-      what the underlying filesystem is and can therefore write our code agnosticly/portably
+      what the underlying filesystem is and can therefore write our code agnostically/portably
 * use [io.*](https://godoc.org/io) interfaces such as [io.Reader](https://godoc.org/io#Reader) and [io.Writer](https://godoc.org/io#Writer) without needing to call a separate function
 * extensibility to easily add other needed filesystems like Microsoft Azure Cloud File Storage or SFTP
 * prefer native atomic functions when possible (ie S3 to S3 moving would use the native move api call rather than
@@ -50,7 +51,7 @@ filesystem backends.
 * a uniform way of addressing files regardless of filesystem.  This is why we use complete URI's in [vfssimple](docs/vfssimple.md)
 * [fmt.Stringer](https://godoc.org/fmt#Stringer) interface so that the file struct passed to a log message (or other [Stringer](https://godoc.org/fmt#Stringer) use) would show the URI
 * mockable filesystem
-* pluggability so that third-party implemenations of our interfaces could be used
+* pluggability so that third-party implementations of our interfaces could be used
 
 
 ### Install
@@ -66,8 +67,8 @@ Glide installation:
 
 ### Usage
 
-We provde [vfssimple](docs/vfssimple.md) as basic way of initializing filesystem backends (see each
-implemnations's docs about authentiation). [vfssimple](docs/vfssimple.md) pulls in every c2fo/vfs
+We provide [vfssimple](docs/vfssimple.md) as basic way of initializing filesystem backends (see each
+implementations's docs about authentication). [vfssimple](docs/vfssimple.md) pulls in every c2fo/vfs
 backend. If you need to reduce the backend requirements (and app memory
 footprint) or add a third party backend, you'll need to implement your own
 "factory". See [backend](docs/backend.md) doc for more info.
@@ -126,7 +127,7 @@ Things to add:
 * Provide better List() functionality with more abstracted filtering and paging (iterator?) Return File structs vs URIs?
 * Add better/any context.Context() support for deadline and cancellation
 
-### Contrubutors
+### Contributors
 
 Brought to you by the Enterprise Pipeline team at C2FO:
 

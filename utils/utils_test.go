@@ -39,7 +39,7 @@ func (s *utilsTest) TestAddTrailingSlash() {
 		{
 			path:     "/some/path/",
 			expected: "/some/path/",
-			message:  "slash founn - don't add one",
+			message:  "slash found - don't add one",
 		},
 		{
 			path:     "/some/path\\",
