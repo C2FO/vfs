@@ -31,7 +31,7 @@ would have to be cast as s3.Filesystem to use the following:
 
       ...
 
-      // cast if fs was created using backend.Backend().  Not necessary if created directly from s3.NewFilsystem().
+      // cast if fs was created using backend.Backend().  Not necessary if created directly from s3.NewFilesystem().
       fs = fs.(s3.Filesystem)
 
       // to pass in client options

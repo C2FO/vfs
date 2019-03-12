@@ -6,7 +6,7 @@ See github.com/c2fo/vfs docs for authentication.
 
 Usage
 
-vfscp's usage is extremlely simple:
+vfscp's usage is extremely simple:
 
   vfscp <uri> <uri>
   -help   prints help message

@@ -131,7 +131,7 @@ func (f *File) Exists() (bool, error) {
 	return true, nil
 }
 
-//Write implements the io.Writer interface.  It accepts a slice of bytes and returns the number of btyes written and an error, if any.
+//Write implements the io.Writer interface.  It accepts a slice of bytes and returns the number of bytes written and an error, if any.
 func (f *File) Write(p []byte) (n int, err error) {
 	file, err := f.openFile()
 	if err != nil {
@@ -158,7 +158,7 @@ func (f *File) MoveToFile(target vfs.File) error {
 }
 
 // MoveToLocation moves a file to a new Location. It accepts a target vfs.Location and returns a vfs.File and an error, if any.
-//TODO we might consider using os.Rename() for effenciency when location.FileSystem().Scheme() equals f.Location().FileSystem().Scheme()
+//TODO we might consider using os.Rename() for efficiency when location.FileSystem().Scheme() equals f.Location().FileSystem().Scheme()
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	_, err := f.copyWithName(f.name, location)
 	if err != nil {

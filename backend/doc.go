@@ -70,6 +70,6 @@ Then do use it in some other package do
       ...
   }
 
-Thats it.  Simple.
+That's it.  Simple.
 */
 package backend

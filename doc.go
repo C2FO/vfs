@@ -23,9 +23,9 @@ Few, if any, of the vfs-like libraries provided interfaces to easily and confide
 
 What we needed/wanted was the following(and more):
   * self-contained set of structs that could be passed around like a file/dir handle
-  * the struct would represent an existing or nonexistant file/dir
+  * the struct would represent an existing or nonexistent file/dir
   * provide common (and only common) functionality across all filesystem so that after initialization, we don't care
-    what the underlying filesystem is and can therefore write our code agnosticly/portably
+    what the underlying filesystem is and can therefore write our code agnostically/portably
   * use io.* interfaces such as io.Reader and io.Writer without needing to call a separate function
   * extensibility to easily add other needed filesystems like Microsoft Azure Cloud File Storage or SFTP
   * prefer native atomic functions when possible (ie S3 to S3 moving would use the native move api call rather than
@@ -45,7 +45,7 @@ Glide installation:
 
 Usage
 
-We provde vfssimple as basic way of initializing filesystem backends (see each implemnations's docs about authentiation).
+We provide vfssimple as basic way of initializing filesystem backends (see each implementations's docs about authentication).
 vfssimple pulls in every c2fo/vfs backend.  If you need to reduce the backend requirements (and app memory footprint) or
 add a third party backend, you'll need to implement your own "factory".  See backend doc for more info.
 

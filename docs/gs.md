@@ -249,7 +249,7 @@ FileSystem implements [vfs.FileSystem](../README.md#type-filesystem) for the GCS
 ```go
 func NewFileSystem() *FileSystem
 ```
-NewFileSystem intializer for [FileSystem](#type-filesystem) struct accepts google cloud storage
+NewFileSystem initializer for [FileSystem](#type-filesystem) struct accepts google cloud storage
 client and returns Filesystem or error.
 
 #### func (*FileSystem) Client
@@ -258,7 +258,7 @@ client and returns Filesystem or error.
 func (fs *FileSystem) Client() (*storage.Client, error)
 ```
 Client returns the underlying google storage client, creating it, if
-necessary See [Authenication](#authentication) section for authentication resolution
+necessary See [Authentication](#authentication) section for authentication resolution
 
 #### func (*FileSystem) Name
 

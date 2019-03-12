@@ -31,7 +31,7 @@ would have to be cast as gs.Filesystem to use the following:
 
       ...
 
-      // cast if fs was created using backend.Backend().  Not necessary if created directly from gs.NewFilsystem().
+      // cast if fs was created using backend.Backend().  Not necessary if created directly from gs.NewFilesystem().
       fs = fs.(gs.Filesystem)
 
       // to use your own "context"

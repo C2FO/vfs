@@ -15,7 +15,7 @@ type Options struct {
 }
 
 func parseClientOptions(opts vfs.Options) []option.ClientOption {
-	googleClientOpts := []option.ClientOption{}
+	var googleClientOpts []option.ClientOption
 
 	// we only care about 'gs.Options' types, skip anything else
 	if opts, ok := opts.(Options); ok {
@@ -23,7 +23,6 @@ func parseClientOptions(opts vfs.Options) []option.ClientOption {
 		case opts.APIKey != "":
 			googleClientOpts = append(googleClientOpts, option.WithAPIKey(opts.APIKey))
 		case opts.CredentialFile != "":
-			//TODO: this is Deprecated: Use WithCredentialsFile instead (once we update google cloud sdk)
 			googleClientOpts = append(googleClientOpts, option.WithServiceAccountFile(opts.CredentialFile))
 		case opts.Endpoint != "":
 			googleClientOpts = append(googleClientOpts, option.WithEndpoint(opts.Endpoint))

@@ -89,7 +89,7 @@ func (f *File) Write(data []byte) (n int, err error) {
 	if f.writeBuffer == nil {
 		//note, initializing with 'data' and returning len(data), nil
 		//causes issues with some Write usages, notably csv.Writer
-		//so we simply intialize with no bytes and call the buffer Write after
+		//so we simply initialize with no bytes and call the buffer Write after
 		//
 		//f.writeBuffer = bytes.NewBuffer(data)
 		//return len(data), nil

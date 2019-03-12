@@ -88,7 +88,7 @@ func (fs *FileSystem) WithClient(client interface{}) *FileSystem {
 	return fs
 }
 
-// NewFileSystem intializer for fileSystem struct accepts aws-sdk s3iface.S3API client and returns Filesystem or error.
+// NewFileSystem initializer for fileSystem struct accepts aws-sdk s3iface.S3API client and returns Filesystem or error.
 func NewFileSystem() *FileSystem {
 	return &FileSystem{}
 }

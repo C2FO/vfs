@@ -24,10 +24,51 @@ type Options struct {
 	Endpoint        string `json:"endpoint,omitempty"`
 }
 
+// getClient setup S3 client
 func getClient(opt Options) (s3iface.S3API, error) {
 
+	//setup default config
+	awsConfig := defaults.Config()
+
+	//setup region using opt or env
+	if opt.Region != "" {
+		awsConfig.WithRegion(opt.Region)
+	} else if val, ok := os.LookupEnv("AWS_DEFAULT_REGION"); ok {
+		awsConfig.WithRegion(val)
+	}
+
+	//use specific endpoint, otherwise, will use aws "default endpoint resolver" based on region
+	awsConfig.WithEndpoint(opt.Endpoint)
+
+	//set up credential provider chain
+	credentialProviders, err := initCredentialProviderChain(opt)
+	if err != nil {
+		return nil, err
+	}
+	awsConfig.WithCredentials(
+		credentials.NewChainCredentials(credentialProviders),
+	)
+
+	// create new session with config
+	s, err := session.NewSessionWithOptions(
+		session.Options{
+			Config: *awsConfig,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	//return client instance
+	return s3.New(s), nil
+}
+
+//initCredentialProviderChain returns an array of credential providers that will be used, in order, to attempt authentication
+func initCredentialProviderChain(opt Options) ([]credentials.Provider, error) {
 	p := make([]credentials.Provider, 0)
 
+	// A StaticProvider is a set of credentials which are set programmatically,
+	// and will never expire.
 	if opt.AccessKeyID != "" && opt.SecretAccessKey != "" {
 		// Make the auth
 		v := credentials.Value{
@@ -35,8 +76,6 @@ func getClient(opt Options) (s3iface.S3API, error) {
 			SecretAccessKey: opt.SecretAccessKey,
 			SessionToken:    opt.SessionToken,
 		}
-		// A StaticProvider is a set of credentials which are set programmatically,
-		// and will never expire.
 		p = append(p, &credentials.StaticProvider{Value: v})
 
 	}
@@ -67,28 +106,16 @@ func getClient(opt Options) (s3iface.S3API, error) {
 	p = append(p, defaults.RemoteCredProvider(*def.Config, def.Handlers))
 
 	// EC2RoleProvider retrieves credentials from the EC2 service, and keeps track if those credentials are expired
+	sess, err := session.NewSession()
+	if err != nil {
+		return nil, err
+	}
 	p = append(p, &ec2rolecreds.EC2RoleProvider{
-		Client: ec2metadata.New(session.New(), &aws.Config{
+		Client: ec2metadata.New(sess, &aws.Config{
 			HTTPClient: lowTimeoutClient,
 		}),
 		ExpiryWindow: 3,
 	})
 
-	awsConfig := aws.Config{Logger: aws.NewDefaultLogger()}
-	if opt.Region != "" {
-		awsConfig = *awsConfig.WithRegion(opt.Region)
-	} else if val, ok := os.LookupEnv("AWS_DEFAULT_REGION"); ok {
-		awsConfig = *awsConfig.WithRegion(val)
-	}
-	awsConfig = *awsConfig.WithEndpoint(opt.Endpoint)
-
-	awsConfig = *awsConfig.WithCredentials(credentials.NewChainCredentials(p))
-
-	s, err := session.NewSessionWithOptions(session.Options{
-		Config: awsConfig,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return s3.New(s), nil
+	return p, nil
 }

@@ -121,7 +121,7 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error)
 MoveToLocation moves a file to a new Location. It accepts a target vfs.Location
 and returns a vfs.File and an error, if any. 
 
-__TODO:__ we might consider using os.Rename() for effenciency when location.FileSystem().Scheme() equals
+__TODO:__ we might consider using os.Rename() for efficiency when location.FileSystem().Scheme() equals
 f.Location().FileSystem().Scheme()
 
 #### func (*File) Name

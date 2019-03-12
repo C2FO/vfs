@@ -81,7 +81,7 @@ func (fs *FileSystem) WithClient(client *storage.Client) *FileSystem {
 	return fs
 }
 
-// NewFileSystem intializer for FileSystem struct accepts google cloud storage client and returns Filesystem or error.
+// NewFileSystem initializer for FileSystem struct accepts google cloud storage client and returns Filesystem or error.
 func NewFileSystem() *FileSystem {
 	fs := &FileSystem{}
 	fs = fs.WithContext(context.Background())
