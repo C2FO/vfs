@@ -3,6 +3,8 @@ package vfssimple
 import (
 	"fmt"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/c2fo/vfs"
@@ -57,6 +59,13 @@ func parseSupportedURI(uri string) (vfs.FileSystem, string, string, error) {
 			fs = backend.Backend(backendScheme)
 			break
 		}
+
+		// Location-level backend
+		if isInPath(u, volume, backendScheme) {
+			fs = backend.Backend(backendScheme)
+			break
+		}
+
 		// Scheme-level backend
 		if u.Scheme == backendScheme {
 			fs = backend.Backend(backendScheme)
@@ -68,4 +77,22 @@ func parseSupportedURI(uri string) (vfs.FileSystem, string, string, error) {
 	}
 
 	return fs, host, path, err
+}
+
+// isInPath will crawl down the provided url's path to see if it matches the registered root value
+// Example:
+//	 url: s3://bucket/root/path/to/file.txt
+//   root: s3://bucket/root/   <== Registered URI for file system.
+//
+//   This would return true because the target url is within the root.
+func isInPath(url *url.URL, volume, root string) bool {
+	path := url.Path
+	paths := strings.Split(path, string(os.PathSeparator))
+	for i := range paths {
+		path := fmt.Sprintf("%s%s/", volume, filepath.Join(paths[0:i]...))
+		if path == root {
+			return true
+		}
+	}
+	return false
 }
