@@ -88,6 +88,9 @@ func (l *Location) Volume() string {
 
 // Path returns the path of the file at the current location, starting with a leading '/'
 func (l *Location) Path() string {
+	if strings.Index(l.prefix, "/") == 0 {
+		return utils.EnsureTrailingSlash(l.prefix)
+	}
 	return "/" + utils.EnsureTrailingSlash(l.prefix)
 }
 
