@@ -2,7 +2,7 @@ package utils_test
 
 import (
 	"fmt"
-	_os "github.com/c2fo/vfs/backend/os"
+	_os "github.com/c2fo/vfs/v3/backend/os"
 	"io"
 	"io/ioutil"
 	"os"
@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/mocks"
-	"github.com/c2fo/vfs/utils"
+	"github.com/c2fo/vfs/v3/mocks"
+	"github.com/c2fo/vfs/v3/utils"
 )
 
 /**********************************

@@ -5,9 +5,9 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 
-	"github.com/c2fo/vfs"
-	"github.com/c2fo/vfs/backend"
-	"github.com/c2fo/vfs/utils"
+	"github.com/c2fo/vfs/v3"
+	"github.com/c2fo/vfs/v3/backend"
+	"github.com/c2fo/vfs/v3/utils"
 )
 
 // Scheme defines the filesystem type.

@@ -4,9 +4,9 @@ import (
 	"cloud.google.com/go/storage"
 	"golang.org/x/net/context"
 
-	"github.com/c2fo/vfs"
-	"github.com/c2fo/vfs/backend"
-	"github.com/c2fo/vfs/utils"
+	"github.com/c2fo/vfs/v3"
+	"github.com/c2fo/vfs/v3/backend"
+	"github.com/c2fo/vfs/v3/utils"
 )
 
 //Scheme defines the filesystem type.

@@ -3,7 +3,7 @@ package gs
 import (
 	"google.golang.org/api/option"
 
-	"github.com/c2fo/vfs"
+	"github.com/c2fo/vfs/v3"
 )
 
 // Options holds Google Cloud Storage -specific options.  Currently only client options are used.
