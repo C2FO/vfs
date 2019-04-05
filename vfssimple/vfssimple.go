@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/c2fo/vfs"
-	"github.com/c2fo/vfs/backend"
-	_ "github.com/c2fo/vfs/backend/all" //register all backends
+	"github.com/c2fo/vfs/v3"
+	"github.com/c2fo/vfs/v3/backend"
+	_ "github.com/c2fo/vfs/v3/backend/all" //register all backends
 )
 
 // NewLocation is a convenience function that allows for instantiating a location based on a uri string. Any

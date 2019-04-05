@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/c2fo/vfs"
-	"github.com/c2fo/vfs/utils"
+	"github.com/c2fo/vfs/v3"
+	"github.com/c2fo/vfs/v3/utils"
 )
 
 //Location implements the vfs.Location interface specific to OS fs.
