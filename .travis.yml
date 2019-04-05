@@ -1,8 +1,5 @@
 language: go
 
-env:
-  - GO111MODULE=on
-
 git:
   depth: 1
 
@@ -17,7 +14,7 @@ go:
   - 1.11.x
 
 before_install:
-  - go version | grep 1.11 || (go get -u github.com/golang/dep/cmd/dep && dep ensure -v)
+  - go get -u github.com/golang/dep/cmd/dep && dep ensure -v
   - go get github.com/mattn/goveralls
 
 script:
