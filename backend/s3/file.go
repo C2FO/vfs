@@ -398,7 +398,7 @@ func waitUntilFileExists(file vfs.File, retries int) error {
 	var retryCount = 0
 	for {
 		if retryCount == retries {
-			return fmt.Errorf("failed to find file %s after %d", file, retries)
+			return fmt.Errorf("failed to find file %s after %d retries", file, retries)
 		}
 
 		//check for existing file
