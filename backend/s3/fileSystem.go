@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	"github.com/c2fo/vfs/v3/backend/all"
 
 	"github.com/c2fo/vfs/v3"
 	"github.com/c2fo/vfs/v3/backend"
@@ -18,6 +19,14 @@ const name = "AWS S3"
 type FileSystem struct {
 	client  s3iface.S3API
 	options vfs.Options
+}
+
+// FileSystem will return a retrier provided via options, or a no-op if none is provided.
+func (fs *FileSystem) Retry() vfs.Retry {
+	if fs.options.(*Options).Retrier != nil {
+		return fs.options.(*Options).Retrier
+	}
+	return all.DefaultRetrier()
 }
 
 // NewFile function returns the s3 implementation of vfs.File.

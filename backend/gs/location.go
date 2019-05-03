@@ -1,6 +1,7 @@
 package gs
 
 import (
+	"github.com/c2fo/goutils/errorstack"
 	"path"
 	"regexp"
 	"strings"
@@ -45,23 +46,30 @@ func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	it := handle.Objects(l.fileSystem.ctx, q)
-
 	var fileNames []string
-	for {
-		objAttrs, err := it.Next()
-		if err != nil {
-			if err == iterator.Done {
-				break
+
+	if err := l.fileSystem.Retry()(func() error {
+
+		it := handle.Objects(l.fileSystem.ctx, q)
+		for {
+			objAttrs, err := it.Next()
+			if err != nil {
+				if err == iterator.Done {
+					break
+				}
+				return err
 			}
-			return nil, err
+			//only include objects, not "directories"
+			if objAttrs.Prefix == "" && objAttrs.Name != l.prefix {
+				fileNames = append(fileNames, strings.TrimPrefix(objAttrs.Name, l.prefix))
+			}
 		}
-		//only include objects, not "directories"
-		if objAttrs.Prefix == "" && objAttrs.Name != l.prefix {
-			fileNames = append(fileNames, strings.TrimPrefix(objAttrs.Name, l.prefix))
-		}
+
+		return nil
+	}); err != nil {
+		return nil, err
 	}
+
 	return fileNames, nil
 }
 
@@ -164,9 +172,22 @@ func (l *Location) getBucketHandle() (*storage.BucketHandle, error) {
 
 // getObjectAttrs returns the file's attributes
 func (l *Location) getBucketAttrs() (*storage.BucketAttrs, error) {
-	handle, err := l.getBucketHandle()
-	if err != nil {
+	var attrs *storage.BucketAttrs
+	if err := l.fileSystem.Retry()(func() error {
+		handle, err := l.getBucketHandle()
+		if err != nil {
+			return err
+		}
+
+		attrs, err = handle.Attrs(l.fileSystem.ctx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
 		return nil, err
 	}
-	return handle.Attrs(l.fileSystem.ctx)
+
+	return attrs, nil
 }

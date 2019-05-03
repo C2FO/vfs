@@ -2,6 +2,7 @@ package gs
 
 import (
 	"cloud.google.com/go/storage"
+	"github.com/c2fo/vfs/v3/backend/all"
 	"golang.org/x/net/context"
 
 	"github.com/c2fo/vfs/v3"
@@ -18,6 +19,14 @@ type FileSystem struct {
 	client  *storage.Client
 	ctx     context.Context
 	options vfs.Options
+}
+
+// FileSystem will return a retrier provided via options, or a no-op if none is provided.
+func (fs *FileSystem) Retry() vfs.Retry {
+	if fs.options.(*Options).Retry != nil {
+		return fs.options.(*Options).Retry
+	}
+	return all.DefaultRetrier()
 }
 
 // NewFile function returns the gcs implementation of vfs.File.

@@ -1,6 +1,7 @@
 package s3
 
 import (
+	"github.com/c2fo/vfs/v3"
 	"net/http"
 	"os"
 	"time"
@@ -22,6 +23,7 @@ type Options struct {
 	SessionToken    string `json:"sessionToken,omitempty"`
 	Region          string `json:"region,omitempty"`
 	Endpoint        string `json:"endpoint,omitempty"`
+	Retrier         vfs.Retry
 }
 
 // getClient setup S3 client

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/c2fo/goutils/errorstack"
 	"io"
 	"io/ioutil"
 	"os"
@@ -33,35 +34,41 @@ type File struct {
 // Close cleans up underlying mechanisms for reading from and writing to the file. Closes and removes the
 // local temp file, and triggers a write to GCS of anything in the f.writeBuffer if it has been created.
 func (f *File) Close() error {
-	if f.tempFile != nil {
-		defer f.tempFile.Close()
+	if err := f.fileSystem.Retry()(func() error {
+		if f.tempFile != nil {
+			defer f.tempFile.Close()
 
-		err := os.Remove(f.tempFile.Name())
-		if err != nil && !os.IsNotExist(err) {
-			return err
+			err := os.Remove(f.tempFile.Name())
+			if err != nil && !os.IsNotExist(err) {
+				return err
+			}
+
+			f.tempFile = nil
 		}
 
-		f.tempFile = nil
+		if f.writeBuffer != nil {
+
+			handle, err := f.getObjectHandle()
+			if err != nil {
+				return err
+			}
+
+			ctx, cancel := context.WithCancel(f.fileSystem.ctx)
+			defer func() { cancel() }()
+			w := handle.NewWriter(ctx)
+			defer w.Close()
+			if _, err := io.Copy(w, f.writeBuffer); err != nil {
+				//cancel context (replaces CloseWithError)
+				return err
+			}
+		}
+
+		f.writeBuffer = nil
+		return nil
+	}); err != nil {
+		return err
 	}
 
-	if f.writeBuffer != nil {
-
-		handle, err := f.getObjectHandle()
-		if err != nil {
-			return err
-		}
-
-		ctx, cancel := context.WithCancel(f.fileSystem.ctx)
-		defer func() { cancel() }()
-		w := handle.NewWriter(ctx)
-		defer w.Close()
-		if _, err := io.Copy(w, f.writeBuffer); err != nil {
-			//cancel context (replaces CloseWithError)
-			return err
-		}
-	}
-
-	f.writeBuffer = nil
 	return nil
 }
 
@@ -256,13 +263,19 @@ func (f *File) URI() string {
 }
 
 func (f *File) checkTempFile() error {
-	if f.tempFile == nil {
-		localTempFile, err := f.copyToLocalTempReader()
-		if err != nil {
-			return err
+	if err := f.fileSystem.Retry()(func() error {
+		if f.tempFile == nil {
+			localTempFile, err := f.copyToLocalTempReader()
+			if err != nil {
+				return err
+			}
+			f.tempFile = localTempFile
 		}
-		f.tempFile = localTempFile
+		return nil
+	}); err != nil {
+		return err
 	}
+
 	return nil
 }
 
@@ -313,38 +326,54 @@ func (f *File) getObjectHandle() (*storage.ObjectHandle, error) {
 
 // getObjectAttrs returns the file's attributes
 func (f *File) getObjectAttrs() (*storage.ObjectAttrs, error) {
-	handle, err := f.getObjectHandle()
-	if err != nil {
-		return nil, err
+	var attrs *storage.ObjectAttrs
+
+	if err := f.fileSystem.Retry()(func() error {
+		handle, err := f.getObjectHandle()
+		if err != nil {
+			return err
+		}
+		attrs, err = handle.Attrs(f.fileSystem.ctx)
+		if err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return attrs, err
 	}
-	return handle.Attrs(f.fileSystem.ctx)
+
+	return attrs, nil
 }
 
 func (f *File) copyWithinGCSToFile(targetFile *File) error {
-	tHandle, err := targetFile.getObjectHandle()
-	if err != nil {
+	if err := f.fileSystem.Retry()(func() error {
+		tHandle, err := targetFile.getObjectHandle()
+		if err != nil {
+			return err
+		}
+		fHandle, err := f.getObjectHandle()
+		if err != nil {
+			return err
+		}
+		// Copy content and modify metadata.
+		copier := tHandle.CopierFrom(fHandle)
+		attrs, gerr := f.getObjectAttrs()
+		if gerr != nil {
+			return gerr
+		}
+		copier.ContentType = attrs.ContentType
+		_, cerr := copier.Run(f.fileSystem.ctx)
+		if cerr != nil {
+			return cerr
+		}
+
+		// Just copy content.
+		_, err = tHandle.CopierFrom(fHandle).Run(f.fileSystem.ctx)
+		return err
+	}); err != nil {
 		return err
 	}
-	fHandle, err := f.getObjectHandle()
-	if err != nil {
-		return err
-	}
-	// Copy content and modify metadata.
-	copier := tHandle.CopierFrom(fHandle)
-	attrs, gerr := f.getObjectAttrs()
-	if gerr != nil {
-		return gerr
-	}
-	copier.ContentType = attrs.ContentType
-	_, cerr := copier.Run(f.fileSystem.ctx)
-	if cerr != nil {
-		return cerr
-	}
-
-	// Just copy content.
-	_, err = tHandle.CopierFrom(fHandle).Run(f.fileSystem.ctx)
-
-	return err
+	return nil
 }
 
 /* private helper functions */
