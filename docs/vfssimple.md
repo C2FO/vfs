@@ -82,6 +82,35 @@ resolve the provided URI in NewFile() or NewLocation() to the registered file sy
         secureFile.CopyToLocation(publicLocation)
     }
 
+### Retry Option
+
+This option allows you to specify a custom retry method which backend implementations can choose to utilize
+when calling remote file systems. This adds some flexibility in how a retry on file operations should be handled.
+
+    package main
+    
+    import(
+        "time"
+        
+        "github.com/c2fo/vfs/backend"
+        "github.com/c2fo/vfs/backend/gs"
+    )
+    
+    ...
+    
+    func InitializeWithRetry() error {
+        bucketAuth := gs.NewFileSystem().WithOptions(gs.Options{
+            Retry: func(wrapper func() error) error {
+                for i := 0; i < 5; i++ {
+                    if err := wrapper(); err != nil {
+                        time.Sleep(1 * time.Second)
+                        continue
+                    }
+                }
+            },
+        })
+    }
+
 
 ## Functions
 
