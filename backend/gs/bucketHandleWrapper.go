@@ -6,10 +6,17 @@ import (
 	"github.com/c2fo/vfs/v3"
 )
 
+// BucketHandle is an interface which contains a subset of the functions provided
+// by storage.BucketHandler. Any function normally called directly by storage.BucketHandler
+// should be added to this interface to allow for proper retry wrapping of the functions
+// which call the GCS API.
 type BucketHandle interface {
 	Attrs(ctx context.Context) (*storage.BucketAttrs, error)
 }
 
+// BucketHandleWrapper is a unique, wrapped type which should mimic the behavior of BucketHandler, but with
+// modified return types. Each function that returns a sub type that also should be wrapped should be added
+// to this interface with the 'Wrapped' prefix.
 type BucketHandleWrapper interface {
 	BucketHandle
 	WrappedObjects(ctx context.Context, q *storage.Query) ObjectIteratorWrapper
@@ -30,6 +37,7 @@ func (r *RetryBucketHandler) WrappedObjects(ctx context.Context, q *storage.Quer
 	return &RetryObjectIterator{Retry: r.Retry, iterator: r.handler.Objects(ctx, q)}
 }
 
+// ObjectIteratorWrapper is an interface which contains a subset of the functions provided by storage.ObjectIterator.
 type ObjectIteratorWrapper interface {
 	Next() (*storage.ObjectAttrs, error)
 }

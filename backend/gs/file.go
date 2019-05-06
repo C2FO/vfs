@@ -323,11 +323,7 @@ func (f *File) getObjectAttrs() (*storage.ObjectAttrs, error) {
 	if err != nil {
 		return nil, err
 	}
-	attrs, err := handle.Attrs(f.fileSystem.ctx)
-	if err != nil {
-		return nil, err
-	}
-	return attrs, nil
+	return handle.Attrs(f.fileSystem.ctx)
 }
 
 func (f *File) copyWithinGCSToFile(targetFile *File) error {
@@ -353,9 +349,6 @@ func (f *File) copyWithinGCSToFile(targetFile *File) error {
 
 	// Just copy content.
 	_, err = tHandle.WrappedCopierFrom(fHandle).Run(f.fileSystem.ctx)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 

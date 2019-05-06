@@ -170,10 +170,5 @@ func (l *Location) getBucketAttrs() (*storage.BucketAttrs, error) {
 		return nil, err
 	}
 
-	attrs, err := handle.Attrs(l.fileSystem.ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return attrs, nil
+	return handle.Attrs(l.fileSystem.ctx)
 }
