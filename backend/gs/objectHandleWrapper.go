@@ -56,18 +56,9 @@ func (r *RetryObjectHandler) NewReader(ctx context.Context) (*storage.Reader, er
 }
 
 func (r *RetryObjectHandler) Attrs(ctx context.Context) (*storage.ObjectAttrs, error) {
-	var attrs *storage.ObjectAttrs
-	if err := r.Retry(func() error {
-		var retryErr error
-		attrs, retryErr = r.handler.Attrs(ctx)
-		if retryErr != nil {
-			return retryErr
-		}
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-	return attrs, nil
+	return objectAttributeRetry(r.Retry, func() (*storage.ObjectAttrs, error) {
+		return r.handler.Attrs(ctx)
+	})
 }
 
 func (r *RetryObjectHandler) Delete(ctx context.Context) error {
@@ -92,10 +83,16 @@ type Copier struct {
 }
 
 func (c *Copier) Run(ctx context.Context) (*storage.ObjectAttrs, error) {
+	return objectAttributeRetry(c.Retry, func() (*storage.ObjectAttrs, error) {
+		return c.copier.Run(ctx)
+	})
+}
+
+func objectAttributeRetry(retry vfs.Retry, attrFunc func() (*storage.ObjectAttrs, error)) (*storage.ObjectAttrs, error) {
 	var attrs *storage.ObjectAttrs
-	if err := c.Retry(func() error {
+	if err := retry(func() error {
 		var retryErr error
-		attrs, retryErr = c.copier.Run(ctx)
+		attrs, retryErr = attrFunc()
 		if retryErr != nil {
 			return retryErr
 		}

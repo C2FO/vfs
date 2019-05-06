@@ -1,7 +1,6 @@
 package gs
 
 import (
-	"github.com/c2fo/goutils/errorstack"
 	"path"
 	"regexp"
 	"strings"
@@ -18,7 +17,7 @@ type Location struct {
 	fileSystem   *FileSystem
 	prefix       string
 	bucket       string
-	bucketHandle *storage.BucketHandle
+	bucketHandle BucketHandleWrapper
 }
 
 // String returns the full URI of the location.
@@ -48,26 +47,19 @@ func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error) {
 	}
 	var fileNames []string
 
-	if err := l.fileSystem.Retry()(func() error {
-
-		it := handle.Objects(l.fileSystem.ctx, q)
-		for {
-			objAttrs, err := it.Next()
-			if err != nil {
-				if err == iterator.Done {
-					break
-				}
-				return err
+	it := handle.WrappedObjects(l.fileSystem.ctx, q)
+	for {
+		objAttrs, err := it.Next()
+		if err != nil {
+			if err == iterator.Done {
+				break
 			}
-			//only include objects, not "directories"
-			if objAttrs.Prefix == "" && objAttrs.Name != l.prefix {
-				fileNames = append(fileNames, strings.TrimPrefix(objAttrs.Name, l.prefix))
-			}
+			return nil, err
 		}
-
-		return nil
-	}); err != nil {
-		return nil, err
+		//only include objects, not "directories"
+		if objAttrs.Prefix == "" && objAttrs.Name != l.prefix {
+			fileNames = append(fileNames, strings.TrimPrefix(objAttrs.Name, l.prefix))
+		}
 	}
 
 	return fileNames, nil
@@ -157,7 +149,7 @@ func (l *Location) URI() string {
 }
 
 // getBucketHandle returns cached Bucket struct for file
-func (l *Location) getBucketHandle() (*storage.BucketHandle, error) {
+func (l *Location) getBucketHandle() (BucketHandleWrapper, error) {
 	if l.bucketHandle != nil {
 		return l.bucketHandle, nil
 	}
@@ -166,26 +158,20 @@ func (l *Location) getBucketHandle() (*storage.BucketHandle, error) {
 	if err != nil {
 		return nil, err
 	}
-	l.bucketHandle = client.Bucket(l.bucket)
+	handler := &RetryBucketHandler{Retry: l.fileSystem.Retry(), handler: client.Bucket(l.bucket)}
+	l.bucketHandle = handler
 	return l.bucketHandle, nil
 }
 
 // getObjectAttrs returns the file's attributes
 func (l *Location) getBucketAttrs() (*storage.BucketAttrs, error) {
-	var attrs *storage.BucketAttrs
-	if err := l.fileSystem.Retry()(func() error {
-		handle, err := l.getBucketHandle()
-		if err != nil {
-			return err
-		}
+	handle, err := l.getBucketHandle()
+	if err != nil {
+		return nil, err
+	}
 
-		attrs, err = handle.Attrs(l.fileSystem.ctx)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}); err != nil {
+	attrs, err := handle.Attrs(l.fileSystem.ctx)
+	if err != nil {
 		return nil, err
 	}
 
