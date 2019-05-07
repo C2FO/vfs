@@ -4,6 +4,7 @@ import (
 	"cloud.google.com/go/storage"
 	"context"
 	"github.com/c2fo/vfs/v3"
+	"google.golang.org/api/iterator"
 )
 
 // ObjectHandleWrapper is an interface which contains a subset of the functions provided
@@ -95,15 +96,18 @@ func (c *Copier) Run(ctx context.Context) (*storage.ObjectAttrs, error) {
 
 func objectAttributeRetry(retry vfs.Retry, attrFunc func() (*storage.ObjectAttrs, error)) (*storage.ObjectAttrs, error) {
 	var attrs *storage.ObjectAttrs
-	if err := retry(func() error {
-		var retryErr error
-		attrs, retryErr = attrFunc()
-		if retryErr != nil {
-			return retryErr
+	attrs, err := attrFunc()
+	if err != nil && err != iterator.Done {
+		if err := retry(func() error {
+			var retryErr error
+			attrs, retryErr = attrFunc()
+			if retryErr != nil {
+				return retryErr
+			}
+			return nil
+		}); err != nil {
+			return nil, err
 		}
-		return nil
-	}); err != nil {
-		return nil, err
 	}
-	return attrs, nil
+	return attrs, err
 }
