@@ -3,7 +3,6 @@ package os
 import (
 	"github.com/c2fo/vfs/v3"
 	"github.com/c2fo/vfs/v3/backend"
-	"github.com/c2fo/vfs/v3/backend/all"
 	"github.com/c2fo/vfs/v3/utils"
 )
 
@@ -16,7 +15,7 @@ type FileSystem struct{}
 
 // FileSystem will return a retrier provided via options, or a no-op if none is provided.
 func (fs *FileSystem) Retry() vfs.Retry {
-	return all.DefaultRetrier()
+	return vfs.DefaultRetryer()
 }
 
 // NewFile function returns the os implementation of vfs.File.

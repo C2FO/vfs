@@ -8,6 +8,19 @@ type FileSystem struct {
 	mock.Mock
 }
 
+func (_m *FileSystem) Retry() vfs.Retry {
+	ret := _m.Called()
+
+	var r0 vfs.Retry
+	if rf, ok := ret.Get(0).(func() vfs.Retry); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(vfs.Retry)
+	}
+
+	return r0
+}
+
 // Name provides a mock function with given fields:
 func (_m *FileSystem) Name() string {
 	ret := _m.Called()

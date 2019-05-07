@@ -154,3 +154,8 @@ type Options interface{}
 //    return ret
 // }
 type Retry func(wrapped func() error) error
+
+// DefaultRetryer returns a no-op retryer which simply calls the wrapped command without looping.
+func DefaultRetryer() Retry {
+	return func(c func() error) error { return c() }
+}

@@ -1,7 +1,7 @@
 package s3
 
 import (
-	"github.com/c2fo/vfs/v3"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"net/http"
 	"os"
 	"time"
@@ -23,7 +23,8 @@ type Options struct {
 	SessionToken    string `json:"sessionToken,omitempty"`
 	Region          string `json:"region,omitempty"`
 	Endpoint        string `json:"endpoint,omitempty"`
-	Retrier         vfs.Retry
+	Retry           request.Retryer
+	MaxRetries      int
 }
 
 // getClient setup S3 client
@@ -41,6 +42,10 @@ func getClient(opt Options) (s3iface.S3API, error) {
 
 	//use specific endpoint, otherwise, will use aws "default endpoint resolver" based on region
 	awsConfig.WithEndpoint(opt.Endpoint)
+
+	if opt.Retry != nil {
+		awsConfig.Retryer = opt.Retry
+	}
 
 	//set up credential provider chain
 	credentialProviders, err := initCredentialProviderChain(opt)

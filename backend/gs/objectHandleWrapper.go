@@ -22,7 +22,8 @@ type ObjectHandleWrapper interface {
 // to this interface with the 'Wrapped' prefix.
 type ObjectHandleCopier interface {
 	ObjectHandleWrapper
-	WrappedCopierFrom(src ObjectHandleWrapper) CopierWrapper
+	WrappedCopierFrom(src *storage.ObjectHandle) CopierWrapper
+	ObjectHandle() *storage.ObjectHandle
 }
 
 // CopierWrapper is an interface which contains a subset of the functions provided by storage.Copier.
@@ -34,6 +35,10 @@ type CopierWrapper interface {
 type RetryObjectHandler struct {
 	Retry   vfs.Retry
 	handler *storage.ObjectHandle
+}
+
+func (r *RetryObjectHandler) ObjectHandle() *storage.ObjectHandle {
+	return r.handler
 }
 
 func (r *RetryObjectHandler) NewWriter(ctx context.Context) *storage.Writer {
@@ -73,8 +78,8 @@ func (r *RetryObjectHandler) Delete(ctx context.Context) error {
 	return nil
 }
 
-func (r *RetryObjectHandler) WrappedCopierFrom(src ObjectHandleWrapper) CopierWrapper {
-	return &Copier{copier: r.handler.CopierFrom(src.(*storage.ObjectHandle)), Retry: r.Retry}
+func (r *RetryObjectHandler) WrappedCopierFrom(src *storage.ObjectHandle) CopierWrapper {
+	return &Copier{copier: r.handler.CopierFrom(src), Retry: r.Retry}
 }
 
 type Copier struct {

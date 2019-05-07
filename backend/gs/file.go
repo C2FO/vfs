@@ -336,7 +336,7 @@ func (f *File) copyWithinGCSToFile(targetFile *File) error {
 		return err
 	}
 	// Copy content and modify metadata.
-	copier := tHandle.WrappedCopierFrom(fHandle)
+	copier := tHandle.WrappedCopierFrom(fHandle.ObjectHandle())
 	attrs, gerr := f.getObjectAttrs()
 	if gerr != nil {
 		return gerr
@@ -348,7 +348,7 @@ func (f *File) copyWithinGCSToFile(targetFile *File) error {
 	}
 
 	// Just copy content.
-	_, err = tHandle.WrappedCopierFrom(fHandle).Run(f.fileSystem.ctx)
+	_, err = tHandle.WrappedCopierFrom(fHandle.ObjectHandle()).Run(f.fileSystem.ctx)
 	return nil
 }
 
