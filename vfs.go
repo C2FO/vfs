@@ -29,6 +29,9 @@ type FileSystem interface {
 
 	// Scheme, related to Name, is the uri scheme used by the FileSystem: s3, file, gs, etc...
 	Scheme() string
+
+	// Retry will return the retry function to be used by any file system.
+	Retry() Retry
 }
 
 // Location represents a filesystem path which serves as a start point for directory-like functionality.  A location may
@@ -138,3 +141,21 @@ type File interface {
 
 // Options are structs that contain various options specific to the filesystem
 type Options interface{}
+
+// Retry is a function that can be used to wrap any operation into a definable retry operation. The wrapped argument
+// is called by the underlying VFS implementation.
+//
+// Ex:
+// var retrier Retry = func(wrapped func() error) error {
+//    var ret error
+//    for i := 0; i < 5; i++ {
+//       if err := wrapped(); err != nil { ret = err; continue }
+//    }
+//    return ret
+// }
+type Retry func(wrapped func() error) error
+
+// DefaultRetryer returns a no-op retryer which simply calls the wrapped command without looping.
+func DefaultRetryer() Retry {
+	return func(c func() error) error { return c() }
+}

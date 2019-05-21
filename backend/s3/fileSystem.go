@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
-
 	"github.com/c2fo/vfs/v3"
 	"github.com/c2fo/vfs/v3/backend"
 	"github.com/c2fo/vfs/v3/utils"
@@ -18,6 +17,12 @@ const name = "AWS S3"
 type FileSystem struct {
 	client  s3iface.S3API
 	options vfs.Options
+}
+
+// FileSystem will return the default no-op retrier. The S3 client provides its own retryer interface, and is available
+// to override via the s3.FileSystem Options type.
+func (fs *FileSystem) Retry() vfs.Retry {
+	return vfs.DefaultRetryer()
 }
 
 // NewFile function returns the s3 implementation of vfs.File.

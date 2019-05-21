@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
 	"github.com/aws/aws-sdk-go/aws/defaults"
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
@@ -22,6 +23,8 @@ type Options struct {
 	SessionToken    string `json:"sessionToken,omitempty"`
 	Region          string `json:"region,omitempty"`
 	Endpoint        string `json:"endpoint,omitempty"`
+	Retry           request.Retryer
+	MaxRetries      int
 }
 
 // getClient setup S3 client
@@ -39,6 +42,10 @@ func getClient(opt Options) (s3iface.S3API, error) {
 
 	//use specific endpoint, otherwise, will use aws "default endpoint resolver" based on region
 	awsConfig.WithEndpoint(opt.Endpoint)
+
+	if opt.Retry != nil {
+		awsConfig.Retryer = opt.Retry
+	}
 
 	//set up credential provider chain
 	credentialProviders, err := initCredentialProviderChain(opt)

@@ -17,7 +17,7 @@ type Location struct {
 	fileSystem   *FileSystem
 	prefix       string
 	bucket       string
-	bucketHandle *storage.BucketHandle
+	bucketHandle BucketHandleWrapper
 }
 
 // String returns the full URI of the location.
@@ -45,10 +45,9 @@ func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	it := handle.Objects(l.fileSystem.ctx, q)
-
 	var fileNames []string
+
+	it := handle.WrappedObjects(l.fileSystem.ctx, q)
 	for {
 		objAttrs, err := it.Next()
 		if err != nil {
@@ -62,6 +61,7 @@ func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error) {
 			fileNames = append(fileNames, strings.TrimPrefix(objAttrs.Name, l.prefix))
 		}
 	}
+
 	return fileNames, nil
 }
 
@@ -149,7 +149,7 @@ func (l *Location) URI() string {
 }
 
 // getBucketHandle returns cached Bucket struct for file
-func (l *Location) getBucketHandle() (*storage.BucketHandle, error) {
+func (l *Location) getBucketHandle() (BucketHandleWrapper, error) {
 	if l.bucketHandle != nil {
 		return l.bucketHandle, nil
 	}
@@ -158,7 +158,8 @@ func (l *Location) getBucketHandle() (*storage.BucketHandle, error) {
 	if err != nil {
 		return nil, err
 	}
-	l.bucketHandle = client.Bucket(l.bucket)
+	handler := &RetryBucketHandler{Retry: l.fileSystem.Retry(), handler: client.Bucket(l.bucket)}
+	l.bucketHandle = handler
 	return l.bucketHandle, nil
 }
 
@@ -168,5 +169,6 @@ func (l *Location) getBucketAttrs() (*storage.BucketAttrs, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return handle.Attrs(l.fileSystem.ctx)
 }

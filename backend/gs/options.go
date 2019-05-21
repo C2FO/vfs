@@ -12,6 +12,7 @@ type Options struct {
 	CredentialFile string   `json:"credentialFilePath,omitempty"`
 	Endpoint       string   `json:"endpoint,omitempty"`
 	Scopes         []string `json:"WithoutAuthentication,omitempty"`
+	Retry          vfs.Retry
 }
 
 func parseClientOptions(opts vfs.Options) []option.ClientOption {

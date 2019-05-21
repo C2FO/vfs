@@ -20,6 +20,14 @@ type FileSystem struct {
 	options vfs.Options
 }
 
+// FileSystem will return a retrier provided via options, or a no-op if none is provided.
+func (fs *FileSystem) Retry() vfs.Retry {
+	if options, _ := fs.options.(Options); options.Retry != nil {
+		return options.Retry
+	}
+	return vfs.DefaultRetryer()
+}
+
 // NewFile function returns the gcs implementation of vfs.File.
 func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
 	return newFile(fs, volume, name)

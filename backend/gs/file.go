@@ -302,13 +302,19 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 	return tmpFile, nil
 }
 
+func (c *Copier) ContentType(val string) {
+	c.copier.ContentType = val
+}
+
 // getObjectHandle returns cached Object struct for file
-func (f *File) getObjectHandle() (*storage.ObjectHandle, error) {
+func (f *File) getObjectHandle() (ObjectHandleCopier, error) {
 	client, err := f.fileSystem.Client()
 	if err != nil {
 		return nil, err
 	}
-	return client.Bucket(f.bucket).Object(f.key), nil
+
+	handler := client.Bucket(f.bucket).Object(f.key)
+	return &RetryObjectHandler{Retry: f.fileSystem.Retry(), handler: handler}, nil
 }
 
 // getObjectAttrs returns the file's attributes
@@ -330,21 +336,20 @@ func (f *File) copyWithinGCSToFile(targetFile *File) error {
 		return err
 	}
 	// Copy content and modify metadata.
-	copier := tHandle.CopierFrom(fHandle)
+	copier := tHandle.WrappedCopierFrom(fHandle.ObjectHandle())
 	attrs, gerr := f.getObjectAttrs()
 	if gerr != nil {
 		return gerr
 	}
-	copier.ContentType = attrs.ContentType
+	copier.ContentType(attrs.ContentType)
 	_, cerr := copier.Run(f.fileSystem.ctx)
 	if cerr != nil {
 		return cerr
 	}
 
 	// Just copy content.
-	_, err = tHandle.CopierFrom(fHandle).Run(f.fileSystem.ctx)
-
-	return err
+	_, err = tHandle.WrappedCopierFrom(fHandle.ObjectHandle()).Run(f.fileSystem.ctx)
+	return nil
 }
 
 /* private helper functions */
