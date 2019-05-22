@@ -13,8 +13,8 @@ import (
 
 	"cloud.google.com/go/storage"
 
-	"github.com/c2fo/vfs/v3"
-	"github.com/c2fo/vfs/v3/utils"
+	"github.com/c2fo/vfs/v4"
+	"github.com/c2fo/vfs/v4/utils"
 )
 
 const (

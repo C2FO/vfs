@@ -2,6 +2,8 @@ cloud.google.com/go v0.0.0-20170502222211-085c05ca074a h1:eGdr73rmmajUvhvgvGS2Hj
 cloud.google.com/go v0.0.0-20170502222211-085c05ca074a/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 github.com/aws/aws-sdk-go v1.16.19 h1:eQypou1JciH0C87wYbj9uii0YVG3hS0S4UY78oWmUvM=
 github.com/aws/aws-sdk-go v1.16.19/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
+github.com/c2fo/vfs/v3 v3.0.0 h1:KgoFqaqANLruuaDm89y9NNpNk0SyaGqtf5EtHusYxSA=
+github.com/c2fo/vfs/v3 v3.0.0/go.mod h1:tw+inNe3YDhwFwGB0szRik54ZRBYiOtGigDEp0shTGg=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
