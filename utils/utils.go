@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/c2fo/vfs/v3"
+	"github.com/c2fo/vfs/v4"
 )
 
 const (

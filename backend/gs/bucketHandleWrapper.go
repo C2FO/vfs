@@ -3,7 +3,7 @@ package gs
 import (
 	"cloud.google.com/go/storage"
 	"context"
-	"github.com/c2fo/vfs/v3"
+	"github.com/c2fo/vfs/v4"
 )
 
 // BucketHandle is an interface which contains a subset of the functions provided

@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/c2fo/vfs/v3"
-	"github.com/c2fo/vfs/v3/utils"
+	"github.com/c2fo/vfs/v4"
+	"github.com/c2fo/vfs/v4/utils"
 )
 
 //File implements vfs.File interface for os fs.
