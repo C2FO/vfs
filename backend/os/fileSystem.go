@@ -1,9 +1,9 @@
 package os
 
 import (
-	"github.com/c2fo/vfs/v3"
-	"github.com/c2fo/vfs/v3/backend"
-	"github.com/c2fo/vfs/v3/utils"
+	"github.com/c2fo/vfs/v4"
+	"github.com/c2fo/vfs/v4/backend"
+	"github.com/c2fo/vfs/v4/utils"
 )
 
 //Scheme defines the filesystem type.
