@@ -17,6 +17,8 @@ const (
 	Windows = "windows"
 	// BadFilePrefix constant is returned when path has leading slash or backslash
 	BadFilePrefix = "expecting only a filename prefix, which may not include slashes or backslashes"
+	ErrBadFilePath = "file path is invalid - must include leading separator character and may not include trailing separator character"
+	ErrBadLocationPath = "location path is invalid - must include leading and trailing separator characters"
 )
 
 // regex to ensure prefix doesn't have leading '/', '.', '..', etc...
@@ -42,6 +44,22 @@ func AddTrailingSlash(path string) string {
 		path = path + slash
 	}
 	return path
+}
+
+// ValidateFile ensure that a file may not end with trailing slash and its path must being with a leading slash
+func ValidateFilePath(name string) error {
+	if !strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") {
+		return errors.New(ErrBadFilePath)
+	}
+	return nil
+}
+
+// ValidateFile ensure that a file may not end with trailing slash and its path must being with a leading slash
+func ValidateLocationPath(name string) error {
+	if !strings.HasPrefix(name, "/") || !strings.HasSuffix(name, "/") {
+		return errors.New(ErrBadLocationPath)
+	}
+	return nil
 }
 
 // GetFileURI returns a File URI
