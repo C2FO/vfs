@@ -91,7 +91,7 @@ func (l *Location) Volume() string {
 
 // Path returns the location path.
 func (l *Location) Path() string {
-	return l.name
+	return utils.AddTrailingSlash(l.name)
 }
 
 // Exists returns true if the location exists, and the calling user has the appropriate

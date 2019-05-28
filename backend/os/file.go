@@ -18,22 +18,6 @@ type File struct {
 	location vfs.Location
 }
 
-// newFile initializer returns a pointer to File.
-func newFile(name string) (*File, error) {
-	fileName := filepath.Base(name)
-	fullPath, err := filepath.Abs(name)
-	if err != nil {
-		return nil, err
-	}
-
-	fullPath = filepath.Dir(fullPath)
-
-	fullPath = utils.AddTrailingSlash(fullPath)
-
-	location := Location{fileSystem: &FileSystem{}, name: fullPath}
-	return &File{name: fileName, location: &location}, nil
-}
-
 // Delete unlinks the file returning any error or nil.
 func (f *File) Delete() error {
 	err := os.Remove(f.Path())
@@ -158,19 +142,27 @@ func (f *File) MoveToFile(target vfs.File) error {
 }
 
 // MoveToLocation moves a file to a new Location. It accepts a target vfs.Location and returns a vfs.File and an error, if any.
-//TODO we might consider using os.Rename() for efficiency when location.FileSystem().Scheme() equals f.Location().FileSystem().Scheme()
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
-	_, err := f.copyWithName(f.name, location)
-	if err != nil {
-		return f, err
-	}
+	// handle native os move/rename
+	if location.FileSystem().Scheme() == f.Location().FileSystem().Scheme() {
+		err := os.Rename(f.Path(), path.Join(location.Path(), f.Name()))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// do copy/delete move for non-native os moves
+		_, err := f.copyWithName(f.name, location)
+		if err != nil {
+			return f, err
+		}
 
-	delErr := f.Delete()
-	if delErr != nil {
-		return f, delErr
+		delErr := f.Delete()
+		if delErr != nil {
+			return f, delErr
+		}
 	}
-	f.location = location
-	return f, nil
+	//return vfs.File for newly moved file
+	return location.NewFile(f.Name())
 }
 
 // CopyToFile copies the file to a new File.  It accepts a vfs.File and returns an error, if any.
