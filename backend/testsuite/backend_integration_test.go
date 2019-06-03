@@ -15,6 +15,7 @@ import (
 
 	"github.com/c2fo/vfs/v5"
 	"github.com/c2fo/vfs/v5/backend/gs"
+	"github.com/c2fo/vfs/v5/backend/mem"
 	_os "github.com/c2fo/vfs/v5/backend/os"
 	"github.com/c2fo/vfs/v5/backend/s3"
 	"github.com/c2fo/vfs/v5/utils"
@@ -46,6 +47,11 @@ func copyOsLocation(loc vfs.Location) vfs.Location {
 	return ret
 }
 
+func copyMemLocation(loc vfs.Location) vfs.Location{
+	cp := *loc.(*mem.Location)
+	return &cp
+}
+
 func copyS3Location(loc vfs.Location) vfs.Location {
 	cp := *loc.(*s3.Location)
 	return &cp
@@ -69,6 +75,8 @@ func (s *vfsTestSuite) SetupSuite() {
 			s.testLocations[l.FileSystem().Scheme()] = copyS3Location(l)
 		case "gs":
 			s.testLocations[l.FileSystem().Scheme()] = copyGSLocation(l)
+		case "mem":
+			s.testLocations[l.FileSystem().Scheme()] = copyMemLocation(l)
 		default:
 			panic(fmt.Sprintf("unknown scheme: %s", l.FileSystem().Scheme()))
 		}
@@ -717,14 +725,15 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 	//capture last modified
 	modified, err := touchedFile.LastModified()
 	s.NoError(err)
-
-	//wait for eventual constency
+	modifiedDeRef := *modified
+	//wait for eventual consistency
 	time.Sleep(1 * time.Second)
 	err = touchedFile.Touch()
 	s.NoError(err)
 	newModified, err := touchedFile.LastModified()
+
 	s.NoError(err)
-	s.True(newModified.UnixNano() > modified.UnixNano(), "touch updated modified date for %s", touchedFile)
+	s.True(newModified.UnixNano() > modifiedDeRef.UnixNano(), "touch updated modified date for %s", touchedFile)
 
 	/*
 		Delete unlinks the File on the file system.
