@@ -28,7 +28,7 @@ func newFile(name string) (*File, error) {
 
 	fullPath = filepath.Dir(fullPath)
 
-	fullPath = utils.AddTrailingSlash(fullPath)
+	fullPath = utils.AddTrailingSlash(fullPath) //because "Dir" removes the trailing slash
 
 	location := Location{fileSystem: &FileSystem{}, name: fullPath}
 	return &File{name: fileName, location: &location}, nil
