@@ -62,7 +62,7 @@ func (l *Location) Volume() string {
 
 // Path returns the prefix the location references in most s3 calls.
 func (l *Location) Path() string {
-	return "/" + utils.EnsureTrailingSlash(l.prefix)
+	return utils.EnsureLeadingSlash(utils.EnsureTrailingSlash(l.prefix))
 }
 
 // Exists returns true if the bucket exists, and the user in the underlying s3.fileSystem.Client has the appropriate

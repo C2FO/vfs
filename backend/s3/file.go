@@ -28,22 +28,6 @@ type File struct {
 	writeBuffer *bytes.Buffer
 }
 
-// newFile initializer returns a pointer to File.
-func newFile(fs *FileSystem, bucket, key string) (*File, error) {
-	if fs == nil {
-		return nil, errors.New("non-nil s3.fileSystem pointer is required")
-	}
-	if bucket == "" || key == "" {
-		return nil, errors.New("non-empty strings for bucket and key are required")
-	}
-	key = utils.CleanPrefix(key)
-	return &File{
-		fileSystem: fs,
-		bucket:     bucket,
-		key:        key,
-	}, nil
-}
-
 // Info Functions
 
 // LastModified returns the LastModified property of a HEAD request to the s3 object.
@@ -62,7 +46,7 @@ func (f *File) Name() string {
 
 // Path return the directory portion of the file's key. IE: "path/to" of "s3://some/path/to/file.txt
 func (f *File) Path() string {
-	return "/" + f.key
+	return utils.EnsureLeadingSlash(f.key)
 }
 
 // Exists returns a boolean of whether or not the object exists on s3, based on a call for

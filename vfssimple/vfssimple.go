@@ -49,7 +49,7 @@ func parseSupportedURI(uri string) (vfs.FileSystem, string, string, error) {
 	var fs vfs.FileSystem
 	for _, backendScheme := range backend.RegisteredBackends() {
 		// Object-level backend
-		if strings.Index(uri, backendScheme) > 1 {
+		if strings.HasPrefix(uri, backendScheme) {
 			fs = backend.Backend(backendScheme)
 			break
 		}

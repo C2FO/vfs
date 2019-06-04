@@ -16,8 +16,8 @@ const (
 	// Windows constant represents a target operating system running a version of Microsoft Windows
 	Windows = "windows"
 	// BadFilePrefix constant is returned when path has leading slash or backslash
-	BadFilePrefix = "expecting only a filename prefix, which may not include slashes or backslashes"
-	ErrBadFilePath = "file path is invalid - must include leading separator character and may not include trailing separator character"
+	BadFilePrefix      = "expecting only a filename prefix, which may not include slashes or backslashes"
+	ErrBadFilePath     = "file path is invalid - must include leading separator character and may not include trailing separator character"
 	ErrBadLocationPath = "location path is invalid - must include leading and trailing separator characters"
 )
 
@@ -26,6 +26,9 @@ var prefixCleanRegex = regexp.MustCompile("^[/.]*")
 
 // regex to test whether the last character is a '/'
 var hasTrailingSlash = regexp.MustCompile("/$")
+
+// regex to test whether the first character is a '/'
+var hasLeadingSlash = regexp.MustCompile("^/")
 
 // AddTrailingSlash is a helper function accepts a path string and returns the path string with a trailing slash if
 // there wasn't one.
@@ -44,6 +47,11 @@ func AddTrailingSlash(path string) string {
 		path = path + slash
 	}
 	return path
+}
+
+// RemoveTrailingSlash removes trailing slash, if any
+func RemoveTrailingSlash(path string) string {
+	return strings.TrimRight(path, "/")
 }
 
 // ValidateFile ensure that a file may not end with trailing slash and its path must being with a leading slash
@@ -78,6 +86,14 @@ func EnsureTrailingSlash(dir string) string {
 		return dir
 	}
 	return dir + "/"
+}
+
+// EnsureLeadingSlash is like EnsureTrailingSlash except that it adds the leading slash if needed.
+func EnsureLeadingSlash(dir string) string {
+	if dir == "" || hasLeadingSlash.MatchString(dir) {
+		return dir
+	}
+	return "/" + dir
 }
 
 // CleanPrefix resolves relative dot pathing, removing any leading . or / and removes any trailing /

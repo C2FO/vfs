@@ -1,7 +1,10 @@
 package s3
 
 import (
+	"errors"
 	"fmt"
+	"path"
+
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/c2fo/vfs/v4"
@@ -27,16 +30,39 @@ func (fs *FileSystem) Retry() vfs.Retry {
 
 // NewFile function returns the s3 implementation of vfs.File.
 func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
-	return newFile(fs, volume, name)
+	if fs == nil {
+		return nil, errors.New("non-nil s3.fileSystem pointer is required")
+	}
+	if volume == "" || name == "" {
+		return nil, errors.New("non-empty strings for bucket and key are required")
+	}
+	if err := utils.ValidateFilePath(name); err != nil {
+		return nil, err
+	}
+
+	return &File{
+		fileSystem: fs,
+		bucket:     utils.RemoveTrailingSlash(volume),
+		key:        path.Clean(name),
+	}, nil
 }
 
 // NewLocation function returns the s3 implementation of vfs.Location.
 func (fs *FileSystem) NewLocation(volume string, name string) (vfs.Location, error) {
-	name = utils.CleanPrefix(name)
+	if fs == nil {
+		return nil, errors.New("non-nil s3.fileSystem pointer is required")
+	}
+	if volume == "" || name == "" {
+		return nil, errors.New("non-empty strings for bucket and key are required")
+	}
+	if err := utils.ValidateLocationPath(name); err != nil {
+		return nil, err
+	}
+
 	return &Location{
 		fileSystem: fs,
-		prefix:     name,
-		bucket:     volume,
+		prefix:     utils.AddTrailingSlash(path.Clean(name)),
+		bucket:     utils.RemoveTrailingSlash(volume),
 	}, nil
 }
 

@@ -426,25 +426,26 @@ func (ts *fileTestSuite) TestUploadInput() {
 }
 
 func (ts *fileTestSuite) TestNewFile() {
+	fs := &FileSystem{}
 	// fs is nil
-	_, err := newFile(nil, "", "")
+	_, err := fs.NewFile( "", "")
 	ts.Errorf(err, "non-nil s3.fileSystem pointer is required")
 
-	fs := &FileSystem{}
 	// bucket is ""
-	_, err = newFile(fs, "", "asdf")
+	_, err = fs.NewFile("", "asdf")
 	ts.Errorf(err, "non-empty strings for bucket and key are required")
 	// key is ""
-	_, err = newFile(fs, "asdf", "")
+	_, err = fs.NewFile("asdf", "")
 	ts.Errorf(err, "non-empty strings for bucket and key are required")
 
 	//
-	file, err := newFile(fs, "mybucket", "/path/to/key")
+	bucket := "mybucket"
+	key := "/path/to/key"
+	file, err := fs.NewFile(bucket, key)
 	ts.NoError(err, "newFile should succeed")
 	ts.IsType(&File{}, file, "newFile returned a File struct")
-	ts.Equal("mybucket", file.bucket)
-	ts.Equal("path/to/key", file.key)
-
+	ts.Equal("mybucket", bucket)
+	ts.Equal("path/to/key", key)
 }
 
 func TestFile(t *testing.T) {

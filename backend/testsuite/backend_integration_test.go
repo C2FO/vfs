@@ -102,7 +102,8 @@ func (s *vfsTestSuite) FileSystem(baseLoc vfs.Location) {
 		file, err := fs.NewFile(baseLoc.Volume(), name)
 		if validates {
 			s.NoError(err, "there should be no error")
-			s.Equal(fmt.Sprintf("%s://%s%s", fs.Scheme(), baseLoc.Volume(), filepath.Clean(name)), file.URI(), "uri's should match")
+			expected := fmt.Sprintf("%s://%s%s", fs.Scheme(), baseLoc.Volume(), filepath.Clean(name))
+			s.Equal(expected, file.URI(), "uri's should match")
 		} else {
 			s.Error(err, "should have validation error for scheme and name: %s : %s", fs.Scheme(), name)
 		}
@@ -273,8 +274,8 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 	//
 	//	====	DeleteFile(fileName string) error
 
-    // URI returns the fully qualified URI for the Location.  IE, s3://bucket/some/path/
-    //
+	// URI returns the fully qualified URI for the Location.  IE, s3://bucket/some/path/
+	//
 	// URI's for locations must always end with a separator character.
 }
 
