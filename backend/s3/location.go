@@ -23,7 +23,8 @@ type Location struct {
 // set to the location's path. This will make a call to the s3 API for every 1000 keys to return.
 // If you have many thousands of keys at the given location, this could become quite expensive.
 func (l *Location) List() ([]string, error) {
-	listObjectsInput := l.getListObjectsInput().SetPrefix(utils.EnsureTrailingSlash(l.prefix))
+    prefix := utils.RemoveLeadingSlash(l.prefix)
+	listObjectsInput := l.getListObjectsInput().SetPrefix(utils.EnsureTrailingSlash(prefix))
 	return l.fullLocationList(listObjectsInput)
 }
 
@@ -33,7 +34,7 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 	if err := utils.ValidateFilePrefix(prefix); err != nil {
 		return nil, err
 	}
-	searchPrefix := path.Join(l.prefix, prefix)
+	searchPrefix := utils.RemoveLeadingSlash(path.Join(l.prefix, prefix))
 	listObjectsInput := l.getListObjectsInput().SetPrefix(searchPrefix)
 	return l.fullLocationList(listObjectsInput)
 }
@@ -89,9 +90,13 @@ func (l *Location) Exists() (bool, error) {
 // relativePath argument, returning the resulting location. The only possible errors come from the call to
 // ChangeDir, which, for the s3 implementation doesn't ever result in an error.
 func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
+	err := utils.ValidateRelLocationPath(relativePath)
+	if err != nil {
+		return nil, err
+	}
 	newLocation := &Location{}
 	*newLocation = *l
-	err := newLocation.ChangeDir(relativePath)
+	err = newLocation.ChangeDir(relativePath)
 	if err != nil {
 		return nil, err
 	}
@@ -101,6 +106,10 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 // ChangeDir takes a relative path, and modifies the underlying Location's path. The caller is modified by this
 // so the only return is any error. For this implementation there are no errors.
 func (l *Location) ChangeDir(relativePath string) error {
+	err := utils.ValidateRelLocationPath(relativePath)
+	if err != nil {
+		return err
+	}
 	newPrefix := path.Join(l.prefix, relativePath)
 	l.prefix = utils.CleanPrefix(newPrefix)
 	return nil
@@ -109,6 +118,10 @@ func (l *Location) ChangeDir(relativePath string) error {
 // NewFile uses the properties of the calling location to generate a vfs.File (backed by an s3.File). The filePath
 // argument is expected to be a relative path to the location's current path.
 func (l *Location) NewFile(filePath string) (vfs.File, error) {
+	err := utils.ValidateRelFilePath(filePath)
+	if err != nil {
+		return nil, err
+	}
 	newFile := &File{
 		fileSystem: l.fileSystem,
 		bucket:     l.bucket,
@@ -119,6 +132,10 @@ func (l *Location) NewFile(filePath string) (vfs.File, error) {
 
 // DeleteFile removes the file at fileName path.
 func (l *Location) DeleteFile(fileName string) error {
+	err := utils.ValidateRelFilePath(fileName)
+	if err != nil {
+		return err
+	}
 	file, err := l.NewFile(fileName)
 	if err != nil {
 		return err
@@ -157,7 +174,7 @@ func (l *Location) fullLocationList(input *s3.ListObjectsInput) ([]string, error
 		if err != nil {
 			return []string{}, err
 		}
-		newKeys := getNamesFromObjectSlice(listObjectsOutput.Contents, utils.EnsureTrailingSlash(l.prefix))
+		newKeys := getNamesFromObjectSlice(listObjectsOutput.Contents, utils.EnsureTrailingSlash(utils.RemoveLeadingSlash(l.prefix)))
 		keys = append(keys, newKeys...)
 
 		// if s3 response "IsTruncated" we need to call List again with

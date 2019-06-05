@@ -16,9 +16,11 @@ const (
 	// Windows constant represents a target operating system running a version of Microsoft Windows
 	Windows = "windows"
 	// BadFilePrefix constant is returned when path has leading slash or backslash
-	BadFilePrefix      = "expecting only a filename prefix, which may not include slashes or backslashes"
-	ErrBadFilePath     = "file path is invalid - must include leading separator character and may not include trailing separator character"
-	ErrBadLocationPath = "location path is invalid - must include leading and trailing separator characters"
+	BadFilePrefix         = "expecting only a filename prefix, which may not include slashes or backslashes"
+	ErrBadAbsFilePath     = "absolute file path is invalid - must include leading separator character and may not include trailing separator character"
+	ErrBadRelFilePath     = "relative file path is invalid - may not include leading or trailing separator characters"
+	ErrBadAbsLocationPath = "absolute location path is invalid - must include leading and trailing separator characters"
+	ErrBadRelLocationPath = "relative location path is invalid - may not include leading separator character but must include trailing separator character"
 )
 
 // regex to ensure prefix doesn't have leading '/', '.', '..', etc...
@@ -54,18 +56,39 @@ func RemoveTrailingSlash(path string) string {
 	return strings.TrimRight(path, "/")
 }
 
-// ValidateFile ensure that a file may not end with trailing slash and its path must being with a leading slash
-func ValidateFilePath(name string) error {
+// RemoveLeadingSlash removes leading slash, if any
+func RemoveLeadingSlash(path string) string {
+	return strings.TrimLeft(path, "/")
+}
+
+// ValidateAbsFilePath ensures that a file path has a leading slash but not a trailing slash
+func ValidateAbsFilePath(name string) error {
 	if !strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") {
-		return errors.New(ErrBadFilePath)
+		return errors.New(ErrBadAbsFilePath)
 	}
 	return nil
 }
 
-// ValidateFile ensure that a file may not end with trailing slash and its path must being with a leading slash
-func ValidateLocationPath(name string) error {
+// ValidateRelFilePath ensures that a file path has neither leading nor trailing slashes
+func ValidateRelFilePath(name string) error {
+	if strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") {
+		return errors.New(ErrBadRelFilePath)
+	}
+	return nil
+}
+
+// ValidateAbsLocationPath ensure that a file path has both leading and trailing slashes
+func ValidateAbsLocationPath(name string) error {
 	if !strings.HasPrefix(name, "/") || !strings.HasSuffix(name, "/") {
-		return errors.New(ErrBadLocationPath)
+		return errors.New(ErrBadAbsLocationPath)
+	}
+	return nil
+}
+
+// ValidateRelLocationPath ensure that a file path has no leading slash but has a trailing slash
+func ValidateRelLocationPath(name string) error {
+	if strings.HasPrefix(name, "/") || !strings.HasSuffix(name, "/") {
+		return errors.New(ErrBadRelLocationPath)
 	}
 	return nil
 }
@@ -82,7 +105,7 @@ func GetLocationURI(l vfs.Location) string {
 
 // EnsureTrailingSlash is like AddTrailingSlash but will only ever use / since it's use for web uri's, never an Windows OS path.
 func EnsureTrailingSlash(dir string) string {
-	if dir == "" || hasTrailingSlash.MatchString(dir) {
+	if hasTrailingSlash.MatchString(dir) {
 		return dir
 	}
 	return dir + "/"

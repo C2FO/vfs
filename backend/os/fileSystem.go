@@ -23,7 +23,7 @@ func (fs *FileSystem) Retry() vfs.Retry {
 
 // NewFile function returns the os implementation of vfs.File.
 func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
-	err := utils.ValidateFilePath(name)
+	err := utils.ValidateAbsFilePath(name)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +34,7 @@ func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
 
 // NewLocation function returns the os implementation of vfs.Location.
 func (fs *FileSystem) NewLocation(volume string, name string) (vfs.Location, error) {
-	err := utils.ValidateLocationPath(name)
+	err := utils.ValidateAbsLocationPath(name)
 	if err != nil {
 		return nil, err
 	}

@@ -281,7 +281,7 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 
 //Test File
 func (s *vfsTestSuite) File(baseLoc vfs.Location) {
-	srcLoc, err := baseLoc.NewLocation("fileTestSrc")
+	srcLoc, err := baseLoc.NewLocation("fileTestSrc/")
 	s.NoError(err)
 
 	//setup srcFile
@@ -393,7 +393,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 
 	for _, testLoc := range s.testLocations {
 		// setup dstLoc
-		dstLoc, err := testLoc.NewLocation("dstLoc")
+		dstLoc, err := testLoc.NewLocation("dstLoc/")
 		s.NoError(err)
 		fmt.Printf("************ location %s *************\n", dstLoc)
 

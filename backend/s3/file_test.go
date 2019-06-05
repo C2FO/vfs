@@ -31,7 +31,7 @@ func (ts *fileTestSuite) SetupTest() {
 	var err error
 	s3apiMock = &mocks.S3API{}
 	fs = FileSystem{client: s3apiMock}
-	testFile, err = fs.NewFile("bucket", "some/path/to/file.txt")
+	testFile, err = fs.NewFile("bucket", "/some/path/to/file.txt")
 	if err != nil {
 		ts.Fail("Shouldn't return error creating test s3.File instance.")
 	}
@@ -68,10 +68,8 @@ func (ts *fileTestSuite) TestRead() {
 
 // TODO: Write on Close() (actual s3 calls wait until file is closed to be made.)
 func (ts *fileTestSuite) TestWrite() {
-	file, err := fs.NewFile("bucket", "hello.txt")
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file")
-	}
+	file, err := fs.NewFile("bucket", "/tmp/hello.txt")
+	ts.NoError(err, "Shouldn't fail creating new file")
 
 	contents := []byte("Hello world!")
 	count, err := file.Write(contents)
@@ -82,10 +80,8 @@ func (ts *fileTestSuite) TestWrite() {
 
 func (ts *fileTestSuite) TestSeek() {
 	contents := "hello world!"
-	file, err := fs.NewFile("bucket", "hello.txt")
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file")
-	}
+	file, err := fs.NewFile("bucket", "/tmp/hello.txt")
+	ts.NoError(err, "Shouldn't fail creating new file")
 
 	s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{
 		Body: nopCloser{bytes.NewBufferString(contents)},
@@ -116,10 +112,8 @@ func (ts *fileTestSuite) TestSeek() {
 }
 
 func (ts *fileTestSuite) TestGetLocation() {
-	file, err := fs.NewFile("bucket", "path/hello.txt")
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file.")
-	}
+	file, err := fs.NewFile("bucket", "/path/hello.txt")
+	ts.NoError(err, "Shouldn't fail creating new file.")
 
 	location := file.Location()
 	ts.Equal("s3", location.FileSystem().Scheme(), "Should initialize location with FS underlying file.")
@@ -421,14 +415,14 @@ func (ts *fileTestSuite) TestUploadInput() {
 	fs = FileSystem{client: &mocks.S3API{}}
 	file, _ := fs.NewFile("mybucket", "/some/file/test.txt")
 	ts.Equal("AES256", *uploadInput(file.(*File)).ServerSideEncryption, "sse was set")
-	ts.Equal("some/file/test.txt", *uploadInput(file.(*File)).Key, "key was set")
+	ts.Equal("/some/file/test.txt", *uploadInput(file.(*File)).Key, "key was set")
 	ts.Equal("mybucket", *uploadInput(file.(*File)).Bucket, "bucket was set")
 }
 
 func (ts *fileTestSuite) TestNewFile() {
 	fs := &FileSystem{}
 	// fs is nil
-	_, err := fs.NewFile( "", "")
+	_, err := fs.NewFile("", "")
 	ts.Errorf(err, "non-nil s3.fileSystem pointer is required")
 
 	// bucket is ""
@@ -444,8 +438,8 @@ func (ts *fileTestSuite) TestNewFile() {
 	file, err := fs.NewFile(bucket, key)
 	ts.NoError(err, "newFile should succeed")
 	ts.IsType(&File{}, file, "newFile returned a File struct")
-	ts.Equal("mybucket", bucket)
-	ts.Equal("path/to/key", key)
+	ts.Equal(bucket, file.Location().Volume())
+	ts.Equal(key, file.Path())
 }
 
 func TestFile(t *testing.T) {
