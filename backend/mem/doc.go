@@ -28,4 +28,4 @@ See Also
 
 See: https://golang.org/pkg/os/
 */
-package os
+package mem

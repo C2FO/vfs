@@ -1,4 +1,4 @@
-package os
+package mem
 
 import (
 	"io/ioutil"
