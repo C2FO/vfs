@@ -29,6 +29,10 @@ func CopyFail() error {
 	return errors.New("This file was not successfully copied")
 }
 
+func DeleteError() error {
+	return errors.New("Deletion was unsuccessful")
+}
+
 
 
 func (f *File) Close() error {  //NOT DONE
@@ -124,7 +128,7 @@ func (File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 func (f *File) CopyToFile(target vfs.File) error {
 	//if target exists, its contents will be overwritten, otherwise it will be created...i'm assuming it exists
 	_, err := target.Write(f.privSlice)
-	target.Close()
+	_ =target.Close()
 	return err
 
 }
@@ -138,15 +142,15 @@ func (File) MoveToFile(vfs.File) error {
 }
 
 func (f *File) Delete() error {
-	if f.exists {
+	existence, err := f.Exists()
+	if existence {
 		//do some work to adjust the location (later)
 		f.exists = false
 		f.privSlice = nil
 		f.byteBuf = nil
 		f.timeStamp = time.Now()
-		return nil
 	}
-	return DoesNotExist()
+	return err
 
 
 }
@@ -160,8 +164,12 @@ func newFile(name string) (*File, error){
 
 func (f *File) LastModified() (*time.Time, error) {
 
-	//maybe check for existence?
-	return &f.timeStamp,nil
+	existence,err := f.Exists()
+
+	if existence {
+		return &f.timeStamp, err
+	}
+	return nil, err
 }
 
 func (f *File) Size() (uint64, error) {
