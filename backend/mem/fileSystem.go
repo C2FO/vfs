@@ -1,4 +1,4 @@
-package os
+package mem
 
 import (
 	"github.com/c2fo/vfs/v4"
@@ -8,9 +8,9 @@ import (
 
 //Scheme defines the filesystem type.
 const Scheme = "file"
-const name = "os"
+const name = "mem"
 
-// FileSystem implements vfs.Filesystem for the OS filesystem.
+// FileSystem implements vfs.Filesystem for the mem filesystem.
 type FileSystem struct{}
 
 // FileSystem will return a retrier provided via options, or a no-op if none is provided.
@@ -18,13 +18,13 @@ func (fs *FileSystem) Retry() vfs.Retry {
 	return vfs.DefaultRetryer()
 }
 
-// NewFile function returns the os implementation of vfs.File.
+// NewFile function returns the mem implementation of vfs.File.  NOT DONE
 func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
-	file, err := newFile(name)
-	return file, err
+	file, _ := newFile(name)
+	return file, nil
 }
 
-// NewLocation function returns the os implementation of vfs.Location.
+// NewLocation function returns the mem implementation of vfs.Location. NOT DONE
 func (fs *FileSystem) NewLocation(volume string, name string) (vfs.Location, error) {
 	return &Location{
 		fileSystem: fs,
@@ -32,7 +32,9 @@ func (fs *FileSystem) NewLocation(volume string, name string) (vfs.Location, err
 	}, nil
 }
 
-// Name returns "os"
+
+
+// Name returns "mem"
 func (fs *FileSystem) Name() string {
 	return name
 }
