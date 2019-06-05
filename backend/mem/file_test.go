@@ -431,7 +431,7 @@ func (s *memFileTest) TestLastModified() {
 }
 //TestName creates a file and names it and then asserts that the given name and the return of Name() match.
 func (s *memFileTest) TestName() {
-	tmp, err := s.fileSystem.NewFile("", "test.txt")
+	tmp, err := s.fileSystem.NewFile("", "test_files/lots/of/directories/here/we/go/test.txt")
 	s.True(err==nil)
 	file := tmp.(*File)
 	s.Equal("test.txt", file.Name())
@@ -447,7 +447,6 @@ func (s *memFileTest) TestSize() {
 	s.True(serr1 == nil)
 	size2, serr2 := otherFile.Size()
 	s.True(serr2 == nil)
-	fmt.Println(size1,size2)
 	s.True(size1>size2)
 
 }
@@ -458,9 +457,11 @@ func (s *memFileTest) TestPath() {
 }
 */
 func (s *memFileTest) TestURI() {
-	file, _ := s.fileSystem.NewFile("", "/some/file/test.txt")
-	expected := "file:///some/file/test.txt"
-	s.Equal(expected, file.URI(), "%s does not match %s", file.URI(), expected)
+	tmp, err := s.fileSystem.NewFile("", "/test_files/lots/of/directories/here/we/go/test.txt")
+	s.True(err==nil)
+	file := tmp.(*File)
+	fmt.Println(file.URI())
+	s.Equal("file:///test_files/lots/of/directories/here/we/go/test.txt", file.URI())
 }
 
 func (s *memFileTest) TestStringer() {
