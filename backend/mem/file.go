@@ -1,232 +1,188 @@
-package os
+package mem
 
 import (
-	"fmt"
-	"os"
-	"path"
-	"path/filepath"
-	"time"
-
+	"bytes"
+	"errors"
 	"github.com/c2fo/vfs/v4"
-	"github.com/c2fo/vfs/v4/utils"
+	"io"
+	"time"
 )
 
 //File implements vfs.File interface for os fs.
 type File struct {
-	file     *os.File
-	name     string
+	exists 		bool
+	timeStamp 	time.Time
+	isOpen		bool
+	isZB		bool
+	isRef		bool
+	privSlice 	[] byte
+	byteBuf  *bytes.Buffer
+	Filename string
+	cursor 		int
 	location vfs.Location
 }
 
-// newFile initializer returns a pointer to File.
-func newFile(name string) (*File, error) {
-	fileName := filepath.Base(name)
-	fullPath, err := filepath.Abs(name)
-	if err != nil {
-		return nil, err
-	}
-
-	fullPath = filepath.Dir(fullPath)
-
-	fullPath = utils.AddTrailingSlash(fullPath) //because "Dir" removes the trailing slash
-
-	location := Location{fileSystem: &FileSystem{}, name: fullPath}
-	return &File{name: fileName, location: &location}, nil
+func DoesNotExist() error {
+	return errors.New("This file does not exist!")
+}
+func CopyFail() error {
+	return errors.New("This file was not successfully copied")
 }
 
-// Delete unlinks the file returning any error or nil.
-func (f *File) Delete() error {
-	err := os.Remove(f.Path())
-	if err == nil {
-		f.file = nil
-	}
-	return err
-}
 
-// LastModified returns the timestamp of the file's mtime or error, if any.
-func (f *File) LastModified() (*time.Time, error) {
-	stats, err := os.Stat(f.Path())
-	if err != nil {
-		return nil, err
-	}
 
-	statsTime := stats.ModTime()
-	return &statsTime, err
-}
-
-// Name returns the full name of the File relative to Location.Name().
-func (f *File) Name() string {
-	return f.name
-}
-
-// Path returns the the path of the File relative to Location.Name().
-func (f *File) Path() string {
-	return filepath.Join(f.location.Path(), f.name)
-}
-
-// Size returns the size (in bytes) of the File or any error.
-func (f *File) Size() (uint64, error) {
-	stats, err := os.Stat(f.Path())
-	if err != nil {
-		return 0, err
-	}
-
-	return uint64(stats.Size()), err
-}
-
-// Close implements the io.Closer interface, closing the underlying *os.File. its an error, if any.
-func (f *File) Close() error {
-	if f.file == nil {
+func (f *File) Close() error {  //NOT DONE
+	if !f.isRef {
 		// Do nothing on files that were never referenced
 		return nil
 	}
-
-	err := f.file.Close()
-	if err == nil {
-		f.file = nil
+	if f.byteBuf.Len() > 0{
+		f.privSlice = append(f.privSlice,f.byteBuf.Next(200)...) //TODO: maybe change the number for "Next" arg
 	}
-	return err
+
+	f.isOpen =false
+	f.cursor = 0
+
+	return nil
 }
 
-// Read implements the io.Reader interface.  It returns the bytes read and an error, if any.
-func (f *File) Read(p []byte) (int, error) {
-	if exists, err := f.Exists(); err != nil {
-		return 0, err
-	} else if !exists {
-		return 0, fmt.Errorf("failed to read. File does not exist at %s", f)
+
+func (f *File) Read(p []byte) (n int, err error) {
+	//if file exists:
+	if f.isOpen == false{
+		f.isOpen = true
+	}
+	existence, eerr := f.Exists()
+	if !existence{
+		return 0 ,eerr
+	}
+	f.isRef = true
+	length := len(p)
+	if length == 0{  //length of byte slice is zero, just return 0 and nil
+		return 0,nil
 	}
 
-	file, err := f.openFile()
-	if err != nil {
-		return 0, err
+	if f.cursor == length{
+		return 0, io.EOF
 	}
-
-	return file.Read(p)
-}
-
-//Seek implements the io.Seeker interface.  It accepts an offset and "whench" where 0 means relative to the origin of
-// the file, 1 means relative to the current offset, and 2 means relative to the end.  It returns the new offset and
-// an error, if any.
-func (f *File) Seek(offset int64, whence int) (int64, error) {
-	file, err := f.openFile()
-	if err != nil {
-		return 0, err
-	}
-
-	return file.Seek(offset, whence)
-}
-
-// Exists true if the file exists on the filesystem, otherwise false, and an error, if any.
-func (f *File) Exists() (bool, error) {
-	_, err := os.Stat(f.Path())
-	if err != nil {
-		//file does not exist
-		if os.IsNotExist(err) {
-			return false, nil
+	for i:=f.cursor;i<length;i++{
+		f.cursor++
+		if i == length{
+			break
 		}
-		//some other error
-		return false, err
+		 p[i]=f.privSlice[i]
 	}
-	//file exists
-	return true, nil
+	f.timeStamp = time.Now()
+
+
+	return length, nil
+
+
 }
 
-//Write implements the io.Writer interface.  It accepts a slice of bytes and returns the number of bytes written and an error, if any.
+func (File) Seek(offset int64, whence int) (int64, error) {
+	panic("implement me")
+}
+
 func (f *File) Write(p []byte) (n int, err error) {
-	file, err := f.openFile()
-	if err != nil {
-		return 0, err
+	if f.isOpen == false{
+		f.isOpen = true
 	}
-	return file.Write(p)
+	f.isRef = true
+	length := len(p)
+	if length == 0{
+		if f.byteBuf.Cap() == 0{
+			f.isZB = true
+		}
+		return 0, nil
+	}
+	num, err := f.byteBuf.Write(p)
+	f.timeStamp = time.Now()
+	return num, err
 }
 
-// Location returns the underlying os.Location.
-func (f *File) Location() vfs.Location {
-	return f.location
+func (File) String() string {
+	panic("implement me")
 }
 
-// MoveToFile move a file. It accepts a target vfs.File and returns an error, if any.
-//TODO we might consider using os.Rename() for efficiency when target.Location().FileSystem().Scheme equals f.Location().FileSystem().Scheme()
-func (f *File) MoveToFile(target vfs.File) error {
-	_, err := f.copyWithName(target.Name(), target.Location())
-	if err != nil {
-		return err
+func (f *File) Exists() (bool, error) {
+	if !f.exists {
+		return false, DoesNotExist()
+	}else{
+		return true,nil
 	}
-
-	err = f.Delete()
-	return err
 }
 
-// MoveToLocation moves a file to a new Location. It accepts a target vfs.Location and returns a vfs.File and an error, if any.
-//TODO we might consider using os.Rename() for efficiency when location.FileSystem().Scheme() equals f.Location().FileSystem().Scheme()
-func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
-	_, err := f.copyWithName(f.name, location)
-	if err != nil {
-		return f, err
-	}
-
-	delErr := f.Delete()
-	if delErr != nil {
-		return f, delErr
-	}
-	f.location = location
-	return f, nil
+func (File) Location() vfs.Location {
+	panic("implement me")
 }
 
-// CopyToFile copies the file to a new File.  It accepts a vfs.File and returns an error, if any.
+func (File) CopyToLocation(location vfs.Location) (vfs.File, error) {
+	panic("implement me")
+}
+
 func (f *File) CopyToFile(target vfs.File) error {
-	_, err := f.copyWithName(target.Name(), target.Location())
+	//if target exists, its contents will be overwritten, otherwise it will be created...i'm assuming it exists
+	_, err := target.Write(f.privSlice)
+	target.Close()
 	return err
+
 }
 
-// CopyToLocation copies existing File to new Location with the same name.  It accepts a vfs.Location and returns a vfs.File and error, if any.
-func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
-	return f.copyWithName(f.name, location)
+func (File) MoveToLocation(location vfs.Location) (vfs.File, error) {
+	panic("implement me")
 }
 
-// URI returns the File's URI as a string.
-func (f *File) URI() string {
-	return utils.GetFileURI(f)
+func (File) MoveToFile(vfs.File) error {
+	panic("implement me")
 }
 
-// String implement fmt.Stringer, returning the file's URI as the default string.
-func (f *File) String() string {
-	return f.URI()
+func (f *File) Delete() error {
+	if f.exists {
+		//do some work to adjust the location (later)
+		f.exists = false
+		f.privSlice = nil
+		f.byteBuf = nil
+		f.timeStamp = time.Now()
+		return nil
+	}
+	return DoesNotExist()
+
+
 }
 
-func (f *File) copyWithName(name string, location vfs.Location) (vfs.File, error) {
-	newFile, err := location.FileSystem().NewFile(location.Volume(), path.Join(location.Path(), name))
-	if err != nil {
-		return nil, err
-	}
+func newFile(name string) (*File, error){
 
-	if err := utils.TouchCopy(newFile, f); err != nil {
-		return nil, err
-	}
-	fCloseErr := f.Close()
-	if fCloseErr != nil {
-		return nil, fCloseErr
-	}
+	file := File{ timeStamp: time.Now(), isRef: false, Filename: name, byteBuf: new(bytes.Buffer), cursor: 0, isOpen: false, isZB: false, exists: true}
+	return &file, nil
 
-	newFileCloseErr := newFile.Close()
-	if newFileCloseErr != nil {
-		return nil, newFileCloseErr
-	}
-	return newFile, nil
 }
 
-func (f *File) openFile() (*os.File, error) {
-	if f.file != nil {
-		return f.file, nil
-	}
+func (f *File) LastModified() (*time.Time, error) {
 
-	// Ensure the path exists before opening the file, NoOp if dir already exists.
-	var fileMode os.FileMode = 0666
-	if err := os.MkdirAll(f.location.Path(), os.ModeDir|0777); err != nil {
-		return nil, err
-	}
-
-	file, err := os.OpenFile(f.Path(), os.O_RDWR|os.O_CREATE, fileMode)
-	f.file = file
-	return file, err
+	//maybe check for existence?
+	return &f.timeStamp,nil
 }
+
+func (f *File) Size() (uint64, error) {
+
+
+	return uint64(len(f.privSlice)),nil
+
+
+}
+
+func (File) Path() string {
+	panic("implement me")
+}
+
+func (f *File) Name() string {
+	//if file exists
+	return f.Filename
+}
+
+func (File) URI() string {
+	panic("implement me")
+}
+
+
