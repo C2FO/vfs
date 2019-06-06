@@ -28,7 +28,9 @@ func DoesNotExist() error {
 func CopyFail() error {
 	return errors.New("This file was not successfully copied")
 }
-
+func DeleteError() error {
+	return errors.New("Deletion was unsuccessful")
+}
 
 
 func (f *File) Close() error {  //NOT DONE
@@ -138,15 +140,15 @@ func (File) MoveToFile(vfs.File) error {
 }
 
 func (f *File) Delete() error {
-	if f.exists {
+	existence, err := f.Exists()
+	if existence {
 		//do some work to adjust the location (later)
 		f.exists = false
 		f.privSlice = nil
 		f.byteBuf = nil
 		f.timeStamp = time.Now()
-		return nil
 	}
-	return DoesNotExist()
+	return err
 
 
 }
@@ -160,8 +162,12 @@ func newFile(name string) (*File, error){
 
 func (f *File) LastModified() (*time.Time, error) {
 
-	//maybe check for existence?
-	return &f.timeStamp,nil
+	existence,err := f.Exists()
+
+	if existence {
+		return &f.timeStamp, err
+	}
+	return nil, err
 }
 
 func (f *File) Size() (uint64, error) {
@@ -178,11 +184,36 @@ func (File) Path() string {
 
 func (f *File) Name() string {
 	//if file exists
-	return f.Filename
+	length := len(f.Filename)
+	index := 0
+	for i:=length-1; i>=0 ; i--{
+		if string(f.Filename[i]) == "/"{
+			index = i+1
+			break
+		}
+	}
+	newStr := make([]uint8, length - index)
+	diff:=length-index
+	for i:=0;i<diff;i++{
+		newStr[i] = f.Filename[index]
+		index++
+
+	}
+
+	return string(newStr)
 }
 
-func (File) URI() string {
-	panic("implement me")
+func (f *File) URI() string {
+	existence, _ := f.Exists()
+	if !existence{
+		return ""
+	}
+	var buf bytes.Buffer
+	pref := "file://"
+	buf.WriteString(pref)
+	str := f.Filename
+	buf.WriteString(str)
+	return buf.String()
 }
 
 
