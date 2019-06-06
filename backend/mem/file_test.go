@@ -1,7 +1,6 @@
 package mem
 
 import (
-	"fmt"
 	"github.com/c2fo/vfs/v4"
 	"github.com/c2fo/vfs/v4/backend"
 	"github.com/c2fo/vfs/v4/backend/os"
@@ -69,7 +68,6 @@ func (s *memFileTest) TestRARO(){
 	_,_ = s.testFile.Write(sliceToWrite) 	//writing our bytes to the buffer so we have something to read
 	_ =s.testFile.Close()				//closing the file so the buffer contents are stored into "privSlice"
 	_,_ =s.testFile.Read(byteSlice)		//initial read
-	fmt.Println(s.testFile.byteBuf.Len())
 	_, err := s.testFile.Read(byteSlice2)
 
 	/* an error should occur here since the first read
@@ -96,7 +94,6 @@ func (s *memFileTest) TestRARC(){
 		s.True(err==nil)
 	_, err = s.testFile.Read(byteSlice)		//initial read
 	s.True(err==nil)
-	fmt.Println(s.testFile.byteBuf.Len())
 	err = s.testFile.Close()
 	s.True(err==nil)
 	_, err = s.testFile.Read(byteSlice2)
@@ -465,7 +462,6 @@ func (s *memFileTest) TestURI() {
 	tmp, err := s.fileSystem.NewFile("", "/test_files/lots/of/directories/here/we/go/test.txt")
 	s.True(err==nil)
 	file := tmp.(*File)
-	fmt.Println(file.URI())
 	s.Equal("file:///test_files/lots/of/directories/here/we/go/test.txt", file.URI())
 }
 /*
