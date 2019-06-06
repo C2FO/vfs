@@ -126,7 +126,7 @@ func (File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 func (f *File) CopyToFile(target vfs.File) error {
 	//if target exists, its contents will be overwritten, otherwise it will be created...i'm assuming it exists
 	_, err := target.Write(f.privSlice)
-	target.Close()
+	_ =target.Close()
 	return err
 
 }
