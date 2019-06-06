@@ -19,7 +19,7 @@ type File struct {
 	byteBuf  *bytes.Buffer
 	Filename string
 	cursor 		int
-	location vfs.Location
+	location 	vfs.Location
 }
 
 func DoesNotExist() error {
@@ -74,7 +74,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 		if i == length{
 			break
 		}
-		 p[i]=f.privSlice[i]
+		p[i]=f.privSlice[i]
 	}
 	f.timeStamp = time.Now()
 
@@ -157,8 +157,12 @@ func (f *File) Delete() error {
 
 func newFile(name string) (*File, error){
 
-	file := File{ timeStamp: time.Now(), isRef: false, Filename: name, byteBuf: new(bytes.Buffer), cursor: 0, isOpen: false, isZB: false, exists: true}
-	return &file, nil
+
+	var l Location
+	tmp, err := (*Location).NewFile(&l,name)
+	file := tmp.(*File)
+	systemMap[file.Name()] = file
+	return file, err
 
 }
 

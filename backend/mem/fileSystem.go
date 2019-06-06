@@ -9,7 +9,7 @@ import (
 //Scheme defines the filesystem type.
 const Scheme = "file"
 const name = "mem"
-
+var systemMap map[string]*File
 // FileSystem implements vfs.Filesystem for the mem filesystem.
 type FileSystem struct{}
 
@@ -46,4 +46,5 @@ func (fs *FileSystem) Scheme() string {
 
 func init() {
 	backend.Register(Scheme, &FileSystem{})
+	systemMap = make(map[string]*File)
 }
