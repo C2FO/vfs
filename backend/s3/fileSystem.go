@@ -22,7 +22,7 @@ type FileSystem struct {
 	options vfs.Options
 }
 
-// FileSystem will return the default no-op retrier. The S3 client provides its own retryer interface, and is available
+// Retry will return the default no-op retrier. The S3 client provides its own retryer interface, and is available
 // to override via the s3.FileSystem Options type.
 func (fs *FileSystem) Retry() vfs.Retry {
 	return vfs.DefaultRetryer()
@@ -61,7 +61,7 @@ func (fs *FileSystem) NewLocation(volume string, name string) (vfs.Location, err
 
 	return &Location{
 		fileSystem: fs,
-		prefix:     utils.AddTrailingSlash(path.Clean(name)),
+		prefix:     utils.EnsureTrailingSlash(path.Clean(name)),
 		bucket:     utils.RemoveTrailingSlash(volume),
 	}, nil
 }

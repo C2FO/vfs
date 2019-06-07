@@ -1,6 +1,7 @@
 package gs
 
 import (
+	"errors"
 	"path"
 	"regexp"
 	"strings"
@@ -37,7 +38,7 @@ func (l *Location) List() ([]string, error) {
 func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error) {
 	q := &storage.Query{
 		Delimiter: "/",
-		Prefix:    l.prefix + filenamePrefix,
+		Prefix:    utils.CleanPrefix(path.Join(l.prefix, filenamePrefix)),
 		Versions:  false,
 	}
 
@@ -88,10 +89,7 @@ func (l *Location) Volume() string {
 
 // Path returns the path of the file at the current location, starting with a leading '/'
 func (l *Location) Path() string {
-	if strings.Index(l.prefix, "/") == 0 {
-		return utils.EnsureTrailingSlash(l.prefix)
-	}
-	return "/" + utils.EnsureTrailingSlash(l.prefix)
+	return utils.EnsureLeadingSlash(utils.EnsureTrailingSlash(l.prefix))
 }
 
 // Exists returns whether the location exists or not. In the case of an error, false is returned.
@@ -108,16 +106,30 @@ func (l *Location) Exists() (bool, error) {
 
 // NewLocation creates a new location instance relative to the current location's path.
 func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
-	newLocation := *l
+	if l == nil {
+		return nil, errors.New("non-nil gs.Location pointer is required")
+	}
+	newLocation := &Location{}
+	*newLocation = *l
 	err := newLocation.ChangeDir(relativePath)
 	if err != nil {
 		return nil, err
 	}
-	return &newLocation, nil
+	return newLocation, nil
 }
 
 // ChangeDir changes the current location's path to the new, relative path.
 func (l *Location) ChangeDir(relativePath string) error {
+	if l == nil {
+		return errors.New("non-nil gs.Location pointer is required")
+	}
+	if  relativePath == "" {
+		return errors.New("non-empty string relativePath is required")
+	}
+	err := utils.ValidateRelLocationPath(relativePath)
+	if err != nil {
+		return err
+	}
 	newPrefix := path.Join(l.prefix, relativePath)
 	l.prefix = utils.EnsureTrailingSlash(utils.CleanPrefix(newPrefix))
 	return nil
@@ -130,7 +142,22 @@ func (l *Location) FileSystem() vfs.FileSystem {
 
 // NewFile returns a new file instance at the given path, relative to the current location.
 func (l *Location) NewFile(filePath string) (vfs.File, error) {
-	return newFile(l.fileSystem, l.bucket, path.Join(l.prefix, filePath))
+	if l == nil {
+		return nil, errors.New("non-nil gs.Location pointer is required")
+	}
+	if  filePath == "" {
+		return nil, errors.New("non-empty string filePath is required")
+	}
+	err := utils.ValidateRelFilePath(filePath)
+	if err != nil {
+		return nil, err
+	}
+	newFile := &File{
+		fileSystem: l.fileSystem,
+		bucket:     l.bucket,
+		key:        utils.EnsureLeadingSlash(path.Clean(path.Join(l.prefix, filePath))),
+	}
+	return newFile, nil
 }
 
 // DeleteFile deletes the file at the given path, relative to the current location.

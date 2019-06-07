@@ -130,15 +130,24 @@ func (f *File) Location() vfs.Location {
 }
 
 // MoveToFile move a file. It accepts a target vfs.File and returns an error, if any.
-//TODO we might consider using os.Rename() for efficiency when target.Location().FileSystem().Scheme equals f.Location().FileSystem().Scheme()
 func (f *File) MoveToFile(target vfs.File) error {
-	_, err := f.copyWithName(target.Name(), target.Location())
-	if err != nil {
-		return err
-	}
+	if target.Location().FileSystem().Scheme() == f.Location().FileSystem().Scheme() {
+		err := os.Rename(f.Path(), target.Path())
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err := f.copyWithName(target.Name(), target.Location())
+		if err != nil {
+			return err
+		}
 
-	err = f.Delete()
-	return err
+		err = f.Delete()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // MoveToLocation moves a file to a new Location. It accepts a target vfs.Location and returns a vfs.File and an error, if any.

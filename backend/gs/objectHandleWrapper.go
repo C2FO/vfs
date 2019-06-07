@@ -1,10 +1,12 @@
 package gs
 
 import (
-	"cloud.google.com/go/storage"
 	"context"
-	"github.com/c2fo/vfs/v4"
+
+	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
+
+	"github.com/c2fo/vfs/v4"
 )
 
 // ObjectHandleWrapper is an interface which contains a subset of the functions provided
@@ -33,19 +35,20 @@ type CopierWrapper interface {
 	ContentType(string)
 }
 
+// RetryObjectHandler implements the ObjectHandleCopier interface (which also is composed with ObjectHandleWrapper)
 type RetryObjectHandler struct {
 	Retry   vfs.Retry
 	handler *storage.ObjectHandle
 }
 
-func (r *RetryObjectHandler) ObjectHandle() *storage.ObjectHandle {
-	return r.handler
-}
-
+// NewWriter returns a storage Writer that writes to the GCS object
+// associated with this ObjectHandle, wrapped in a retry.
 func (r *RetryObjectHandler) NewWriter(ctx context.Context) *storage.Writer {
 	return r.handler.NewWriter(ctx)
 }
 
+// NewReader creates a new Reader to read the contents of the object, wrapped in a retry.
+// ErrObjectNotExist will be returned if the object is not found.
 func (r *RetryObjectHandler) NewReader(ctx context.Context) (*storage.Reader, error) {
 	var reader *storage.Reader
 	if err := r.Retry(func() error {
@@ -61,12 +64,14 @@ func (r *RetryObjectHandler) NewReader(ctx context.Context) (*storage.Reader, er
 	return reader, nil
 }
 
+// Attrs represents the metadata for a Google Cloud Storage (GCS) object, wrapped in a retry.
 func (r *RetryObjectHandler) Attrs(ctx context.Context) (*storage.ObjectAttrs, error) {
 	return objectAttributeRetry(r.Retry, func() (*storage.ObjectAttrs, error) {
 		return r.handler.Attrs(ctx)
 	})
 }
 
+// Delete deletes the single specified object, wrapped in a retry.
 func (r *RetryObjectHandler) Delete(ctx context.Context) error {
 	if err := r.Retry(func() error {
 		if retryErr := r.handler.Delete(ctx); retryErr != nil {
@@ -79,15 +84,30 @@ func (r *RetryObjectHandler) Delete(ctx context.Context) error {
 	return nil
 }
 
+// WrappedCopierFrom creates a Copier that can copy src to dst, wrapped in a retry.
+// You can immediately call Run on the returned Copier, or
+// you can configure it first.
 func (r *RetryObjectHandler) WrappedCopierFrom(src *storage.ObjectHandle) CopierWrapper {
 	return &Copier{copier: r.handler.CopierFrom(src), Retry: r.Retry}
 }
 
+// ObjectHandle returns the underlying GCS object handle.
+func (r *RetryObjectHandler) ObjectHandle() *storage.ObjectHandle {
+	return r.handler
+}
+
+// Copier implements the CopierWrapper interface.
 type Copier struct {
 	copier *storage.Copier
 	Retry  vfs.Retry
 }
 
+// ContentType is the MIME type of the object's content.
+func (c *Copier) ContentType(val string) {
+	c.copier.ContentType = val
+}
+
+// Run performs the copy, wrapped in a retry
 func (c *Copier) Run(ctx context.Context) (*storage.ObjectAttrs, error) {
 	return objectAttributeRetry(c.Retry, func() (*storage.ObjectAttrs, error) {
 		return c.copier.Run(ctx)

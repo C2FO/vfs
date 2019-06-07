@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -42,7 +41,7 @@ func copyGSLocation(loc vfs.Location) vfs.Location {
 
 func (s *vfsTestSuite) SetupSuite() {
 	locs := os.Getenv("VFS_INTEGRATION_LOCATIONS")
-	s.testLocations = make(map[string]vfs.Location, 0)
+	s.testLocations = make(map[string]vfs.Location)
 	for _, loc := range strings.Split(locs, ";") {
 		l, err := vfssimple.NewLocation(loc)
 		s.NoError(err)
@@ -64,9 +63,9 @@ func (s *vfsTestSuite) SetupSuite() {
 func (s *vfsTestSuite) TestScheme() {
 	for scheme, location := range s.testLocations {
 		fmt.Printf("************** TESTING scheme: %s **************\n", scheme)
-		s.FileSystem(location)
+		//s.FileSystem(location)
 		s.Location(location)
-		s.File(location)
+		//s.File(location)
 	}
 }
 
@@ -102,7 +101,7 @@ func (s *vfsTestSuite) FileSystem(baseLoc vfs.Location) {
 		file, err := fs.NewFile(baseLoc.Volume(), name)
 		if validates {
 			s.NoError(err, "there should be no error")
-			expected := fmt.Sprintf("%s://%s%s", fs.Scheme(), baseLoc.Volume(), filepath.Clean(name))
+			expected := fmt.Sprintf("%s://%s%s", fs.Scheme(), baseLoc.Volume(), path.Clean(name))
 			s.Equal(expected, file.URI(), "uri's should match")
 		} else {
 			s.Error(err, "should have validation error for scheme and name: %s : %s", fs.Scheme(), name)
@@ -131,7 +130,8 @@ func (s *vfsTestSuite) FileSystem(baseLoc vfs.Location) {
 		loc, err := fs.NewLocation(baseLoc.Volume(), name)
 		if validates {
 			s.NoError(err, "there should be no error")
-			s.Equal(fmt.Sprintf("%s://%s%s", fs.Scheme(), baseLoc.Volume(), utils.AddTrailingSlash(filepath.Clean(name))), loc.URI(), "uri's should match")
+			expected := fmt.Sprintf("%s://%s%s", fs.Scheme(), baseLoc.Volume(), utils.EnsureTrailingSlash(path.Clean(name)))
+			s.Equal(expected, loc.URI(), "uri's should match")
 
 		} else {
 			s.Error(err, "should have validation error for scheme and name: %s : %s", fs.Scheme(), name)
@@ -202,6 +202,97 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 		s.Equal(rootTestLoc+"this/", l.URI())
 	*/
 
+	srcLoc, err := baseLoc.NewLocation("locTestSrc/")
+	s.NoError(err, "there should be no error")
+
+	// NewLocation is an initializer for a new Location relative to the existing one.
+	//
+	// * "relativePath" parameter may use dot (. and ..) paths and may not begin with a separator character but must
+	// end with a separator character.
+	//
+	// For location:
+	//     file:///some/path/to/
+	// calling:
+	//     NewLocation("../../")
+	// would return a new vfs.Location representing:
+	//     file:///some/
+	locpaths := map[string]bool{
+		"/path/to/":         false,
+		"/path/./to/":       false,
+		"/path/../to/":      false,
+		"path/to/":          true,
+		"./path/to/":        true,
+		"../path/to/":       true,
+		"/path/to/file.txt": false,
+		"":                  false,
+	}
+	for name, validates := range locpaths {
+		loc, err := srcLoc.NewLocation(name)
+		if validates {
+			s.NoError(err, "there should be no error")
+			expected := fmt.Sprintf("%s://%s%s", srcLoc.FileSystem().Scheme(), baseLoc.Volume(), utils.EnsureTrailingSlash(path.Clean(path.Join(srcLoc.Path(), name))))
+			s.Equal(expected, loc.URI(), "uri's should match")
+
+		} else {
+			s.Error(err, "should have validation error for scheme and name: %s : %s", srcLoc.FileSystem().Scheme(), name)
+		}
+	}
+
+	// NewFile will instantiate a vfs.File instance at or relative to the current location's path.
+	//
+	//   * fileName param may use dot (. and ..) paths and may not begin or end with a separator character.
+	//   * Resultant File path will be the shortest path name equivalent of combining the Location path and relative path, if any.
+	//       ie, /tmp/dir1/ as location and fileName "newdir/./../newerdir/file.txt"
+	//       results in /tmp/dir1/newerdir/file.txt for the final vfs.File path.
+	//   * The file may or may not already exist.
+	//   * Upon success, a vfs.File, representing the file's new path (location path + file relative path), will be returned.
+	//   * In the case of an error, nil is returned for the file.
+	filepaths := map[string]bool{
+		"/path/to/file.txt":    false,
+		"/path/./to/file.txt":  false,
+		"/path/../to/file.txt": false,
+		"path/to/file.txt":     true,
+		"./path/to/file.txt":   true,
+		"../path/to/":          false,
+		"../path/to/file.txt":  true,
+		"/path/to/":            false,
+		"":                     false,
+	}
+	for name, validates := range filepaths {
+		file, err := srcLoc.NewFile(name)
+		if validates {
+			s.NoError(err, "there should be no error")
+			expected := fmt.Sprintf("%s://%s%s", srcLoc.FileSystem().Scheme(), srcLoc.Volume(), path.Clean(path.Join(srcLoc.Path(), name)))
+			s.Equal(expected, file.URI(), "uri's should match")
+		} else {
+			s.Error(err, "should have validation error for scheme and name: %s : +%s+", srcLoc.FileSystem().Scheme(), name)
+		}
+	}
+
+	// ChangeDir updates the existing Location's path to the provided relative path. For instance, for location:
+	// file:///some/path/to/, calling ChangeDir("../../") update the location instance to file:///some/.
+	//
+	// relativePath may use dot (. and ..) paths and may not begin with a separator character but must end with
+	// a separator character.
+	//   ie., path/to/location, path/to/location/, ./path/to/location, and ./path/to/location/ are all effectively equal.
+	//
+	//	====	ChangeDir(relativePath string) error
+
+	// Path returns absolute path to the Location with leading and trailing slashes, ie /some/path/to/
+	//	==== Path() string
+
+	// URI returns the fully qualified URI for the Location.  IE, s3://bucket/some/path/
+	//
+	// URI's for locations must always end with a separator character.
+
+	// Exists returns boolean if the location exists on the file system. Also returns an error if any.
+	//
+	//	For some keystore filesystems, a prefix/folder can't exist if there isn't an object with a key that contains that
+	//	"location", so checking if a given "location" exists is effectively checking if keys with a particular prefix
+	//	"directory" exist.
+	//
+	//	==== Exists() (bool, error)
+
 	// List returns a slice of strings representing the base names of the files found at the Location. All implementations
 	// are expected to return ([]string{}, nil) in the case of a non-existent directory/prefix/location. If the user
 	// cares about the distinction between an empty location and a non-existent one, Location.Exists() should be checked
@@ -219,53 +310,6 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 	//
 	//	====	ListByRegex(regex *regexp.Regexp) ([]string, error)
 
-	// Path returns absolute path to the Location with leading and trailing slashes, ie /some/path/to/
-	//	==== Path() string
-
-	//TODO:  NOT yet the current wording depending on whether we change the exists check (from checking bucket exists)
-	//
-	// Exists returns boolean if the location exists on the file system. Also returns an error if any.
-	//
-	//	For some keystore filesystems, a prefix/folder can't exist if there isn't an object with a key that contains that
-	//	"location", so checking if a given "location" exists is effectively checking if keys with a particular prefix
-	//	"directory" exist.
-	//
-	//	==== Exists() (bool, error)
-
-	// NewLocation is an initializer for a new Location relative to the existing one.
-	//
-	// * "relativePath" parameter may use dot (. and ..) paths and may not begin with a separator character but must
-	// end with a separator character.
-	//
-	// For location:
-	//     file:///some/path/to/
-	// calling:
-	//     NewLocation("../../")
-	// would return a new vfs.Location representing:
-	//     file:///some/
-	//	====	NewLocation(relativePath string) (Location, error)
-
-	// ChangeDir updates the existing Location's path to the provided relative path. For instance, for location:
-	// file:///some/path/to/, calling ChangeDir("../../") update the location instance to file:///some/.
-	//
-	// relativePath may use dot (. and ..) paths and may not begin with a separator character but must end with
-	// a separator character.
-	//   ie., path/to/location, path/to/location/, ./path/to/location, and ./path/to/location/ are all effectively equal.
-	//
-	//	====	ChangeDir(relativePath string) error
-
-	// NewFile will instantiate a vfs.File instance at or relative to the current location's path.
-	//
-	//   * fileName param may use dot (. and ..) paths and may not begin or end with a separator character.
-	//   * Resultant File path will be the shortest path name equivalent of combining the Location path and relative path, if any.
-	//       ie, /tmp/dir1/ as location and fileName "newdir/./../newerdir/file.txt"
-	//       results in /tmp/dir1/newerdir/file.txt for the final vfs.File path.
-	//   * The file may or may not already exist.
-	//   * Upon success, a vfs.File, representing the file's new path (location path + file relative path), will be returned.
-	//   * In the case of an error, nil is returned for the file.
-	//
-	//	====	NewFile(fileName string) (File, error)
-
 	// DeleteFile deletes the file of the given name at the location. This is meant to be a short cut for
 	// instantiating a new file and calling delete on that, with all the necessary error handling overhead.
 	//
@@ -273,10 +317,6 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 	//   ie., path/to/file.txt, ../../other/path/to/file.text are acceptable but path/to/file.txt/ is not
 	//
 	//	====	DeleteFile(fileName string) error
-
-	// URI returns the fully qualified URI for the Location.  IE, s3://bucket/some/path/
-	//
-	// URI's for locations must always end with a separator character.
 }
 
 //Test File
@@ -553,11 +593,6 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 	exists, err = srcFile.Exists()
 	s.NoError(err)
 	s.False(exists, "file no longer exists")
-}
-
-//Test File
-func (s *vfsTestSuite) oldFile(testLocation vfs.Location) {
-
 }
 
 func TestVFS(t *testing.T) {

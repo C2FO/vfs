@@ -1,6 +1,9 @@
 package gs
 
 import (
+	"errors"
+	"path"
+
 	"cloud.google.com/go/storage"
 	"golang.org/x/net/context"
 
@@ -20,7 +23,7 @@ type FileSystem struct {
 	options vfs.Options
 }
 
-// FileSystem will return a retrier provided via options, or a no-op if none is provided.
+// Retry will return a retrier provided via options, or a no-op if none is provided.
 func (fs *FileSystem) Retry() vfs.Retry {
 	if options, _ := fs.options.(Options); options.Retry != nil {
 		return options.Retry
@@ -30,15 +33,37 @@ func (fs *FileSystem) Retry() vfs.Retry {
 
 // NewFile function returns the gcs implementation of vfs.File.
 func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
-	return newFile(fs, volume, name)
+	if fs == nil {
+		return nil, errors.New("non-nil gs.FileSystem pointer is required")
+	}
+	if volume == "" || name == "" {
+		return nil, errors.New("non-empty strings for Bucket and Key are required")
+	}
+	if err := utils.ValidateAbsFilePath(name); err != nil {
+		return nil, err
+	}
+	return &File{
+		fileSystem: fs,
+		bucket:     volume,
+		key:        path.Clean(name),
+	}, nil
 }
 
 // NewLocation function returns the GCS implementation of vfs.Location.
-func (fs *FileSystem) NewLocation(volume string, path string) (loc vfs.Location, err error) {
+func (fs *FileSystem) NewLocation(volume string, name string) (loc vfs.Location, err error) {
+	if fs == nil {
+		return nil, errors.New("non-nil gs.fileSystem pointer is required")
+	}
+	if volume == "" || name == "" {
+		return nil, errors.New("non-empty strings for bucket and key are required")
+	}
+	if err := utils.ValidateAbsLocationPath(name); err != nil {
+		return nil, err
+	}
 	loc = &Location{
 		fileSystem: fs,
 		bucket:     volume,
-		prefix:     utils.EnsureTrailingSlash(path),
+		prefix:     utils.EnsureTrailingSlash(path.Clean(name)),
 	}
 	return
 }

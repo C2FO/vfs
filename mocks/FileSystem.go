@@ -8,6 +8,7 @@ type FileSystem struct {
 	mock.Mock
 }
 
+// Retry provides a mock function with given fields:
 func (_m *FileSystem) Retry() vfs.Retry {
 	ret := _m.Called()
 

@@ -2,11 +2,13 @@ package utils_test
 
 import (
 	"fmt"
-	_os "github.com/c2fo/vfs/v4/backend/os"
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"testing"
+
+	_os "github.com/c2fo/vfs/v4/backend/os"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -42,11 +44,6 @@ func (s *utilsTest) TestAddTrailingSlash() {
 			message:  "slash found - don't add one",
 		},
 		{
-			path:     "/some/path\\",
-			expected: "/some/path\\",
-			message:  "backslash found - don't add one",
-		},
-		{
 			path:     "/some/path/file.txt",
 			expected: "/some/path/file.txt/",
 			message:  "no slash but looks like a file - add one anyaway",
@@ -54,7 +51,7 @@ func (s *utilsTest) TestAddTrailingSlash() {
 	}
 
 	for _, slashtest := range tests {
-		s.Equal(slashtest.expected, utils.AddTrailingSlash(slashtest.path), slashtest.message)
+		s.Equal(slashtest.expected, utils.EnsureTrailingSlash(slashtest.path), slashtest.message)
 	}
 }
 
@@ -111,7 +108,7 @@ func (s *utilsTest) TestEnsureTrailingSlash() {
 	tests := map[string]string{
 		"/some/path/": "/some/path/",
 		"some/path":   "some/path/",
-		"":            "",
+		"":            "/",
 		"/":           "/",
 	}
 
@@ -178,7 +175,12 @@ func (s *utilsTest) TestTouchCopy() {
 	s.NoError(err, "unexpected error resetting vfs.File reader")
 	err = utils.TouchCopy(writer, reader)
 	s.NoError(err, "unexpected error running TouchCopy()")
-	defer writer.Delete()
+	defer func() {
+		err := writer.Delete()
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	// writer file should exist
 	fi, err := os.Stat(writer.Path())
@@ -200,7 +202,8 @@ func (s *utilsTest) TestTouchCopy() {
 	s.NotEqual(fi, 0, "file should have a non-zero byte size")
 
 	//TouchCopy should fail on a reader.Size() error
-	noFile, err := osfs.NewFile("", "nonexistent.file")
+	nonexistantFile := path.Join(writer.Path(), "nonexistent.file")
+	noFile, err := osfs.NewFile("", nonexistantFile)
 	s.NoError(err, "unexpected error creating vfs.File reader for non-existent file")
 	err = utils.TouchCopy(writer, noFile)
 	s.Error(err, "expected error running TouchCopy() using non-existent reader")

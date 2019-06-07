@@ -2,7 +2,6 @@ package os
 
 import (
 	"path"
-	"path/filepath"
 
 	"github.com/c2fo/vfs/v4"
 	"github.com/c2fo/vfs/v4/backend"
@@ -16,7 +15,7 @@ const name = "os"
 // FileSystem implements vfs.Filesystem for the OS filesystem.
 type FileSystem struct{}
 
-// FileSystem will return a retrier provided via options, or a no-op if none is provided.
+// Retry will return a retrier provided via options, or a no-op if none is provided.
 func (fs *FileSystem) Retry() vfs.Retry {
 	return vfs.DefaultRetryer()
 }
@@ -28,7 +27,7 @@ func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
 		return nil, err
 	}
 	fileName := path.Base(name)
-	location := Location{fileSystem: &FileSystem{}, name: utils.AddTrailingSlash(filepath.Dir(name))}
+	location := Location{fileSystem: &FileSystem{}, name: utils.EnsureTrailingSlash(path.Dir(name))}
 	return &File{name: fileName, location: &location}, nil
 }
 
@@ -41,7 +40,7 @@ func (fs *FileSystem) NewLocation(volume string, name string) (vfs.Location, err
 
 	return &Location{
 		fileSystem: fs,
-		name:       utils.AddTrailingSlash(path.Clean(name)),
+		name:       utils.EnsureLeadingSlash(path.Clean(name)),
 	}, nil
 }
 

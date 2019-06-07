@@ -3,7 +3,6 @@ package gs
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -120,8 +119,6 @@ func (f *File) Exists() (bool, error) {
 }
 
 // Location returns a Location instance for the file's current location.
-//
-// TODO should this be including trailing slash?
 func (f *File) Location() vfs.Location {
 	return vfs.Location(&Location{
 		fileSystem: f.fileSystem,
@@ -242,7 +239,7 @@ func (f *File) Size() (uint64, error) {
 
 // Path returns full path with leading slash of the GCS file key.
 func (f *File) Path() string {
-	return "/" + f.key
+	return f.key
 }
 
 // Name returns the file name.
@@ -302,10 +299,6 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 	return tmpFile, nil
 }
 
-func (c *Copier) ContentType(val string) {
-	c.copier.ContentType = val
-}
-
 // getObjectHandle returns cached Object struct for file
 func (f *File) getObjectHandle() (ObjectHandleCopier, error) {
 	client, err := f.fileSystem.Client()
@@ -349,22 +342,5 @@ func (f *File) copyWithinGCSToFile(targetFile *File) error {
 
 	// Just copy content.
 	_, err = tHandle.WrappedCopierFrom(fHandle.ObjectHandle()).Run(f.fileSystem.ctx)
-	return nil
-}
-
-/* private helper functions */
-
-func newFile(fs *FileSystem, bucket, key string) (*File, error) {
-	if fs == nil {
-		return nil, errors.New("non-nil gs.FileSystem pointer is required")
-	}
-	if bucket == "" || key == "" {
-		return nil, errors.New("non-empty strings for Bucket and Key are required")
-	}
-	key = utils.CleanPrefix(key)
-	return &File{
-		fileSystem: fs,
-		bucket:     bucket,
-		key:        key,
-	}, nil
+	return err
 }

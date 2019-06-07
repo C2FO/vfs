@@ -27,7 +27,7 @@ type osLocationTest struct {
 func (s *osLocationTest) SetupSuite() {
 	fs := &FileSystem{}
 	dir, err := ioutil.TempDir("", "os_location_test")
-	dir = utils.AddTrailingSlash(dir)
+	dir = utils.EnsureTrailingSlash(dir)
 	s.NoError(err)
 	s.tmploc, err = fs.NewLocation("", dir)
 	s.NoError(err)
@@ -121,7 +121,7 @@ func (s *osLocationTest) TestChangeDir() {
 	cwd := fileLocation.Path()
 	err := fileLocation.ChangeDir("other/")
 	assert.NoError(s.T(), err, "change dir error not expected")
-	s.Equal(fileLocation.Path(), utils.AddTrailingSlash(filepath.Join(cwd, "other")))
+	s.Equal(fileLocation.Path(), utils.EnsureTrailingSlash(filepath.Join(cwd, "other")))
 }
 
 func (s *osLocationTest) TestVolume() {

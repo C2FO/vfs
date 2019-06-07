@@ -6,7 +6,6 @@ import (
 	"io"
 	"path"
 	"regexp"
-	"runtime"
 	"strings"
 
 	"github.com/c2fo/vfs/v4"
@@ -16,10 +15,14 @@ const (
 	// Windows constant represents a target operating system running a version of Microsoft Windows
 	Windows = "windows"
 	// BadFilePrefix constant is returned when path has leading slash or backslash
-	BadFilePrefix         = "expecting only a filename prefix, which may not include slashes or backslashes"
-	ErrBadAbsFilePath     = "absolute file path is invalid - must include leading separator character and may not include trailing separator character"
-	ErrBadRelFilePath     = "relative file path is invalid - may not include leading or trailing separator characters"
+	BadFilePrefix = "expecting only a filename prefix, which may not include slashes or backslashes"
+	// ErrBadAbsFilePath constant is returned when a file path is not absolute
+	ErrBadAbsFilePath = "absolute file path is invalid - must include leading separator character and may not include trailing separator character"
+	// ErrBadRelFilePath constant is returned when a file path is not relative
+	ErrBadRelFilePath = "relative file path is invalid - may not include leading or trailing separator characters"
+	// ErrBadAbsLocationPath constant is returned when a file path is not absolute
 	ErrBadAbsLocationPath = "absolute location path is invalid - must include leading and trailing separator characters"
+	// ErrBadRelLocationPath constant is returned when a file path is not relative
 	ErrBadRelLocationPath = "relative location path is invalid - may not include leading separator character but must include trailing separator character"
 )
 
@@ -31,25 +34,6 @@ var hasTrailingSlash = regexp.MustCompile("/$")
 
 // regex to test whether the first character is a '/'
 var hasLeadingSlash = regexp.MustCompile("^/")
-
-// AddTrailingSlash is a helper function accepts a path string and returns the path string with a trailing slash if
-// there wasn't one.
-func AddTrailingSlash(path string) string {
-
-	runePath := []rune(path)
-	lastRune := runePath[len(runePath)-1]
-
-	slash := "/"
-	if runtime.GOOS == Windows {
-		slash = "\\"
-	}
-
-	//add trailing slash, if none
-	if string(lastRune) != "/" && string(lastRune) != "\\" {
-		path = path + slash
-	}
-	return path
-}
 
 // RemoveTrailingSlash removes trailing slash, if any
 func RemoveTrailingSlash(path string) string {

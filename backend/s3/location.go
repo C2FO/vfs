@@ -1,6 +1,7 @@
 package s3
 
 import (
+	"errors"
 	"path"
 	"regexp"
 	"strings"
@@ -90,13 +91,12 @@ func (l *Location) Exists() (bool, error) {
 // relativePath argument, returning the resulting location. The only possible errors come from the call to
 // ChangeDir, which, for the s3 implementation doesn't ever result in an error.
 func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
-	err := utils.ValidateRelLocationPath(relativePath)
-	if err != nil {
-		return nil, err
+	if l == nil {
+		return nil, errors.New("non-nil s3.Location pointer is required")
 	}
 	newLocation := &Location{}
 	*newLocation = *l
-	err = newLocation.ChangeDir(relativePath)
+	err := newLocation.ChangeDir(relativePath)
 	if err != nil {
 		return nil, err
 	}
@@ -106,6 +106,12 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 // ChangeDir takes a relative path, and modifies the underlying Location's path. The caller is modified by this
 // so the only return is any error. For this implementation there are no errors.
 func (l *Location) ChangeDir(relativePath string) error {
+	if l == nil {
+		return errors.New("non-nil s3.Location pointer is required")
+	}
+	if  relativePath == "" {
+		return errors.New("non-empty string relativePath is required")
+	}
 	err := utils.ValidateRelLocationPath(relativePath)
 	if err != nil {
 		return err
@@ -118,6 +124,12 @@ func (l *Location) ChangeDir(relativePath string) error {
 // NewFile uses the properties of the calling location to generate a vfs.File (backed by an s3.File). The filePath
 // argument is expected to be a relative path to the location's current path.
 func (l *Location) NewFile(filePath string) (vfs.File, error) {
+	if l == nil {
+		return nil, errors.New("non-nil s3.Location pointer is required")
+	}
+	if  filePath == "" {
+		return nil, errors.New("non-empty string filePath is required")
+	}
 	err := utils.ValidateRelFilePath(filePath)
 	if err != nil {
 		return nil, err
@@ -132,10 +144,6 @@ func (l *Location) NewFile(filePath string) (vfs.File, error) {
 
 // DeleteFile removes the file at fileName path.
 func (l *Location) DeleteFile(fileName string) error {
-	err := utils.ValidateRelFilePath(fileName)
-	if err != nil {
-		return err
-	}
 	file, err := l.NewFile(fileName)
 	if err != nil {
 		return err

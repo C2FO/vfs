@@ -1,8 +1,10 @@
 package os
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -20,7 +22,18 @@ type Location struct {
 // NewFile uses the properties of the calling location to generate a vfs.File (backed by an os.File). A string
 // argument is expected to be a relative path to the location's current path.
 func (l *Location) NewFile(fileName string) (vfs.File, error) {
-	return l.fileSystem.NewFile(l.Volume(), filepath.Join(l.Path(), fileName))
+	if l == nil {
+		return nil, errors.New("non-nil os.Location pointer is required")
+	}
+	if  fileName == "" {
+		return nil, errors.New("non-empty string filePath is required")
+	}
+	err := utils.ValidateRelFilePath(fileName)
+	if err != nil {
+		return nil, err
+	}
+	fileName = utils.EnsureLeadingSlash(path.Clean(path.Join(l.name, fileName)))
+	return l.fileSystem.NewFile(l.Volume(), fileName)
 }
 
 // DeleteFile deletes the file of the given name at the location. This is meant to be a short cut for instantiating a
@@ -91,7 +104,7 @@ func (l *Location) Volume() string {
 
 // Path returns the location path.
 func (l *Location) Path() string {
-	return utils.AddTrailingSlash(l.name)
+	return utils.EnsureLeadingSlash(utils.EnsureTrailingSlash(l.name))
 }
 
 // Exists returns true if the location exists, and the calling user has the appropriate
@@ -122,22 +135,32 @@ func (l *Location) String() string {
 // relativePath argument, returning the resulting location. The only possible errors come from the call to
 // ChangeDir.
 func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
-	fullPath, err := filepath.Abs(filepath.Join(l.name, relativePath))
+	if l == nil {
+		return nil, errors.New("non-nil os.Location pointer is required")
+	}
+	newLocation := &Location{}
+	*newLocation = *l
+	err := newLocation.ChangeDir(relativePath)
 	if err != nil {
 		return nil, err
 	}
-
-	fullPath = utils.AddTrailingSlash(fullPath)
-	return &Location{
-		name:       fullPath,
-		fileSystem: l.fileSystem,
-	}, nil
+	return newLocation, nil
 }
 
 // ChangeDir takes a relative path, and modifies the underlying Location's path. The caller is modified by this
 // so the only return is any error. For this implementation there are no errors.
 func (l *Location) ChangeDir(relativePath string) error {
-	l.name = filepath.Join(l.name, relativePath)
+	if l == nil {
+		return errors.New("non-nil os.Location pointer is required")
+	}
+	if  relativePath == "" {
+		return errors.New("non-empty string relativePath is required")
+	}
+	err := utils.ValidateRelLocationPath(relativePath)
+	if err != nil {
+		return err
+	}
+	l.name = utils.EnsureTrailingSlash(path.Clean(path.Join(l.name, relativePath)))
 	return nil
 }
 

@@ -24,7 +24,7 @@ func parseClientOptions(opts vfs.Options) []option.ClientOption {
 		case opts.APIKey != "":
 			googleClientOpts = append(googleClientOpts, option.WithAPIKey(opts.APIKey))
 		case opts.CredentialFile != "":
-			googleClientOpts = append(googleClientOpts, option.WithServiceAccountFile(opts.CredentialFile))
+			googleClientOpts = append(googleClientOpts, option.WithCredentialsFile(opts.CredentialFile))
 		case opts.Endpoint != "":
 			googleClientOpts = append(googleClientOpts, option.WithEndpoint(opts.Endpoint))
 		case len(opts.Scopes) > 0:
