@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"github.com/c2fo/vfs/v4"
+	"path"
+	//"path"
 	"io"
 	"time"
 )
@@ -158,11 +160,15 @@ func (f *File) Delete() error {
 func newFile(name string) (*File, error){
 
 
-	var l Location
-	tmp, err := (*Location).NewFile(&l,name)
-	file := tmp.(*File)
-	systemMap[file.Name()] = file
-	return file, err
+	//var l Location
+	//tmp, err := (*Location).NewFile(&l,name)
+	//file := tmp.(*File)
+
+
+	return &File{
+		timeStamp: time.Now(), isRef: false, Filename: name, byteBuf: new(bytes.Buffer), cursor: 0,
+		isOpen: false, isZB: false, exists: true,
+	}, nil
 
 }
 
@@ -184,29 +190,17 @@ func (f *File) Size() (uint64, error) {
 
 }
 
-func (File) Path() string {
-	panic("implement me")
+func (f *File) Path() string {
+	if !path.IsAbs(f.location.Path()){
+		return path.Join("/",f.location.Path())
+	}
+	return f.location.Path()
 }
 
 func (f *File) Name() string {
 	//if file exists
-	length := len(f.Filename)
-	index := 0
-	for i:=length-1; i>=0 ; i--{
-		if string(f.Filename[i]) == "/"{
-			index = i+1
-			break
-		}
-	}
-	newStr := make([]uint8, length - index)
-	diff:=length-index
-	for i:=0;i<diff;i++{
-		newStr[i] = f.Filename[index]
-		index++
 
-	}
-
-	return string(newStr)
+	return path.Base(f.Filename)
 }
 
 func (f *File) URI() string {  //works but test says it fails, probably other dependencies

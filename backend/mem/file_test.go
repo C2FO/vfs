@@ -472,14 +472,23 @@ func (s *memFileTest) TestSize() {
 	s.True(size1>size2)
 
 }
-/*
+
 func (s *memFileTest) TestPath() {
-	file, _ := s.fileSystem.NewFile("", "test_files/test.txt")
-	s.Equal(filepath.Join(file.Location().Path(), file.Name()), file.Path())
+	str1 := "/home/some/directory/test_files/test.txt"
+	_, _ = s.fileSystem.NewFile("", str1)
+
+	_,_ = s.fileSystem.NewFile("","test_files/bar.txt")
+	file1,_ := s.fileSystem.NewFile("","directory/bar.txt")
+
+
+	str := "directory/test_files/test.txt"
+	_, _ = s.fileSystem.NewFile("",str)
+	fmt.Println(file1.Path())
+	s.Equal("/directory/bar.txt", file1.Path())
 }
-*/
+
 func (s *memFileTest) TestURI() {
-	tmp, err := s.fileSystem.NewFile("", "/test_files/lots/of/directories/here/we/go/test.txt")
+	tmp, err := s.fileSystem.NewFile("", "test_files/lots/of/directories/here/we/go/test.txt")
 	s.True(err==nil)
 	file := tmp.(*File)
 	fmt.Println(file.URI())
@@ -491,7 +500,7 @@ func (s *memFileTest) TestStringer() {
 	s.Equal("file:///some/file/test.txt", file.String())
 }
 
-func TestOSFile(t *testing.T) {
+func TestMemFile(t *testing.T) {
 	suite.Run(t, new(memFileTest))
 	//_ = os.Remove("test_files/new.txt")
 }
