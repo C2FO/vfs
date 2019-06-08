@@ -1,6 +1,7 @@
 package mem
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -11,30 +12,29 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v4"
-	"github.com/c2fo/vfs/v4/utils"
 )
 
 /**********************************
  ************TESTS*****************
  **********************************/
 
-type osLocationTest struct {
+type memLocationTest struct {
 	suite.Suite
 	testFile   vfs.File
 	fileSystem *FileSystem
 }
 
-func (s *osLocationTest) SetupSuite() {
+func (s *memLocationTest) SetupSuite() {
 	setupTestFiles()
 }
 
-func (s *osLocationTest) TearDownSuite() {
+func (s *memLocationTest) TearDownSuite() {
 	teardownTestFiles()
 }
-/*
-func (s *osLocationTest) SetupTest() {
+
+func (s *memLocationTest) SetupTest() {
 	fs := &FileSystem{}
-	file, err := fs.NewFile("", "test_files/test.txt")
+	file, err := fs.NewFile("", "/home/test_files/subdir/test.txt")
 
 	if err != nil {
 		s.Fail("No file was opened")
@@ -43,69 +43,52 @@ func (s *osLocationTest) SetupTest() {
 	s.testFile = file
 	s.fileSystem = fs
 }
-*/
-func (s *osLocationTest) TestList() {
 
-	expected := []string{"empty.txt", "prefix-file.txt", "test.txt"}
-	actual, _ := s.testFile.Location().List()
-	s.Equal(expected, actual)
+func (s *memLocationTest) TestList() {
+
+}
+func (s *memLocationTest) TestList_NonExistentDirectory() {
+
 }
 
-func (s *osLocationTest) TestList_NonExistentDirectory() {
-	location, err := s.testFile.Location().NewLocation("not/a/directory/")
-	s.Nil(err, "error isn't expected")
+func (s *memLocationTest) TestListByPrefix() {
 
-	exists, err := location.Exists()
-	s.Nil(err, "error isn't expected")
-	s.False(exists, "location should return false for Exists")
+	_,_ = s.fileSystem.NewFile("","foo.txt")
+	_,_ = s.fileSystem.NewFile("","home/judd/subdir/file1.txt")
+	_,_ = s.fileSystem.NewFile("","home/judd/subdir/file2.txt")
+	_,_ = s.fileSystem.NewFile("","home/directories/test/mat.txt")
+	_,_ = s.fileSystem.NewFile("","test/files/car.txt")
+	//fmt.Println(s.testFile.Location().Path(),"here")
+	nameSlice,_ := s.testFile.Location().ListByPrefix("subdir/f")
+	fmt.Println(nameSlice)
 
-	contents, err := location.List()
-	s.Nil(err, "error isn't expected")
-	s.Equal(0, len(contents), "List should return empty slice for non-existent directory")
-
-	prefixContents, err := location.ListByPrefix("anything")
-	s.Nil(err, "error isn't expected")
-	s.Equal(0, len(prefixContents), "ListByPrefix should return empty slice for non-existent directory")
-
-	regex, _ := regexp.Compile("[-]+")
-	regexContents, err := location.ListByRegex(regex)
-	s.Nil(err, "error isn't expected")
-	s.Equal(0, len(regexContents), "ListByRegex should return empty slice for non-existent directory")
 }
 
-func (s *osLocationTest) TestListByPrefix() {
-	expected := []string{"prefix-file.txt"}
-	actual, _ := s.testFile.Location().ListByPrefix("prefix")
-	s.Equal(expected, actual)
-
-	_, err := s.testFile.Location().ListByPrefix("bad/prefix")
-	s.EqualError(err, utils.BadFilePrefix, "got expected error")
-}
-
-func (s *osLocationTest) TestListByRegex() {
+func (s *memLocationTest) TestListByRegex() {
 	expected := []string{"prefix-file.txt"}
 	regex, _ := regexp.Compile("[-]+")
 	actual, _ := s.testFile.Location().ListByRegex(regex)
 	s.Equal(expected, actual)
 }
 
-func (s *osLocationTest) TestExists() {
+func (s *memLocationTest) TestExists() {
 	otherFile, _ := s.fileSystem.NewFile("", "foo/foo.txt")
 	s.True(s.testFile.Location().Exists())
 	s.False(otherFile.Location().Exists())
 }
 
-func (s *osLocationTest) TestNewLocation() {
-	otherFile, _ := s.fileSystem.NewFile("", "/foo/foo.txt")
-	fileLocation := otherFile.Location()
-	subDir, _ := fileLocation.NewLocation("other/")
-	s.Equal("/foo/other/", subDir.Path())
+func (s *memLocationTest) TestNewLocation() {
 
-	relDir, _ := subDir.NewLocation("../../bar/")
-	s.Equal("/bar/", relDir.Path(), "relative dot path works")
+	l1,_ := s.testFile.Location().NewLocation("/../..")
+	assert.Equal(s.T(),"/home/",l1.Path())
+	l2, _ := s.testFile.Location().NewLocation("testDir")
+	assert.Equal(s.T(),"/home/test_files/subdir/testDir/",l2.Path())
+	l3, _ := s.testFile.Location().NewLocation("/..")
+	assert.Equal(s.T(),"/home/test_files/",l3.Path())
+
 }
 
-func (s *osLocationTest) TestNewFile() {
+func (s *memLocationTest) TestNewFile() {
 	//loc, err := s.fileSystem.NewLocation("", "/foo/bar/baz/")
 	//s.NoError(err)
 
@@ -113,7 +96,7 @@ func (s *osLocationTest) TestNewFile() {
 	//s.Equal("/foo/bam/this.txt", newfile.Path(), "relative dot path works")
 }
 
-func (s *osLocationTest) TestChangeDir() {
+func (s *memLocationTest) TestChangeDir() {
 	otherFile, _ := s.fileSystem.NewFile("", "foo/foo.txt")
 	fileLocation := otherFile.Location()
 	cwd := fileLocation.Path()
@@ -122,36 +105,35 @@ func (s *osLocationTest) TestChangeDir() {
 	s.Equal(fileLocation.Path(), filepath.Join(cwd, "other/"))
 }
 
-func (s *osLocationTest) TestVolume() {
+func (s *memLocationTest) TestVolume() {
 	volume := s.testFile.Location().Volume()
 
 	// For Unix, this returns an empty string. For windows, it would be something like 'C:'
 	s.Equal(filepath.VolumeName("test_files/test.txt"), volume)
 }
 
-func (s *osLocationTest) TestPath() {
-	file, _ := s.fileSystem.NewFile("", "/some/file/test.txt")
-	location := file.Location()
-	s.Equal("/some/file/", location.Path())
-
+func (s *memLocationTest) TestPath() {
+//	file, _ := s.fileSystem.NewFile("", "/some/file/test.txt")
+//	location := file.Location()
+//	s.Equal("/some/file/", location.Path())
 	//rootLocation := Location{fileSystem: s.fileSystem, name: "/"}
 	//s.Equal("/", Path())
 }
 
-func (s *osLocationTest) TestURI() {
+func (s *memLocationTest) TestURI() {
 	file, _ := s.fileSystem.NewFile("", "/some/file/test.txt")
 	location := file.Location()
-	expected := "file:///some/file/"
+	expected := "file:///some/file/test.txt"
 	s.Equal(expected, location.URI(), "%s does not match %s", location.URI(), expected)
 }
 
-func (s *osLocationTest) TestStringer() {
+func (s *memLocationTest) TestStringer() {
 	file, _ := s.fileSystem.NewFile("", "/some/file/test.txt")
 	location := file.Location()
 	s.Equal("file:///some/file/", location.String())
 }
 
-func (s *osLocationTest) TestDeleteFile() {
+func (s *memLocationTest) TestDeleteFile() {
 	dir, err := ioutil.TempDir("test_files", "example")
 	s.NoError(err, "Setup not expected to fail.")
 	defer func() {
@@ -179,6 +161,6 @@ func (s *osLocationTest) TestDeleteFile() {
 
 }
 
-func TestOSLocation(t *testing.T) {
-	suite.Run(t, new(osLocationTest))
+func TestMemLocation(t *testing.T) {
+	suite.Run(t, new(memLocationTest))
 }

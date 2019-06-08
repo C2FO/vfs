@@ -3,13 +3,17 @@ package mem
 import (
 	"github.com/c2fo/vfs/v4"
 	"github.com/c2fo/vfs/v4/backend"
-	"github.com/c2fo/vfs/v4/utils"
 )
 
 //Scheme defines the filesystem type.
 const Scheme = "file"
 const name = "mem"
 var systemMap map[string]*File
+var fileList []*File
+
+
+
+
 // FileSystem implements vfs.Filesystem for the mem filesystem.
 type FileSystem struct{}
 
@@ -21,15 +25,22 @@ func (fs *FileSystem) Retry() vfs.Retry {
 // NewFile function returns the mem implementation of vfs.File.  NOT DONE
 func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
 	file, _ := newFile(name)
-	return file, nil
+	tmp,err :=fs.NewLocation(volume,name)
+	file.location = tmp
+	systemMap[name] = file
+	fileList = append(fileList,file)
+	return file,err
 }
 
 // NewLocation function returns the mem implementation of vfs.Location. NOT DONE
 func (fs *FileSystem) NewLocation(volume string, name string) (vfs.Location, error) {
+
 	return &Location{
 		fileSystem: fs,
-		name:       utils.AddTrailingSlash(name),
+		name:       name,
+		exists: 	true,
 	}, nil
+
 }
 
 
@@ -47,4 +58,5 @@ func (fs *FileSystem) Scheme() string {
 func init() {
 	backend.Register(Scheme, &FileSystem{})
 	systemMap = make(map[string]*File)
+	fileList = make([]*File, 0)
 }
