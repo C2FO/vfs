@@ -2,7 +2,6 @@ package mem
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/c2fo/vfs/v4"
 	"github.com/c2fo/vfs/v4/utils"
 	"path"
@@ -21,9 +20,15 @@ type Location struct {
 
 
 
-func (Location) String() string {
-	//panic("implement me")
-	return""
+func (l *Location) String() string {
+
+
+	var buf bytes.Buffer
+	pref := "mem://"
+	buf.WriteString(pref)
+	str := path.Dir(path.Clean(l.Path()))
+	buf.WriteString(str)
+	return utils.AddTrailingSlash(buf.String())
 }
 
 
@@ -39,38 +44,12 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 	 //fmt.Println(l.Path())
 	 for _, v:=range fileList{
 	 	if v!=nil{
-			fmt.Println(v.Location().Path(),str)
 	 		if strings.Contains(v.Location().Path(),str){
-
-
 	 			list = append(list,v.Name())
 
 			}
 		}
 	 }
-
-/*
-	fmt.Println(l.Path())
-	fmt.Println(l.name)
-	list := make([]string,1)
-	str := path.Dir(l.Path())
-	fmt.Println(str)
-	for i, v:= range fileList{
-		if v != nil{
-			fmt.Println(v.Location().Path(),i)
-			if strings.Contains(path.Dir(v.Path()),str){
-				if path.Ext(v.Path()) != " " {
-					fmt.Println(v.Path())
-					list = append(list, v.Name())
-				}
-			}
-		}
-
-
-	}
-	return list, nil
-
- */
 return list,nil
 }
 
@@ -84,10 +63,9 @@ func (Location) Volume() string {
 
 func (l *Location) Path() string {
 
-	if path.IsAbs(l.name){
-		return utils.AddTrailingSlash(l.name)
-	}
-	return l.name
+		return utils.AddTrailingSlash(path.Dir(l.name))
+
+
 }
 
 func (l *Location) Exists() (bool, error) {
@@ -114,23 +92,38 @@ func (Location) ChangeDir(relativePath string) error {
 	panic("implement me")
 }
 
-func (Location) FileSystem() vfs.FileSystem {
-	panic("implement me")
+func (l *Location) FileSystem() vfs.FileSystem {
+
+	existence, _:= l.Exists()
+	if existence{
+		return l.fileSystem
+	}
+	return nil
+
 }
 
 func (l *Location) NewFile(fileName string) (vfs.File, error) {
 
-	pref := path.Dir(l.Path())
-	var buf bytes.Buffer
-	buf.WriteString(pref)
+	pref := l.Path()
+	//var buf bytes.Buffer
+	//buf.WriteString(pref)
 	str:=fileName
-	buf.WriteString(str)
-	nameStr := buf.String()
+	//buf.WriteString(str)
+	//nameStr := buf.String()
+	var nameStr string
+	if pref == "./"{
+		nameStr=path.Join("/",fileName)
+	}else{
+	nameStr=path.Join(pref,str)
+	}
 	//l.name = nameStr
-	file := File{timeStamp: time.Now(), isRef: false, Filename: nameStr, byteBuf: new(bytes.Buffer), cursor: 0,
-		isOpen: false, isZB: false, exists: true,}
+	loc,_:=l.fileSystem.NewLocation("",nameStr)
+	file := &File{timeStamp: time.Now(), isRef: false, Filename: nameStr, byteBuf: new(bytes.Buffer), cursor: 0,
+		isOpen: false, isZB: false, exists: true,location:loc}
+	systemMap[nameStr]=file
+	fileList = append(fileList,file)
 
-	return &file, nil
+	return file, nil
 
 
 }
@@ -141,16 +134,17 @@ func (Location) DeleteFile(fileName string) error {
 
 func (l *Location) URI() string {
 
-	//existence, _ := f.Exists()
-	//if !existence{
-	//	return ""
-	//}
+	existence, _ := l.Exists()
+	if !existence{
+		return ""
+	}
 	var buf bytes.Buffer
-	pref := "file://"
+	pref := "mem://"
 	buf.WriteString(pref)
-	str := l.name
+	str := l.Path()
 	buf.WriteString(str)
-	return buf.String()
+	retStr := utils.AddTrailingSlash(buf.String())
+	return retStr
 
 }
 

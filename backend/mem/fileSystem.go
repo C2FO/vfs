@@ -6,7 +6,7 @@ import (
 )
 
 //Scheme defines the filesystem type.
-const Scheme = "file"
+const Scheme = "mem"
 const name = "mem"
 var systemMap map[string]*File
 var fileList []*File
