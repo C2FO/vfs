@@ -40,11 +40,13 @@ func (Location) List() ([]string, error) {
 func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 
 	list := make([]string,1)
-	 str := path.Join(path.Dir(l.Path()),prefix)
+	 str := path.Join(l.Path(),prefix)
 	 //fmt.Println(l.Path())
 	 for _, v:=range fileList{
 	 	if v!=nil{
-	 		if strings.Contains(v.Location().Path(),str){
+	 		path:=v.Path()
+	 		tmp:=strings.Contains(path,str)
+	 		if tmp{
 	 			list = append(list,v.Name())
 
 			}
@@ -63,12 +65,21 @@ func (Location) Volume() string {
 
 func (l *Location) Path() string {
 
-		return utils.AddTrailingSlash(path.Dir(l.name))
-
+		if(path.Ext(l.name) == "") {
+			return utils.AddTrailingSlash(l.name)
+		}
+	return utils.AddTrailingSlash(path.Dir(l.name))
 
 }
 
 func (l *Location) Exists() (bool, error) {
+
+	if systemMap[l.name] != nil{
+		if systemMap[l.name].exists{
+			l.exists = true
+		}
+	}
+
 	if l.exists {
 		return true,nil
 	}
@@ -77,11 +88,11 @@ func (l *Location) Exists() (bool, error) {
 
 func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 
-	str := path.Join(path.Dir(path.Clean(l.Path())),relativePath)
+	str := path.Join(l.Path(),relativePath)
 	return &Location{
 		fileSystem: l.fileSystem,
 		name:       str,
-		exists: 	true,
+		exists: 	false,
 	}, nil
 
 
@@ -94,6 +105,11 @@ func (Location) ChangeDir(relativePath string) error {
 
 func (l *Location) FileSystem() vfs.FileSystem {
 
+	if systemMap[l.name] != nil{
+		if systemMap[l.name].exists{
+			l.exists = true
+		}
+	}
 	existence, _:= l.Exists()
 	if existence{
 		return l.fileSystem
@@ -119,7 +135,7 @@ func (l *Location) NewFile(fileName string) (vfs.File, error) {
 	//l.name = nameStr
 	loc,_:=l.fileSystem.NewLocation("",nameStr)
 	file := &File{timeStamp: time.Now(), isRef: false, Filename: nameStr, byteBuf: new(bytes.Buffer), cursor: 0,
-		isOpen: false, isZB: false, exists: true,location:loc}
+		isOpen: false, isZB: false, exists: false,location:loc}
 	systemMap[nameStr]=file
 	fileList = append(fileList,file)
 

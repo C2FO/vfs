@@ -38,7 +38,7 @@ func (fs *FileSystem) NewLocation(volume string, name string) (vfs.Location, err
 	return &Location{
 		fileSystem: fs,
 		name:       name,
-		exists: 	true,
+		exists: 	false,
 	}, nil
 
 }
