@@ -3,10 +3,9 @@ package mem
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"github.com/c2fo/vfs/v4"
-	"path"
 	"io"
+	"path"
 	"time"
 )
 
@@ -111,12 +110,11 @@ func (f *File) Write(p []byte) (n int, err error) {
 	if f.isOpen == false{
 		f.isOpen = true
 	}
+	f.exists=true
 	f.isRef = true
 	length := len(p)
 	if length == 0{
-		if f.byteBuf.Cap() == 0{
-			f.isZB = true
-		}
+
 		return 0, nil
 	}
 	num, err := f.byteBuf.Write(p)
@@ -153,7 +151,6 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 	testPath := path.Join(path.Clean(location.Path()),f.Name())
 	if systemMap[testPath]!=nil{	//if file w/name exists @ loc, simply copy contents over
-		fmt.Println(testPath)
 		if tmp := systemMap[testPath]; tmp !=nil{
 			cerr := f.CopyToFile(systemMap[testPath])
 			if(cerr!=nil){
@@ -166,6 +163,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 	}
 
 	newFile,_:= location.NewFile(f.Name())
+	_,_ = newFile.Write(make([]byte,0))
 	cerr:=f.CopyToFile(newFile)
 	return systemMap[testPath],cerr
 }
@@ -183,8 +181,11 @@ func (f *File) CopyToFile(target vfs.File) error {
 	name := target.Name()
 	loc :=target.Location()
 	derr:=target.Delete()
-	fmt.Println(derr)
+	if(derr!=nil){
+		return derr
+	}
 	newFile,_ := loc.NewFile(name)
+
 	_, err := newFile.Write(f.privSlice)
 	_ =newFile.Close()
 	return err
@@ -195,8 +196,7 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 
 
 
-	testPath := path.Join(path.Dir(path.Clean(location.Path())),f.Name())
-	fmt.Println(testPath)
+	testPath := path.Join(location.Path(),f.Name())
 	if systemMap[testPath]!=nil{
 	err :=	f.CopyToFile(systemMap[path.Clean(location.Path())])
 	if err!=nil{
@@ -205,8 +205,9 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	return f,nil
 	}
 	fileName := f.Name()
-	newPath := path.Join(path.Dir(path.Clean(location.Path())),fileName)
-	newFile,_ := location.NewFile(newPath)
+	newPath := path.Join(location.Path(),fileName)
+	newFile,_ := location.NewFile(path.Base(newPath))
+	_,_ = newFile.Write(make([]byte,0))
 	cerr := f.CopyToFile(newFile)
 	if(cerr!=nil){
 		return nil,MoveToLocationError()
@@ -217,7 +218,7 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	}
 
 
-return newFile,nil
+return systemMap[newPath],nil
 }
 
 /*MoveToFile creates a newFile, and moves it to "file".
@@ -228,11 +229,14 @@ The receiver is always deleted (since it's being "moved")
 func (f *File) MoveToFile(file vfs.File) error {
 
 	if f.Name() == file.Name(){
-		newFile,_:=file.Location().NewFile(f.Name())
+
 		derr := file.Delete()
 		if(derr!=nil){
 			return DeleteError()
 		}
+		newFile,_:=file.Location().NewFile(f.Name())
+		_,_ = newFile.Write(make([]byte,0))
+		_=newFile.Close()
 		copyErr:=f.CopyToFile(newFile)
 		if(copyErr != nil){
 			return CopyFail()
@@ -242,16 +246,15 @@ func (f *File) MoveToFile(file vfs.File) error {
 	}
 
 	newFile,_ := file.Location().NewFile(f.Name())
+	_,_ = newFile.Write(make([]byte,0))
+	_ = newFile.Close()
 
 
 	copyErr := f.CopyToFile(newFile)
 	if copyErr != nil {
 		return CopyFail()
 	}
-	cerr:=newFile.Close()
-	if cerr !=nil{
-		return MoveToFileError()
-	}
+
 
 	derr:=f.Delete()
 
@@ -271,16 +274,17 @@ func (f *File) Delete() error {
 	if existence {
 		//do some work to adjust the location (later)
 		systemMap[f.Filename] = nil
-		//fileList[index] = nil
+		f.exists = false
+		f.privSlice = nil
+		f.byteBuf = nil
+		f.timeStamp = time.Now()
+		fileList[index] = nil
 		copy(fileList[index:], fileList[index+1:])
 		fileList[len(fileList)-1] = nil // or the zero value of T
 		fileList = fileList[:len(fileList)-1]
 
 
-		f.exists = false
-		f.privSlice = nil
-		f.byteBuf = nil
-		f.timeStamp = time.Now()
+
 	}
 	if(systemMap[str] != nil ){
 		return DeleteError()
@@ -304,7 +308,7 @@ func newFile(name string) (*File, error){
 
 	return &File{
 		timeStamp: time.Now(), isRef: false, Filename: name, byteBuf: new(bytes.Buffer), cursor: 0,
-		isOpen: false, isZB: false, exists: true,
+		isOpen: false, isZB: false, exists: false,
 	}, nil
 
 }
@@ -359,9 +363,13 @@ func (f *File) URI() string {  //works but test says it fails, probably other de
 
 func (f *File) getIndex() int{
 
+	if systemMap[f.Filename] == nil{
+		return -1
+	}
 	str := f.Path()
 	for i,v:= range fileList{
-		if v.Path() == str{
+		existence,_:=v.Exists()
+		if v.Path() == str && existence{
 			return i
 		}
 	}
