@@ -123,13 +123,14 @@ func (s *memLocationTest) TestPath() {
 func (s *memLocationTest) TestURI() {
 	file, _ := s.fileSystem.NewFile("", "/some/file/test.txt")
 	location := file.Location()
-	expected := "file:///some/file/test.txt"
+	expected := "mem:///some/file/"
 	s.Equal(expected, location.URI(), "%s does not match %s", location.URI(), expected)
 }
 
 func (s *memLocationTest) TestStringer() {
 	file, _ := s.fileSystem.NewFile("", "/some/file/test.txt")
 	location := file.Location()
+	fmt.Println(location.String())
 	s.Equal("file:///some/file/", location.String())
 }
 
