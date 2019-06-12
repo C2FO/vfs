@@ -24,12 +24,12 @@ func (_m *File) Close() error {
 }
 
 // CopyToFile provides a mock function with given fields: _a0
-func (_m *File) CopyToFile(_a0 vfs.File) error {
-	ret := _m.Called(_a0)
+func (_m *File) CopyToFile(file vfs.File) error {
+	ret := _m.Called(file)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(vfs.File) error); ok {
-		r0 = rf(_a0)
+		r0 = rf(file)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -135,12 +135,12 @@ func (_m *File) LastModified() (*time.Time, error) {
 }
 
 // MoveToFile provides a mock function with given fields: _a0
-func (_m *File) MoveToFile(_a0 vfs.File) error {
-	ret := _m.Called(_a0)
+func (_m *File) MoveToFile(file vfs.File) error {
+	ret := _m.Called(file)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(vfs.File) error); ok {
-		r0 = rf(_a0)
+		r0 = rf(file)
 	} else {
 		r0 = ret.Error(0)
 	}

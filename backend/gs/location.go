@@ -32,13 +32,16 @@ func (l *Location) List() ([]string, error) {
 }
 
 //ListByPrefix returns a slice of file base names and any error, if any
-//prefix means filename prefix and therefore should not have slash
-//List functions return only files
-//List functions return only basenames
+//List functions return only file basenames
 func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error) {
+	prefix := utils.RemoveLeadingSlash(path.Join(l.prefix, filenamePrefix))
+	if filenamePrefix == "" {
+		prefix = utils.EnsureTrailingSlash(prefix)
+	}
+	d := path.Dir(prefix)
 	q := &storage.Query{
 		Delimiter: "/",
-		Prefix:    utils.CleanPrefix(path.Join(l.prefix, filenamePrefix)),
+		Prefix:    prefix,
 		Versions:  false,
 	}
 
@@ -58,8 +61,9 @@ func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error) {
 			return nil, err
 		}
 		//only include objects, not "directories"
-		if objAttrs.Prefix == "" && objAttrs.Name != l.prefix {
-			fileNames = append(fileNames, strings.TrimPrefix(objAttrs.Name, l.prefix))
+		if objAttrs.Prefix == "" && objAttrs.Name != d {
+			fn := strings.TrimPrefix(objAttrs.Name, utils.EnsureTrailingSlash(d))
+			fileNames = append(fileNames, fn)
 		}
 	}
 
@@ -109,6 +113,8 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 	if l == nil {
 		return nil, errors.New("non-nil gs.Location pointer is required")
 	}
+
+	//make a copy of the original location first, then ChangeDir, leaving the original location as-is
 	newLocation := &Location{}
 	*newLocation = *l
 	err := newLocation.ChangeDir(relativePath)
@@ -123,15 +129,14 @@ func (l *Location) ChangeDir(relativePath string) error {
 	if l == nil {
 		return errors.New("non-nil gs.Location pointer is required")
 	}
-	if  relativePath == "" {
+	if relativePath == "" {
 		return errors.New("non-empty string relativePath is required")
 	}
 	err := utils.ValidateRelLocationPath(relativePath)
 	if err != nil {
 		return err
 	}
-	newPrefix := path.Join(l.prefix, relativePath)
-	l.prefix = utils.EnsureTrailingSlash(utils.CleanPrefix(newPrefix))
+	l.prefix = utils.EnsureTrailingSlash(utils.EnsureLeadingSlash(path.Join(l.prefix, relativePath)))
 	return nil
 }
 
@@ -145,7 +150,7 @@ func (l *Location) NewFile(filePath string) (vfs.File, error) {
 	if l == nil {
 		return nil, errors.New("non-nil gs.Location pointer is required")
 	}
-	if  filePath == "" {
+	if filePath == "" {
 		return nil, errors.New("non-empty string filePath is required")
 	}
 	err := utils.ValidateRelFilePath(filePath)
@@ -155,7 +160,7 @@ func (l *Location) NewFile(filePath string) (vfs.File, error) {
 	newFile := &File{
 		fileSystem: l.fileSystem,
 		bucket:     l.bucket,
-		key:        utils.EnsureLeadingSlash(path.Clean(path.Join(l.prefix, filePath))),
+		key:        utils.EnsureLeadingSlash(path.Join(l.prefix, filePath)),
 	}
 	return newFile, nil
 }

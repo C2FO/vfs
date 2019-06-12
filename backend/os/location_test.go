@@ -21,7 +21,7 @@ type osLocationTest struct {
 	suite.Suite
 	testFile   vfs.File
 	fileSystem *FileSystem
-	tmploc vfs.Location
+	tmploc     vfs.Location
 }
 
 func (s *osLocationTest) SetupSuite() {
@@ -79,9 +79,6 @@ func (s *osLocationTest) TestListByPrefix() {
 	expected := []string{"prefix-file.txt"}
 	actual, _ := s.testFile.Location().ListByPrefix("prefix")
 	s.Equal(expected, actual)
-
-	_, err := s.testFile.Location().ListByPrefix("bad/prefix")
-	s.EqualError(err, utils.BadFilePrefix, "got expected error")
 }
 
 func (s *osLocationTest) TestListByRegex() {
@@ -92,7 +89,7 @@ func (s *osLocationTest) TestListByRegex() {
 }
 
 func (s *osLocationTest) TestExists() {
-	otherFile, _ := s.tmploc.NewFile( "foo/foo.txt")
+	otherFile, _ := s.tmploc.NewFile("foo/foo.txt")
 	s.True(s.testFile.Location().Exists())
 	s.False(otherFile.Location().Exists())
 }

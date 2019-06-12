@@ -130,14 +130,14 @@ func (f *File) Location() vfs.Location {
 }
 
 // MoveToFile move a file. It accepts a target vfs.File and returns an error, if any.
-func (f *File) MoveToFile(target vfs.File) error {
-	if target.Location().FileSystem().Scheme() == f.Location().FileSystem().Scheme() {
-		err := os.Rename(f.Path(), target.Path())
+func (f *File) MoveToFile(file vfs.File) error {
+	if file.Location().FileSystem().Scheme() == f.Location().FileSystem().Scheme() {
+		err := os.Rename(f.Path(), file.Path())
 		if err != nil {
 			return err
 		}
 	} else {
-		_, err := f.copyWithName(target.Name(), target.Location())
+		_, err := f.copyWithName(file.Name(), file.Location())
 		if err != nil {
 			return err
 		}
@@ -175,8 +175,8 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 }
 
 // CopyToFile copies the file to a new File.  It accepts a vfs.File and returns an error, if any.
-func (f *File) CopyToFile(target vfs.File) error {
-	_, err := f.copyWithName(target.Name(), target.Location())
+func (f *File) CopyToFile(file vfs.File) error {
+	_, err := f.copyWithName(file.Name(), file.Location())
 	return err
 }
 

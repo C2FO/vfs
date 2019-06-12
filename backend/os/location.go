@@ -25,7 +25,7 @@ func (l *Location) NewFile(fileName string) (vfs.File, error) {
 	if l == nil {
 		return nil, errors.New("non-nil os.Location pointer is required")
 	}
-	if  fileName == "" {
+	if fileName == "" {
 		return nil, errors.New("non-empty string filePath is required")
 	}
 	err := utils.ValidateRelFilePath(fileName)
@@ -56,10 +56,23 @@ func (l *Location) List() ([]string, error) {
 
 // ListByPrefix returns a slice of all files starting with "prefix" in the top directory of of the location.
 func (l *Location) ListByPrefix(prefix string) ([]string, error) {
-	if err := utils.ValidateFilePrefix(prefix); err != nil {
-		return nil, err
+	var loc vfs.Location
+	var err error
+	d := path.Dir(prefix)
+
+	// if prefix has a dir component, use it's location and basename of prefix
+	if d != "." && d != "/" {
+		loc, err = l.NewLocation(utils.EnsureTrailingSlash(d))
+		if err != nil {
+			return []string{}, err
+		}
+		prefix = path.Base(prefix)
+	} else {
+		// otherwise just use everything as-is
+		loc = l
 	}
-	return l.fileList(func(name string) bool {
+
+	return loc.(*Location).fileList(func(name string) bool {
 		return strings.HasPrefix(name, prefix)
 	})
 }
@@ -138,6 +151,8 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 	if l == nil {
 		return nil, errors.New("non-nil os.Location pointer is required")
 	}
+
+	//make a copy of the original location first, then ChangeDir, leaving the original location as-is
 	newLocation := &Location{}
 	*newLocation = *l
 	err := newLocation.ChangeDir(relativePath)
@@ -153,14 +168,17 @@ func (l *Location) ChangeDir(relativePath string) error {
 	if l == nil {
 		return errors.New("non-nil os.Location pointer is required")
 	}
-	if  relativePath == "" {
+	if relativePath == "" {
 		return errors.New("non-empty string relativePath is required")
 	}
 	err := utils.ValidateRelLocationPath(relativePath)
 	if err != nil {
 		return err
 	}
-	l.name = utils.EnsureTrailingSlash(path.Clean(path.Join(l.name, relativePath)))
+
+	//update location path
+	l.name = utils.EnsureTrailingSlash(utils.EnsureLeadingSlash(path.Join(l.name, relativePath)))
+
 	return nil
 }
 

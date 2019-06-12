@@ -38,10 +38,7 @@ What we needed/wanted was the following(and more):
 Install
 
 Go install:
-  go get -u github.com/c2fo/vfs/...
-
-Glide installation:
-  glide install github.com/c2fo/vfs
+  go get -u github.com/c2fo/vfs/v5
 
 Usage
 
@@ -49,19 +46,19 @@ We provide vfssimple as basic way of initializing filesystem backends (see each 
 vfssimple pulls in every c2fo/vfs backend.  If you need to reduce the backend requirements (and app memory footprint) or
 add a third party backend, you'll need to implement your own "factory".  See backend doc for more info.
 
-You can then use those file systems to initialize locations which you'll be referencing frequently, or initialize files directly
+You can then use those filesystems to initialize locations which you'll be referencing frequently, or initialize files directly
 
 
   osFile, err := vfssimple.NewFile("file:///path/to/file.txt")
   s3File, err := vfssimple.NewFile("s3://bucket/prefix/file.txt")
 
-  osLocation, err := vfssimple.NewLocation("file:///tmp")
-  s3Location, err := vfssimple.NewLocation("s3://bucket")
+  osLocation, err := vfssimple.NewLocation("file:///tmp/")
+  s3Location, err := vfssimple.NewLocation("s3://bucket/")
 
   osTmpFile, err := osLocation.NewFile("anotherFile.txt") // file at /tmp/anotherFile.txt
 
 
-With a number of files and locations between s3 and the local file system you can perform a number of actions without any consideration for the system's api or
+With a number of files and locations between s3 and the local filesystem you can perform a number of actions without any consideration for the system's api or
 implementation details.
 
   osFileExists, err := osFile.Exists() // true, nil
@@ -77,9 +74,17 @@ implementation details.
   s3FileName := s3File.Name() // file.txt
   s3FilePath := s3File.Path() // /prefix/file.txt
 
+File's io.* interfaces may be used directly:
+
+  reader := strings.NewReader("Clear is better than clever")
+  gsFile, err := vfssimple.NewFile("gs://somebucket/path/to/file.txt")
+
+  byteCount, err := io.Copy(gsFile, reader)
+  err := gsFile.Close()
+
 Third-party Backends
 
-  * none so far
+* none so far
 
 Feel free to send a pull request if you want to add your backend to the list.
 
@@ -94,7 +99,7 @@ Things to add:
   * update s3 and google sdk libs
   * provide for go mod and/or dep installs
 
-Contrubutors
+Contributors
 
 Brought to you by the Enterprise Pipeline team at C2FO:
 
@@ -117,5 +122,21 @@ Contributing
 License
 
 Distributed under the MIT license. See `http://github.com/c2fo/vfs/License.md for more information.
+
+Definitions
+
+absolute path - A path is said to be absolute if it provides the entire context need to find and file, including the
+filesystem root. An absolute path must begin with a slash and may include . and .. directories.
+
+relative path - A relative path is a way to locate a dir or file relative to another directory. A relative path may not
+begin with a slash but may include . and .. directories.
+
+file path - A file path ends with a filename and therefore may not end with a slash.
+
+location path - A location path must end with a slash.
+
+URI - A Uniform Resource Identifier (URI) is a string of characters that unambiguously identifies a particular resource.
+To guarantee uniformity, all URIs follow a predefined set of syntax rules,[1] but also maintain extensibility through
+a separately defined hierarchical naming scheme (e.g. http://).
 */
 package vfs

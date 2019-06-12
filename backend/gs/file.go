@@ -122,7 +122,7 @@ func (f *File) Exists() (bool, error) {
 func (f *File) Location() vfs.Location {
 	return vfs.Location(&Location{
 		fileSystem: f.fileSystem,
-		prefix:     utils.EnsureTrailingSlash(utils.CleanPrefix(path.Dir(f.key))),
+		prefix:     utils.EnsureTrailingSlash(utils.EnsureLeadingSlash(path.Clean(path.Dir(f.key)))),
 		bucket:     f.bucket,
 	})
 }
@@ -165,16 +165,16 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 // CopyToFile puts the contents of File into the targetFile passed. Uses the GCS CopierFrom
 // method if the target file is also on GCS, otherwise uses io.Copy.
-func (f *File) CopyToFile(targetFile vfs.File) error {
-	if tf, ok := targetFile.(*File); ok {
+func (f *File) CopyToFile(file vfs.File) error {
+	if tf, ok := file.(*File); ok {
 		return f.copyWithinGCSToFile(tf)
 	}
 
-	if err := utils.TouchCopy(targetFile, f); err != nil {
+	if err := utils.TouchCopy(file, f); err != nil {
 		return err
 	}
 	//Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
-	if cerr := targetFile.Close(); cerr != nil {
+	if cerr := file.Close(); cerr != nil {
 		return cerr
 	}
 	//Close file (f) reader
@@ -197,8 +197,8 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 // MoveToFile puts the contents of File into the targetFile passed using File.CopyToFile.
 // If the copy succeeds, the source file is deleted. Any errors from the copy or delete are
 // returned.
-func (f *File) MoveToFile(targetFile vfs.File) error {
-	if err := f.CopyToFile(targetFile); err != nil {
+func (f *File) MoveToFile(file vfs.File) error {
+	if err := f.CopyToFile(file); err != nil {
 		return err
 	}
 
@@ -306,7 +306,7 @@ func (f *File) getObjectHandle() (ObjectHandleCopier, error) {
 		return nil, err
 	}
 
-	handler := client.Bucket(f.bucket).Object(f.key)
+	handler := client.Bucket(f.bucket).Object(utils.RemoveLeadingSlash(f.key))
 	return &RetryObjectHandler{Retry: f.fileSystem.Retry(), handler: handler}, nil
 }
 

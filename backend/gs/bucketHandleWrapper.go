@@ -34,6 +34,7 @@ func (r *RetryBucketHandler) Attrs(ctx context.Context) (*storage.BucketAttrs, e
 		return r.handler.Attrs(ctx)
 	})
 }
+
 // WrappedObjects returns an iterator over the objects in the bucket that match the Query q, all wrapped in a retry.
 // If q is nil, no filtering is done.
 func (r *RetryBucketHandler) WrappedObjects(ctx context.Context, q *storage.Query) ObjectIteratorWrapper {

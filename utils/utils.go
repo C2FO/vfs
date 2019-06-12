@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"path"
 	"regexp"
 	"strings"
 
@@ -14,20 +13,17 @@ import (
 const (
 	// Windows constant represents a target operating system running a version of Microsoft Windows
 	Windows = "windows"
-	// BadFilePrefix constant is returned when path has leading slash or backslash
-	BadFilePrefix = "expecting only a filename prefix, which may not include slashes or backslashes"
+	// BadFilePrefix constant is returned when path has leading slash
+	BadFilePrefix = "expecting only a filename prefix, which may not include slashes"
 	// ErrBadAbsFilePath constant is returned when a file path is not absolute
-	ErrBadAbsFilePath = "absolute file path is invalid - must include leading separator character and may not include trailing separator character"
+	ErrBadAbsFilePath = "absolute file path is invalid - must include leading slash and may not include trailing slash"
 	// ErrBadRelFilePath constant is returned when a file path is not relative
-	ErrBadRelFilePath = "relative file path is invalid - may not include leading or trailing separator characters"
+	ErrBadRelFilePath = "relative file path is invalid - may not include leading or trailing slashes"
 	// ErrBadAbsLocationPath constant is returned when a file path is not absolute
-	ErrBadAbsLocationPath = "absolute location path is invalid - must include leading and trailing separator characters"
+	ErrBadAbsLocationPath = "absolute location path is invalid - must include leading and trailing slashes"
 	// ErrBadRelLocationPath constant is returned when a file path is not relative
-	ErrBadRelLocationPath = "relative location path is invalid - may not include leading separator character but must include trailing separator character"
+	ErrBadRelLocationPath = "relative location path is invalid - may not include leading slash but must include trailing slash"
 )
-
-// regex to ensure prefix doesn't have leading '/', '.', '..', etc...
-var prefixCleanRegex = regexp.MustCompile("^[/.]*")
 
 // regex to test whether the last character is a '/'
 var hasTrailingSlash = regexp.MustCompile("/$")
@@ -101,21 +97,6 @@ func EnsureLeadingSlash(dir string) string {
 		return dir
 	}
 	return "/" + dir
-}
-
-// CleanPrefix resolves relative dot pathing, removing any leading . or / and removes any trailing /
-func CleanPrefix(prefix string) string {
-	prefix = path.Clean(prefix)
-	return prefixCleanRegex.ReplaceAllString(prefix, "")
-}
-
-// ValidateFilePrefix performs a validation check on a prefix. The prefix should not include "/" or "\\" characters. An
-// error is returned if either of those conditions are true.
-func ValidateFilePrefix(filenamePrefix string) error {
-	if strings.Contains(filenamePrefix, "/") || strings.Contains(filenamePrefix, "\\") {
-		return errors.New(BadFilePrefix)
-	}
-	return nil
 }
 
 // TouchCopy is a wrapper around io.Copy which ensures that even empty source files (reader) will get written as an

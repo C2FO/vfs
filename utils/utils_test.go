@@ -91,19 +91,6 @@ func (s *utilsTest) TestGetURI() {
 	s.Equal("s3://mybucket/this/path/to/", utils.GetLocationURI(mockLoc2), "s3 location uri matches ")
 }
 
-func (s *utilsTest) TestCleanPrefix() {
-	tests := map[string]string{
-		"/some/path":     "some/path",
-		"some/path":      "some/path",
-		"/some/../path/": "path",
-	}
-
-	for prefix, expected := range tests {
-		s.Equal(expected, utils.CleanPrefix(prefix))
-	}
-
-}
-
 func (s *utilsTest) TestEnsureTrailingSlash() {
 	tests := map[string]string{
 		"/some/path/": "/some/path/",
@@ -114,24 +101,6 @@ func (s *utilsTest) TestEnsureTrailingSlash() {
 
 	for path, expected := range tests {
 		s.Equal(expected, utils.EnsureTrailingSlash(path))
-	}
-}
-
-func (s *utilsTest) TestValidateFilePrefix() {
-	tests := map[string]bool{
-		"/some/path/file.txt":  true,
-		"\\path\\to\\file.txt": true,
-		"file.txt":             false,
-	}
-
-	for prefix, expected := range tests {
-		err := utils.ValidateFilePrefix(prefix)
-		if err != nil {
-			isError := s.Error(err)
-			if s.Equal(isError, expected) {
-				s.EqualError(err, utils.BadFilePrefix)
-			}
-		}
 	}
 }
 

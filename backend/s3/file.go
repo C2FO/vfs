@@ -89,16 +89,16 @@ func (f *File) Location() vfs.Location {
 
 // CopyToFile puts the contents of File into the targetFile passed. Uses the S3 CopyObject
 // method if the target file is also on S3, otherwise uses io.Copy.
-func (f *File) CopyToFile(targetFile vfs.File) error {
-	if tf, ok := targetFile.(*File); ok {
+func (f *File) CopyToFile(file vfs.File) error {
+	if tf, ok := file.(*File); ok {
 		return f.copyWithinS3ToFile(tf)
 	}
 
-	if err := utils.TouchCopy(targetFile, f); err != nil {
+	if err := utils.TouchCopy(file, f); err != nil {
 		return err
 	}
 	//Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
-	if cerr := targetFile.Close(); cerr != nil {
+	if cerr := file.Close(); cerr != nil {
 		return cerr
 	}
 	//Close file (f) reader
@@ -108,8 +108,8 @@ func (f *File) CopyToFile(targetFile vfs.File) error {
 // MoveToFile puts the contents of File into the targetFile passed using File.CopyToFile.
 // If the copy succeeds, the source file is deleted. Any errors from the copy or delete are
 // returned.
-func (f *File) MoveToFile(targetFile vfs.File) error {
-	if err := f.CopyToFile(targetFile); err != nil {
+func (f *File) MoveToFile(file vfs.File) error {
+	if err := f.CopyToFile(file); err != nil {
 		return err
 	}
 
