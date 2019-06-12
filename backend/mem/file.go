@@ -48,14 +48,18 @@ func WriteError() error{
 	return errors.New("Unexpected Write Error")
 }
 
+func SeekError() error{
+	return errors.New("Seek could not complete the desired call")
+}
 
-func (f *File) Close() error {  //NOT DONE
+
+func (f *File) Close() error {
 	if !f.isRef {
 		// Do nothing on files that were never referenced
 		return nil
 	}
 	if f.byteBuf.Len() > 0{
-		f.privSlice = append(f.privSlice,f.byteBuf.Next(200)...) //TODO: maybe change the number for "Next" arg
+		f.privSlice = append(f.privSlice,f.byteBuf.Next(64)...) //TODO: maybe change the number for "Next" arg
 	}
 
 	f.isOpen =false
@@ -102,8 +106,49 @@ func (f *File) Read(p []byte) (n int, err error) {
 
 }
 
-func (File) Seek(offset int64, whence int) (int64, error) {
-	panic("implement me")
+func (f *File) Seek(offset int64, whence int) (int64, error) {
+
+
+	length := len(f.privSlice)
+	if length == 0 && offset == 0 && whence == 0{
+		return 0,nil
+	}
+
+	switch(whence){
+
+	case 0:
+			if int(offset)<length && offset>=0{
+				f.cursor = int(offset)
+				return offset,nil
+			}else {
+				return int64(f.cursor), SeekError()
+			}
+
+	case 1:
+			pos:= f.cursor + int(offset)
+			if pos < length && pos >=0{
+				f.cursor = pos
+				return int64(pos),nil
+			}else{
+				return int64(f.cursor), SeekError()
+			}
+
+	case 2:
+		pos:= length-1 + int(offset)
+		if pos<length && pos>=0{
+			f.cursor=pos
+			return int64(f.cursor),nil
+		}else{
+			return int64(f.cursor),SeekError()
+		}
+
+	default:
+		return 0, SeekError()
+
+
+
+	}
+
 }
 
 func (f *File) Write(p []byte) (n int, err error) {
@@ -221,7 +266,8 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 return systemMap[newPath],nil
 }
 
-/*MoveToFile creates a newFile, and moves it to "file".
+/*
+MoveToFile creates a newFile, and moves it to "file".
 If names are same, "file" is deleted and newFile takes its place.
 The receiver is always deleted (since it's being "moved")
 */
@@ -273,7 +319,7 @@ func (f *File) Delete() error {
 	}
 	if existence {
 		//do some work to adjust the location (later)
-		systemMap[f.Filename] = nil
+		systemMap[f.Path()] = nil
 		f.exists = false
 		f.privSlice = nil
 		f.byteBuf = nil
@@ -307,7 +353,7 @@ func newFile(name string) (*File, error){
 
 
 	return &File{
-		timeStamp: time.Now(), isRef: false, Filename: name, byteBuf: new(bytes.Buffer), cursor: 0,
+		timeStamp: time.Now(), isRef: false, Filename: path.Base(name), byteBuf: new(bytes.Buffer), cursor: 0,
 		isOpen: false, isZB: false, exists: false,
 	}, nil
 
@@ -332,28 +378,27 @@ func (f *File) Size() (uint64, error) {
 }
 
 func (f *File) Path() string {
-	if !path.IsAbs(f.Filename){
-		return path.Join("/",f.Filename)
-	}
-	return f.Filename
+
+	return path.Join(f.Location().Path(),f.Filename)
+
 }
 
 func (f *File) Name() string {
 	//if file exists
 
-	return path.Base(f.Filename)
+	return f.Filename
 }
 
-func (f *File) URI() string {  //works but test says it fails, probably other dependencies
+func (f *File) URI() string {
 
 	existence, _ := f.Exists()
 	if !existence{
 		return ""
 	}
 	var buf bytes.Buffer
-	pref := "mem:///"
+	pref := "mem://"
 	buf.WriteString(pref)
-	str := f.Filename
+	str := f.Path()
 	buf.WriteString(str)
 	//retStr := utils.AddTrailingSlash(buf.String())
 	return buf.String()
@@ -363,7 +408,7 @@ func (f *File) URI() string {  //works but test says it fails, probably other de
 
 func (f *File) getIndex() int{
 
-	if systemMap[f.Filename] == nil{
+	if systemMap[f.Path()] == nil{
 		return -1
 	}
 	str := f.Path()

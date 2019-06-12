@@ -99,11 +99,11 @@ func (s *memLocationTest) TestNewLocation() {
 }
 
 func (s *memLocationTest) TestNewFile() {
-	//loc, err := s.fileSystem.NewLocation("", "/foo/bar/baz/")
-	//s.NoError(err)
+	loc, err := s.fileSystem.NewLocation("", "/foo/bar/baz/")
+	s.NoError(err)
 
-	//newfile, _ := loc.NewFile("../../bam/this.txt")
-	//s.Equal("/foo/bam/this.txt", newfile.Path(), "relative dot path works")
+	newfile, _ := loc.NewFile("../../bam/this.txt")
+	s.Equal("/foo/bam/this.txt", newfile.Path(), "relative dot path works")
 }
 
 func (s *memLocationTest) TestChangeDir() {
@@ -118,11 +118,9 @@ func (s *memLocationTest) TestVolume() {
 }
 
 func (s *memLocationTest) TestPath() {
-//	file, _ := s.fileSystem.NewFile("", "/some/file/test.txt")
-//	location := file.Location()
-//	s.Equal("/some/file/", location.Path())
-	//rootLocation := Location{fileSystem: s.fileSystem, name: "/"}
-	//s.Equal("/", Path())
+	file, _ := s.fileSystem.NewFile("", "/some/file/test.txt")
+	location := file.Location()
+	s.Equal("/some/file/", location.Path())
 }
 
 func (s *memLocationTest) TestURI() {
@@ -134,10 +132,34 @@ func (s *memLocationTest) TestURI() {
 }
 
 func (s *memLocationTest) TestStringer() {
+	file, _ := s.fileSystem.NewFile("", "/some/file/test.txt")
+	WriteZeroBytes(file)
+	location := file.Location()
+	expected := "mem:///some/file/"
+	s.Equal(expected, location.String(), "%s does not match %s", location.String(), expected)
 
 }
 
 func (s *memLocationTest) TestDeleteFile() {
+
+	newFile,err := s.fileSystem.NewFile("","home/bar.txt")
+	assert.NoError(s.T(),err,"Unexpected creation error")
+	derr1:=newFile.Delete()
+	assert.Error(s.T(),derr1,DoesNotExist())
+	WriteZeroBytes(newFile)
+	otherFile,_ := s.fileSystem.NewFile("","foo.txt")
+	derr2:=otherFile.Delete()
+	assert.Error(s.T(),derr2,DoesNotExist())
+	WriteZeroBytes(otherFile)
+	existence,eerr := otherFile.Exists()
+	s.True(existence)
+	assert.NoError(s.T(),eerr,DoesNotExist())
+	derr3:=otherFile.Location().DeleteFile(otherFile.Name())
+	assert.NoError(s.T(),derr3,DeleteError())
+	existence1,eerr1 := otherFile.Exists()
+	s.False(existence1)
+	assert.Error(s.T(), eerr1, DoesNotExist())
+	s.True(systemMap["/foo.txt"]==nil)
 
 }
 

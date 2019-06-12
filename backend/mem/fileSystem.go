@@ -3,6 +3,8 @@ package mem
 import (
 	"github.com/c2fo/vfs/v4"
 	"github.com/c2fo/vfs/v4/backend"
+	"github.com/c2fo/vfs/v4/utils"
+	"path"
 )
 
 //Scheme defines the filesystem type.
@@ -24,6 +26,12 @@ func (fs *FileSystem) Retry() vfs.Retry {
 
 // NewFile function returns the mem implementation of vfs.File.  NOT DONE
 func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
+
+	if !path.IsAbs(name){
+		name = path.Join("/",name)
+	}
+
+
 	file, _ := newFile(name)
 	tmp,err :=fs.NewLocation(volume,name)
 	file.location = tmp
@@ -34,10 +42,19 @@ func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
 
 // NewLocation function returns the mem implementation of vfs.Location. NOT DONE
 func (fs *FileSystem) NewLocation(volume string, name string) (vfs.Location, error) {
+	if path.Ext(name)!=""{
+		str:= path.Dir(path.Clean(name))
+		return &Location{
+			fileSystem: fs,
+			name:       utils.AddTrailingSlash(str),
+			exists:		false,
+			Filename: 	path.Base(name),
+		},nil
 
+	}
 	return &Location{
 		fileSystem: fs,
-		name:       name,
+		name:       utils.AddTrailingSlash(path.Clean(name)),
 		exists: 	false,
 	}, nil
 
