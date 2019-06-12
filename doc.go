@@ -38,7 +38,7 @@ What we needed/wanted was the following(and more):
 Install
 
 Go install:
-  go get -u github.com/c2fo/vfs/v5
+  go get -u github.com/c2fo/vfs
 
 Usage
 
@@ -96,18 +96,14 @@ Things to add:
   * Add in-memory backend
   * Provide better List() functionality with more abstracted filering and paging (iterator?) Retrun File structs vs URIs?
   * Add better/any context.Context() support
-  * update s3 and google sdk libs
-  * provide for go mod and/or dep installs
 
 Contributors
 
 Brought to you by the Enterprise Pipeline team at C2FO:
 
-John Judd - john.judd@c2fo.com
-
-Jason Coble - [@jasonkcoble](https://twitter.com/jasonkcoble) - jason@c2fo.com
-
-Chris Roush – chris.roush@c2fo.com
+* John Judd - john.judd@c2fo.com
+* Jason Coble - [@jasonkcoble](https://twitter.com/jasonkcoble) - jason@c2fo.com
+* Chris Roush – chris.roush@c2fo.com
 
 https://github.com/c2fo/
 
@@ -125,18 +121,18 @@ Distributed under the MIT license. See `http://github.com/c2fo/vfs/License.md fo
 
 Definitions
 
-absolute path - A path is said to be absolute if it provides the entire context need to find and file, including the
+* absolute path - A path is said to be absolute if it provides the entire context need to find a file, including the
 filesystem root. An absolute path must begin with a slash and may include . and .. directories.
 
-relative path - A relative path is a way to locate a dir or file relative to another directory. A relative path may not
+* relative path - A relative path is a way to locate a dir or file relative to another directory. A relative path may not
 begin with a slash but may include . and .. directories.
 
-file path - A file path ends with a filename and therefore may not end with a slash.
+* file path - A file path ends with a filename and therefore may not end with a slash.
 
-location path - A location path must end with a slash.
+* location path - A location/dir path must end with a slash.
 
-URI - A Uniform Resource Identifier (URI) is a string of characters that unambiguously identifies a particular resource.
-To guarantee uniformity, all URIs follow a predefined set of syntax rules,[1] but also maintain extensibility through
+* URI - A Uniform Resource Identifier (URI) is a string of characters that unambiguously identifies a particular resource.
+To guarantee uniformity, all URIs follow a predefined set of syntax rules, but also maintain extensibility through
 a separately defined hierarchical naming scheme (e.g. http://).
 */
 package vfs

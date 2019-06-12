@@ -30,7 +30,7 @@ Usage:  %[1]s <uri> <uri>
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stdout, usageTemplate, os.Args[0])
+		_, _ = fmt.Fprintf(os.Stdout, usageTemplate, os.Args[0])
 	}
 	var help bool
 	flag.BoolVar(&help, "help", false, "prints this message")
