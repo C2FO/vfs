@@ -14,6 +14,7 @@ import (
 type Location struct {
 	exists		bool
 	firstTime	bool
+	Filename	string
 	name       string
 	fileSystem vfs.FileSystem
 }
@@ -23,12 +24,7 @@ type Location struct {
 func (l *Location) String() string {
 
 
-	var buf bytes.Buffer
-	pref := "mem://"
-	buf.WriteString(pref)
-	str := path.Dir(path.Clean(l.Path()))
-	buf.WriteString(str)
-	return utils.AddTrailingSlash(buf.String())
+	return l.URI()
 }
 
 
@@ -41,7 +37,6 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 
 	list := make([]string,1)
 	 str := path.Join(l.Path(),prefix)
-	 //fmt.Println(l.Path())
 	 for _, v:=range fileList{
 	 	if v!=nil{
 	 		path:=v.Path()
@@ -65,17 +60,15 @@ func (Location) Volume() string {
 
 func (l *Location) Path() string {
 
-		if(path.Ext(l.name) == "") {
-			return utils.AddTrailingSlash(l.name)
-		}
-	return utils.AddTrailingSlash(path.Dir(l.name))
+	return l.name
 
 }
 
 func (l *Location) Exists() (bool, error) {
 
-	if systemMap[l.name] != nil{
-		if systemMap[l.name].exists{
+	fullPath:= path.Join(l.name,l.Filename)
+	if systemMap[fullPath] != nil{
+		if systemMap[fullPath].exists{
 			l.exists = true
 		}
 	}
@@ -89,6 +82,7 @@ func (l *Location) Exists() (bool, error) {
 func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 
 	str := path.Join(l.Path(),relativePath)
+	str = utils.AddTrailingSlash(path.Clean(str))
 	return &Location{
 		fileSystem: l.fileSystem,
 		name:       str,
@@ -99,8 +93,10 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 
 }
 
-func (Location) ChangeDir(relativePath string) error {
-	panic("implement me")
+func (l *Location) ChangeDir(relativePath string) error {
+	l.name = path.Join(l.name,relativePath)
+	return nil
+
 }
 
 func (l *Location) FileSystem() vfs.FileSystem {
@@ -132,9 +128,10 @@ func (l *Location) NewFile(fileName string) (vfs.File, error) {
 	}else{
 	nameStr=path.Join(pref,str)
 	}
+
 	//l.name = nameStr
 	loc,_:=l.fileSystem.NewLocation("",nameStr)
-	file := &File{timeStamp: time.Now(), isRef: false, Filename: nameStr, byteBuf: new(bytes.Buffer), cursor: 0,
+	file := &File{timeStamp: time.Now(), isRef: false, Filename: path.Base(nameStr), byteBuf: new(bytes.Buffer), cursor: 0,
 		isOpen: false, isZB: false, exists: false,location:loc}
 	systemMap[nameStr]=file
 	fileList = append(fileList,file)
@@ -144,8 +141,15 @@ func (l *Location) NewFile(fileName string) (vfs.File, error) {
 
 }
 
-func (Location) DeleteFile(fileName string) error {
-	panic("implement me")
+func (l *Location) DeleteFile(fileName string) error {
+
+
+	fullPath := path.Join(l.Path(),fileName)
+	if systemMap[fullPath] != nil {
+		derr := systemMap[fullPath].Delete()
+		return derr
+	}
+	return DoesNotExist()
 }
 
 func (l *Location) URI() string {
