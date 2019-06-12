@@ -35,6 +35,10 @@ func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
 	file, _ := newFile(name)
 	tmp,err :=fs.NewLocation(volume,name)
 	file.location = tmp
+	if systemMap[name]!=nil && systemMap[name].getIndex()!=-1{
+		_=systemMap[name].Delete()
+
+	}
 	systemMap[name] = file
 	fileList = append(fileList,file)
 	return file,err

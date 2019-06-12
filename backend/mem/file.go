@@ -17,7 +17,7 @@ type File struct {
 	isZB		bool
 	isRef		bool
 	privSlice 	[] byte
-	byteBuf  *bytes.Buffer
+	fileContents [] byte
 	Filename string
 	cursor 		int
 	location 	vfs.Location
@@ -58,14 +58,10 @@ func (f *File) Close() error {
 		// Do nothing on files that were never referenced
 		return nil
 	}
-	if f.byteBuf.Len() > 0{
-		f.privSlice = append(f.privSlice,f.byteBuf.Next(64)...) //TODO: maybe change the number for "Next" arg
-	}
 
+	f.fileContents = f.privSlice
 	f.isOpen =false
 	f.cursor = 0
-	f.byteBuf.Reset()
-
 	return nil
 }
 
@@ -134,7 +130,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 			}
 
 	case 2:
-		pos:= length-1 + int(offset)
+		pos:= length + int(offset)
 		if pos<length && pos>=0{
 			f.cursor=pos
 			return int64(f.cursor),nil
@@ -158,16 +154,31 @@ func (f *File) Write(p []byte) (n int, err error) {
 	f.exists=true
 	f.isRef = true
 	length := len(p)
+
+
+
+
 	if length == 0{
 
 		return 0, nil
 	}
-	num, err := f.byteBuf.Write(p)
-	if(err!=nil){
-		return num,WriteError()
+	for length > len(f.privSlice)- f.cursor || length > len(f.privSlice){
+		f.privSlice = append(f.privSlice,make([]byte,1)...)
 	}
+	for i:=0;i<length;i++{
+		if i >= length || i>= len(f.privSlice){
+			break
+		}
+		if i == length{
+			break
+		}
+		f.privSlice[f.cursor] = p[i]
+		f.cursor++
+
+	}
+
 	f.timeStamp = time.Now()
-	return num, err
+	return length-1, err
 }
 
 func (f *File) String() string {
@@ -176,14 +187,17 @@ func (f *File) String() string {
 
 func (f *File) Exists() (bool, error) {
 	if !f.exists {
-		return false, DoesNotExist()
+		return false, nil
 	}else{
 		return true,nil
 	}
 }
 
 func (f *File) Location() vfs.Location {
-	return f.location
+
+	newLoc,_:= f.location.NewLocation("")
+
+	return newLoc
 }
 
 /*
@@ -213,6 +227,12 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 	return systemMap[testPath],cerr
 }
 
+/*
+ CopyToFile copies the receiver file into the target file.
+The target file is deleted, so any references to it will
+be nil.  In order to access the target after calling CopyToFile
+use its previous path to call it using the systemMap
+*/
 func (f *File) CopyToFile(target vfs.File) error {
 
 	if(target == nil){
@@ -233,6 +253,7 @@ func (f *File) CopyToFile(target vfs.File) error {
 
 	_, err := newFile.Write(f.privSlice)
 	_ =newFile.Close()
+	target = systemMap[newFile.Path()]
 	return err
 
 }
@@ -322,7 +343,6 @@ func (f *File) Delete() error {
 		systemMap[f.Path()] = nil
 		f.exists = false
 		f.privSlice = nil
-		f.byteBuf = nil
 		f.timeStamp = time.Now()
 		fileList[index] = nil
 		copy(fileList[index:], fileList[index+1:])
@@ -353,7 +373,7 @@ func newFile(name string) (*File, error){
 
 
 	return &File{
-		timeStamp: time.Now(), isRef: false, Filename: path.Base(name), byteBuf: new(bytes.Buffer), cursor: 0,
+		timeStamp: time.Now(), isRef: false, Filename: path.Base(name), cursor: 0,
 		isOpen: false, isZB: false, exists: false,
 	}, nil
 

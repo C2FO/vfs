@@ -1,6 +1,7 @@
 package mem
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -41,11 +42,38 @@ func (s *memLocationTest) SetupTest() {
 
 }
 
+
 func (s *memLocationTest) TestList() {
-
+	expected := []string{"test.txt"}
+	actual, _ := s.testFile.Location().List()
+	s.Equal(expected, actual)
 }
-func (s *memLocationTest) TestList_NonExistentDirectory() {
 
+/*
+TestList_NonExistentDirectory is a test copied over from OS
+that creates locations and ensures that they do not exist
+by showing that no files live on those directories
+ */
+func (s *memLocationTest) TestList_NonExistentDirectory() {
+	location, err := s.testFile.Location().NewLocation("not/a/directory/")
+	s.Nil(err, "error isn't expected")
+
+	exists, err := location.Exists()
+	s.Nil(err, "error isn't expected")
+	s.False(exists, "location should return false for Exists")
+
+	contents, err := location.List()
+	s.Nil(err, "error isn't expected")
+	s.Equal(0, len(contents), "List should return empty slice for non-existent directory")
+
+	prefixContents, err := location.ListByPrefix("anything")
+	s.Nil(err, "error isn't expected")
+	s.Equal(0, len(prefixContents), "ListByPrefix should return empty slice for non-existent directory")
+
+	regex, _ := regexp.Compile("[-]+")
+	regexContents, err := location.ListByRegex(regex)
+	s.Nil(err, "error isn't expected")
+	s.Equal(0, len(regexContents), "ListByRegex should return empty slice for non-existent directory")
 }
 
 func (s *memLocationTest) TestListByPrefix() {
@@ -57,9 +85,7 @@ func (s *memLocationTest) TestListByPrefix() {
 	_,_ = s.fileSystem.NewFile("","/test/files/car.txt")
 	//fmt.Println(s.testFile.Location().Path(),"here")
 	nameSlice,_ := s.testFile.Location().ListByPrefix("f")
-	expectedSlice := make([]string,2)
-	expectedSlice[0] = "file1.txt"
-	expectedSlice[1] = "file2.txt"
+	expectedSlice := []string{"file1.txt","file2.txt"}
 	assert.ObjectsAreEqual(expectedSlice,nameSlice)
 
 	emptySlice,_ := s.testFile.Location().ListByPrefix("m")
@@ -68,6 +94,19 @@ func (s *memLocationTest) TestListByPrefix() {
 
 
 func (s *memLocationTest) TestListByRegex() {
+
+	newFile,_:= s.fileSystem.NewFile("","/test_files/test.txt")
+	WriteZeroBytes(newFile)
+	expected := []string{"test.txt"}
+	regex, _ := regexp.Compile("[est]+")
+	actual, _ := newFile.Location().ListByRegex(regex)
+	s.Equal(expected, actual)
+	cerr:=newFile.Location().ChangeDir("../")
+	assert.NoError(s.T(),cerr,"Unexpected error changing directories")
+	regex2,_:=regexp.Compile("[test.txt]")
+	actual2,_ := newFile.Location().ListByRegex(regex2)
+	s.Equal(expected,actual2)
+
 
 }
 
@@ -119,8 +158,11 @@ func (s *memLocationTest) TestVolume() {
 
 func (s *memLocationTest) TestPath() {
 	file, _ := s.fileSystem.NewFile("", "/some/file/test.txt")
+	WriteZeroBytes(file)
 	location := file.Location()
 	s.Equal("/some/file/", location.Path())
+	derr:=file.Delete()
+	assert.NoError(s.T(),derr,DeleteError())
 }
 
 func (s *memLocationTest) TestURI() {
@@ -129,6 +171,8 @@ func (s *memLocationTest) TestURI() {
 	location := file.Location()
 	expected := "mem:///some/file/"
 	s.Equal(expected, location.URI(), "%s does not match %s", location.URI(), expected)
+	derr:=file.Delete()
+	assert.NoError(s.T(),derr,DeleteError())
 }
 
 func (s *memLocationTest) TestStringer() {
@@ -137,7 +181,8 @@ func (s *memLocationTest) TestStringer() {
 	location := file.Location()
 	expected := "mem:///some/file/"
 	s.Equal(expected, location.String(), "%s does not match %s", location.String(), expected)
-
+	derr:=file.Delete()
+	assert.NoError(s.T(),derr,DeleteError())
 }
 
 func (s *memLocationTest) TestDeleteFile() {
@@ -158,7 +203,7 @@ func (s *memLocationTest) TestDeleteFile() {
 	assert.NoError(s.T(),derr3,DeleteError())
 	existence1,eerr1 := otherFile.Exists()
 	s.False(existence1)
-	assert.Error(s.T(), eerr1, DoesNotExist())
+	assert.NoError(s.T(), eerr1, DoesNotExist())
 	s.True(systemMap["/foo.txt"]==nil)
 
 }

@@ -28,14 +28,30 @@ func (l *Location) String() string {
 }
 
 
-func (Location) List() ([]string, error) {
+func (l *Location) List() ([]string, error) {
 	//panic("implement me")
-	return nil,nil
+
+	list := make([]string,0)
+	str := l.Path()
+	for _, v:=range fileList{
+		if v!=nil{
+			fullPath:=v.Path()
+			if utils.AddTrailingSlash(path.Dir(fullPath)) == str{
+				if systemMap[fullPath]!=nil{
+					existence,_:=systemMap[fullPath].Exists()
+					if existence {
+						list = append(list, v.Name())
+					}
+				}
+			}
+		}
+	}
+	return list,nil
 }
 
 func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 
-	list := make([]string,1)
+	list := make([]string,0)
 	 str := path.Join(l.Path(),prefix)
 	 for _, v:=range fileList{
 	 	if v!=nil{
@@ -50,11 +66,35 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 return list,nil
 }
 
-func (Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
-	return nil,nil
+func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
+
+	list := make([]string,0)
+	 str := l.Path()
+	 filesHere,_:=l.List()
+	for _, hereList:=range filesHere{
+
+		potentialPath := path.Join(str,hereList)
+
+
+			for _,systemFileList:=range fileList {
+
+				if systemFileList!=nil && systemFileList.Path() == potentialPath {
+					if regex.MatchString(path.Base(potentialPath)) {
+						list = append(list, systemFileList.Name())
+
+					}
+
+				}
+			}
+
+
+	}
+
+
+	return list,nil
 }
 
-func (Location) Volume() string {
+func (l *Location) Volume() string {
 	return ""
 }
 
@@ -66,17 +106,12 @@ func (l *Location) Path() string {
 
 func (l *Location) Exists() (bool, error) {
 
-	fullPath:= path.Join(l.name,l.Filename)
-	if systemMap[fullPath] != nil{
-		if systemMap[fullPath].exists{
-			l.exists = true
-		}
+	data,_:=l.List()
+	if(len(data)==0){
+		return false, nil
 	}
+	return true,nil
 
-	if l.exists {
-		return true,nil
-	}
-	return false, DoesNotExist()
 }
 
 func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
@@ -131,7 +166,7 @@ func (l *Location) NewFile(fileName string) (vfs.File, error) {
 
 	//l.name = nameStr
 	loc,_:=l.fileSystem.NewLocation("",nameStr)
-	file := &File{timeStamp: time.Now(), isRef: false, Filename: path.Base(nameStr), byteBuf: new(bytes.Buffer), cursor: 0,
+	file := &File{timeStamp: time.Now(), isRef: false, Filename: path.Base(nameStr), cursor: 0,
 		isOpen: false, isZB: false, exists: false,location:loc}
 	systemMap[nameStr]=file
 	fileList = append(fileList,file)
