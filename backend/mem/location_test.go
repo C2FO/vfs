@@ -21,7 +21,12 @@ type memLocationTest struct {
 }
 
 func (s *memLocationTest) SetupSuite() {
-	setupTestFiles()
+
+	//just clearing out any files that file_test may have produced
+	if len(fileList) != 0{
+		systemMap = make(map[string]*File)
+		fileList = make([]*File, 0)
+	}
 }
 
 func (s *memLocationTest) TearDownSuite() {
@@ -30,6 +35,8 @@ func (s *memLocationTest) TearDownSuite() {
 
 func (s *memLocationTest) SetupTest() {
 	fs := &FileSystem{}
+
+	//	"/home/test_files/subdir/" is the location of s's testFile
 	file, err := fs.NewFile("", "/home/test_files/subdir/test.txt")
 
 	if err != nil {
@@ -42,6 +49,14 @@ func (s *memLocationTest) SetupTest() {
 
 }
 
+func (s *memLocationTest) TestFSName(){
+
+	assert.ObjectsAreEqual(s.testFile.Location().FileSystem(),"mem")
+	assert.ObjectsAreEqual(s.testFile.Location().FileSystem().Name(),"mem")
+	assert.ObjectsAreEqual(s.testFile.Location().FileSystem().Scheme(),"mem")
+}
+
+
 
 func (s *memLocationTest) TestList() {
 	expected := []string{"test.txt"}
@@ -53,7 +68,7 @@ func (s *memLocationTest) TestList() {
 TestList_NonExistentDirectory is a test copied over from OS
 that creates locations and ensures that they do not exist
 by showing that no files live on those directories
- */
+*/
 func (s *memLocationTest) TestList_NonExistentDirectory() {
 	location, err := s.testFile.Location().NewLocation("not/a/directory/")
 	s.Nil(err, "error isn't expected")
@@ -78,35 +93,33 @@ func (s *memLocationTest) TestList_NonExistentDirectory() {
 
 func (s *memLocationTest) TestListByPrefix() {
 
-	_,_ = s.fileSystem.NewFile("","foo.txt")
-	_,_ = s.fileSystem.NewFile("","/home/test_files/subdir/file1.txt")
-	_,_ = s.fileSystem.NewFile("","/home/test_files/subdir/file2.txt")
-	_,_ = s.fileSystem.NewFile("","/home/directories/test/mat.txt")
-	_,_ = s.fileSystem.NewFile("","/test/files/car.txt")
+	_, _ = s.fileSystem.NewFile("", "foo.txt")
+	_, _ = s.fileSystem.NewFile("", "/home/test_files/subdir/file1.txt")
+	_, _ = s.fileSystem.NewFile("", "/home/test_files/subdir/file2.txt")
+	_, _ = s.fileSystem.NewFile("", "/home/directories/test/mat.txt")
+	_, _ = s.fileSystem.NewFile("", "/test/files/car.txt")
 	//fmt.Println(s.testFile.Location().Path(),"here")
-	nameSlice,_ := s.testFile.Location().ListByPrefix("f")
-	expectedSlice := []string{"file1.txt","file2.txt"}
-	assert.ObjectsAreEqual(expectedSlice,nameSlice)
+	nameSlice, _ := s.testFile.Location().ListByPrefix("f")
+	expectedSlice := []string{"file1.txt", "file2.txt"}
+	assert.ObjectsAreEqual(expectedSlice, nameSlice)
 
-	emptySlice,_ := s.testFile.Location().ListByPrefix("m")
-	assert.ObjectsAreEqual(make([]string,0),emptySlice)		//no files should be found with this prefix at this location
+	emptySlice, _ := s.testFile.Location().ListByPrefix("m")
+	assert.ObjectsAreEqual(make([]string, 0), emptySlice) //no files should be found with this prefix at this location
 }
-
 
 func (s *memLocationTest) TestListByRegex() {
 
-	newFile,_:= s.fileSystem.NewFile("","/test_files/test.txt")
+	newFile, _ := s.fileSystem.NewFile("", "/test_files/test.txt")
 	WriteZeroBytes(newFile)
 	expected := []string{"test.txt"}
 	regex, _ := regexp.Compile("[est]+")
 	actual, _ := newFile.Location().ListByRegex(regex)
 	s.Equal(expected, actual)
-	cerr:=newFile.Location().ChangeDir("../")
-	assert.NoError(s.T(),cerr,"Unexpected error changing directories")
-	regex2,_:=regexp.Compile("[test.txt]")
-	actual2,_ := newFile.Location().ListByRegex(regex2)
-	s.Equal(expected,actual2)
-
+	cerr := newFile.Location().ChangeDir("../")
+	assert.NoError(s.T(), cerr, "Unexpected error changing directories")
+	regex2, _ := regexp.Compile("[test.txt]")
+	actual2, _ := newFile.Location().ListByRegex(regex2)
+	s.Equal(expected, actual2)
 
 }
 
@@ -125,16 +138,6 @@ func (s *memLocationTest) TestNewLocation() {
 
 	relDir, _ := subDir.NewLocation("../../bar/")
 	s.Equal("/bar/", relDir.Path(), "relative dot path works")
-/*
-	l1,_ := s.testFile.Location().NewLocation("/../..")
-	assert.Equal(s.T(),"/home/",l1.Path())
-	l2, _ := s.testFile.Location().NewLocation("testDir")
-	assert.Equal(s.T(),"/home/test_files/subdir/testDir/",l2.Path())
-	l3, _ := s.testFile.Location().NewLocation("/..")
-	assert.Equal(s.T(),"/home/test_files/",l3.Path())
-
-
- */
 }
 
 func (s *memLocationTest) TestNewFile() {
@@ -153,7 +156,7 @@ func (s *memLocationTest) TestVolume() {
 	volume := s.testFile.Location().Volume()
 
 	// For Unix, this returns an empty string. For windows, it would be something like 'C:'
-	s.Equal("",volume)
+	s.Equal("", volume)
 }
 
 func (s *memLocationTest) TestPath() {
@@ -161,8 +164,8 @@ func (s *memLocationTest) TestPath() {
 	WriteZeroBytes(file)
 	location := file.Location()
 	s.Equal("/some/file/", location.Path())
-	derr:=file.Delete()
-	assert.NoError(s.T(),derr,DeleteError())
+	derr := file.Delete()
+	assert.NoError(s.T(), derr, "Delete failed unexpectedly")
 }
 
 func (s *memLocationTest) TestURI() {
@@ -171,8 +174,8 @@ func (s *memLocationTest) TestURI() {
 	location := file.Location()
 	expected := "mem:///some/file/"
 	s.Equal(expected, location.URI(), "%s does not match %s", location.URI(), expected)
-	derr:=file.Delete()
-	assert.NoError(s.T(),derr,DeleteError())
+	derr := file.Delete()
+	assert.NoError(s.T(), derr, "Delete failed unexpectedly")
 }
 
 func (s *memLocationTest) TestStringer() {
@@ -181,30 +184,30 @@ func (s *memLocationTest) TestStringer() {
 	location := file.Location()
 	expected := "mem:///some/file/"
 	s.Equal(expected, location.String(), "%s does not match %s", location.String(), expected)
-	derr:=file.Delete()
-	assert.NoError(s.T(),derr,DeleteError())
+	derr := file.Delete()
+	assert.NoError(s.T(), derr, "Delete failed unexpectedly")
 }
 
 func (s *memLocationTest) TestDeleteFile() {
 
-	newFile,err := s.fileSystem.NewFile("","home/bar.txt")
-	assert.NoError(s.T(),err,"Unexpected creation error")
-	derr1:=newFile.Delete()
-	assert.Error(s.T(),derr1,DoesNotExist())
+	newFile, err := s.fileSystem.NewFile("", "home/bar.txt")
+	assert.NoError(s.T(), err, "Unexpected creation error")
+	derr1 := newFile.Delete()
+	assert.Error(s.T(), derr1, "Unexpected existence error")
 	WriteZeroBytes(newFile)
-	otherFile,_ := s.fileSystem.NewFile("","foo.txt")
-	derr2:=otherFile.Delete()
-	assert.Error(s.T(),derr2,DoesNotExist())
+	otherFile, _ := s.fileSystem.NewFile("", "foo.txt")
+	derr2 := otherFile.Delete()
+	assert.Error(s.T(), derr2, "Unexpected existence error")
 	WriteZeroBytes(otherFile)
-	existence,eerr := otherFile.Exists()
+	existence, eerr := otherFile.Exists()
 	s.True(existence)
-	assert.NoError(s.T(),eerr,DoesNotExist())
-	derr3:=otherFile.Location().DeleteFile(otherFile.Name())
-	assert.NoError(s.T(),derr3,DeleteError())
-	existence1,eerr1 := otherFile.Exists()
+	assert.NoError(s.T(), eerr, "Unexpected existence error")
+	derr3 := otherFile.Location().DeleteFile(otherFile.Name())
+	assert.NoError(s.T(), derr3, "Unexpected existence error")
+	existence1, eerr1 := otherFile.Exists()
 	s.False(existence1)
-	assert.NoError(s.T(), eerr1, DoesNotExist())
-	s.True(systemMap["/foo.txt"]==nil)
+	assert.NoError(s.T(), eerr1, "Unexpected existence error")
+	s.True(systemMap["/foo.txt"] == nil)
 
 }
 
