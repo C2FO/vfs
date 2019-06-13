@@ -7,8 +7,11 @@ import (
 	_os "github.com/c2fo/vfs/v4/backend/os"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"io/ioutil"
+	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
 )
 
@@ -215,11 +218,12 @@ func (s *memFileTest) TestSeek2(){
 	testByte:=make([]byte,1)
 	num,rerr2:=newFile.Read(testByte)
 	assert.NoError(s.T(),rerr2,"Unexpected read error")
-	fmt.Println(string(testByte))
 	s.True("H"==string(testByte))
 	assert.ObjectsAreEqual(1,num)
 	_,serr3:=newFile.Seek(-2,1)
 	assert.Error(s.T(),serr3,"Seek error expected for seeking into negative bounds")
+	_,serr4:=newFile.Seek(1,1)
+	assert.NoError(s.T(),serr4,"Unexpected seek error")
 
 
 }
@@ -251,21 +255,6 @@ func (s *memFileTest) TestOpenFile() {
 }
 
 func (s *memFileTest) TestSeek() {
-
-	expectedText := "new file"
-	data := make([]byte, len(expectedText))
-	file, _ := s.fileSystem.NewFile("", "test_files/new.txt")
-
-	_, werr := file.Write([]byte(expectedText))
-	assert.NoError(s.T(), werr, "write error not expected")
-
-	_, serr := file.Seek(0, 0)
-	assert.NoError(s.T(), serr, "seek error not expected")
-	_, rerr := file.Read(data)
-	assert.NoError(s.T(), rerr, "read error not expected")
-	_ = file.Close()
-
-	/*
 		expectedText := "new file"
 			data := make([]byte, len(expectedText))
 			file, _ := s.fileSystem.NewFile("", "test_files/new.txt")
@@ -292,11 +281,13 @@ func (s *memFileTest) TestSeek() {
 			}
 
 			found2, eErr2 := file.Exists()
-			assert.Error(s.T(), eErr2, "exists error not expected")
+			assert.NoError(s.T(), eErr2, "exists error not expected")
 			s.False(found2)
 
-	*/
+
 }
+
+
 
 /*
 TestCopyToLocationOS copies a file to a location that has
@@ -364,11 +355,12 @@ func (s *memFileTest) TestCopyToNilFile(){
 	assert.Error(s.T(),err,"Expected error for copying to nil file")
 }
 
+
 //TestCopyToLocationOS copies a file from the mem fs over
 // to a location on the  OS fs and checks for success
 func (s *memFileTest) TestCopyToLocationOS() { //Unsure how this should work
 
-	/*
+
 		var osFile vfs.File
 		var err error
 		//content := []byte("temporary file's content")
