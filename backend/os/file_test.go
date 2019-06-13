@@ -5,10 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
@@ -51,7 +49,7 @@ func (s *osFileTest) SetupTest() {
 
 func (s *osFileTest) TeardownTest() {
 	err := s.testFile.Close()
-	assert.NoError(s.T(), err, "close error not expected")
+	s.NoError(err, "close error not expected")
 }
 
 func (s *osFileTest) TestExists() {
@@ -70,18 +68,42 @@ func (s *osFileTest) TestOpenFile() {
 	expectedText := "hello world"
 	data := make([]byte, len(expectedText))
 	_, err := s.testFile.Read(data)
-	assert.NoError(s.T(), err, "read error not expected")
+	s.NoError(err, "read error not expected")
 
 	s.Equal(expectedText, string(data))
+}
+
+func (s *osFileTest) TestRead() {
+	//fail on nonexistent file
+	noFile, err := s.tmploc.NewFile("test_files/nonexistent.txt")
+	s.NoError(err)
+	data := make([]byte, 0)
+	_, err = noFile.Read(data)
+	s.Error(err, "error trying to read nonexistent file")
+
+	//setup file for reading
+	f, err := s.tmploc.NewFile("test_files/readFile.txt")
+	s.NoError(err)
+	b, err := f.Write([]byte("blah"))
+	s.NoError(err)
+	s.Equal(int(4), b)
+	s.NoError(f.Close())
+
+	//read from file
+	data = make([]byte, 4)
+	b, err = f.Read(data)
+	s.NoError(err)
+	s.Equal(int(4), b)
+	s.Equal("blah", string(data))
 }
 
 func (s *osFileTest) TestSeek() {
 	expectedText := "world"
 	data := make([]byte, len(expectedText))
 	_, serr := s.testFile.Seek(6, 0)
-	assert.NoError(s.T(), serr, "seek error not expected")
+	s.NoError(serr, "seek error not expected")
 	_, rerr := s.testFile.Read(data)
-	assert.NoError(s.T(), rerr, "read error not expected")
+	s.NoError(rerr, "read error not expected")
 	s.Equal(expectedText, string(data))
 }
 
@@ -187,17 +209,17 @@ func (s *osFileTest) TestMoveToLocation() {
 
 	defer func() {
 		err := os.RemoveAll(dir)
-		assert.NoError(s.T(), err, "remove all error not expected")
+		s.NoError(err, "remove all error not expected")
 	}()
 
 	_, werr := file.Write([]byte(expectedText))
-	assert.NoError(s.T(), werr, "write error not expected")
+	s.NoError(werr, "write error not expected")
 
 	cerr := file.Close()
-	assert.NoError(s.T(), cerr, "close error not expected")
+	s.NoError(cerr, "close error not expected")
 
 	found, eerr := file.Exists()
-	assert.NoError(s.T(), eerr, "exists error not expected")
+	s.NoError(eerr, "exists error not expected")
 	s.True(found)
 
 	//setup location
@@ -212,7 +234,7 @@ func (s *osFileTest) TestMoveToLocation() {
 	//ensure the original file no longer exists
 	origFile, _ := s.fileSystem.NewFile(file.Location().Volume(), origFileName)
 	origFound, eerr := origFile.Exists()
-	assert.NoError(s.T(), eerr, "exists error not expected")
+	s.NoError(eerr, "exists error not expected")
 	s.False(origFound)
 }
 
@@ -220,30 +242,30 @@ func (s *osFileTest) TestMoveToFile() {
 	dir, terr := ioutil.TempDir(path.Join(s.tmploc.Path(), "test_files"), "example")
 	s.NoError(terr)
 
-	file1, err := s.fileSystem.NewFile("", filepath.Join(dir, "original.txt"))
+	file1, err := s.fileSystem.NewFile("", path.Join(dir, "original.txt"))
 	s.NoError(err)
 
-	file2, err := s.fileSystem.NewFile("", filepath.Join(dir, "move.txt"))
+	file2, err := s.fileSystem.NewFile("", path.Join(dir, "move.txt"))
 	s.NoError(err)
 
 	defer func() {
 		err := os.RemoveAll(dir)
-		assert.NoError(s.T(), err, "remove all error not expected")
+		s.NoError(err, "remove all error not expected")
 	}()
 
 	text := "original file"
 	_, werr := file1.Write([]byte(text))
-	assert.NoError(s.T(), werr, "write error not expected")
+	s.NoError(werr, "write error not expected")
 	cerr := file1.Close()
-	assert.NoError(s.T(), cerr, "close error not expected")
+	s.NoError(cerr, "close error not expected")
 
 	found1, eErr1 := file1.Exists()
 	s.True(found1)
-	assert.NoError(s.T(), eErr1, "exists error not expected")
+	s.NoError(eErr1, "exists error not expected")
 
 	found2, eErr2 := file2.Exists()
 	s.False(found2)
-	assert.NoError(s.T(), eErr2, "exists error not expected")
+	s.NoError(eErr2, "exists error not expected")
 
 	merr := file1.MoveToFile(file2)
 	s.NoError(merr)
@@ -257,9 +279,9 @@ func (s *osFileTest) TestMoveToFile() {
 
 	data := make([]byte, len(text))
 	_, rerr := file2.Read(data)
-	assert.NoError(s.T(), rerr, "read error not expected")
+	s.NoError(rerr, "read error not expected")
 	cErr := file2.Close()
-	assert.NoError(s.T(), cErr, "close error not expected")
+	s.NoError(cErr, "close error not expected")
 
 	s.Equal(text, string(data))
 }
@@ -271,26 +293,26 @@ func (s *osFileTest) TestWrite() {
 	s.NoError(err)
 
 	_, werr := file.Write([]byte(expectedText))
-	assert.NoError(s.T(), werr, "write error not expected")
+	s.NoError(werr, "write error not expected")
 
 	_, serr := file.Seek(0, 0)
-	assert.NoError(s.T(), serr, "seek error not expected")
+	s.NoError(serr, "seek error not expected")
 	_, rerr := file.Read(data)
-	assert.NoError(s.T(), rerr, "read error not expected")
+	s.NoError(rerr, "read error not expected")
 	cerr := file.Close()
-	assert.NoError(s.T(), cerr, "close error not expected")
+	s.NoError(cerr, "close error not expected")
 
 	s.Equal(expectedText, string(data))
 
 	found, eErr := file.Exists()
-	assert.NoError(s.T(), eErr, "exists error not expected")
+	s.NoError(eErr, "exists error not expected")
 	s.True(found)
 
 	err = file.Delete()
 	s.NoError(err, "File was not deleted properly")
 
 	found2, eErr2 := file.Exists()
-	assert.NoError(s.T(), eErr2, "exists error not expected")
+	s.NoError(eErr2, "exists error not expected")
 	s.False(found2)
 }
 
@@ -304,6 +326,12 @@ func (s *osFileTest) TestLastModified() {
 	s.NoError(err)
 	s.NotNil(lastModified)
 	s.Equal(osStats.ModTime(), *lastModified)
+
+	noFile, err := s.tmploc.NewFile("test_files/nonexistent.txt")
+	s.NoError(err)
+	lastModified, err = noFile.LastModified()
+	s.Error(err)
+	s.Nil(lastModified)
 }
 
 func (s *osFileTest) TestName() {
@@ -323,12 +351,18 @@ func (s *osFileTest) TestSize() {
 	s.NoError(err)
 	s.NotNil(size)
 	s.Equal(osStats.Size(), int64(size))
+
+	noFile, err := s.tmploc.NewFile("test_files/nonexistent.txt")
+	s.NoError(err)
+	size, err = noFile.Size()
+	s.Error(err)
+	s.Equal(uint64(0), size)
 }
 
 func (s *osFileTest) TestPath() {
 	file, err := s.tmploc.NewFile("test_files/test.txt")
 	s.NoError(err)
-	s.Equal(filepath.Join(file.Location().Path(), file.Name()), file.Path())
+	s.Equal(path.Join(file.Location().Path(), file.Name()), file.Path())
 }
 
 func (s *osFileTest) TestURI() {

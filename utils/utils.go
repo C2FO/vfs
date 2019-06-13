@@ -11,10 +11,6 @@ import (
 )
 
 const (
-	// Windows constant represents a target operating system running a version of Microsoft Windows
-	Windows = "windows"
-	// BadFilePrefix constant is returned when path has leading slash
-	BadFilePrefix = "expecting only a filename prefix, which may not include slashes"
 	// ErrBadAbsFilePath constant is returned when a file path is not absolute
 	ErrBadAbsFilePath = "absolute file path is invalid - must include leading slash and may not include trailing slash"
 	// ErrBadRelFilePath constant is returned when a file path is not relative
@@ -93,7 +89,7 @@ func EnsureTrailingSlash(dir string) string {
 
 // EnsureLeadingSlash is like EnsureTrailingSlash except that it adds the leading slash if needed.
 func EnsureLeadingSlash(dir string) string {
-	if dir == "" || hasLeadingSlash.MatchString(dir) {
+	if hasLeadingSlash.MatchString(dir) {
 		return dir
 	}
 	return "/" + dir

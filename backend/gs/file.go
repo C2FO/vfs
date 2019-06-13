@@ -137,9 +137,9 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 		if err != nil {
 			return nil, err
 		}
-		cerr := f.copyWithinGCSToFile(dest.(*File))
-		if cerr != nil {
-			return nil, cerr
+		err = f.copyWithinGCSToFile(dest.(*File))
+		if err != nil {
+			return nil, err
 		}
 		return dest, nil
 	}

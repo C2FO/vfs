@@ -124,12 +124,12 @@ Definitions
 * absolute path - A path is said to be absolute if it provides the entire context need to find a file, including the
 filesystem root. An absolute path must begin with a slash and may include . and .. directories.
 
+* file path - A file path ends with a filename and therefore may not end with a slash.  It may be relative or absolute.
+
+* location path - A location/dir path must end with a slash.  It may be relative or absolute.
+
 * relative path - A relative path is a way to locate a dir or file relative to another directory. A relative path may not
 begin with a slash but may include . and .. directories.
-
-* file path - A file path ends with a filename and therefore may not end with a slash.
-
-* location path - A location/dir path must end with a slash.
 
 * URI - A Uniform Resource Identifier (URI) is a string of characters that unambiguously identifies a particular resource.
 To guarantee uniformity, all URIs follow a predefined set of syntax rules, but also maintain extensibility through

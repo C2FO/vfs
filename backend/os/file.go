@@ -45,7 +45,7 @@ func (f *File) Name() string {
 
 // Path returns the the path of the File relative to Location.Name().
 func (f *File) Path() string {
-	return filepath.Join(f.location.Path(), f.name)
+	return filepath.Join(f.Location().Path(), f.Name())
 }
 
 // Size returns the size (in bytes) of the File or any error.
@@ -131,12 +131,14 @@ func (f *File) Location() vfs.Location {
 
 // MoveToFile move a file. It accepts a target vfs.File and returns an error, if any.
 func (f *File) MoveToFile(file vfs.File) error {
-	if file.Location().FileSystem().Scheme() == f.Location().FileSystem().Scheme() {
+	// handle native os move/rename
+	if file.Location().FileSystem().Scheme() == Scheme {
 		err := os.Rename(f.Path(), file.Path())
 		if err != nil {
 			return err
 		}
 	} else {
+		// do copy/delete move for non-native os moves
 		_, err := f.copyWithName(file.Name(), file.Location())
 		if err != nil {
 			return err
@@ -153,14 +155,14 @@ func (f *File) MoveToFile(file vfs.File) error {
 // MoveToLocation moves a file to a new Location. It accepts a target vfs.Location and returns a vfs.File and an error, if any.
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	// handle native os move/rename
-	if location.FileSystem().Scheme() == f.Location().FileSystem().Scheme() {
+	if location.FileSystem().Scheme() == Scheme {
 		err := os.Rename(f.Path(), path.Join(location.Path(), f.Name()))
 		if err != nil {
 			return nil, err
 		}
 	} else {
 		// do copy/delete move for non-native os moves
-		_, err := f.copyWithName(f.name, location)
+		_, err := f.copyWithName(f.Name(), location)
 		if err != nil {
 			return f, err
 		}
@@ -182,7 +184,7 @@ func (f *File) CopyToFile(file vfs.File) error {
 
 // CopyToLocation copies existing File to new Location with the same name.  It accepts a vfs.Location and returns a vfs.File and error, if any.
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
-	return f.copyWithName(f.name, location)
+	return f.copyWithName(f.Name(), location)
 }
 
 // URI returns the File's URI as a string.
@@ -204,14 +206,14 @@ func (f *File) copyWithName(name string, location vfs.Location) (vfs.File, error
 	if err := utils.TouchCopy(newFile, f); err != nil {
 		return nil, err
 	}
-	fCloseErr := f.Close()
-	if fCloseErr != nil {
-		return nil, fCloseErr
+	err = f.Close()
+	if err != nil {
+		return nil, err
 	}
 
-	newFileCloseErr := newFile.Close()
-	if newFileCloseErr != nil {
-		return nil, newFileCloseErr
+	err = newFile.Close()
+	if err != nil {
+		return nil, err
 	}
 	return newFile, nil
 }
@@ -223,7 +225,7 @@ func (f *File) openFile() (*os.File, error) {
 
 	// Ensure the path exists before opening the file, NoOp if dir already exists.
 	var fileMode os.FileMode = 0666
-	if err := os.MkdirAll(f.location.Path(), os.ModeDir|0777); err != nil {
+	if err := os.MkdirAll(f.Location().Path(), os.ModeDir|0777); err != nil {
 		return nil, err
 	}
 

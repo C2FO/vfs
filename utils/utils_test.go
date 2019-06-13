@@ -9,12 +9,11 @@ import (
 	"testing"
 
 	_os "github.com/c2fo/vfs/v4/backend/os"
+	"github.com/c2fo/vfs/v4/mocks"
+	"github.com/c2fo/vfs/v4/utils"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/c2fo/vfs/v4/mocks"
-	"github.com/c2fo/vfs/v4/utils"
 )
 
 /**********************************
@@ -31,7 +30,7 @@ type slashTest struct {
 	message  string
 }
 
-func (s *utilsTest) TestAddTrailingSlash() {
+func (s *utilsTest) TestEnsureTrailingSlash() {
 	tests := []slashTest{
 		{
 			path:     "/some/path",
@@ -44,6 +43,16 @@ func (s *utilsTest) TestAddTrailingSlash() {
 			message:  "slash found - don't add one",
 		},
 		{
+			path:     "/",
+			expected: "/",
+			message:  "just a slash - don't add one",
+		},
+		{
+			path:     "",
+			expected: "/",
+			message:  "empty string - add slash",
+		},
+		{
 			path:     "/some/path/file.txt",
 			expected: "/some/path/file.txt/",
 			message:  "no slash but looks like a file - add one anyaway",
@@ -52,6 +61,365 @@ func (s *utilsTest) TestAddTrailingSlash() {
 
 	for _, slashtest := range tests {
 		s.Equal(slashtest.expected, utils.EnsureTrailingSlash(slashtest.path), slashtest.message)
+	}
+}
+
+func (s *utilsTest) TestEnsureLeadingSlash() {
+	tests := []slashTest{
+		{
+			path:     "some/path/",
+			expected: "/some/path/",
+			message:  "no slash - adding one",
+		},
+		{
+			path:     "/some/path/",
+			expected: "/some/path/",
+			message:  "slash found - don't add one",
+		},
+		{
+			path:     "/",
+			expected: "/",
+			message:  "just a slash - don't add one",
+		},
+		{
+			path:     "",
+			expected: "/",
+			message:  "empty string - add slash",
+		},
+	}
+
+	for _, slashtest := range tests {
+		s.Equal(slashtest.expected, utils.EnsureLeadingSlash(slashtest.path), slashtest.message)
+	}
+}
+
+func (s *utilsTest) TestRemoveTrailingSlash() {
+	tests := []slashTest{
+		{
+			path:     "/some/path",
+			expected: "/some/path",
+			message:  "no slash - do nothing",
+		},
+		{
+			path:     "/some/path/",
+			expected: "/some/path",
+			message:  "slash found - remove it",
+		},
+		{
+			path:     "/",
+			expected: "",
+			message:  "just a slash - remove it",
+		},
+		{
+			path:     "",
+			expected: "",
+			message:  "empty string - do nothing",
+		},
+		{
+			path:     "/some/path/file.txt",
+			expected: "/some/path/file.txt",
+			message:  "no slash and looks like a file - do nothing",
+		},
+	}
+
+	for _, slashtest := range tests {
+		s.Equal(slashtest.expected, utils.RemoveTrailingSlash(slashtest.path), slashtest.message)
+	}
+}
+
+func (s *utilsTest) TestRemoveLeadingSlash() {
+	tests := []slashTest{
+		{
+			path:     "some/path/",
+			expected: "some/path/",
+			message:  "no slash - do nothing",
+		},
+		{
+			path:     "/some/path/",
+			expected: "some/path/",
+			message:  "slash found - remove it",
+		},
+		{
+			path:     "/",
+			expected: "",
+			message:  "just a slash - remove it",
+		},
+		{
+			path:     "",
+			expected: "",
+			message:  "empty string - do nothing",
+		},
+		{
+			path:     "/some/path/file.txt",
+			expected: "some/path/file.txt",
+			message:  "slash found and looks like a file - remove it",
+		},
+	}
+
+	for _, slashtest := range tests {
+		s.Equal(slashtest.expected, utils.RemoveLeadingSlash(slashtest.path), slashtest.message)
+	}
+}
+
+type pathValidationTest struct {
+	path         string
+	passExpected bool
+	message      string
+}
+
+func (s *utilsTest) TestValidateAbsFilePath() {
+	tests := []pathValidationTest{
+		{
+			path:         "/some/path/",
+			passExpected: false,
+			message:      "abs location path",
+		},
+		{
+			path:         "/some/./path/../",
+			passExpected: false,
+			message:      "abs location path with dot dirs",
+		},
+		{
+			path:         "/some/path/file.txt",
+			passExpected: true,
+			message:      "abs file path",
+		},
+		{
+			path:         "/some/path/../file.txt",
+			passExpected: true,
+			message:      "abs file path with dot dirs",
+		},
+		{
+			path:         "/",
+			passExpected: false,
+			message:      "slash only",
+		},
+		{
+			path:         "",
+			passExpected: false,
+			message:      "empty string",
+		},
+		{
+			path:         "some/path/",
+			passExpected: false,
+			message:      "rel location path",
+		},
+		{
+			path:         "some/./path/../",
+			passExpected: false,
+			message:      "rel location path with dot dirs",
+		},
+		{
+			path:         "some/path/file.txt",
+			passExpected: false,
+			message:      "rel file path",
+		},
+		{
+			path:         "some/path/../file.txt",
+			passExpected: false,
+			message:      "rel file path with dot dirs",
+		},
+	}
+
+	for _, validationTest := range tests {
+		err := utils.ValidateAbsFilePath(validationTest.path)
+		if !validationTest.passExpected {
+			s.EqualError(err, utils.ErrBadAbsFilePath, validationTest.message)
+		} else {
+			s.NoError(err, validationTest.message)
+		}
+	}
+}
+
+func (s *utilsTest) TestValidateAbsLocationPath() {
+	tests := []pathValidationTest{
+		{
+			path:         "/some/path/",
+			passExpected: true,
+			message:      "abs location path",
+		},
+		{
+			path:         "/some/./path/../",
+			passExpected: true,
+			message:      "abs location path with dot dirs",
+		},
+		{
+			path:         "/some/path/file.txt",
+			passExpected: false,
+			message:      "abs file path",
+		},
+		{
+			path:         "/some/path/../file.txt",
+			passExpected: false,
+			message:      "abs file path with dot dirs",
+		},
+		{
+			path:         "/",
+			passExpected: true,
+			message:      "slash only",
+		},
+		{
+			path:         "",
+			passExpected: false,
+			message:      "empty string",
+		},
+		{
+			path:         "some/path/",
+			passExpected: false,
+			message:      "rel location path",
+		},
+		{
+			path:         "some/./path/../",
+			passExpected: false,
+			message:      "rel location path with dot dirs",
+		},
+		{
+			path:         "some/path/file.txt",
+			passExpected: false,
+			message:      "rel file path",
+		},
+		{
+			path:         "some/path/../file.txt",
+			passExpected: false,
+			message:      "rel file path with dot dirs",
+		},
+	}
+
+	for _, validationTest := range tests {
+		err := utils.ValidateAbsLocationPath(validationTest.path)
+		if !validationTest.passExpected {
+			s.EqualError(err, utils.ErrBadAbsLocationPath, validationTest.message)
+		} else {
+			s.NoError(err, validationTest.message)
+		}
+	}
+}
+
+func (s *utilsTest) TestValidateRelFilePath() {
+	tests := []pathValidationTest{
+		{
+			path:         "/some/path/",
+			passExpected: false,
+			message:      "abs location path",
+		},
+		{
+			path:         "/some/./path/../",
+			passExpected: false,
+			message:      "abs location path with dot dirs",
+		},
+		{
+			path:         "/some/path/file.txt",
+			passExpected: false,
+			message:      "abs file path",
+		},
+		{
+			path:         "/some/path/../file.txt",
+			passExpected: false,
+			message:      "abs file path with dot dirs",
+		},
+		{
+			path:         "/",
+			passExpected: false,
+			message:      "slash only",
+		},
+		{
+			path:         "",
+			passExpected: true,
+			message:      "empty string",
+		},
+		{
+			path:         "some/path/",
+			passExpected: false,
+			message:      "rel location path",
+		},
+		{
+			path:         "some/./path/../",
+			passExpected: false,
+			message:      "rel location path with dot dirs",
+		},
+		{
+			path:         "some/path/file.txt",
+			passExpected: true,
+			message:      "rel file path",
+		},
+		{
+			path:         "some/path/../file.txt",
+			passExpected: true,
+			message:      "rel file path with dot dirs",
+		},
+	}
+
+	for _, validationTest := range tests {
+		err := utils.ValidateRelFilePath(validationTest.path)
+		if !validationTest.passExpected {
+			s.EqualError(err, utils.ErrBadRelFilePath, validationTest.message)
+		} else {
+			s.NoError(err, validationTest.message)
+		}
+	}
+}
+
+func (s *utilsTest) TestValidateRelLocationPath() {
+	tests := []pathValidationTest{
+		{
+			path:         "/some/path/",
+			passExpected: false,
+			message:      "abs location path",
+		},
+		{
+			path:         "/some/./path/../",
+			passExpected: false,
+			message:      "abs location path with dot dirs",
+		},
+		{
+			path:         "/some/path/file.txt",
+			passExpected: false,
+			message:      "abs file path",
+		},
+		{
+			path:         "/some/path/../file.txt",
+			passExpected: false,
+			message:      "abs file path with dot dirs",
+		},
+		{
+			path:         "/",
+			passExpected: false,
+			message:      "slash only",
+		},
+		{
+			path:         "",
+			passExpected: false,
+			message:      "empty string",
+		},
+		{
+			path:         "some/path/",
+			passExpected: true,
+			message:      "rel location path",
+		},
+		{
+			path:         "some/./path/../",
+			passExpected: true,
+			message:      "rel location path with dot dirs",
+		},
+		{
+			path:         "some/path/file.txt",
+			passExpected: false,
+			message:      "rel file path",
+		},
+		{
+			path:         "some/path/../file.txt",
+			passExpected: false,
+			message:      "rel file path with dot dirs",
+		},
+	}
+
+	for _, validationTest := range tests {
+		err := utils.ValidateRelLocationPath(validationTest.path)
+		if !validationTest.passExpected {
+			s.EqualError(err, utils.ErrBadRelLocationPath, validationTest.message)
+		} else {
+			s.NoError(err, validationTest.message)
+		}
 	}
 }
 
@@ -91,27 +459,19 @@ func (s *utilsTest) TestGetURI() {
 	s.Equal("s3://mybucket/this/path/to/", utils.GetLocationURI(mockLoc2), "s3 location uri matches ")
 }
 
-func (s *utilsTest) TestEnsureTrailingSlash() {
-	tests := map[string]string{
-		"/some/path/": "/some/path/",
-		"some/path":   "some/path/",
-		"":            "/",
-		"/":           "/",
-	}
-
-	for path, expected := range tests {
-		s.Equal(expected, utils.EnsureTrailingSlash(path))
-	}
-}
-
 func (s *utilsTest) TestTouchCopy() {
 
 	// write out blank file
 	tmpfile, err := ioutil.TempFile("", "utils_test")
-	defer os.Remove(tmpfile.Name()) // clean up
 	if err != nil {
 		s.NoError(err, "unexpected temp file setup error")
 	}
+	defer func() {
+		err := os.Remove(tmpfile.Name())
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	if _, err := tmpfile.Write([]byte{}); err != nil {
 		s.NoError(err, "unexpected temp file writing error")
