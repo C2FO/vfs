@@ -10,11 +10,9 @@ import (
 //Scheme defines the filesystem type.
 const Scheme = "mem"
 const name = "mem"
+
 var systemMap map[string]*File
 var fileList []*File
-
-
-
 
 // FileSystem implements vfs.Filesystem for the mem filesystem.
 type FileSystem struct{}
@@ -27,44 +25,41 @@ func (fs *FileSystem) Retry() vfs.Retry {
 // NewFile function returns the mem implementation of vfs.File.  NOT DONE
 func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
 
-	if !path.IsAbs(name){
-		name = path.Join("/",name)
+	if !path.IsAbs(name) {
+		name = path.Join("/", name)
 	}
 
-
 	file, _ := newFile(name)
-	tmp,err :=fs.NewLocation(volume,name)
+	tmp, err := fs.NewLocation(volume, name)
 	file.location = tmp
-	if systemMap[name]!=nil && systemMap[name].getIndex()!=-1{
-		_=systemMap[name].Delete()
+	if systemMap[name] != nil && systemMap[name].getIndex() != -1 {
+		_ = systemMap[name].Delete()
 
 	}
 	systemMap[name] = file
-	fileList = append(fileList,file)
-	return file,err
+	fileList = append(fileList, file)
+	return file, err
 }
 
 // NewLocation function returns the mem implementation of vfs.Location. NOT DONE
 func (fs *FileSystem) NewLocation(volume string, name string) (vfs.Location, error) {
-	if path.Ext(name)!=""{
-		str:= path.Dir(path.Clean(name))
+	if path.Ext(name) != "" {
+		str := path.Dir(path.Clean(name))
 		return &Location{
 			fileSystem: fs,
 			name:       utils.AddTrailingSlash(str),
-			exists:		false,
-			Filename: 	path.Base(name),
-		},nil
+			exists:     false,
+			Filename:   path.Base(name),
+		}, nil
 
 	}
 	return &Location{
 		fileSystem: fs,
 		name:       utils.AddTrailingSlash(path.Clean(name)),
-		exists: 	false,
+		exists:     false,
 	}, nil
 
 }
-
-
 
 // Name returns "mem"
 func (fs *FileSystem) Name() string {

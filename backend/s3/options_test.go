@@ -50,8 +50,7 @@ func TestOptions(t *testing.T) {
 	suite.Run(t, new(optionsTestSuite))
 }
 
-
-type Foo struct {}
+type Foo struct{}
 
 func (*Foo) Close() error {
 	panic("implement me")
