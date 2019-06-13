@@ -1,9 +1,9 @@
 package mem
 
 import (
+	"bytes"
 	"errors"
 	"github.com/c2fo/vfs/v4"
-	"github.com/c2fo/vfs/v4/utils"
 	"io"
 	"path"
 	"time"
@@ -19,6 +19,7 @@ type File struct {
 	Filename  string       //the base name of the file
 	cursor    int          //the index that the buffer (privSlice) is at
 	location  vfs.Location //the location that the file exists on
+	fileSystem *FileSystem
 }
 
 /*		******* Error Functions *******		*/
@@ -205,14 +206,15 @@ the given location
 */
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
+
 	testPath := path.Join(path.Clean(location.Path()), f.Name())
-	if systemMap[testPath] != nil { //if file w/name exists @ loc, simply copy contents over
-		if tmp := systemMap[testPath]; tmp != nil {
-			cerr := f.CopyToFile(systemMap[testPath])
+	if f.fileSystem.systemMap[testPath] != nil { //if file w/name exists @ loc, simply copy contents over
+		if tmp := f.fileSystem.systemMap[testPath]; tmp != nil {
+			cerr := f.CopyToFile(f.fileSystem.systemMap[testPath])
 			if cerr != nil {
 				return nil, cerr
 			}
-			return systemMap[testPath], nil
+			return f.fileSystem.systemMap[testPath], nil
 		} else {
 			return nil, doesNotExist()
 		}
@@ -281,8 +283,8 @@ creating a copy of 'f' in "location".  'f' is subsequently  deleted
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 
 	testPath := path.Join(location.Path(), f.Name())
-	if systemMap[testPath] != nil {
-		err := f.CopyToFile(systemMap[testPath])
+	if f.fileSystem.systemMap[testPath] != nil {
+		err := f.CopyToFile(f.fileSystem.systemMap[testPath])
 		if err != nil {
 			return nil, moveToLocationError()
 		}
@@ -290,7 +292,7 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 		if delErr != nil {
 			return f, delErr
 		}
-		return systemMap[testPath], nil
+		return f.fileSystem.systemMap[testPath], nil
 	}
 	fileName := f.Name()
 	newPath := path.Join(location.Path(), fileName)
@@ -308,7 +310,7 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 		return nil, derr
 	}
 
-	return systemMap[newPath], nil
+	return f.fileSystem.systemMap[newPath], nil
 }
 
 /*
@@ -375,17 +377,17 @@ func (f *File) Delete() error {
 	}
 	if existence {
 		//do some work to adjust the location (later)
-		systemMap[f.Path()] = nil
+		f.fileSystem.systemMap[f.Path()] = nil
 		f.exists = false
 		f.privSlice = nil
 		f.timeStamp = time.Now()
-		fileList[index] = nil
-		copy(fileList[index:], fileList[index+1:])
-		fileList[len(fileList)-1] = nil // or the zero value of T
-		fileList = fileList[:len(fileList)-1]
+		f.fileSystem.fileList[index] = nil
+		copy(f.fileSystem.fileList[index:], f.fileSystem.fileList[index+1:])
+		f.fileSystem.fileList[len(f.fileSystem.fileList)-1] = nil // or the zero value of T
+		f.fileSystem.fileList = f.fileSystem.fileList[:len(f.fileSystem.fileList)-1]
 
 	}
-	if systemMap[str] != nil {
+	if f.fileSystem.systemMap[str] != nil {
 		return errors.New("This file still exists after calling Delete()")
 	}
 
@@ -449,17 +451,21 @@ func (f *File) URI() string {
 	if !existence {
 		return ""
 	}
-
-	return utils.GetFileURI(f)
+	var buf bytes.Buffer
+	pref := "mem://"
+	buf.WriteString(pref)
+	str := f.Path()
+	buf.WriteString(str)
+	return buf.String()
 }
 
 func (f *File) getIndex() int {
 
-	if systemMap[f.Path()] == nil {
+	if f.fileSystem.systemMap[f.Path()] == nil {
 		return -1
 	}
 	str := f.Path()
-	for i, v := range fileList {
+	for i, v := range f.fileSystem.fileList {
 		existence, _ := v.Exists()
 		if v.Path() == str && existence {
 			return i

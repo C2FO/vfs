@@ -1,6 +1,7 @@
 package mem
 
 import (
+	"bytes"
 	"errors"
 	"github.com/c2fo/vfs/v4"
 	"github.com/c2fo/vfs/v4/utils"
@@ -16,7 +17,7 @@ type Location struct {
 	firstTime  bool
 	Filename   string //the baseName of the file this location belongs to
 	name       string //the path that this location exists on
-	fileSystem vfs.FileSystem
+	fileSystem *FileSystem
 }
 
 //String implements io.Stringer by returning the location's URI as a string
@@ -34,12 +35,12 @@ func (l *Location) List() ([]string, error) {
 
 	list := make([]string, 0)
 	str := l.Path()
-	for _, v := range fileList {
+	for _, v := range l.fileSystem.fileList {
 		if v != nil {
 			fullPath := v.Path()
 			if utils.AddTrailingSlash(path.Dir(fullPath)) == str {
-				if systemMap[fullPath] != nil {
-					existence, _ := systemMap[fullPath].Exists()
+				if l.fileSystem.systemMap[fullPath] != nil {
+					existence, _ := l.fileSystem.systemMap[fullPath].Exists()
 					if existence {
 						list = append(list, v.Name())
 					}
@@ -59,7 +60,7 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 
 	list := make([]string, 0)
 	str := path.Join(l.Path(), prefix)
-	for _, v := range fileList {
+	for _, v := range l.fileSystem.fileList {
 		if v != nil {
 			path := v.Path()
 			tmp := strings.Contains(path, str)
@@ -87,7 +88,7 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 
 		potentialPath := path.Join(str, hereList)
 
-		for _, systemFileList := range fileList {
+		for _, systemFileList := range l.fileSystem.fileList {
 
 			if systemFileList != nil && systemFileList.Path() == potentialPath {
 				ex, _ := systemFileList.Exists()
@@ -154,13 +155,14 @@ func (l *Location) ChangeDir(relativePath string) error {
 func (l *Location) FileSystem() vfs.FileSystem {
 
 	filePath := path.Join(path.Clean(l.Path()), l.Filename)
-	if systemMap[filePath] != nil {
-		if systemMap[filePath].exists {
+	if l.fileSystem.systemMap[filePath] != nil {
+		if l.fileSystem.systemMap[filePath].exists {
 			l.exists = true
 		}
 	}
 	existence, _ := l.Exists()
 	if existence {
+
 		return l.fileSystem
 	}
 	return nil
@@ -181,9 +183,9 @@ func (l *Location) NewFile(fileName string) (vfs.File, error) {
 
 	loc, _ := l.fileSystem.NewLocation("", nameStr)
 	file := &File{timeStamp: time.Now(), isRef: false, Filename: path.Base(nameStr), cursor: 0,
-		isOpen: false, exists: false, location: loc}
-	systemMap[nameStr] = file
-	fileList = append(fileList, file)
+		isOpen: false, exists: false, location: loc,fileSystem: l.fileSystem}
+	l.fileSystem.systemMap[nameStr] = file
+	l.fileSystem.fileList = append(l.fileSystem.fileList, file)
 
 	return file, nil
 
@@ -193,8 +195,8 @@ func (l *Location) NewFile(fileName string) (vfs.File, error) {
 func (l *Location) DeleteFile(fileName string) error {
 
 	fullPath := path.Join(l.Path(), fileName)
-	if systemMap[fullPath] != nil {
-		derr := systemMap[fullPath].Delete()
+	if l.fileSystem.systemMap[fullPath] != nil {
+		derr := l.fileSystem.systemMap[fullPath].Delete()
 		return derr
 	}
 	return errors.New("This file does not exist")
@@ -203,9 +205,12 @@ func (l *Location) DeleteFile(fileName string) error {
 //URI returns the URI of the location if the location exists
 func (l *Location) URI() string {
 
-	existence, _ := l.Exists()
-	if !existence {
-		return ""
-	}
-	return utils.GetLocationURI(l)
+
+	var buf bytes.Buffer
+	pref := "mem://"
+	buf.WriteString(pref)
+	str := l.Path()
+	buf.WriteString(str)
+	retStr := utils.AddTrailingSlash(buf.String())
+	return retStr
 }

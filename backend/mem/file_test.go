@@ -29,11 +29,15 @@ func (s *memFileTest) SetupSuite() {
 }
 
 func (s *memFileTest) TearDownSuite() {
-	teardownTestFiles()
+	//teardownTestFiles()
 }
 
 func (s *memFileTest) SetupTest() {
-	fs := &FileSystem{}
+	fs := &FileSystem{
+		make(map[string]*File),
+	make([]*File, 0),
+	}
+
 	file, err := fs.NewFile("", "/test_files/test.txt")
 
 	if err != nil {
@@ -42,6 +46,7 @@ func (s *memFileTest) SetupTest() {
 
 	s.testFile = file.(*File)
 	s.fileSystem = fs
+	//s.fileSystem.Initialize()
 	WriteZeroBytes(s.testFile)
 }
 
@@ -132,7 +137,7 @@ func (s *memFileTest) TestDelete() {
 	existence1, eerr1 := otherFile.Exists()
 	s.False(existence1)
 	assert.NoError(s.T(), eerr1, "Unexpected existence error")
-	s.True(systemMap["/foo.txt"] == nil)
+	s.True(s.fileSystem.systemMap["/foo.txt"] == nil)
 
 }
 
@@ -165,7 +170,7 @@ func (s *memFileTest) TestNewFile() {
 
 	file, err := s.fileSystem.NewFile("", "/test_file/foo.txt")
 	s.True(err == nil)
-	tmp, ok := systemMap[file.Path()] //checking our system map for a match to the given fileName
+	tmp, ok := s.fileSystem.systemMap[file.Path()] //checking our system map for a match to the given fileName
 	s.True(ok)
 	s.True(tmp != nil)
 }
@@ -233,10 +238,10 @@ func (s *memFileTest) TestNameToURI() {
 	name := "/test_files/examples/foo.txt"
 	_, err := s.fileSystem.NewFile(",", name)
 	s.True(err == nil)
-	retFile, ok := systemMap["/test_files/examples/foo.txt"]
-	WriteZeroBytes(systemMap[name])
+	retFile, ok := s.fileSystem.systemMap["/test_files/examples/foo.txt"]
+	WriteZeroBytes(s.fileSystem.systemMap[name])
 	s.True(ok)
-	existence, eerr := systemMap[name].Exists()
+	existence, eerr := s.fileSystem.systemMap[name].Exists()
 	assert.NoError(s.T(), eerr, "Unexpected existence error")
 	s.True(existence)
 	retFile.location.URI()
@@ -416,7 +421,7 @@ func (s *memFileTest) TestCopyToFile() {
 	assert.NoError(s.T(), err, "Copy to file failed unexpectedly")
 	_, rerr1 := s.testFile.Read(readSlice1)
 	assert.NoError(s.T(), rerr1, "Unexpected read error")
-	_, rerr2 := systemMap[strPath].Read(readSlice2)
+	_, rerr2 := s.fileSystem.systemMap[strPath].Read(readSlice2)
 	assert.NoError(s.T(), rerr2, "Unexpected read error")
 	assert.ObjectsAreEqualValues(string(readSlice1), string(readSlice2))
 }
@@ -527,9 +532,9 @@ func (s *memFileTest) TestMoveToFile() {
 	merr := s.testFile.MoveToFile(newFile)
 	assert.NoError(s.T(), merr, "Move to file failed")
 	newFileSlice := make([]byte, len("Hello World!"))
-	fmt.Println(systemMap[newFile.Path()])
+	fmt.Println(s.fileSystem.systemMap[newFile.Path()])
 	s.False(s.testFile.Exists())
-	_, rerr := systemMap[newFile.Path()].Read(newFileSlice)
+	_, rerr := s.fileSystem.systemMap[newFile.Path()].Read(newFileSlice)
 	assert.NoError(s.T(), rerr, "Read unexpectedly failed")
 	assert.ObjectsAreEqualValues(string(expectedSlice), string(newFileSlice))
 	assert.ObjectsAreEqualValues(newFile.Path(), "/samples/foo.txt")
@@ -549,7 +554,7 @@ func (s *memFileTest) TestMoveToFile2() {
 	merr := s.testFile.MoveToFile(newFile)
 	assert.NoError(s.T(), merr, "Move to file failed")
 	newFileSlice := make([]byte, len("Hello World!"))
-	newFile = systemMap[newPath]
+	newFile = s.fileSystem.systemMap[newPath]
 	s.False(s.testFile.Exists())
 	_, rerr := newFile.Read(newFileSlice)
 	assert.NoError(s.T(), rerr, "Read unexpectedly failed")
@@ -664,9 +669,9 @@ func WriteZeroBytes(file vfs.File) {
 	_ = file.Close()
 }
 
-func teardownTestFiles() {
+func(s *memFileTest) teardownTestFiles() {
 
-	for _, v := range fileList {
+	for _, v := range s.fileSystem.fileList {
 		if v != nil {
 			_ = v.Delete()
 		}

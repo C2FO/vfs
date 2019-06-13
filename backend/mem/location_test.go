@@ -22,29 +22,28 @@ type memLocationTest struct {
 
 func (s *memLocationTest) SetupSuite() {
 
-	//just clearing out any files that file_test may have produced
-	if len(fileList) != 0 {
-		systemMap = make(map[string]*File)
-		fileList = make([]*File, 0)
-	}
+
 }
 
 func (s *memLocationTest) TearDownSuite() {
-	teardownTestFiles()
+	//teardownTestFiles()
 }
 
 func (s *memLocationTest) SetupTest() {
-	fs := &FileSystem{}
+	fs := &FileSystem{
+		make(map[string]*File),
+		make([]*File, 0),
+	}
 
-	//	"/home/test_files/subdir/" is the location of s's testFile
-	file, err := fs.NewFile("", "/home/test_files/subdir/test.txt")
+	file, err := fs.NewFile("", "/test_files/test.txt")
 
 	if err != nil {
 		s.Fail("No file was opened")
 	}
 
-	s.testFile = file
+	s.testFile = file.(*File)
 	s.fileSystem = fs
+	//s.fileSystem.Initialize()
 	WriteZeroBytes(s.testFile)
 
 }
@@ -187,6 +186,7 @@ func (s *memLocationTest) TestURI() {
 	file, _ := s.fileSystem.NewFile("", "/some/file/test.txt")
 	WriteZeroBytes(file)
 	location := file.Location()
+	_,_=location.Exists()
 	expected := "mem:///some/file/"
 	s.Equal(expected, location.URI(), "%s does not match %s", location.URI(), expected)
 	derr := file.Delete()
@@ -224,7 +224,7 @@ func (s *memLocationTest) TestDeleteFile() {
 	existence1, eerr1 := otherFile.Exists()
 	s.False(existence1)
 	assert.NoError(s.T(), eerr1, "Unexpected existence error")
-	s.True(systemMap["/foo.txt"] == nil)
+	s.True(s.fileSystem.systemMap["/foo.txt"] == nil)
 
 }
 
