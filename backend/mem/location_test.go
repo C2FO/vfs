@@ -23,7 +23,7 @@ type memLocationTest struct {
 func (s *memLocationTest) SetupSuite() {
 
 	//just clearing out any files that file_test may have produced
-	if len(fileList) != 0{
+	if len(fileList) != 0 {
 		systemMap = make(map[string]*File)
 		fileList = make([]*File, 0)
 	}
@@ -49,15 +49,15 @@ func (s *memLocationTest) SetupTest() {
 
 }
 
-func (s *memLocationTest) TestFSName(){
+//TestFSName tests out whether or not the location knows what filesystem it is on
+func (s *memLocationTest) TestFSName() {
 
-	assert.ObjectsAreEqual(s.testFile.Location().FileSystem(),"mem")
-	assert.ObjectsAreEqual(s.testFile.Location().FileSystem().Name(),"mem")
-	assert.ObjectsAreEqual(s.testFile.Location().FileSystem().Scheme(),"mem")
+	assert.ObjectsAreEqual(s.testFile.Location().FileSystem(), "mem")
+	assert.ObjectsAreEqual(s.testFile.Location().FileSystem().Name(), "In-Memory Filesystem")
+	assert.ObjectsAreEqual(s.testFile.Location().FileSystem().Scheme(), "mem")
 }
 
-
-
+//TestList tests that a location is capable of finding all files that exist there
 func (s *memLocationTest) TestList() {
 	expected := []string{"test.txt"}
 	actual, _ := s.testFile.Location().List()
@@ -91,6 +91,7 @@ func (s *memLocationTest) TestList_NonExistentDirectory() {
 	s.Equal(0, len(regexContents), "ListByRegex should return empty slice for non-existent directory")
 }
 
+//TestListByPrefix creates some files and provides a prefix. Succeeds on correct string slice returned
 func (s *memLocationTest) TestListByPrefix() {
 
 	_, _ = s.fileSystem.NewFile("", "foo.txt")
@@ -98,15 +99,14 @@ func (s *memLocationTest) TestListByPrefix() {
 	_, _ = s.fileSystem.NewFile("", "/home/test_files/subdir/file2.txt")
 	_, _ = s.fileSystem.NewFile("", "/home/directories/test/mat.txt")
 	_, _ = s.fileSystem.NewFile("", "/test/files/car.txt")
-	//fmt.Println(s.testFile.Location().Path(),"here")
 	nameSlice, _ := s.testFile.Location().ListByPrefix("f")
 	expectedSlice := []string{"file1.txt", "file2.txt"}
 	assert.ObjectsAreEqual(expectedSlice, nameSlice)
-
 	emptySlice, _ := s.testFile.Location().ListByPrefix("m")
 	assert.ObjectsAreEqual(make([]string, 0), emptySlice) //no files should be found with this prefix at this location
 }
 
+//TestListByRegex provides a simple regular expression and ensures that the correct fileNames matched that regEx
 func (s *memLocationTest) TestListByRegex() {
 
 	newFile, _ := s.fileSystem.NewFile("", "/test_files/test.txt")
@@ -123,12 +123,14 @@ func (s *memLocationTest) TestListByRegex() {
 
 }
 
+//TestExists ensures that a real location exists, and one that was simply created does not
 func (s *memLocationTest) TestExists() {
 	otherFile, _ := s.fileSystem.NewFile("", "foo/foo.txt")
 	s.True(s.testFile.Location().Exists())
 	s.False(otherFile.Location().Exists())
 }
 
+//TestNewLocation ensures that we can create new locations, even with relative dot paths
 func (s *memLocationTest) TestNewLocation() {
 
 	otherFile, _ := s.fileSystem.NewFile("", "/foo/foo.txt")
@@ -140,6 +142,7 @@ func (s *memLocationTest) TestNewLocation() {
 	s.Equal("/bar/", relDir.Path(), "relative dot path works")
 }
 
+//TestNewFile tests that location can create a file at its current path
 func (s *memLocationTest) TestNewFile() {
 	loc, err := s.fileSystem.NewLocation("", "/foo/bar/baz/")
 	s.NoError(err)
@@ -148,10 +151,20 @@ func (s *memLocationTest) TestNewFile() {
 	s.Equal("/foo/bam/this.txt", newfile.Path(), "relative dot path works")
 }
 
+//TestChangeDir tests that we can change the directory on a location but that it doesn't change the file's location
 func (s *memLocationTest) TestChangeDir() {
 
+	newFile, _ := s.fileSystem.NewFile("", "/dir/to/change/change.txt")
+	WriteZeroBytes(newFile)
+	loc := newFile.Location()
+	cerr := loc.ChangeDir("extraDir")
+	assert.NoError(s.T(), cerr, "Unexpected error while changing directory")
+	exists, _ := loc.Exists()
+	s.False(exists)
+	s.False(newFile.Location().Path() == loc.Path())
 }
 
+//TestVolume makes sure that the mem-fs returns the empty string for its volume
 func (s *memLocationTest) TestVolume() {
 	volume := s.testFile.Location().Volume()
 
@@ -159,6 +172,7 @@ func (s *memLocationTest) TestVolume() {
 	s.Equal("", volume)
 }
 
+//TestPath makes sure that locations return the correct paths, along with leading and trailing slashes
 func (s *memLocationTest) TestPath() {
 	file, _ := s.fileSystem.NewFile("", "/some/file/test.txt")
 	WriteZeroBytes(file)
@@ -168,6 +182,7 @@ func (s *memLocationTest) TestPath() {
 	assert.NoError(s.T(), derr, "Delete failed unexpectedly")
 }
 
+//TestURI ensures that URI's for locations come out in the correct format
 func (s *memLocationTest) TestURI() {
 	file, _ := s.fileSystem.NewFile("", "/some/file/test.txt")
 	WriteZeroBytes(file)
@@ -178,6 +193,7 @@ func (s *memLocationTest) TestURI() {
 	assert.NoError(s.T(), derr, "Delete failed unexpectedly")
 }
 
+//TestStringer tests the implementation of io.Stringer
 func (s *memLocationTest) TestStringer() {
 	file, _ := s.fileSystem.NewFile("", "/some/file/test.txt")
 	WriteZeroBytes(file)
@@ -188,6 +204,7 @@ func (s *memLocationTest) TestStringer() {
 	assert.NoError(s.T(), derr, "Delete failed unexpectedly")
 }
 
+//TestDeleteFile makes files, writes to them, deletes them, all while asserting things like existence and errors
 func (s *memLocationTest) TestDeleteFile() {
 
 	newFile, err := s.fileSystem.NewFile("", "home/bar.txt")

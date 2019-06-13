@@ -1,9 +1,9 @@
 package mem
 
 import (
-	"bytes"
 	"errors"
 	"github.com/c2fo/vfs/v4"
+	"github.com/c2fo/vfs/v4/utils"
 	"io"
 	"path"
 	"time"
@@ -11,17 +11,16 @@ import (
 
 //File implements vfs.File interface for os fs.
 type File struct {
-	exists       bool
-	timeStamp    time.Time
-	isOpen       bool
-	isZB         bool
-	isRef        bool
-	privSlice    []byte
-	fileContents []byte
-	Filename     string
-	cursor       int
-	location     vfs.Location
+	exists    bool
+	timeStamp time.Time
+	isOpen    bool
+	isRef     bool         //has it been referenced before?
+	privSlice []byte       //the file contents
+	Filename  string       //the base name of the file
+	cursor    int          //the index that the buffer (privSlice) is at
+	location  vfs.Location //the location that the file exists on
 }
+
 /*		******* Error Functions *******		*/
 func doesNotExist() error {
 	return errors.New("This file does not exist!")
@@ -48,6 +47,7 @@ func writeError() error {
 func seekError() error {
 	return errors.New("Seek could not complete the desired call")
 }
+
 /*		******************		*/
 
 //Close imitates io.Closer by resetting the cursor and setting a boolean
@@ -61,6 +61,7 @@ func (f *File) Close() error {
 	f.cursor = 0
 	return nil
 }
+
 //Read implements the io.Reader interface.  Returns number of bytes read and potential errors
 func (f *File) Read(p []byte) (n int, err error) {
 	//if file exists:
@@ -95,6 +96,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 	return length, nil
 
 }
+
 //Seek implements the io.Seeker interface.  Returns the current position of the cursor and errors if any
 func (f *File) Seek(offset int64, whence int) (int64, error) {
 
@@ -137,6 +139,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	}
 
 }
+
 //Write implements the io.Writer interface. Returns number of bytes written and any errors
 func (f *File) Write(p []byte) (n int, err error) {
 	if f.isOpen == false {
@@ -168,11 +171,16 @@ func (f *File) Write(p []byte) (n int, err error) {
 	f.timeStamp = time.Now()
 	return length - 1, err
 }
+
 //String implements the io.Stringer interface. It returns a string representation of the file's URI
 func (f *File) String() string {
 	return f.URI()
 }
-//Exists returns whether or not a file exists.  Creating a file does not guarantee its existence, but creating one and writing to it does
+
+/*
+Exists returns whether or not a file exists.  Creating a file does not
+guarantee its existence, but creating one and writing to it does
+*/
 func (f *File) Exists() (bool, error) {
 	if !f.exists {
 		return false, nil
@@ -181,6 +189,7 @@ func (f *File) Exists() (bool, error) {
 	}
 }
 
+//Location simply returns the file's underlying location struct pointer
 func (f *File) Location() vfs.Location {
 
 	newLoc, _ := f.location.NewLocation("")
@@ -210,9 +219,12 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 	}
 
 	newFile, _ := location.NewFile(f.Name())
-	_, _ = newFile.Write(make([]byte, 0))
+	_, werr := newFile.Write(make([]byte, 0))
+	if werr != nil {
+		return newFile, werr
+	}
 	cerr := f.CopyToFile(newFile)
-	return systemMap[testPath], cerr
+	return newFile, cerr
 }
 
 /*
@@ -229,41 +241,64 @@ func (f *File) CopyToFile(target vfs.File) error {
 	if ex, _ := target.Exists(); !ex {
 		return doesNotExist()
 	}
-	//if target exists, its contents will be overwritten, otherwise it will be created...i'm assuming it exists
-	//targetFile := target.(*File)
-	name := target.Name()
-	loc := target.Location()
-	derr := target.Delete()
-	if derr != nil {
-		return derr
+	_, serr1 := target.Seek(0, 0)
+	if serr1 != nil {
+		return serr1
 	}
-	newFile, _ := loc.NewFile(name)
-
-	_, err := newFile.Write(f.privSlice)
-	_ = newFile.Close()
-	target = systemMap[newFile.Path()]
-	return err
-
+	_, serr2 := f.Seek(0, 0)
+	if serr2 != nil {
+		return serr2
+	}
+	size, sizeErr := f.Size()
+	if sizeErr != nil {
+		return sizeErr
+	}
+	oldCursor, serr3 := f.Seek(10, 2)
+	if serr3 == nil { //want it to throw error because we just want the current cursor position
+		return serr3
+	}
+	bSlice := make([]byte, int(size))
+	_, rerr := f.Read(bSlice)
+	if rerr != nil {
+		return rerr
+	}
+	_, werr := target.Write(bSlice)
+	if werr != nil {
+		return werr
+	}
+	closeErr := target.Close()
+	if closeErr != nil {
+		return closeErr
+	}
+	_, serr4 := f.Seek(oldCursor, 0)
+	return serr4
 }
+
 /*
  MoveToLocation moves the receiver file to the passed in location. It does so by
 creating a copy of 'f' in "location".  'f' is subsequently  deleted
 */
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 
-
 	testPath := path.Join(location.Path(), f.Name())
 	if systemMap[testPath] != nil {
-		err := f.CopyToFile(systemMap[path.Clean(location.Path())])
+		err := f.CopyToFile(systemMap[testPath])
 		if err != nil {
 			return nil, moveToLocationError()
 		}
-		return f, nil
+		delErr := f.Delete()
+		if delErr != nil {
+			return f, delErr
+		}
+		return systemMap[testPath], nil
 	}
 	fileName := f.Name()
 	newPath := path.Join(location.Path(), fileName)
 	newFile, _ := location.NewFile(path.Base(newPath))
-	_, _ = newFile.Write(make([]byte, 0))
+	_, werr := newFile.Write(make([]byte, 0))
+	if werr != nil {
+		return newFile, werr
+	}
 	cerr := f.CopyToFile(newFile)
 	if cerr != nil {
 		return nil, moveToLocationError()
@@ -291,8 +326,14 @@ func (f *File) MoveToFile(file vfs.File) error {
 			return deleteError()
 		}
 		newFile, _ := file.Location().NewFile(f.Name())
-		_, _ = newFile.Write(make([]byte, 0))
-		_ = newFile.Close()
+		_, werr := newFile.Write(make([]byte, 0))
+		if werr != nil {
+			return werr
+		}
+		cerr := newFile.Close()
+		if cerr != nil {
+			return cerr
+		}
 		copyErr := f.CopyToFile(newFile)
 		if copyErr != nil {
 			return copyFail()
@@ -302,9 +343,14 @@ func (f *File) MoveToFile(file vfs.File) error {
 	}
 
 	newFile, _ := file.Location().NewFile(f.Name())
-	_, _ = newFile.Write(make([]byte, 0))
-	_ = newFile.Close()
-
+	_, werr := newFile.Write(make([]byte, 0))
+	if werr != nil {
+		return werr
+	}
+	cerr := newFile.Close()
+	if cerr != nil {
+		return cerr
+	}
 	copyErr := f.CopyToFile(newFile)
 	if copyErr != nil {
 		return errors.New("CopyToFile failed unexpectedly and as a result so did MoveToFile")
@@ -315,10 +361,11 @@ func (f *File) MoveToFile(file vfs.File) error {
 	return derr
 
 }
+
 /*
 Delete removes the file from the fs. Sets it path to the systemMap to nil,
  removes it from the filelist, and appropriately shifts the list
- */
+*/
 func (f *File) Delete() error {
 	existence, err := f.Exists()
 	str := f.Filename
@@ -349,6 +396,7 @@ func (f *File) Delete() error {
 
 }
 
+//newFile creates an in-mem vfs file given the name then returns it
 func newFile(name string) (*File, error) {
 
 	//var l Location
@@ -357,11 +405,12 @@ func newFile(name string) (*File, error) {
 
 	return &File{
 		timeStamp: time.Now(), isRef: false, Filename: path.Base(name), cursor: 0,
-		isOpen: false, isZB: false, exists: false,
+		isOpen: false, exists: false,
 	}, nil
 
 }
 
+//LastModified simply returns the file's timeStamp, if the file exists
 func (f *File) LastModified() (*time.Time, error) {
 
 	existence, err := f.Exists()
@@ -372,37 +421,36 @@ func (f *File) LastModified() (*time.Time, error) {
 	return nil, err
 }
 
+//Size returns the size of the file contents.  In our case, the length of the file's byte slice
 func (f *File) Size() (uint64, error) {
 
 	return uint64(len(f.privSlice)), nil
 
 }
 
+//Path returns the absolute path to the file
 func (f *File) Path() string {
 
 	return path.Join(f.Location().Path(), f.Filename)
 
 }
 
+//Name returns the file's base name
 func (f *File) Name() string {
 	//if file exists
 
 	return f.Filename
 }
 
+//URI returns the file's URI, if it exists
 func (f *File) URI() string {
 
 	existence, _ := f.Exists()
 	if !existence {
 		return ""
 	}
-	var buf bytes.Buffer
-	pref := "mem://"
-	buf.WriteString(pref)
-	str := f.Path()
-	buf.WriteString(str)
-	return buf.String()
 
+	return utils.GetFileURI(f)
 }
 
 func (f *File) getIndex() int {

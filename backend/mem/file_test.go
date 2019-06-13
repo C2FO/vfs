@@ -131,7 +131,7 @@ func (s *memFileTest) TestDelete() {
 	assert.NoError(s.T(), derr, "Delete unexpectedly failed")
 	existence1, eerr1 := otherFile.Exists()
 	s.False(existence1)
-	assert.NoError(s.T(), eerr1,"Unexpected existence error")
+	assert.NoError(s.T(), eerr1, "Unexpected existence error")
 	s.True(systemMap["/foo.txt"] == nil)
 
 }
@@ -155,7 +155,7 @@ func (s *memFileTest) TestExists2() {
 	s.True(err == nil)
 	WriteZeroBytes(otherFile)
 	derr := otherFile.Delete()
-	assert.NoError(s.T(), derr,"Delete unexpectedly failed")
+	assert.NoError(s.T(), derr, "Delete unexpectedly failed")
 	existence, eerr := otherFile.Exists() //should throw an error and existence should be false
 	assert.NoError(s.T(), eerr, "Unexpected existence error")
 	s.False(existence)
@@ -200,31 +200,31 @@ func (s *memFileTest) TestWrite2() {
 	assert.NoError(s.T(), eErr2, "exists error not expected")
 	s.False(found2)
 }
+
 //TestSeek tests to ensure that we can seek to any part of the file, if it exists
-func (s *memFileTest) TestSeek2(){
-	newFile,_ := s.fileSystem.NewFile("","/home/test_files/subdir/seekTest.txt")
-	initText:="Hello world!"
-	_,werr:=newFile.Write([]byte(initText))
-	assert.NoError(s.T(),werr,"Unexpected write error")
+func (s *memFileTest) TestSeek2() {
+	newFile, _ := s.fileSystem.NewFile("", "/home/test_files/subdir/seekTest.txt")
+	initText := "Hello world!"
+	_, werr := newFile.Write([]byte(initText))
+	assert.NoError(s.T(), werr, "Unexpected write error")
 	//without closing, the cursor should be at the end of the file.
 	//calling Seek with a whence of '1' and asking to move to cursor forward should throw an error
-	_,serr:=newFile.Seek(1,1)
-	assert.Error(s.T(),serr,"Expected seek to throw an error")
+	_, serr := newFile.Seek(1, 1)
+	assert.Error(s.T(), serr, "Expected seek to throw an error")
 	//trying to read should also be an error:
-	_,rerr:=newFile.Read(make([]byte,1))
+	_, rerr := newFile.Read(make([]byte, 1))
 	assert.Error(s.T(), rerr, "Expected read error")
-	_,serr2:=newFile.Seek(0,0)
-	assert.NoError(s.T(),serr2,"Unexpected seek error")
-	testByte:=make([]byte,1)
-	num,rerr2:=newFile.Read(testByte)
-	assert.NoError(s.T(),rerr2,"Unexpected read error")
-	s.True("H"==string(testByte))
-	assert.ObjectsAreEqual(1,num)
-	_,serr3:=newFile.Seek(-2,1)
-	assert.Error(s.T(),serr3,"Seek error expected for seeking into negative bounds")
-	_,serr4:=newFile.Seek(1,1)
-	assert.NoError(s.T(),serr4,"Unexpected seek error")
-
+	_, serr2 := newFile.Seek(0, 0)
+	assert.NoError(s.T(), serr2, "Unexpected seek error")
+	testByte := make([]byte, 1)
+	num, rerr2 := newFile.Read(testByte)
+	assert.NoError(s.T(), rerr2, "Unexpected read error")
+	s.True("H" == string(testByte))
+	assert.ObjectsAreEqual(1, num)
+	_, serr3 := newFile.Seek(-2, 1)
+	assert.Error(s.T(), serr3, "Seek error expected for seeking into negative bounds")
+	_, serr4 := newFile.Seek(1, 1)
+	assert.NoError(s.T(), serr4, "Unexpected seek error")
 
 }
 
@@ -246,48 +246,45 @@ func (s *memFileTest) TestNameToURI() {
 
 func (s *memFileTest) TestOpenFile() {
 	expectedText := "hello world"
-	_,werr:=s.testFile.Write([]byte(expectedText))
-	data:=make([]byte,len(expectedText))
-	assert.NoError(s.T(),werr,"Write error not expected")
+	_, werr := s.testFile.Write([]byte(expectedText))
+	data := make([]byte, len(expectedText))
+	assert.NoError(s.T(), werr, "Write error not expected")
 	_, err := s.testFile.Read(data)
 	assert.Error(s.T(), err, "read error expected")
-	s.False(expectedText == string(data) )
+	s.False(expectedText == string(data))
 }
 
 func (s *memFileTest) TestSeek() {
-		expectedText := "new file"
-			data := make([]byte, len(expectedText))
-			file, _ := s.fileSystem.NewFile("", "test_files/new.txt")
+	expectedText := "new file"
+	data := make([]byte, len(expectedText))
+	file, _ := s.fileSystem.NewFile("", "test_files/new.txt")
 
-			_, werr := file.Write([]byte(expectedText))
-			assert.NoError(s.T(), werr, "write error not expected")
+	_, werr := file.Write([]byte(expectedText))
+	assert.NoError(s.T(), werr, "write error not expected")
 
-			_, serr := file.Seek(0, 0)
-			assert.NoError(s.T(), serr, "seek error not expected")
-			_, rerr := file.Read(data)
-			assert.NoError(s.T(), rerr, "read error not expected")
-			cerr := file.Close()
-			assert.NoError(s.T(), cerr, "close error not expected")
+	_, serr := file.Seek(0, 0)
+	assert.NoError(s.T(), serr, "seek error not expected")
+	_, rerr := file.Read(data)
+	assert.NoError(s.T(), rerr, "read error not expected")
+	cerr := file.Close()
+	assert.NoError(s.T(), cerr, "close error not expected")
 
-			s.Equal(expectedText, string(data))
+	s.Equal(expectedText, string(data))
 
-			found, eErr := file.Exists()
-			assert.NoError(s.T(), eErr, "exists error not expected")
-			s.True(found)
+	found, eErr := file.Exists()
+	assert.NoError(s.T(), eErr, "exists error not expected")
+	s.True(found)
 
-			err := file.Delete()
-			if err != nil {
-				s.Fail("File was not deleted properly")
-			}
+	err := file.Delete()
+	if err != nil {
+		s.Fail("File was not deleted properly")
+	}
 
-			found2, eErr2 := file.Exists()
-			assert.NoError(s.T(), eErr2, "exists error not expected")
-			s.False(found2)
-
+	found2, eErr2 := file.Exists()
+	assert.NoError(s.T(), eErr2, "exists error not expected")
+	s.False(found2)
 
 }
-
-
 
 /*
 TestCopyToLocationOS copies a file to a location that has
@@ -299,7 +296,6 @@ func (s *memFileTest) TestCopyToLocation() {
 	newFile, _ := s.fileSystem.NewFile("", "/home/foo.txt")
 	expectedText := "hello world!"
 	_, werr := s.testFile.Write([]byte(expectedText))
-	//cerr := s.testFile.Close()
 	_, serr := s.testFile.Seek(-12, 2)
 	assert.NoError(s.T(), serr, "Seek unexpectedly threw an error")
 	//assert.NoError(s.T(),cerr,"Unexpected close error")
@@ -348,62 +344,58 @@ func (s *memFileTest) TestCopyToLocationOW() {
 	assert.EqualValues(s.T(), "hello world!", string(readSlice))
 
 }
-func (s *memFileTest) TestCopyToNilFile(){
 
-	newFile,_:=s.fileSystem.NewFile("","nilFile.txt")
-	err:=s.testFile.CopyToFile(newFile)
-	assert.Error(s.T(),err,"Expected error for copying to nil file")
+//TestCopyToNilFile ensures that an error is thrown for trying to copy to a nil file
+func (s *memFileTest) TestCopyToNilFile() {
+
+	newFile, _ := s.fileSystem.NewFile("", "nilFile.txt")
+	err := s.testFile.CopyToFile(newFile)
+	assert.Error(s.T(), err, "Expected error for copying to nil file")
 }
-
 
 //TestCopyToLocationOS copies a file from the mem fs over
 // to a location on the  OS fs and checks for success
 func (s *memFileTest) TestCopyToLocationOS() { //Unsure how this should work
 
+	expectedText := "hello world!"
+	_, werr1 := s.testFile.Write([]byte(expectedText))
+	assert.NoError(s.T(), werr1, "Unexpected write error")
+	cerr1 := s.testFile.Close()
+	assert.NoError(s.T(), cerr1, "Unexpected close error")
+	var osFile vfs.File
+	var err error
+	dir, err := ioutil.TempDir("", "osDir")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.RemoveAll(dir) // clean up
+	osFileName := filepath.Join(dir, "osFile.txt")
 
-		var osFile vfs.File
-		var err error
-		//content := []byte("temporary file's content")
-		dir, err := ioutil.TempDir("", "example")
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer os.RemoveAll(dir) // clean up
-		osFileName := filepath.Join(dir, "tmpfile")
+	//fmt.Println(content,dir)
+	osFile, err = backend.Backend(_os.Scheme).NewFile("", osFileName)
+	_, zwErr := osFile.Write([]byte(""))
+	assert.NoError(s.T(), zwErr, "Unexpected write error")
+	s.True(err == nil)
+	exists, eerr := osFile.Exists()
+	assert.EqualValues(s.T(), true, exists)
+	assert.NoError(s.T(), eerr, "Unexpected existence error")
+	readSlice := make([]byte, len(expectedText))
+	readSlice2 := make([]byte, len(expectedText))
+	copiedFile, cerr := s.testFile.CopyToLocation(osFile.Location())
+	closeErr := copiedFile.Close()
+	assert.NoError(s.T(), closeErr, "Unexpected Close error")
+	assert.NoError(s.T(), cerr, "CopyToLocation unexpectedly failed")
+	s.True(copiedFile != nil)
+	assert.EqualValues(s.T(), "/test_files/test.txt", s.testFile.Path()) //testFile's path should be unchanged
 
-		//fmt.Println(content,dir)
-		osFile, err  = backend.Backend(_os.Scheme).NewFile("",dir)
-		_,zwErr:=osFile.Write([]byte(""))
-		assert.NoError(s.T(),zwErr,"Unexpected write error")
-		s.True(err == nil)
-		expectedText:= "hello world!"
-		exists,eerr:=osFile.Exists()
-		assert.EqualValues(s.T(),true,exists)
-		assert.NoError(s.T(),eerr,DoesNotExist())
-		_,werr:=s.testFile.Write([]byte(expectedText))
-		assert.NoError(s.T(),werr,"Unexpected write error")
+	assert.EqualValues(s.T(), filepath.Join(dir, "test.txt"), copiedFile.Path()) //new path should be that
 
-		readSlice := make([]byte,len(expectedText))
-		readSlice2:= make([]byte,len(expectedText))
+	_, rerr := copiedFile.Read(readSlice)
+	assert.NoError(s.T(), rerr, "unexpected read error")
 
-		copiedFile,cerr := s.testFile.CopyToLocation(osFile.Location())
-		closeErr:=copiedFile.Close()
-		assert.NoError(s.T(),closeErr,"Unexpected Close error")
-		assert.NoError(s.T(),cerr,"CopyToLocation unexpectedly failed")
-		s.True(copiedFile!=nil)
-		assert.EqualValues(s.T(),"/test_files/test.txt",s.testFile.Path()) //testFile's path should be unchanged
-
-		assert.EqualValues(s.T(),"/temporary/test.txt",copiedFile.Path()) //new path should be that
-
-		_,rerr:=copiedFile.Read(readSlice)
-		assert.NoError(s.T(),rerr,"unexpected read error")
-
-		_,rerr2:=s.testFile.Read(readSlice2)
-		assert.NoError(s.T(),rerr2,"unexpected read error")
-		assert.EqualValues(s.T(),string(readSlice2),string(readSlice)) //both reads should be the same
-
-
-	*/
+	_, rerr2 := s.testFile.Read(readSlice2)
+	assert.NoError(s.T(), rerr2, "unexpected read error")
+	assert.EqualValues(s.T(), string(readSlice2), string(readSlice)) //both reads should be the same
 
 }
 
@@ -483,29 +475,6 @@ func (s *memFileTest) TestEmptyCopyToFile() {
 
 }
 
-/*
-func (s *memFileTest) TestCopyToLocationIgnoreExtraSeparator() {
-	expectedText := "hello world"
-	otherFs := new(mocks.FileSystem)
-	otherFile := new(mocks.File)
-
-	// Expected behavior
-	otherFile.On("Write", mock.Anything).Return(len(expectedText), nil)
-	otherFile.On("Close").Return(nil)
-	otherFs.On("NewFile", mock.Anything, mock.Anything).Return(otherFile, nil)
-
-	// Add trailing slash
-	location := Location{"/some/path/", otherFs}
-
-	_, err := s.testFile.CopyToLocation(&location)
-
-	if err != nil {
-		s.Fail(err.Error())
-	}
-
-	otherFs.AssertCalled(s.T(), "NewFile", "", "/some/path/test.txt")
-}
-*/
 func (s *memFileTest) TestMoveToLocation() {
 
 	newFile, _ := s.fileSystem.NewFile("", "/otherDir/foo.txt")
@@ -515,13 +484,36 @@ func (s *memFileTest) TestMoveToLocation() {
 	WriteZeroBytes(file)
 	str2 := file.Path()
 	assert.Equal(s.T(), path.Base(str1), path.Base(str2))
+	assert.Equal(s.T(), "/test_files/", file.Location().Path())
+
+}
+
+//TestMoveToLocation2 creates two files with the same name in different places and moves one to the other
+func (s *memFileTest) TestMoveToLocation2() {
+
+	expectedText := "Who ya calling pinhead?"
+	newFile, _ := s.fileSystem.NewFile("", "/otherDir/foo.txt")
+	WriteZeroBytes(newFile)
+	otherFile, _ := s.fileSystem.NewFile("", "/thisDir/foo.txt")
+	_, werr := otherFile.Write([]byte(expectedText))
+	assert.NoError(s.T(), werr, "Unexpected write error")
+	str1 := newFile.Path()
+	file, _ := otherFile.MoveToLocation(newFile.Location())
+	WriteZeroBytes(file)
+	str2 := file.Path()
+	assert.Equal(s.T(), path.Base(str1), path.Base(str2))
+	exists, _ := otherFile.Exists()
+	s.False(exists)
+	readSlice := make([]byte, len(expectedText))
+	_, rerr := file.Read(readSlice)
+	assert.NoError(s.T(), rerr, "Unexpected read error")
+	assert.Equal(s.T(), expectedText, string(readSlice))
 
 }
 
 /*
 TestMoveToFile creates a newFile and moves the testFile to it.
 Test succeeds if the moved file has the correct data.
-
 */
 func (s *memFileTest) TestMoveToFile() {
 
@@ -541,6 +533,28 @@ func (s *memFileTest) TestMoveToFile() {
 	assert.NoError(s.T(), rerr, "Read unexpectedly failed")
 	assert.ObjectsAreEqualValues(string(expectedSlice), string(newFileSlice))
 	assert.ObjectsAreEqualValues(newFile.Path(), "/samples/foo.txt")
+
+}
+
+func (s *memFileTest) TestMoveToFile2() {
+
+	expectedSlice := []byte("Hello World!")
+	newFile, _ := s.fileSystem.NewFile("", "/samples/diffName.txt")
+	newPath := "/samples/test.txt" //this is the path used to retrieve the file after it has been moved
+	WriteZeroBytes(newFile)
+	_, werr := s.testFile.Write(expectedSlice)
+	assert.NoError(s.T(), werr, "Write failed unexpectedly")
+	cerr := s.testFile.Close()
+	s.True(cerr == nil)
+	merr := s.testFile.MoveToFile(newFile)
+	assert.NoError(s.T(), merr, "Move to file failed")
+	newFileSlice := make([]byte, len("Hello World!"))
+	newFile = systemMap[newPath]
+	s.False(s.testFile.Exists())
+	_, rerr := newFile.Read(newFileSlice)
+	assert.NoError(s.T(), rerr, "Read unexpectedly failed")
+	assert.ObjectsAreEqualValues(string(expectedSlice), string(newFileSlice))
+	assert.ObjectsAreEqualValues(newFile.Path(), "/samples/test.txt")
 
 }
 
@@ -598,6 +612,7 @@ func (s *memFileTest) TestSize() {
 
 }
 
+//TestPath makes sure that locations return the correct paths, along with leading and trailing slashes
 func (s *memFileTest) TestPath() {
 	str1 := "/home/some/directory/test_files/test.txt"
 	_, _ = s.fileSystem.NewFile("", str1)
@@ -611,6 +626,7 @@ func (s *memFileTest) TestPath() {
 	s.Equal("/directory/bar.txt", file1.Path())
 }
 
+//TestURI ensures that URI's for locations come out in the correct format
 func (s *memFileTest) TestURI() {
 	file, err := s.fileSystem.NewFile("", "test_files/lots/of/directories/here/we/go/test.txt")
 	s.True(err == nil)
@@ -618,6 +634,8 @@ func (s *memFileTest) TestURI() {
 	uri := file.URI()
 	s.Equal("mem:///test_files/lots/of/directories/here/we/go/test.txt", uri)
 }
+
+//TestStringer tests the implementation of io.Stringer
 
 func (s *memFileTest) TestStringer() {
 
@@ -654,6 +672,5 @@ func teardownTestFiles() {
 		}
 
 	}
-
 
 }
