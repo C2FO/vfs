@@ -11,11 +11,14 @@ import (
 const Scheme = "mem"
 const name = "In-Memory Filesystem"
 
-var systemMap map[string]*File
-var fileList []*File
+
 
 // FileSystem implements vfs.Filesystem for the mem filesystem.
-type FileSystem struct{}
+type FileSystem struct{
+	systemMap	map[string]*File
+
+	fileList 	[]*File
+}
 
 // FileSystem will return a retrier provided via options, or a no-op if none is provided.
 func (fs *FileSystem) Retry() vfs.Retry {
@@ -30,14 +33,15 @@ func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
 	}
 
 	file, _ := newFile(name)
+	file.fileSystem=fs
 	tmp, err := fs.NewLocation(volume, name)
 	file.location = tmp
-	if systemMap[name] != nil && systemMap[name].getIndex() != -1 {
-		_ = systemMap[name].Delete()
+	if fs.systemMap[name] != nil && fs.systemMap[name].getIndex() != -1 {
+		_ = fs.systemMap[name].Delete()
 
 	}
-	systemMap[name] = file
-	fileList = append(fileList, file)
+	fs.systemMap[name] = file
+	fs.fileList = append(fs.fileList, file)
 	return file, err
 }
 
@@ -70,9 +74,12 @@ func (fs *FileSystem) Name() string {
 func (fs *FileSystem) Scheme() string {
 	return Scheme
 }
+func (fs *FileSystem) Initialize(){
+	fs.systemMap = make(map[string]*File)
+	fs.fileList = make([]*File, 0)
+}
 
 func init() {
 	backend.Register(Scheme, &FileSystem{})
-	systemMap = make(map[string]*File)
-	fileList = make([]*File, 0)
+
 }
