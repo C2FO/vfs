@@ -181,7 +181,10 @@ func (l *Location) NewFile(fileName string) (vfs.File, error) {
 		nameStr = path.Join(pref, str)
 	}
 
-	loc, _ := l.fileSystem.NewLocation("", nameStr)
+	loc, lerr := l.fileSystem.NewLocation("", nameStr)
+	if lerr!=nil{
+		return nil,lerr
+	}
 	file := &File{timeStamp: time.Now(), isRef: false, Filename: path.Base(nameStr), cursor: 0,
 		isOpen: false, exists: false, location: loc,fileSystem: l.fileSystem}
 	l.fileSystem.systemMap[nameStr] = file

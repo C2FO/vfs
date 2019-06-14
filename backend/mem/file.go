@@ -220,7 +220,10 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 		}
 	}
 
-	newFile, _ := location.NewFile(f.Name())
+	newFile, nerr := location.NewFile(f.Name())
+	if(nerr!=nil){
+		return nil,nerr
+	}
 	_, werr := newFile.Write(make([]byte, 0))
 	if werr != nil {
 		return newFile, werr
@@ -296,7 +299,10 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	}
 	fileName := f.Name()
 	newPath := path.Join(location.Path(), fileName)
-	newFile, _ := location.NewFile(path.Base(newPath))
+	newFile, nerr := location.NewFile(path.Base(newPath))
+	if nerr!=nil{
+		return nerr
+	}
 	_, werr := newFile.Write(make([]byte, 0))
 	if werr != nil {
 		return newFile, werr
@@ -327,7 +333,10 @@ func (f *File) MoveToFile(file vfs.File) error {
 		if derr != nil {
 			return deleteError()
 		}
-		newFile, _ := file.Location().NewFile(f.Name())
+		newFile, nerr := file.Location().NewFile(f.Name())
+		if nerr!=nil{
+			return nerr
+		}
 		_, werr := newFile.Write(make([]byte, 0))
 		if werr != nil {
 			return werr
@@ -344,7 +353,10 @@ func (f *File) MoveToFile(file vfs.File) error {
 		return derr1
 	}
 
-	newFile, _ := file.Location().NewFile(f.Name())
+	newFile,nerr2 := file.Location().NewFile(f.Name())
+	if nerr2!=nil{
+		return nerr2
+	}
 	_, werr := newFile.Write(make([]byte, 0))
 	if werr != nil {
 		return werr
