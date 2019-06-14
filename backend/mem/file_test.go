@@ -178,7 +178,8 @@ func (s *memFileTest) TestNewFile() {
 func (s *memFileTest) TestWrite2() {
 	expectedText := "new file"
 	data := make([]byte, len(expectedText))
-	file, _ := s.fileSystem.NewFile("", "test_files/new.txt")
+	file, nerr := s.fileSystem.NewFile("", "test_files/new.txt")
+	assert.NoError(s.T(),nerr,"Unexpected error creating a new file")
 
 	_, werr := file.Write([]byte(expectedText))
 	assert.NoError(s.T(), werr, "write error not expected")
@@ -208,7 +209,8 @@ func (s *memFileTest) TestWrite2() {
 
 //TestSeek tests to ensure that we can seek to any part of the file, if it exists
 func (s *memFileTest) TestSeek2() {
-	newFile, _ := s.fileSystem.NewFile("", "/home/test_files/subdir/seekTest.txt")
+	newFile, nerr := s.fileSystem.NewFile("", "/home/test_files/subdir/seekTest.txt")
+	assert.NoError(s.T(),nerr,"Unexpected error creating a new file")
 	initText := "Hello world!"
 	_, werr := newFile.Write([]byte(initText))
 	assert.NoError(s.T(), werr, "Unexpected write error")
@@ -413,7 +415,9 @@ func (s *memFileTest) TestCopyToFile() {
 	num, err := s.testFile.Write([]byte(expectedText))
 	s.False(num == 0)
 	assert.NoError(s.T(), err, "No error expected from Write but got one")
-	_ = s.testFile.Close()
+	closeErr := s.testFile.Close()
+	assert.NoError(s.T(),closeErr,"Unexpected error closing a file")
+
 	WriteZeroBytes(otherFile)
 	strPath := otherFile.Path()
 	err = s.testFile.CopyToFile(otherFile)
@@ -439,10 +443,14 @@ func (s *memFileTest) TestCopyToFileOS() { //testing copy to a file across file 
 	num, err := s.testFile.Write([]byte(expectedText))
 	s.False(num == 0)
 	assert.NoError(s.T(), err, "No error expected from Write but got one")
-	_ = s.testFile.Close()
+	closeErr := s.testFile.Close()
+	assert.NoError(s.T(),closeErr,"Unexpected error closing a  file")
+
 	err = s.testFile.CopyToFile(osFile)
 	assert.NoError(s.T(), err, "Copy to file failed unexpectedly")
-	_ = osFile.Close()
+	closeErr2 := osFile.Close()
+	assert.NoError(s.T(),closeErr2,"Unexpected error closing a  file")
+
 	size1, _ := s.testFile.Size()
 	size2, err := osFile.Size()
 	s.True(err == nil)
@@ -620,14 +628,18 @@ func (s *memFileTest) TestSize() {
 //TestPath makes sure that locations return the correct paths, along with leading and trailing slashes
 func (s *memFileTest) TestPath() {
 	str1 := "/home/some/directory/test_files/test.txt"
-	_, _ = s.fileSystem.NewFile("", str1)
+	_, nerr := s.fileSystem.NewFile("", str1)
+	assert.NoError(s.T(),nerr,"Unexpected error creating a new file")
 
-	_, _ = s.fileSystem.NewFile("", "test_files/bar.txt")
-	file1, _ := s.fileSystem.NewFile("", "/directory/bar.txt")
+	_, nerr2 := s.fileSystem.NewFile("", "test_files/bar.txt")
+	assert.NoError(s.T(),nerr2,"Unexpected error creating a new file")
 
+	file1, nerr3 := s.fileSystem.NewFile("", "/directory/bar.txt")
+	assert.NoError(s.T(),nerr3,"Unexpected error creating a new file")
 	WriteZeroBytes(file1)
 	str := "directory/test_files/test.txt"
-	_, _ = s.fileSystem.NewFile("", str)
+	_, nerr4 := s.fileSystem.NewFile("", str)
+	assert.NoError(s.T(),nerr4,"Unexpected error creating a new file")
 	s.Equal("/directory/bar.txt", file1.Path())
 }
 
@@ -654,8 +666,8 @@ func (s *memFileTest) TestStringer() {
 
 func TestMemFile(t *testing.T) {
 	suite.Run(t, new(memFileTest))
-	_ = os.Remove("test_files/new.txt")
-
+	rem := os.Remove("test_files/new.txt")
+	assert.NoError(t,rem,"Unexpected error removing os files")
 }
 
 /*
@@ -665,7 +677,8 @@ func TestMemFile(t *testing.T) {
 func WriteZeroBytes(file vfs.File) {
 
 	zB := make([]byte, 0)
-	_, _ = file.Write(zB)
+	_, werr:= file.Write(zB)
+	if werr!=nil
 	_ = file.Close()
 }
 

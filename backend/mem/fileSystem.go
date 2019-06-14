@@ -32,17 +32,23 @@ func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
 		name = path.Join("/", name)
 	}
 
-	file, _ := newFile(name)
+	file, nerr := newFile(name)
+	if nerr!=nil{
+		return nil, nerr
+	}
 	file.fileSystem=fs
 	tmp, err := fs.NewLocation(volume, name)
+	if err!=nil{
+		return nil, err
+	}
 	file.location = tmp
 	if fs.systemMap[name] != nil && fs.systemMap[name].getIndex() != -1 {
-		_ = fs.systemMap[name].Delete()
-
+		derr := fs.systemMap[name].Delete()
+			if(derr!=nil){return nil,derr}
 	}
 	fs.systemMap[name] = file
 	fs.fileList = append(fs.fileList, file)
-	return file, err
+	return file, nil
 }
 
 // NewLocation function returns the mem implementation of vfs.Location. NOT DONE
