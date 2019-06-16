@@ -1,6 +1,7 @@
 package mem
 
 import (
+	"errors"
 	"github.com/c2fo/vfs/v4"
 	"github.com/c2fo/vfs/v4/backend"
 	"github.com/c2fo/vfs/v4/utils"
@@ -14,10 +15,18 @@ const name = "In-Memory Filesystem"
 
 
 // FileSystem implements vfs.Filesystem for the mem filesystem.
+type obj struct{
+	isFile	bool
+	i 		interface{}
+}
+type objMap map[string]obj
 type FileSystem struct{
-	systemMap	map[string]*File
+	//systemMap	map[string]*File
+	//fileList 	[]*File
+	superMap	map[string][]string
+	fileMap		map[string][]*File
+	fsMap		map[string]objMap
 
-	fileList 	[]*File
 }
 
 // FileSystem will return a retrier provided via options, or a no-op if none is provided.
@@ -25,48 +34,80 @@ func (fs *FileSystem) Retry() vfs.Retry {
 	return vfs.DefaultRetryer()
 }
 
-// NewFile function returns the mem implementation of vfs.File.  NOT DONE
-func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
+/*
+NewFile function returns the mem implementation of vfs.File.
+Since this is inside "fileSystem" we assume that the path given for name is absolute.
+If a non-absolute path is given, a leading slashed is tagged onto the path to make it so.
+*/
+func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, error) {
 
-	if !path.IsAbs(name) {
-		name = path.Join("/", name)
+
+
+	if !path.IsAbs(absFilePath) {
+
+		return nil, errors.New("Creation failed, provide an absolute path for file creation in the FS")
 	}
 
-	file, nerr := newFile(name)
+	file, nerr := newFile(absFilePath)
 	if nerr!=nil{
 		return nil, nerr
 	}
 	file.fileSystem=fs
-	tmp, err := fs.NewLocation(volume, name)
+	tmp, err := fs.NewLocation(volume, absFilePath)
 	if err!=nil{
 		return nil, err
 	}
+	var locObject obj
+	var fileObject obj
+	fileObject.i = file
+	fileObject.isFile = true
+	locObject.i = tmp
+	locObject.isFile=false
 	file.location = tmp
-	if fs.systemMap[name] != nil && fs.systemMap[name].getIndex() != -1 {
-		derr := fs.systemMap[name].Delete()
-			if(derr!=nil){return nil,derr}
+	fileMapPath:= path.Join(tmp.Volume(),tmp.Path())
+
+	//here we are checking to see if a file with this absFilePath already exists here. If it does, delete old, replace with new
+	if l, ok := fs.fileMap[fileMapPath];   ok {	//if this full path maps to a list of Files (has files)
+		if contains:=Contains(path.Base(absFilePath), l); contains!= -1 { //if this list of files contains this file
+			derr := fs.fileMap[fileMapPath][contains].Delete()			// delete that file to replace it with the new one
+			if (derr != nil) {
+				return nil, derr
+			}
+		}
 	}
-	fs.systemMap[name] = file
-	fs.fileList = append(fs.fileList, file)
+
+	fs.fileMap[fileMapPath] = append(fs.fileMap[fileMapPath],file)
+	if _,ok:=fs.fsMap[volume];!ok{
+		fs.fsMap[volume] = make(objMap)
+
+	}
+	fs.fsMap[volume][absFilePath] = fileObject
+	fs.fsMap[volume][utils.AddTrailingSlash(path.Clean(path.Dir(absFilePath)))] = locObject
+
 	return file, nil
 }
 
 // NewLocation function returns the mem implementation of vfs.Location. NOT DONE
-func (fs *FileSystem) NewLocation(volume string, name string) (vfs.Location, error) {
-	if path.Ext(name) != "" {
-		str := path.Dir(path.Clean(name))
+func (fs *FileSystem) NewLocation(volume string, absLocPath string) (vfs.Location, error) {
+
+	str := path.Dir(path.Clean(absLocPath))
+	str = utils.AddTrailingSlash(str)
+	if path.Ext(absLocPath) != "" {
+		fs.superMap[volume] = append(fs.superMap[volume],str)
 		return &Location{
 			fileSystem: fs,
-			name:       utils.AddTrailingSlash(str),
+			name:       str,
 			exists:     false,
-			Filename:   path.Base(name),
+			Filename:   path.Base(absLocPath),
+			volume:		volume,
 		}, nil
 
 	}
 	return &Location{
 		fileSystem: fs,
-		name:       utils.AddTrailingSlash(path.Clean(name)),
+		name:       str,
 		exists:     false,
+		volume:		volume,
 	}, nil
 
 }
@@ -81,11 +122,33 @@ func (fs *FileSystem) Scheme() string {
 	return Scheme
 }
 func (fs *FileSystem) Initialize(){
-	fs.systemMap = make(map[string]*File)
-	fs.fileList = make([]*File, 0)
+	//fs.systemMap = make(map[string]*File)
+	//fs.fileList = make([]*File, 0)
+	fs.fileMap = make(map[string][]*File)
+	fs.superMap = make(map[string][]string)
+	fs.fsMap = make(map[string]objMap)
+
+
 }
 
 func init() {
 	backend.Register(Scheme, &FileSystem{})
 
+}
+func Contains(toFind string, list []*File) int{
+	for i,l:=range list{
+		if l.Name() == toFind{
+			return i
+		}
+	}
+	return -1
+}
+
+func HigherContains(toFind string, list []string) int{
+	for i,l:=range list{
+		if l == toFind{
+			return i
+		}
+	}
+	return -1
 }
