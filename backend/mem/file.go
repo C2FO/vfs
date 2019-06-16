@@ -92,7 +92,6 @@ func (f *File) Read(p []byte) (n int, err error) {
 		}
 		p[i] = f.privSlice[i]
 	}
-	f.timeStamp = time.Now()
 
 	return length, nil
 
@@ -204,8 +203,9 @@ at given location contents are simply overwritten using "CopyToFile", otherwise
 a newFile is made, takes the contents of the current file, and ends up at
 the given location
 */
-func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
+func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
+	/*
 
 	testPath := path.Join(path.Clean(location.Path()), f.Name())
 	if f.fileSystem.systemMap[testPath] != nil { //if file w/name exists @ loc, simply copy contents over
@@ -229,8 +229,12 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 		return newFile, werr
 	}
 	cerr := f.CopyToFile(newFile)
-	return newFile, cerr
+
+ */
+	return nil, nil
 }
+
+
 
 /*
  CopyToFile copies the receiver file into the target file.
@@ -284,6 +288,7 @@ func (f *File) CopyToFile(target vfs.File) error {
 creating a copy of 'f' in "location".  'f' is subsequently  deleted
 */
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
+	/*
 
 	testPath := path.Join(location.Path(), f.Name())
 	if f.fileSystem.systemMap[testPath] != nil {
@@ -301,7 +306,7 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	newPath := path.Join(location.Path(), fileName)
 	newFile, nerr := location.NewFile(path.Base(newPath))
 	if nerr!=nil{
-		return nerr
+		return nil, nerr
 	}
 	_, werr := newFile.Write(make([]byte, 0))
 	if werr != nil {
@@ -315,9 +320,11 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	if derr != nil {
 		return nil, derr
 	}
-
-	return f.fileSystem.systemMap[newPath], nil
+*/
+	return nil, nil
 }
+
+
 
 /*
 MoveToFile creates a newFile, and moves it to "file".
@@ -382,31 +389,58 @@ Delete removes the file from the fs. Sets it path to the systemMap to nil,
 */
 func (f *File) Delete() error {
 	existence, err := f.Exists()
-	str := f.Filename
-	index := f.getIndex()
-	if index == -1 {
+	if err!=nil{
+		return err
+	}
+	loc:=f.Location().(*Location)
+	fullPath:= path.Join(loc.Volume(),loc.Path())
+	//fullPath = path.Join(fullPath,f.Filename)
+	fileName:=f.Name()
+	if existence{
+
+
+		if _,ok:= loc.fileSystem.fileMap[fullPath]; ok {  // fileMap returns the list of files contained at that location
+			if contains:=Contains(fileName,loc.fileSystem.fileMap[fullPath]); contains!=-1 {
+
+				if len(loc.fileSystem.fileMap[fullPath])==1{	//if this is the last file in the list, nullify the slice
+					loc.fileSystem.fileMap[fullPath] = nil
+					superMapPath := path.Join(loc.Volume(),loc.Path())
+
+					if contains1:=HigherContains(superMapPath,loc.fileSystem.superMap[loc.Volume()]);contains!=-1{
+						loc.fileSystem.superMap[loc.Volume()][contains1] = ""
+
+						if len(loc.fileSystem.superMap[loc.Volume()]) == 1{	//if that location is the last in the volume, nullify the list of locations for that volume
+							loc.fileSystem.superMap[loc.Volume()] = nil
+
+						}else { 	//otherwise simply adjust the list
+							copy(loc.fileSystem.superMap[loc.Volume()][contains1:], loc.fileSystem.superMap[loc.Volume()][contains1+1:])
+						}//end else
+					}//end contains1
+				}else{
+					copy(loc.fileSystem.fileMap[fullPath][contains:], loc.fileSystem.fileMap[fullPath][contains+1:])
+				} //end len(obj)==1
+
+				f.exists = false
+				f.privSlice = nil
+				f.timeStamp = time.Now()
+
+						//the file we removed wasn't the last one in the list so we just shift the list over
+
+			}else { //end contains
+				return errors.New("This file does not exist in the fileList at this location")
+			}
+		}else { //end if for file existence at location
+			return errors.New("This path has no files that exist on it!")
+		}
+	}else { //end outermost if
 		return errors.New("This file does not exist!")
 	}
-	if existence {
-		//do some work to adjust the location (later)
-		f.fileSystem.systemMap[f.Path()] = nil
-		f.exists = false
-		f.privSlice = nil
-		f.timeStamp = time.Now()
-		f.fileSystem.fileList[index] = nil
-		copy(f.fileSystem.fileList[index:], f.fileSystem.fileList[index+1:])
-		f.fileSystem.fileList[len(f.fileSystem.fileList)-1] = nil // or the zero value of T
-		f.fileSystem.fileList = f.fileSystem.fileList[:len(f.fileSystem.fileList)-1]
 
-	}
-	if f.fileSystem.systemMap[str] != nil {
+	if Contains(fileName,f.fileSystem.fileMap[fullPath]) != -1 {
 		return errors.New("This file still exists after calling Delete()")
 	}
 
-	if f.getIndex() != -1 {
-		return errors.New("This file still exists after calling Delete()")
-	}
-	return err
+	return nil
 
 }
 
@@ -471,17 +505,5 @@ func (f *File) URI() string {
 	return buf.String()
 }
 
-func (f *File) getIndex() int {
 
-	if f.fileSystem.systemMap[f.Path()] == nil {
-		return -1
-	}
-	str := f.Path()
-	for i, v := range f.fileSystem.fileList {
-		existence, _ := v.Exists()
-		if v.Path() == str && existence {
-			return i
-		}
-	}
-	return -1
-}
+

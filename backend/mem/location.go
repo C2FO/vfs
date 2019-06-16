@@ -7,7 +7,7 @@ import (
 	"github.com/c2fo/vfs/v4/utils"
 	"path"
 	"regexp"
-	"strings"
+
 	"time"
 )
 
@@ -18,6 +18,7 @@ type Location struct {
 	Filename   string //the baseName of the file this location belongs to
 	name       string //the path that this location exists on
 	fileSystem *FileSystem
+	volume		string
 }
 
 //String implements io.Stringer by returning the location's URI as a string
@@ -30,9 +31,10 @@ func (l *Location) String() string {
 List finds all of the files living at the current location and returns them in a slice of strings.
 If there are no files at location, then an empty slice will be returned
 */
+
 func (l *Location) List() ([]string, error) {
 	//panic("implement me")
-
+	/*
 	list := make([]string, 0)
 	str := l.Path()
 	for _, v := range l.fileSystem.fileList {
@@ -48,7 +50,9 @@ func (l *Location) List() ([]string, error) {
 			}
 		}
 	}
-	return list, nil
+
+ */
+	return nil, nil
 }
 
 /*
@@ -56,8 +60,9 @@ ListByPrefix tags a prefix onto the current path and in a slice,
  returns all file base names whose full paths contain that substring
 Returns empty slice if nothing found
 */
-func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 
+func (l *Location) ListByPrefix(prefix string) ([]string, error) {
+	/*
 	list := make([]string, 0)
 	str := path.Join(l.Path(), prefix)
 	for _, v := range l.fileSystem.fileList {
@@ -70,7 +75,9 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 			}
 		}
 	}
-	return list, nil
+
+ */
+	return nil, nil
 }
 
 /*
@@ -79,8 +86,9 @@ a slice of strings containing the base names of files
 found that matched the regular expression.  Returns an
 empty slice upon nothing found
 */
-func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 
+func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
+	/*
 	list := make([]string, 0)
 	str := l.Path()
 	filesHere, _ := l.List()
@@ -102,12 +110,13 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 
 	}
 
-	return list, nil
-}
 
+	 */
+	return nil, nil
+}
 //Volume returns the volume of the current fs. In-Memory-Fs has no volume
 func (l *Location) Volume() string {
-	return ""
+	return l.volume
 }
 
 //Path returns the full, absolute path of the location with leading and trailing slashes
@@ -132,21 +141,22 @@ func (l *Location) Exists() (bool, error) {
 NewLocation creates a new location at the
 given relative path, which is tagged onto the current locations absolute path
 */
-func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
+func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
 
-	str := path.Join(l.Path(), relativePath)
+	str := path.Join(l.Path(), relLocPath)
 	str = utils.AddTrailingSlash(path.Clean(str))
 	return &Location{
 		fileSystem: l.fileSystem,
 		name:       str,
 		exists:     false,
+		volume:		l.Volume(),
 	}, nil
 
 }
 
 //ChangeDir simply changes the directory of the location
-func (l *Location) ChangeDir(relativePath string) error {
-	l.name = path.Join(l.name, relativePath)
+func (l *Location) ChangeDir(relLocPath string) error {
+	l.name = path.Join(l.name, relLocPath)
 	return nil
 
 }
@@ -154,9 +164,10 @@ func (l *Location) ChangeDir(relativePath string) error {
 //FileSystem returns the type of filesystem location exists on, if it exists at all
 func (l *Location) FileSystem() vfs.FileSystem {
 
-	filePath := path.Join(path.Clean(l.Path()), l.Filename)
-	if l.fileSystem.systemMap[filePath] != nil {
-		if l.fileSystem.systemMap[filePath].exists {
+	filePath := path.Join(l.Volume(), l.Path())
+	filePath = path.Join(filePath,l.Filename)
+	if _,ok:= l.fileSystem.superMap[l.Volume()]; ok {
+		if len(l.fileSystem.fileMap[filePath])>0 {
 			l.exists = true
 		}
 	}
@@ -170,13 +181,14 @@ func (l *Location) FileSystem() vfs.FileSystem {
 }
 
 //NewFile creates a vfs file given its relative path and tags it onto "l's" path
-func (l *Location) NewFile(fileName string) (vfs.File, error) {
+func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 
 	pref := l.Path()
-	str := fileName
+	str := relFilePath
 	var nameStr string
+
 	if pref == "./" {
-		nameStr = path.Join("/", fileName)
+		nameStr = path.Join("/", relFilePath)
 	} else {
 		nameStr = path.Join(pref, str)
 	}
@@ -185,22 +197,30 @@ func (l *Location) NewFile(fileName string) (vfs.File, error) {
 	if lerr!=nil{
 		return nil,lerr
 	}
+
 	file := &File{timeStamp: time.Now(), isRef: false, Filename: path.Base(nameStr), cursor: 0,
 		isOpen: false, exists: false, location: loc,fileSystem: l.fileSystem}
-	l.fileSystem.systemMap[nameStr] = file
-	l.fileSystem.fileList = append(l.fileSystem.fileList, file)
+	fileMapPath := path.Join(l.Volume(),l.Path())
+	l.fileSystem.fileMap[fileMapPath] = append(l.fileSystem.fileMap[fileMapPath],file)
+	l.fileSystem.fsMap[l.volume][nameStr] = obj{true,file}
+	l.fileSystem.fsMap[l.volume][path.Dir(nameStr)]  = obj{false,loc}
+
 
 	return file, nil
 
 }
 
 //DeleteFile locates the file given the fileName and calls delete on it
-func (l *Location) DeleteFile(fileName string) error {
+func (l *Location) DeleteFile(relFilePath string) error {
 
-	fullPath := path.Join(l.Path(), fileName)
-	if l.fileSystem.systemMap[fullPath] != nil {
-		derr := l.fileSystem.systemMap[fullPath].Delete()
-		return derr
+	fullPath:=path.Join(l.Volume(),l.Path())
+	fullPath = path.Join(fullPath, relFilePath)
+	if obj,ok:= l.fileSystem.fileMap[fullPath]; ok {
+		if contains:=Contains(relFilePath,obj); contains!=-1 {
+
+			derr := l.fileSystem.fileMap[fullPath][contains].Delete()
+			return derr
+		}
 	}
 	return errors.New("This file does not exist")
 }
