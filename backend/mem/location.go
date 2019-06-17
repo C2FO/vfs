@@ -7,7 +7,7 @@ import (
 	"github.com/c2fo/vfs/v4/utils"
 	"path"
 	"regexp"
-
+	"strings"
 	"time"
 )
 
@@ -18,7 +18,7 @@ type Location struct {
 	Filename   string //the baseName of the file this location belongs to
 	name       string //the path that this location exists on
 	fileSystem *FileSystem
-	volume		string
+	volume     string
 }
 
 //String implements io.Stringer by returning the location's URI as a string
@@ -33,26 +33,14 @@ If there are no files at location, then an empty slice will be returned
 */
 
 func (l *Location) List() ([]string, error) {
-	//panic("implement me")
-	/*
-	list := make([]string, 0)
-	str := l.Path()
-	for _, v := range l.fileSystem.fileList {
-		if v != nil {
-			fullPath := v.Path()
-			if utils.AddTrailingSlash(path.Dir(fullPath)) == str {
-				if l.fileSystem.systemMap[fullPath] != nil {
-					existence, _ := l.fileSystem.systemMap[fullPath].Exists()
-					if existence {
-						list = append(list, v.Name())
-					}
-				}
-			}
-		}
-	}
 
- */
-	return nil, nil
+	str := l.Path()                         //full path of this location
+	mapRef := &l.fileSystem.fsMap           //setting mapRef to this value for code readability
+	if _, ok := (*mapRef)[l.Volume()]; ok { //are there paths on this volume?
+		list := (*mapRef)[l.Volume()].fileNamesHere(str) //getting a list of the file names on this location
+		return list, nil                                 // "fileNamesHere" returns an empty list if no files were found
+	}
+	return make([]string, 0), nil //if the volume has nothing on it, return an empty list as well
 }
 
 /*
@@ -62,22 +50,20 @@ Returns empty slice if nothing found
 */
 
 func (l *Location) ListByPrefix(prefix string) ([]string, error) {
-	/*
+
 	list := make([]string, 0)
 	str := path.Join(l.Path(), prefix)
-	for _, v := range l.fileSystem.fileList {
-		if v != nil {
-			path := v.Path()
-			tmp := strings.Contains(path, str)
-			if tmp {
-				list = append(list, v.Name())
-
+	mapRef := &l.fileSystem.fsMap
+	if _, ok := (*mapRef)[l.volume]; ok {
+		paths := (*mapRef)[l.volume].getKeys()
+		for i := range paths {
+			if strings.Contains(paths[i], str) {
+				list = append(list, paths[i])
 			}
 		}
 	}
 
- */
-	return nil, nil
+	return list, nil
 }
 
 /*
@@ -88,32 +74,21 @@ empty slice upon nothing found
 */
 
 func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
-	/*
+
 	list := make([]string, 0)
 	str := l.Path()
-	filesHere, _ := l.List()
-	for _, hereList := range filesHere {
-
-		potentialPath := path.Join(str, hereList)
-
-		for _, systemFileList := range l.fileSystem.fileList {
-
-			if systemFileList != nil && systemFileList.Path() == potentialPath {
-				ex, _ := systemFileList.Exists()
-				if regex.MatchString(path.Base(potentialPath)) && ex {
-					list = append(list, systemFileList.Name())
-
-				}
-
+	mapRef := &l.fileSystem.fsMap
+	if _, ok := (*mapRef)[l.Volume()]; ok {
+		namesHere := (*mapRef)[l.Volume()].fileNamesHere(str)
+		for i := range namesHere {
+			if regex.MatchString(namesHere[i]) {
+				list = append(list, namesHere[i])
 			}
 		}
-
 	}
-
-
-	 */
-	return nil, nil
+	return list, nil
 }
+
 //Volume returns the volume of the current fs. In-Memory-Fs has no volume
 func (l *Location) Volume() string {
 	return l.volume
@@ -133,7 +108,17 @@ func (l *Location) Exists() (bool, error) {
 	if len(data) == 0 {
 		return false, nil
 	}
-	return true, nil
+	mapRef := &l.fileSystem.fsMap
+	if _, ok := (*mapRef)[l.volume]; ok {
+		fileList := (*mapRef)[l.volume].filesHere(l.Path())
+		for i := range fileList {
+			if fileList[i].exists {
+				return true, nil
+			}
+		}
+	}
+	l.exists = false
+	return false, nil
 
 }
 
@@ -149,7 +134,7 @@ func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
 		fileSystem: l.fileSystem,
 		name:       str,
 		exists:     false,
-		volume:		l.Volume(),
+		volume:     l.Volume(),
 	}, nil
 
 }
@@ -165,9 +150,9 @@ func (l *Location) ChangeDir(relLocPath string) error {
 func (l *Location) FileSystem() vfs.FileSystem {
 
 	filePath := path.Join(l.Volume(), l.Path())
-	filePath = path.Join(filePath,l.Filename)
-	if _,ok:= l.fileSystem.superMap[l.Volume()]; ok {
-		if len(l.fileSystem.fileMap[filePath])>0 {
+	filePath = path.Join(filePath, l.Filename)
+	if _, ok := l.fileSystem.superMap[l.Volume()]; ok {
+		if len(l.fileSystem.fileMap[filePath]) > 0 {
 			l.exists = true
 		}
 	}
@@ -187,24 +172,19 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 	str := relFilePath
 	var nameStr string
 
-	if pref == "./" {
-		nameStr = path.Join("/", relFilePath)
-	} else {
-		nameStr = path.Join(pref, str)
-	}
+	nameStr = path.Join(pref, str)
 
-	loc, lerr := l.fileSystem.NewLocation("", nameStr)
-	if lerr!=nil{
-		return nil,lerr
+	loc, lerr := l.fileSystem.NewLocation("", path.Dir(nameStr))
+	if lerr != nil {
+		return nil, lerr
 	}
 
 	file := &File{timeStamp: time.Now(), isRef: false, Filename: path.Base(nameStr), cursor: 0,
-		isOpen: false, exists: false, location: loc,fileSystem: l.fileSystem}
-	fileMapPath := path.Join(l.Volume(),l.Path())
-	l.fileSystem.fileMap[fileMapPath] = append(l.fileSystem.fileMap[fileMapPath],file)
-	l.fileSystem.fsMap[l.volume][nameStr] = obj{true,file}
-	l.fileSystem.fsMap[l.volume][path.Dir(nameStr)]  = obj{false,loc}
-
+		isOpen: false, exists: false, location: loc, fileSystem: l.fileSystem}
+	fileMapPath := path.Join(l.Volume(), l.Path())
+	l.fileSystem.fileMap[fileMapPath] = append(l.fileSystem.fileMap[fileMapPath], file)
+	l.fileSystem.fsMap[l.volume][nameStr] = &obj{true, file}
+	l.fileSystem.fsMap[l.volume][path.Dir(nameStr)] = &obj{false, loc}
 
 	return file, nil
 
@@ -212,13 +192,13 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 
 //DeleteFile locates the file given the fileName and calls delete on it
 func (l *Location) DeleteFile(relFilePath string) error {
+	vol := l.Volume()
+	fullPath := path.Join(l.Path(), relFilePath)
 
-	fullPath:=path.Join(l.Volume(),l.Path())
-	fullPath = path.Join(fullPath, relFilePath)
-	if obj,ok:= l.fileSystem.fileMap[fullPath]; ok {
-		if contains:=Contains(relFilePath,obj); contains!=-1 {
-
-			derr := l.fileSystem.fileMap[fullPath][contains].Delete()
+	if _, ok := l.fileSystem.fsMap[vol]; ok {
+		if _, ok2 := l.fileSystem.fsMap[vol][fullPath]; ok2 {
+			file := l.fileSystem.fsMap[vol][fullPath].i.(*File)
+			derr := file.Delete()
 			return derr
 		}
 	}
@@ -228,10 +208,10 @@ func (l *Location) DeleteFile(relFilePath string) error {
 //URI returns the URI of the location if the location exists
 func (l *Location) URI() string {
 
-
 	var buf bytes.Buffer
 	pref := "mem://"
 	buf.WriteString(pref)
+	buf.WriteString(l.Volume())
 	str := l.Path()
 	buf.WriteString(str)
 	retStr := utils.AddTrailingSlash(buf.String())
