@@ -19,10 +19,6 @@ type obj struct {
 }
 type objMap map[string]*obj
 type FileSystem struct {
-	//systemMap	map[string]*File
-	//fileList 	[]*File
-	superMap map[string][]string
-	fileMap  map[string][]*File
 	fsMap    map[string]objMap
 }
 
@@ -43,7 +39,7 @@ func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, erro
 		return nil, errors.New("Creation failed, provide an absolute path for file creation in the FS")
 	}
 
-	file, nerr := newFile(path.Base(absFilePath))
+	file, nerr := newFile(path.Base(path.Clean(absFilePath)))
 	if nerr != nil {
 		return nil, nerr
 	}
@@ -59,22 +55,8 @@ func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, erro
 	locObject.i = tmp
 	locObject.isFile = false
 	file.location = tmp
-	fileMapPath := path.Join(tmp.Volume(), tmp.Path())
-
-	//here we are checking to see if a file with this absFilePath already exists here. If it does, delete old, replace with new
-	if l, ok := fs.fileMap[fileMapPath]; ok { //if this full path maps to a list of Files (has files)
-		if contains := Contains(path.Base(absFilePath), l); contains != -1 { //if this list of files contains this file
-			derr := fs.fileMap[fileMapPath][contains].Delete() // delete that file to replace it with the new one
-			if derr != nil {
-				return nil, derr
-			}
-		}
-	}
-
-	fs.fileMap[fileMapPath] = append(fs.fileMap[fileMapPath], file)
-	if _, ok := fs.fsMap[volume]; !ok {
+	if _, ok := fs.fsMap[volume]; !ok { //if the objMap map does not exist for the volume yet, then we go ahead and create it.
 		fs.fsMap[volume] = make(objMap)
-
 	}
 	fs.fsMap[volume][absFilePath] = &fileObject
 	fs.fsMap[volume][utils.AddTrailingSlash(path.Clean(path.Dir(absFilePath)))] = &locObject
@@ -91,7 +73,6 @@ func (fs *FileSystem) NewLocation(volume string, absLocPath string) (vfs.Locatio
 	}
 	str := utils.AddTrailingSlash(path.Clean(absLocPath))
 	if path.Ext(absLocPath) != "" {
-		fs.superMap[volume] = append(fs.superMap[volume], str)
 		return &Location{
 			fileSystem: fs,
 			name:       str,
@@ -120,10 +101,7 @@ func (fs *FileSystem) Scheme() string {
 	return Scheme
 }
 func (fs *FileSystem) Initialize() {
-	//fs.systemMap = make(map[string]*File)
-	//fs.fileList = make([]*File, 0)
-	fs.fileMap = make(map[string][]*File)
-	fs.superMap = make(map[string][]string)
+
 	fs.fsMap = make(map[string]objMap)
 
 }
@@ -132,23 +110,9 @@ func init() {
 	backend.Register(Scheme, &FileSystem{})
 
 }
-func Contains(toFind string, list []*File) int {
-	for i, l := range list {
-		if l.Name() == toFind {
-			return i
-		}
-	}
-	return -1
-}
 
-func HigherContains(toFind string, list []string) int {
-	for i, l := range list {
-		if l == toFind {
-			return i
-		}
-	}
-	return -1
-}
+
+
 func (o objMap) getKeys() []string {
 	keyList := make([]string, 0)
 	for i := range o {
