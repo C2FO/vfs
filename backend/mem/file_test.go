@@ -33,8 +33,6 @@ func (s *memFileTest) TearDownSuite() {
 
 func (s *memFileTest) SetupTest() {
 	fs := &FileSystem{
-		make(map[string][]string),
-		make(map[string][]*File),
 		make(map[string]objMap),
 	}
 

@@ -30,9 +30,6 @@ func (s *memLocationTest) TearDownSuite() {
 
 func (s *memLocationTest) SetupTest() {
 	fs := &FileSystem{
-
-		make(map[string][]string),
-		make(map[string][]*File),
 		make(map[string]objMap),
 	}
 
@@ -45,7 +42,7 @@ func (s *memLocationTest) SetupTest() {
 	s.testFile = file.(*File)
 	s.fileSystem = fs
 	//s.fileSystem.Initialize()
-	WriteZeroBytes(s.testFile)
+	s.NoError(WriteZeroBytes(s.testFile),"Unexpected error writing zero bytes to file")
 
 }
 
@@ -164,6 +161,32 @@ func (s *memLocationTest) TestNewLocation() {
 	s.Equal("/bar/", relDir.Path(), "relative dot path works")
 }
 
+/*
+ TestNewLocation2 tests to see whether a file can be made by passing a
+relative path to a location object that technically does not exist
+*/
+func (s *memLocationTest) TestNewLocation2(){
+
+	newFile,nerr:=s.fileSystem.NewFile("C","/newLocTest/dir/file.txt")
+	s.NoError(nerr,"Unexpected error creating a file")
+
+	_,werr:=newFile.Write([]byte("Hellow world!"))
+	s.NoError(werr,"Unexpected write error")
+
+	s.NoError(newFile.Close(),"Unexpected error closing file")
+
+	loc,nerr2:=s.fileSystem.NewLocation("C","/newLocTest")
+	s.NoError(nerr2,"Unexpected error creating a new location")
+	s.False(loc.Exists())
+	otherFile,lerr:=loc.NewFile("/dir/file2.txt")
+	s.NoError(lerr,"Unexpected error creating a file from location")
+	s.NoError(WriteZeroBytes(otherFile),"Unexpected error writing zero bytes")
+	s.Equal(newFile.Location().Path(),otherFile.Location().Path(),"Absolute location paths should be equal")
+
+
+
+}
+
 //TestNewFile tests that location can create a file at its current path
 func (s *memLocationTest) TestNewFile() {
 	loc, err := s.fileSystem.NewLocation("", "/foo/bar/baz/")
@@ -192,10 +215,13 @@ func (s *memLocationTest) TestChangeDir() {
 
 //TestVolume makes sure that the mem-fs returns the empty string for its volume
 func (s *memLocationTest) TestVolume() {
-	volume := s.testFile.Location().Volume()
 
+	newFile,nerr:=s.fileSystem.NewFile("D:","/path/to/file/example.txt")
+	s.NoError(nerr,"Unexpected error creating a file")
+	s.NoError(WriteZeroBytes(newFile),"Unexpected error writing zero bytes")
+	s.NoError(newFile.Close(),"Unexpected error closing file")
 	// For Unix, this returns an empty string. For windows, it would be something like 'C:'
-	s.Equal("", volume)
+	s.Equal("D:",newFile.Location().Volume())
 }
 
 //TestPath makes sure that locations return the correct paths, along with leading and trailing slashes
@@ -226,12 +252,12 @@ func (s *memLocationTest) TestURI() {
 
 //TestStringer tests the implementation of io.Stringer
 func (s *memLocationTest) TestStringer() {
-	file, nerr := s.fileSystem.NewFile("", "/some/file/test.txt")
+	file, nerr := s.fileSystem.NewFile("C", "/some/file/test.txt")
 	assert.NoError(s.T(), nerr, "Unexpected error creating a new file")
 
-	WriteZeroBytes(file)
+	s.NoError(WriteZeroBytes(file),"Unexpected error writing zero bytes to file")
 	location := file.Location()
-	expected := "mem:///some/file/"
+	expected := "mem://C/some/file/"
 	s.Equal(expected, location.String(), "%s does not match %s", location.String(), expected)
 	derr := file.Delete()
 	assert.NoError(s.T(), derr, "Delete failed unexpectedly")
