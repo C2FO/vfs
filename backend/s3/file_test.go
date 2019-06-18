@@ -236,7 +236,7 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 			client: &mocks.S3API{},
 		},
 		bucket: "bucket",
-		prefix:    "/subdir/",
+		prefix: "/subdir/",
 	}
 
 	// no error "copying" objects
