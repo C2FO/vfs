@@ -1,7 +1,7 @@
 package backend
 
 import (
-	"github.com/c2fo/vfs/v4/mocks"
+	"github.com/c2fo/vfs/v5/mocks"
 	"testing"
 
 	"github.com/stretchr/testify/suite"

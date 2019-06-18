@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/c2fo/vfs/v4"
+	"github.com/c2fo/vfs/v5"
 )
 
 const (

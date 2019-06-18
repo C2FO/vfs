@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v4"
-	"github.com/c2fo/vfs/v4/mocks"
+	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/mocks"
 )
 
 type fileTestSuite struct {
@@ -215,43 +215,34 @@ func (ts *fileTestSuite) TestMoveToFile_CopyError() {
 }
 
 func (ts *fileTestSuite) TestCopyToLocation() {
-	expectedText := "hello world!"
-	otherFs := new(mocks.FileSystem)
-	otherFs.On("Scheme", mock.Anything).Return("")
-	otherFile := new(mocks.File)
-	location := new(mocks.Location)
-	location.On("FileSystem", mock.Anything).Return(otherFs)
-	location.On("Volume").Return("bucket")
-
-	s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{
-		Body: nopCloser{bytes.NewBufferString(expectedText)},
-	}, nil)
-	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
-	file, err := fs.NewFile("bucket", "/hello.txt")
-	if err != nil {
-		ts.Fail("Shouldn't return error creating test s3.File instance.")
+	s3Mock1 := &mocks.S3API{}
+	s3Mock1.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(nil, nil)
+	s3Mock1.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
+	f := &File{
+		fileSystem: &FileSystem{
+			client: s3Mock1,
+		},
+		bucket: "bucket",
+		key:    "/hello.txt",
 	}
 
 	defer func() {
-		closeErr := file.Close()
+		closeErr := f.Close()
 		assert.NoError(ts.T(), closeErr, "no error expected")
 	}()
 
-	otherFs.On("Scheme").Return("")
-	otherFs.On("NewFile", mock.Anything, mock.Anything).Return(otherFile, nil)
-	otherFile.On("Write", mock.Anything).Return(len(expectedText), nil)
-	otherFile.On("Close", mock.Anything).Return(nil)
-	location.On("Path", mock.Anything).Return("/someother/path")
-	_, err = file.CopyToLocation(location)
-	if err != nil {
-		ts.Fail("Shouldn't return error for this call to CopyToLocation")
+	l := &Location{
+		fileSystem: &FileSystem{
+			client: &mocks.S3API{},
+		},
+		bucket: "bucket",
+		prefix:    "/subdir/",
 	}
 
-	location.AssertExpectations(ts.T())
-	otherFs.AssertExpectations(ts.T())
-	otherFs.AssertCalled(ts.T(), "NewFile", "bucket", "/someother/path/hello.txt")
-	otherFile.AssertExpectations(ts.T())
-	otherFile.AssertCalled(ts.T(), "Write", []byte(expectedText))
+	// no error "copying" objects
+	_, err := f.CopyToLocation(l)
+	ts.NoError(err, "Shouldn't return error for this call to CopyToLocation")
+
 }
 
 func (ts *fileTestSuite) TestCopyToLocationWithinS3() {

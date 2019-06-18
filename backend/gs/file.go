@@ -12,8 +12,8 @@ import (
 
 	"cloud.google.com/go/storage"
 
-	"github.com/c2fo/vfs/v4"
-	"github.com/c2fo/vfs/v4/utils"
+	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/utils"
 )
 
 const (
@@ -149,9 +149,10 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 		return nil, err
 	}
 
-	if _, err := io.Copy(newFile, f); err != nil {
+	if err := utils.TouchCopy(newFile, f); err != nil {
 		return nil, err
 	}
+
 	//Close target file to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
 	if cerr := newFile.Close(); cerr != nil {
 		return nil, cerr

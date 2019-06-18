@@ -3,9 +3,9 @@ package os
 import (
 	"path"
 
-	"github.com/c2fo/vfs/v4"
-	"github.com/c2fo/vfs/v4/backend"
-	"github.com/c2fo/vfs/v4/utils"
+	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/backend"
+	"github.com/c2fo/vfs/v5/utils"
 )
 
 //Scheme defines the filesystem type.
@@ -40,7 +40,7 @@ func (fs *FileSystem) NewLocation(volume string, name string) (vfs.Location, err
 
 	return &Location{
 		fileSystem: fs,
-		name:       utils.EnsureLeadingSlash(path.Clean(name)),
+		name:       utils.EnsureTrailingSlash(path.Clean(name)),
 	}, nil
 }
 

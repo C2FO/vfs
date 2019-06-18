@@ -106,6 +106,20 @@ File's [io.*](https://godoc.org/io) interfaces may be used directly:
 
     byteCount, err := io.Copy(gsFile, reader)
     err := gsFile.Close()
+    
+###### Note:
+[io.Copy()](https://godoc.org/io#Copy) doesn't strictly define what happens if a reader is empty.  This is complicated because io.Copy
+will first delegate actual copying in the following:
+  1. if the io.Reader also implements io.WriterTo, WriteTo() will do the copy
+  2. if the io.Writer also implements io.ReaderFrom, ReadFrom() will do the copy
+  3. finally, if neither 1 or 2, io.Copy wil do it's own buffered copy
+
+In case 3, and most implementations of cases 1 and 2, if reader is empty, Write() never gets called. What that means for
+vfs is there is no way for us to ensure that an empty file does or doesn't get written on an io.Copy().  For instance 
+OS always creates a file, regardless of calling Write() whereas S3 must Write() and Close().
+
+As such, vfs cannot guarantee copy behavior except in our own CopyToFile, MoveToFile, CopyToLocation, and MoveToLocation
+functions.  If you need to ensure a file gets copied/moved with io.Copy(), you must do so yourself OR use vfs's [utils.TouchCopy](docs/utils.md)
 
 
 ### Third-party Backends

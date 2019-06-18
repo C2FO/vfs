@@ -1,33 +1,30 @@
 # utils
 
 ---
+    import "github.com/c2fo/vfs/utils"
 
-## Usage
+#### Error Constants
 
 ```go
 const (
-	// Windows constant represents a target operating system running a version of Microsoft Windows
-	Windows = "windows"
-	// BadFilePrefix constant is returned when path has leading slash or backslash
-	BadFilePrefix = "expecting only a filename prefix, which may not include slashes or backslashes"
+	// ErrBadAbsFilePath constant is returned when a file path is not absolute
+	ErrBadAbsFilePath = "absolute file path is invalid - must include leading slash and may not include trailing slash"
+	// ErrBadRelFilePath constant is returned when a file path is not relative
+	ErrBadRelFilePath = "relative file path is invalid - may not include leading or trailing slashes"
+	// ErrBadAbsLocationPath constant is returned when a file path is not absolute
+	ErrBadAbsLocationPath = "absolute location path is invalid - must include leading and trailing slashes"
+	// ErrBadRelLocationPath constant is returned when a file path is not relative
+	ErrBadRelLocationPath = "relative location path is invalid - may not include leading slash but must include trailing slash"
 )
 ```
 
-#### func  AddTrailingSlash
+#### func  EnsureLeadingSlash
 
 ```go
-func AddTrailingSlash(path string) string
+func EnsureLeadingSlash(dir string) string
 ```
-AddTrailingSlash is a helper function accepts a path string and returns the path
-string with a trailing slash if there wasn't one.
-
-#### func  CleanPrefix
-
-```go
-func CleanPrefix(prefix string) string
-```
-CleanPrefix resolves relative dot pathing, removing any leading . or / and
-removes any trailing /
+EnsureLeadingSlash is like EnsureTrailingSlash except that it adds the leading
+slash if needed.
 
 #### func  EnsureTrailingSlash
 
@@ -51,6 +48,20 @@ func GetLocationURI(l vfs.Location) string
 ```
 GetLocationURI returns a Location URI
 
+#### func  RemoveLeadingSlash
+
+```go
+func RemoveLeadingSlash(path string) string
+```
+RemoveLeadingSlash removes leading slash, if any
+
+#### func  RemoveTrailingSlash
+
+```go
+func RemoveTrailingSlash(path string) string
+```
+RemoveTrailingSlash removes trailing slash, if any
+
 #### func  TouchCopy
 
 ```go
@@ -60,11 +71,34 @@ TouchCopy is a wrapper around [io.Copy](https://godoc.org/io#Copy) which ensures
 (reader) will get written as an empty file. It guarantees a Write() call on the
 target file.
 
-#### func  ValidateFilePrefix
+#### func  ValidateAbsFilePath
 
 ```go
-func ValidateFilePrefix(filenamePrefix string) error
+func ValidateAbsFilePath(name string) error
 ```
-ValidateFilePrefix performs a validation check on a prefix. The prefix should
-not include "/" or "\\" characters. An error is returned if either of those
-conditions are true.
+ValidateAbsFilePath ensures that a file path has a leading slash but not a
+trailing slash
+
+#### func  ValidateAbsLocationPath
+
+```go
+func ValidateAbsLocationPath(name string) error
+```
+ValidateAbsLocationPath ensure that a file path has both leading and trailing
+slashes
+
+#### func  ValidateRelFilePath
+
+```go
+func ValidateRelFilePath(name string) error
+```
+ValidateRelFilePath ensures that a file path has neither leading nor trailing
+slashes
+
+#### func  ValidateRelLocationPath
+
+```go
+func ValidateRelLocationPath(name string) error
+```
+ValidateRelLocationPath ensure that a file path has no leading slash but has a
+trailing slash

@@ -6,7 +6,7 @@ import (
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
 
-	"github.com/c2fo/vfs/v4"
+	"github.com/c2fo/vfs/v5"
 )
 
 // ObjectHandleWrapper is an interface which contains a subset of the functions provided
@@ -18,6 +18,7 @@ type ObjectHandleWrapper interface {
 	NewReader(ctx context.Context) (*storage.Reader, error)
 	Attrs(ctx context.Context) (*storage.ObjectAttrs, error)
 	Delete(ctx context.Context) error
+	Update(ctx context.Context, attrs storage.ObjectAttrsToUpdate) (*storage.ObjectAttrs, error)
 }
 
 // ObjectHandleCopier is a unique, wrapped type which should mimic the behavior of ObjectHandler, but with
@@ -68,6 +69,14 @@ func (r *RetryObjectHandler) NewReader(ctx context.Context) (*storage.Reader, er
 func (r *RetryObjectHandler) Attrs(ctx context.Context) (*storage.ObjectAttrs, error) {
 	return objectAttributeRetry(r.Retry, func() (*storage.ObjectAttrs, error) {
 		return r.handler.Attrs(ctx)
+	})
+}
+
+// Update will update the metadata for a Google Cloud Storage (GCS) object, wrapped in a retry.
+// Here we can re-use the objectAttributeRetry() func because it has the same signature.
+func (r *RetryObjectHandler) Update(ctx context.Context, attrs storage.ObjectAttrsToUpdate) (*storage.ObjectAttrs, error) {
+	return objectAttributeRetry(r.Retry, func() (*storage.ObjectAttrs, error) {
+		return r.handler.Update(ctx, attrs)
 	})
 }
 

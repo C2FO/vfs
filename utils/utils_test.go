@@ -8,9 +8,9 @@ import (
 	"path"
 	"testing"
 
-	_os "github.com/c2fo/vfs/v4/backend/os"
-	"github.com/c2fo/vfs/v4/mocks"
-	"github.com/c2fo/vfs/v4/utils"
+	_os "github.com/c2fo/vfs/v5/backend/os"
+	"github.com/c2fo/vfs/v5/mocks"
+	"github.com/c2fo/vfs/v5/utils"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"

@@ -14,9 +14,9 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
-	"github.com/c2fo/vfs/v4"
-	"github.com/c2fo/vfs/v4/mocks"
-	"github.com/c2fo/vfs/v4/utils"
+	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/mocks"
+	"github.com/c2fo/vfs/v5/utils"
 )
 
 //File implements vfs.File interface for S3 fs.
@@ -143,7 +143,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 		return nil, err
 	}
 
-	if _, err := io.Copy(newFile, f); err != nil {
+	if err := utils.TouchCopy(newFile, f); err != nil {
 		return nil, err
 	}
 	//Close target file to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
@@ -276,7 +276,10 @@ func (f *File) getHeadObject() (*s3.HeadObjectOutput, error) {
 }
 
 func (f *File) copyWithinS3ToFile(targetFile *File) error {
-	copyInput := new(s3.CopyObjectInput).SetKey(targetFile.key).SetBucket(targetFile.bucket).SetCopySource(path.Join(f.bucket, f.key))
+	copyInput := new(s3.CopyObjectInput).
+		SetKey(targetFile.key).
+		SetBucket(targetFile.bucket).
+		SetCopySource(path.Join(f.bucket, f.key))
 	client, err := f.fileSystem.Client()
 	if err != nil {
 		return err
@@ -287,7 +290,10 @@ func (f *File) copyWithinS3ToFile(targetFile *File) error {
 }
 
 func (f *File) copyWithinS3ToLocation(location vfs.Location) (vfs.File, error) {
-	copyInput := new(s3.CopyObjectInput).SetKey(path.Join(location.Path(), f.Name())).SetBucket(location.Volume()).SetCopySource(path.Join(f.bucket, f.key))
+	copyInput := new(s3.CopyObjectInput).
+		SetKey(path.Join(location.Path(), f.Name())).
+		SetBucket(location.Volume()).
+		SetCopySource(path.Join(f.bucket, f.key))
 
 	client, err := f.fileSystem.Client()
 	if err != nil {

@@ -5,9 +5,7 @@ You may include in a ; separated list any number of uri's whose scheme implement
 will be tested against every other URI for io.* and Move/Copy functions.
 
 
-	VFS_INTEGRATION_LOCATIONS="file:///tmp/vfs_test/;s3://somebucket/vfs_test/;gs://somebucket/vfs_test/" \
-	GOOGLE_APPLICATION_CREDENTIALS=~/.gsutil/account.json \
-	AWS_REGION=us-west-2 \
+	VFS_INTEGRATION_LOCATIONS="file:///tmp/vfs_test/;mem://A/path/to/"
 	go test -tags=vfsintegration ./backend/testsuite
 
 NOTE: for safety, os-based scheme will not clean up after top level location in case some yahoo specified file:/// as the
