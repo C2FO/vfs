@@ -15,7 +15,6 @@ import (
 type Location struct {
 	exists     bool
 	firstTime  bool
-	Filename   string //the baseName of the file this location belongs to
 	name       string //the path that this location exists on
 	fileSystem *FileSystem
 	volume     string
@@ -58,7 +57,7 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 		paths := (*mapRef)[l.volume].getKeys()
 		for i := range paths {
 			if strings.Contains(paths[i], str) {
-				list = append(list, paths[i])
+				list = append(list, path.Base(paths[i]))
 			}
 		}
 	}
@@ -97,7 +96,7 @@ func (l *Location) Volume() string {
 //Path returns the full, absolute path of the location with leading and trailing slashes
 func (l *Location) Path() string {
 
-	return l.name
+	return utils.AddTrailingSlash(path.Clean(l.name))
 
 }
 
@@ -148,7 +147,7 @@ func (l *Location) ChangeDir(relLocPath string) error {
 
 //FileSystem returns the type of filesystem location exists on, if it exists at all
 func (l *Location) FileSystem() vfs.FileSystem {
-	
+
 	existence, _ := l.Exists()
 	if existence {
 
@@ -161,6 +160,9 @@ func (l *Location) FileSystem() vfs.FileSystem {
 //NewFile creates a vfs file given its relative path and tags it onto "l's" path
 func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 
+	if path.IsAbs(relFilePath){
+		return nil, errors.New("Expected relative path, got an absolute")
+	}
 	pref := l.Path()
 	str := relFilePath
 	var nameStr string
@@ -172,7 +174,7 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 		return nil, lerr
 	}
 
-	file := &File{timeStamp: time.Now(), isRef: false, Filename: path.Base(nameStr), cursor: 0,
+	file := &File{timeStamp: time.Now(), isRef: false, name: path.Base(nameStr), cursor: 0,
 		isOpen: false, exists: false, location: loc, fileSystem: l.fileSystem}
 	l.fileSystem.fsMap[l.volume][nameStr] = &obj{true, file}
 	l.fileSystem.fsMap[l.volume][path.Dir(nameStr)] = &obj{false, loc}
@@ -183,6 +185,9 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 
 //DeleteFile locates the file given the fileName and calls delete on it
 func (l *Location) DeleteFile(relFilePath string) error {
+	if path.IsAbs(relFilePath){
+		return errors.New("Expected relative path, got an absolute")
+	}
 	vol := l.Volume()
 	fullPath := path.Join(l.Path(), relFilePath)
 

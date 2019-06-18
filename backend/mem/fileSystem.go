@@ -31,6 +31,9 @@ func (fs *FileSystem) Retry() vfs.Retry {
 NewFile function returns the mem implementation of vfs.File.
 Since this is inside "fileSystem" we assume that the path given for name is absolute.
 If a non-absolute path is given, a leading slashed is tagged onto the path to make it so.
+Additionally, a file does not technically exist until it is written to (common to write zero bytes
+as a way of "initializing" the file). Although it may exist on the fsMap, its member "exists" won't
+become true until something is written
 */
 func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, error) {
 
@@ -59,12 +62,19 @@ func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, erro
 		fs.fsMap[volume] = make(objMap)
 	}
 	fs.fsMap[volume][absFilePath] = &fileObject
-	fs.fsMap[volume][utils.AddTrailingSlash(path.Clean(path.Dir(absFilePath)))] = &locObject
+	locationPath:=utils.AddTrailingSlash(path.Clean(path.Dir(absFilePath)))
+	if _,ok := fs.fsMap[volume][locationPath];!ok{
+		fs.fsMap[volume][locationPath] = &locObject
+	}
 
 	return file, nil
 }
 
-// NewLocation function returns the mem implementation of vfs.Location. NOT DONE
+/*
+NewLocation function returns the mem implementation of vfs.Location.
+A location does not exist unless at least one file lives on it. If a file
+is created on a non-existent location, then it will be created
+*/
 func (fs *FileSystem) NewLocation(volume string, absLocPath string) (vfs.Location, error) {
 
 	if !path.IsAbs(absLocPath) {
@@ -72,22 +82,15 @@ func (fs *FileSystem) NewLocation(volume string, absLocPath string) (vfs.Locatio
 
 	}
 	str := utils.AddTrailingSlash(path.Clean(absLocPath))
-	if path.Ext(absLocPath) != "" {
 		return &Location{
 			fileSystem: fs,
 			name:       str,
 			exists:     false,
-			Filename:   path.Base(absLocPath),
 			volume:     volume,
 		}, nil
 
-	}
-	return &Location{
-		fileSystem: fs,
-		name:       str,
-		exists:     false,
-		volume:     volume,
-	}, nil
+
+
 
 }
 
