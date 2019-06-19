@@ -7,13 +7,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/c2fo/vfs/v4"
-	"github.com/c2fo/vfs/v4/backend"
-	_ "github.com/c2fo/vfs/v4/backend/all" //register all backends
+	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/backend"
+	_ "github.com/c2fo/vfs/v5/backend/all" //register all backends
 )
 
 // NewLocation is a convenience function that allows for instantiating a location based on a uri string. Any
-// backend filesystem is supported, though some may require prior configuration. See the docs for
+// backend file system is supported, though some may require prior configuration. See the docs for
 // specific requirements of each
 func NewLocation(uri string) (vfs.Location, error) {
 	fs, host, path, err := parseSupportedURI(uri)
@@ -25,7 +25,7 @@ func NewLocation(uri string) (vfs.Location, error) {
 }
 
 // NewFile is a convenience function that allows for instantiating a file based on a uri string. Any
-// backend filesystem is supported, though some may require prior configuration. See the docs for
+// backend file system is supported, though some may require prior configuration. See the docs for
 // specific requirements of each.
 func NewFile(uri string) (vfs.File, error) {
 	fs, host, path, err := parseSupportedURI(uri)
@@ -49,7 +49,7 @@ func parseSupportedURI(uri string) (vfs.FileSystem, string, string, error) {
 	var fs vfs.FileSystem
 	for _, backendScheme := range backend.RegisteredBackends() {
 		// Object-level backend
-		if strings.Index(uri, backendScheme) > 1 {
+		if strings.HasPrefix(uri, backendScheme) {
 			fs = backend.Backend(backendScheme)
 			break
 		}

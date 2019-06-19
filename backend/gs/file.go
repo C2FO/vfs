@@ -3,7 +3,6 @@ package gs
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,8 +12,8 @@ import (
 
 	"cloud.google.com/go/storage"
 
-	"github.com/c2fo/vfs/v4"
-	"github.com/c2fo/vfs/v4/utils"
+	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/utils"
 )
 
 const (
@@ -120,12 +119,10 @@ func (f *File) Exists() (bool, error) {
 }
 
 // Location returns a Location instance for the file's current location.
-//
-// TODO should this be including trailing slash?
 func (f *File) Location() vfs.Location {
 	return vfs.Location(&Location{
 		fileSystem: f.fileSystem,
-		prefix:     utils.EnsureTrailingSlash(utils.CleanPrefix(path.Dir(f.key))),
+		prefix:     utils.EnsureTrailingSlash(utils.EnsureLeadingSlash(path.Clean(path.Dir(f.key)))),
 		bucket:     f.bucket,
 	})
 }
@@ -140,9 +137,9 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 		if err != nil {
 			return nil, err
 		}
-		cerr := f.copyWithinGCSToFile(dest.(*File))
-		if cerr != nil {
-			return nil, cerr
+		err = f.copyWithinGCSToFile(dest.(*File))
+		if err != nil {
+			return nil, err
 		}
 		return dest, nil
 	}
@@ -152,9 +149,10 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 		return nil, err
 	}
 
-	if _, err := io.Copy(newFile, f); err != nil {
+	if err := utils.TouchCopy(newFile, f); err != nil {
 		return nil, err
 	}
+
 	//Close target file to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
 	if cerr := newFile.Close(); cerr != nil {
 		return nil, cerr
@@ -168,16 +166,16 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 // CopyToFile puts the contents of File into the targetFile passed. Uses the GCS CopierFrom
 // method if the target file is also on GCS, otherwise uses io.Copy.
-func (f *File) CopyToFile(targetFile vfs.File) error {
-	if tf, ok := targetFile.(*File); ok {
+func (f *File) CopyToFile(file vfs.File) error {
+	if tf, ok := file.(*File); ok {
 		return f.copyWithinGCSToFile(tf)
 	}
 
-	if err := utils.TouchCopy(targetFile, f); err != nil {
+	if err := utils.TouchCopy(file, f); err != nil {
 		return err
 	}
 	//Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
-	if cerr := targetFile.Close(); cerr != nil {
+	if cerr := file.Close(); cerr != nil {
 		return cerr
 	}
 	//Close file (f) reader
@@ -197,11 +195,11 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	return newFile, delErr
 }
 
-// MoveToFile puts the contents of File into the targetFile passed using File.CopyToFile.
+// MoveToFile puts the contents of File into the target vfs.File passed passed in using File.CopyToFile.
 // If the copy succeeds, the source file is deleted. Any errors from the copy or delete are
 // returned.
-func (f *File) MoveToFile(targetFile vfs.File) error {
-	if err := f.CopyToFile(targetFile); err != nil {
+func (f *File) MoveToFile(file vfs.File) error {
+	if err := f.CopyToFile(file); err != nil {
 		return err
 	}
 
@@ -242,7 +240,7 @@ func (f *File) Size() (uint64, error) {
 
 // Path returns full path with leading slash of the GCS file key.
 func (f *File) Path() string {
-	return "/" + f.key
+	return f.key
 }
 
 // Name returns the file name.
@@ -302,10 +300,6 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 	return tmpFile, nil
 }
 
-func (c *Copier) ContentType(val string) {
-	c.copier.ContentType = val
-}
-
 // getObjectHandle returns cached Object struct for file
 func (f *File) getObjectHandle() (ObjectHandleCopier, error) {
 	client, err := f.fileSystem.Client()
@@ -313,7 +307,7 @@ func (f *File) getObjectHandle() (ObjectHandleCopier, error) {
 		return nil, err
 	}
 
-	handler := client.Bucket(f.bucket).Object(f.key)
+	handler := client.Bucket(f.bucket).Object(utils.RemoveLeadingSlash(f.key))
 	return &RetryObjectHandler{Retry: f.fileSystem.Retry(), handler: handler}, nil
 }
 
@@ -349,22 +343,5 @@ func (f *File) copyWithinGCSToFile(targetFile *File) error {
 
 	// Just copy content.
 	_, err = tHandle.WrappedCopierFrom(fHandle.ObjectHandle()).Run(f.fileSystem.ctx)
-	return nil
-}
-
-/* private helper functions */
-
-func newFile(fs *FileSystem, bucket, key string) (*File, error) {
-	if fs == nil {
-		return nil, errors.New("non-nil gs.FileSystem pointer is required")
-	}
-	if bucket == "" || key == "" {
-		return nil, errors.New("non-empty strings for Bucket and Key are required")
-	}
-	key = utils.CleanPrefix(key)
-	return &File{
-		fileSystem: fs,
-		bucket:     bucket,
-		key:        key,
-	}, nil
+	return err
 }

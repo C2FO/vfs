@@ -1,8 +1,8 @@
 /*
-Package backend provides a means of allowing backend filesystems to self-register on load via an init() call to
-backend.Register("some name", vfs.Filesystem)
+Package backend provides a means of allowing backend file systems to self-register on load via an init() call to
+backend.Register("some name", vfs.FileSystem)
 
-In this way, a caller of vfs backends can simply load the backend filesystem (and ONLY those needed) and begin using it:
+In this way, a caller of vfs backends can simply load the backend file system (and ONLY those needed) and begin using it:
 
   package main
 
@@ -17,7 +17,7 @@ In this way, a caller of vfs backends can simply load the backend filesystem (an
      var err error
      var osfile, s3file vfs.File
 
-      // THEN begin using the filesystems
+      // THEN begin using the file systems
       osfile, err = backend.Backend(os.Scheme).NewFile("", "/path/to/file.txt")
       if err != nil {
           panic(err)
@@ -36,7 +36,7 @@ In this way, a caller of vfs backends can simply load the backend filesystem (an
 
 Development
 
-To create your own backend, you must create a package that implements the interfaces: vfs.Filesystem, vfs.Location, and vfs.File.
+To create your own backend, you must create a package that implements the interfaces: vfs.FileSystem, vfs.Location, and vfs.File.
 Then ensure it registers itself on load:
 
   package myexoticfilesystem
@@ -56,7 +56,7 @@ Then ensure it registers itself on load:
   }
 
 Then do use it in some other package do
-  package MyExoticFilesystem
+  package MyExoticFileSystem
 
   import(
       "github.com/c2fo/vfs/backend"

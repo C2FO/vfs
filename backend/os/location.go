@@ -1,14 +1,16 @@
 package os
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
 
-	"github.com/c2fo/vfs/v4"
-	"github.com/c2fo/vfs/v4/utils"
+	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/utils"
 )
 
 //Location implements the vfs.Location interface specific to OS fs.
@@ -20,7 +22,18 @@ type Location struct {
 // NewFile uses the properties of the calling location to generate a vfs.File (backed by an os.File). A string
 // argument is expected to be a relative path to the location's current path.
 func (l *Location) NewFile(fileName string) (vfs.File, error) {
-	return l.fileSystem.NewFile(l.Volume(), filepath.Join(l.Path(), fileName))
+	if l == nil {
+		return nil, errors.New("non-nil os.Location pointer is required")
+	}
+	if fileName == "" {
+		return nil, errors.New("non-empty string filePath is required")
+	}
+	err := utils.ValidateRelativeFilePath(fileName)
+	if err != nil {
+		return nil, err
+	}
+	fileName = utils.EnsureLeadingSlash(path.Clean(path.Join(l.name, fileName)))
+	return l.fileSystem.NewFile(l.Volume(), fileName)
 }
 
 // DeleteFile deletes the file of the given name at the location. This is meant to be a short cut for instantiating a
@@ -43,10 +56,23 @@ func (l *Location) List() ([]string, error) {
 
 // ListByPrefix returns a slice of all files starting with "prefix" in the top directory of of the location.
 func (l *Location) ListByPrefix(prefix string) ([]string, error) {
-	if err := utils.ValidateFilePrefix(prefix); err != nil {
-		return nil, err
+	var loc vfs.Location
+	var err error
+	d := path.Dir(prefix)
+
+	// if prefix has a dir component, use it's location and basename of prefix
+	if d != "." && d != "/" {
+		loc, err = l.NewLocation(utils.EnsureTrailingSlash(d))
+		if err != nil {
+			return []string{}, err
+		}
+		prefix = path.Base(prefix)
+	} else {
+		// otherwise just use everything as-is
+		loc = l
 	}
-	return l.fileList(func(name string) bool {
+
+	return loc.(*Location).fileList(func(name string) bool {
 		return strings.HasPrefix(name, prefix)
 	})
 }
@@ -91,7 +117,7 @@ func (l *Location) Volume() string {
 
 // Path returns the location path.
 func (l *Location) Path() string {
-	return l.name
+	return utils.EnsureLeadingSlash(utils.EnsureTrailingSlash(l.name))
 }
 
 // Exists returns true if the location exists, and the calling user has the appropriate
@@ -122,26 +148,41 @@ func (l *Location) String() string {
 // relativePath argument, returning the resulting location. The only possible errors come from the call to
 // ChangeDir.
 func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
-	fullPath, err := filepath.Abs(filepath.Join(l.name, relativePath))
+	if l == nil {
+		return nil, errors.New("non-nil os.Location pointer is required")
+	}
+
+	//make a copy of the original location first, then ChangeDir, leaving the original location as-is
+	newLocation := &Location{}
+	*newLocation = *l
+	err := newLocation.ChangeDir(relativePath)
 	if err != nil {
 		return nil, err
 	}
-
-	fullPath = utils.AddTrailingSlash(fullPath)
-	return &Location{
-		name:       fullPath,
-		fileSystem: l.fileSystem,
-	}, nil
+	return newLocation, nil
 }
 
 // ChangeDir takes a relative path, and modifies the underlying Location's path. The caller is modified by this
 // so the only return is any error. For this implementation there are no errors.
 func (l *Location) ChangeDir(relativePath string) error {
-	l.name = filepath.Join(l.name, relativePath)
+	if l == nil {
+		return errors.New("non-nil os.Location pointer is required")
+	}
+	if relativePath == "" {
+		return errors.New("non-empty string relativePath is required")
+	}
+	err := utils.ValidateRelativeLocationPath(relativePath)
+	if err != nil {
+		return err
+	}
+
+	//update location path
+	l.name = utils.EnsureTrailingSlash(utils.EnsureLeadingSlash(path.Join(l.name, relativePath)))
+
 	return nil
 }
 
-// FileSystem returns a vfs.FileSystem interface of the location's underlying fileSystem.
+// FileSystem returns a vfs.FileSystem interface of the location's underlying file system.
 func (l *Location) FileSystem() vfs.FileSystem {
 	return l.fileSystem
 }

@@ -1,6 +1,7 @@
 package s3
 
 import (
+	"errors"
 	"path"
 	"regexp"
 	"strings"
@@ -8,8 +9,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 
-	"github.com/c2fo/vfs/v4"
-	"github.com/c2fo/vfs/v4/utils"
+	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/utils"
 )
 
 //Location implements the vfs.Location interface specific to S3 fs.
@@ -23,19 +24,18 @@ type Location struct {
 // set to the location's path. This will make a call to the s3 API for every 1000 keys to return.
 // If you have many thousands of keys at the given location, this could become quite expensive.
 func (l *Location) List() ([]string, error) {
-	listObjectsInput := l.getListObjectsInput().SetPrefix(utils.EnsureTrailingSlash(l.prefix))
-	return l.fullLocationList(listObjectsInput)
+	prefix := utils.RemoveLeadingSlash(l.prefix)
+	listObjectsInput := l.getListObjectsInput().SetPrefix(utils.EnsureTrailingSlash(prefix))
+	return l.fullLocationList(listObjectsInput, prefix)
 }
 
 // ListByPrefix calls the s3 API with the location's prefix modified relatively by the prefix arg passed to the
 // function. The resource considerations of List() apply to this function as well.
 func (l *Location) ListByPrefix(prefix string) ([]string, error) {
-	if err := utils.ValidateFilePrefix(prefix); err != nil {
-		return nil, err
-	}
-	searchPrefix := path.Join(l.prefix, prefix)
+	searchPrefix := utils.RemoveLeadingSlash(path.Join(l.prefix, prefix))
+	d := path.Dir(searchPrefix)
 	listObjectsInput := l.getListObjectsInput().SetPrefix(searchPrefix)
-	return l.fullLocationList(listObjectsInput)
+	return l.fullLocationList(listObjectsInput, d)
 }
 
 // ListByRegex retrieves the keys of all the files at the location's current path, then filters out all those
@@ -62,10 +62,10 @@ func (l *Location) Volume() string {
 
 // Path returns the prefix the location references in most s3 calls.
 func (l *Location) Path() string {
-	return "/" + utils.EnsureTrailingSlash(l.prefix)
+	return utils.EnsureLeadingSlash(utils.EnsureTrailingSlash(l.prefix))
 }
 
-// Exists returns true if the bucket exists, and the user in the underlying s3.fileSystem.Client has the appropriate
+// Exists returns true if the bucket exists, and the user in the underlying s3.fileSystem.Client() has the appropriate
 // permissions. Will receive false without an error if the bucket simply doesn't exist. Otherwise could receive
 // false and any errors passed back from the API.
 func (l *Location) Exists() (bool, error) {
@@ -89,6 +89,11 @@ func (l *Location) Exists() (bool, error) {
 // relativePath argument, returning the resulting location. The only possible errors come from the call to
 // ChangeDir, which, for the s3 implementation doesn't ever result in an error.
 func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
+	if l == nil {
+		return nil, errors.New("non-nil s3.Location pointer is required")
+	}
+
+	//make a copy of the original location first, then ChangeDir, leaving the original location as-is
 	newLocation := &Location{}
 	*newLocation = *l
 	err := newLocation.ChangeDir(relativePath)
@@ -101,18 +106,37 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 // ChangeDir takes a relative path, and modifies the underlying Location's path. The caller is modified by this
 // so the only return is any error. For this implementation there are no errors.
 func (l *Location) ChangeDir(relativePath string) error {
-	newPrefix := path.Join(l.prefix, relativePath)
-	l.prefix = utils.CleanPrefix(newPrefix)
+	if l == nil {
+		return errors.New("non-nil s3.Location pointer is required")
+	}
+	if relativePath == "" {
+		return errors.New("non-empty string relativePath is required")
+	}
+	err := utils.ValidateRelativeLocationPath(relativePath)
+	if err != nil {
+		return err
+	}
+	l.prefix = utils.EnsureLeadingSlash(utils.EnsureTrailingSlash(path.Join(l.prefix, relativePath)))
 	return nil
 }
 
 // NewFile uses the properties of the calling location to generate a vfs.File (backed by an s3.File). The filePath
 // argument is expected to be a relative path to the location's current path.
 func (l *Location) NewFile(filePath string) (vfs.File, error) {
+	if l == nil {
+		return nil, errors.New("non-nil s3.Location pointer is required")
+	}
+	if filePath == "" {
+		return nil, errors.New("non-empty string filePath is required")
+	}
+	err := utils.ValidateRelativeFilePath(filePath)
+	if err != nil {
+		return nil, err
+	}
 	newFile := &File{
 		fileSystem: l.fileSystem,
 		bucket:     l.bucket,
-		key:        utils.CleanPrefix(path.Join(l.prefix, filePath)),
+		key:        utils.EnsureLeadingSlash(path.Join(l.prefix, filePath)),
 	}
 	return newFile, nil
 }
@@ -127,7 +151,7 @@ func (l *Location) DeleteFile(fileName string) error {
 	return file.Delete()
 }
 
-// FileSystem returns a vfs.fileSystem interface of the location's underlying fileSystem.
+// FileSystem returns a vfs.FileSystem interface of the location's underlying file system.
 func (l *Location) FileSystem() vfs.FileSystem {
 	return l.fileSystem
 }
@@ -146,7 +170,7 @@ func (l *Location) String() string {
 	Private helpers
 */
 
-func (l *Location) fullLocationList(input *s3.ListObjectsInput) ([]string, error) {
+func (l *Location) fullLocationList(input *s3.ListObjectsInput, prefix string) ([]string, error) {
 	var keys []string
 	client, err := l.fileSystem.Client()
 	if err != nil {
@@ -157,7 +181,7 @@ func (l *Location) fullLocationList(input *s3.ListObjectsInput) ([]string, error
 		if err != nil {
 			return []string{}, err
 		}
-		newKeys := getNamesFromObjectSlice(listObjectsOutput.Contents, utils.EnsureTrailingSlash(l.prefix))
+		newKeys := getNamesFromObjectSlice(listObjectsOutput.Contents, utils.EnsureTrailingSlash(utils.RemoveLeadingSlash(prefix)))
 		keys = append(keys, newKeys...)
 
 		// if s3 response "IsTruncated" we need to call List again with

@@ -3,7 +3,7 @@
 ---
 
 Package vfssimple provides a basic and easy to use set of functions to any
-supported backend filesystem by using full URI's:
+supported backend file system by using full URI's:
 
 * Local OS:             file:///some/path/to/file.txt
 * Amazon S3:            s3://mybucket/path/to/file.txt
@@ -42,7 +42,7 @@ Just import vfssimple.
 
 ### Authentication and Options
 
-vfssimple is largely an example of how to initialize a set of backend filesystems.  It only provides a default
+vfssimple is largely an example of how to initialize a set of backend file systems.  It only provides a default
 initialization of the individual file systems.  See backend docs for specific authentication info for each backend but
 generally speaking, most backends can use Environment variables to set credentials or client options.
 
@@ -120,7 +120,7 @@ when calling remote file systems. This adds some flexibility in how a retry on f
 func NewFile(uri string) (vfs.File, error)
 ```
 NewFile is a convenience function that allows for instantiating a file based on
-a uri string. Any backend filesystem is supported, though some may require prior
+a uri string. Any backend file system is supported, though some may require prior
 configuration. See the docs for specific requirements of each.
 
 #### func  NewLocation
@@ -129,5 +129,5 @@ configuration. See the docs for specific requirements of each.
 func NewLocation(uri string) (vfs.Location, error)
 ```
 NewLocation is a convenience function that allows for instantiating a location
-based on a uri string.Any backend filesystem is supported, though some may
+based on a uri string.Any backend file system is supported, though some may
 require prior configuration. See the docs for specific requirements of each

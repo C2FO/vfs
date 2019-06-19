@@ -38,7 +38,7 @@ See: https://golang.org/pkg/os/
 ```go
 const Scheme = "file"
 ```
-Scheme defines the filesystem type.
+Scheme defines the file system type.
 
 #### type File
 
@@ -85,7 +85,7 @@ Delete unlinks the file returning any error or nil.
 ```go
 func (f *File) Exists() (bool, error)
 ```
-Exists true if the file exists on the filesystem, otherwise false, and an error,
+Exists true if the file exists on the file system, otherwise false, and an error,
 if any.
 
 #### func (*File) LastModified
@@ -191,7 +191,7 @@ returns the number of btyes written and an error, if any.
 type FileSystem struct{}
 ```
 
-FileSystem implements [vfs.FileSystem](../README.md#type-filesystem) for the OS filesystem.
+FileSystem implements [vfs.FileSystem](../README.md#type-filesystem) for the OS file system.
 
 #### func (*FileSystem) Name
 
@@ -264,7 +264,7 @@ from the OS.
 func (l *Location) FileSystem() vfs.FileSystem
 ```
 FileSystem returns a  [vfs.FileSystem](../README.md#type-filesystem) interface of the location's underlying
-fileSystem.
+file system.
 
 #### func (*Location) List
 

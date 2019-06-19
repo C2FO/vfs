@@ -1,6 +1,7 @@
 package gs
 
 import (
+	"errors"
 	"path"
 	"regexp"
 	"strings"
@@ -8,8 +9,8 @@ import (
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
 
-	"github.com/c2fo/vfs/v4"
-	"github.com/c2fo/vfs/v4/utils"
+	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/utils"
 )
 
 // Location implements vfs.Location for gs fs.
@@ -31,13 +32,16 @@ func (l *Location) List() ([]string, error) {
 }
 
 //ListByPrefix returns a slice of file base names and any error, if any
-//prefix means filename prefix and therefore should not have slash
-//List functions return only files
-//List functions return only basenames
+//List functions return only file basenames
 func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error) {
+	prefix := utils.RemoveLeadingSlash(path.Join(l.prefix, filenamePrefix))
+	if filenamePrefix == "" {
+		prefix = utils.EnsureTrailingSlash(prefix)
+	}
+	d := path.Dir(prefix)
 	q := &storage.Query{
 		Delimiter: "/",
-		Prefix:    l.prefix + filenamePrefix,
+		Prefix:    prefix,
 		Versions:  false,
 	}
 
@@ -57,8 +61,9 @@ func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error) {
 			return nil, err
 		}
 		//only include objects, not "directories"
-		if objAttrs.Prefix == "" && objAttrs.Name != l.prefix {
-			fileNames = append(fileNames, strings.TrimPrefix(objAttrs.Name, l.prefix))
+		if objAttrs.Prefix == "" && objAttrs.Name != d {
+			fn := strings.TrimPrefix(objAttrs.Name, utils.EnsureTrailingSlash(d))
+			fileNames = append(fileNames, fn)
 		}
 	}
 
@@ -88,10 +93,7 @@ func (l *Location) Volume() string {
 
 // Path returns the path of the file at the current location, starting with a leading '/'
 func (l *Location) Path() string {
-	if strings.Index(l.prefix, "/") == 0 {
-		return utils.EnsureTrailingSlash(l.prefix)
-	}
-	return "/" + utils.EnsureTrailingSlash(l.prefix)
+	return utils.EnsureLeadingSlash(utils.EnsureTrailingSlash(l.prefix))
 }
 
 // Exists returns whether the location exists or not. In the case of an error, false is returned.
@@ -108,18 +110,33 @@ func (l *Location) Exists() (bool, error) {
 
 // NewLocation creates a new location instance relative to the current location's path.
 func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
-	newLocation := *l
+	if l == nil {
+		return nil, errors.New("non-nil gs.Location pointer is required")
+	}
+
+	//make a copy of the original location first, then ChangeDir, leaving the original location as-is
+	newLocation := &Location{}
+	*newLocation = *l
 	err := newLocation.ChangeDir(relativePath)
 	if err != nil {
 		return nil, err
 	}
-	return &newLocation, nil
+	return newLocation, nil
 }
 
 // ChangeDir changes the current location's path to the new, relative path.
 func (l *Location) ChangeDir(relativePath string) error {
-	newPrefix := path.Join(l.prefix, relativePath)
-	l.prefix = utils.EnsureTrailingSlash(utils.CleanPrefix(newPrefix))
+	if l == nil {
+		return errors.New("non-nil gs.Location pointer is required")
+	}
+	if relativePath == "" {
+		return errors.New("non-empty string relativePath is required")
+	}
+	err := utils.ValidateRelativeLocationPath(relativePath)
+	if err != nil {
+		return err
+	}
+	l.prefix = utils.EnsureTrailingSlash(utils.EnsureLeadingSlash(path.Join(l.prefix, relativePath)))
 	return nil
 }
 
@@ -130,7 +147,22 @@ func (l *Location) FileSystem() vfs.FileSystem {
 
 // NewFile returns a new file instance at the given path, relative to the current location.
 func (l *Location) NewFile(filePath string) (vfs.File, error) {
-	return newFile(l.fileSystem, l.bucket, path.Join(l.prefix, filePath))
+	if l == nil {
+		return nil, errors.New("non-nil gs.Location pointer is required")
+	}
+	if filePath == "" {
+		return nil, errors.New("non-empty string filePath is required")
+	}
+	err := utils.ValidateRelativeFilePath(filePath)
+	if err != nil {
+		return nil, err
+	}
+	newFile := &File{
+		fileSystem: l.fileSystem,
+		bucket:     l.bucket,
+		key:        utils.EnsureLeadingSlash(path.Join(l.prefix, filePath)),
+	}
+	return newFile, nil
 }
 
 // DeleteFile deletes the file at the given path, relative to the current location.

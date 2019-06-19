@@ -1,26 +1,29 @@
 package gs
 
 import (
+	"errors"
+	"path"
+
 	"cloud.google.com/go/storage"
 	"golang.org/x/net/context"
 
-	"github.com/c2fo/vfs/v4"
-	"github.com/c2fo/vfs/v4/backend"
-	"github.com/c2fo/vfs/v4/utils"
+	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/backend"
+	"github.com/c2fo/vfs/v5/utils"
 )
 
-//Scheme defines the filesystem type.
+//Scheme defines the file system type.
 const Scheme = "gs"
 const name = "Google Cloud Storage"
 
-// FileSystem implements vfs.Filesystem for the GCS filesystem.
+// FileSystem implements vfs.FileSystem for the GCS file system.
 type FileSystem struct {
 	client  *storage.Client
 	ctx     context.Context
 	options vfs.Options
 }
 
-// FileSystem will return a retrier provided via options, or a no-op if none is provided.
+// Retry will return a retrier provided via options, or a no-op if none is provided.
 func (fs *FileSystem) Retry() vfs.Retry {
 	if options, _ := fs.options.(Options); options.Retry != nil {
 		return options.Retry
@@ -30,15 +33,37 @@ func (fs *FileSystem) Retry() vfs.Retry {
 
 // NewFile function returns the gcs implementation of vfs.File.
 func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
-	return newFile(fs, volume, name)
+	if fs == nil {
+		return nil, errors.New("non-nil gs.FileSystem pointer is required")
+	}
+	if volume == "" || name == "" {
+		return nil, errors.New("non-empty strings for Bucket and Key are required")
+	}
+	if err := utils.ValidateAbsoluteFilePath(name); err != nil {
+		return nil, err
+	}
+	return &File{
+		fileSystem: fs,
+		bucket:     volume,
+		key:        path.Clean(name),
+	}, nil
 }
 
 // NewLocation function returns the GCS implementation of vfs.Location.
-func (fs *FileSystem) NewLocation(volume string, path string) (loc vfs.Location, err error) {
+func (fs *FileSystem) NewLocation(volume string, name string) (loc vfs.Location, err error) {
+	if fs == nil {
+		return nil, errors.New("non-nil gs.FileSystem pointer is required")
+	}
+	if volume == "" || name == "" {
+		return nil, errors.New("non-empty strings for bucket and key are required")
+	}
+	if err := utils.ValidateAbsoluteLocationPath(name); err != nil {
+		return nil, err
+	}
 	loc = &Location{
 		fileSystem: fs,
 		bucket:     volume,
-		prefix:     utils.EnsureTrailingSlash(path),
+		prefix:     utils.EnsureTrailingSlash(path.Clean(name)),
 	}
 	return
 }
@@ -67,7 +92,7 @@ func (fs *FileSystem) Client() (*storage.Client, error) {
 	return fs.client, nil
 }
 
-// WithOptions sets options for client and returns the filesystem (chainable)
+// WithOptions sets options for client and returns the file system (chainable)
 func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 	fs.options = opts
 	//we set client to nil to ensure that a new client is created using the new context when Client() is called
@@ -75,7 +100,7 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 	return fs
 }
 
-// WithContext passes in user context and returns the filesystem (chainable)
+// WithContext passes in user context and returns the file system (chainable)
 func (fs *FileSystem) WithContext(ctx context.Context) *FileSystem {
 	fs.ctx = ctx
 	//we set client to nil to ensure that a new client is created using the new context when Client() is called
@@ -83,7 +108,7 @@ func (fs *FileSystem) WithContext(ctx context.Context) *FileSystem {
 	return fs
 }
 
-// WithClient passes in a google storage client and returns the filesystem (chainable)
+// WithClient passes in a google storage client and returns the file system (chainable)
 func (fs *FileSystem) WithClient(client *storage.Client) *FileSystem {
 	fs.client = client
 	return fs

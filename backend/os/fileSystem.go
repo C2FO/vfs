@@ -1,34 +1,46 @@
 package os
 
 import (
-	"github.com/c2fo/vfs/v4"
-	"github.com/c2fo/vfs/v4/backend"
-	"github.com/c2fo/vfs/v4/utils"
+	"path"
+
+	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/backend"
+	"github.com/c2fo/vfs/v5/utils"
 )
 
-//Scheme defines the filesystem type.
+//Scheme defines the file system type.
 const Scheme = "file"
 const name = "os"
 
-// FileSystem implements vfs.Filesystem for the OS filesystem.
+// FileSystem implements vfs.Filesystem for the OS file system.
 type FileSystem struct{}
 
-// FileSystem will return a retrier provided via options, or a no-op if none is provided.
+// Retry will return a retrier provided via options, or a no-op if none is provided.
 func (fs *FileSystem) Retry() vfs.Retry {
 	return vfs.DefaultRetryer()
 }
 
 // NewFile function returns the os implementation of vfs.File.
 func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
-	file, err := newFile(name)
-	return file, err
+	err := utils.ValidateAbsoluteFilePath(name)
+	if err != nil {
+		return nil, err
+	}
+	fileName := path.Base(name)
+	location := Location{fileSystem: &FileSystem{}, name: utils.EnsureTrailingSlash(path.Dir(name))}
+	return &File{name: fileName, location: &location}, nil
 }
 
 // NewLocation function returns the os implementation of vfs.Location.
 func (fs *FileSystem) NewLocation(volume string, name string) (vfs.Location, error) {
+	err := utils.ValidateAbsoluteLocationPath(name)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Location{
 		fileSystem: fs,
-		name:       utils.AddTrailingSlash(name),
+		name:       utils.EnsureTrailingSlash(path.Clean(name)),
 	}, nil
 }
 

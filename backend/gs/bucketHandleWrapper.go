@@ -3,7 +3,7 @@ package gs
 import (
 	"cloud.google.com/go/storage"
 	"context"
-	"github.com/c2fo/vfs/v4"
+	"github.com/c2fo/vfs/v5"
 )
 
 // BucketHandle is an interface which contains a subset of the functions provided
@@ -22,17 +22,21 @@ type BucketHandleWrapper interface {
 	WrappedObjects(ctx context.Context, q *storage.Query) ObjectIteratorWrapper
 }
 
+// RetryBucketHandler implements the BucketHandle interface
 type RetryBucketHandler struct {
 	Retry   vfs.Retry
 	handler *storage.BucketHandle
 }
 
+// Attrs accetps a context and returns bucket attrs wrapped in a retry
 func (r *RetryBucketHandler) Attrs(ctx context.Context) (*storage.BucketAttrs, error) {
 	return bucketAttributeRetry(r.Retry, func() (*storage.BucketAttrs, error) {
 		return r.handler.Attrs(ctx)
 	})
 }
 
+// WrappedObjects returns an iterator over the objects in the bucket that match the Query q, all wrapped in a retry.
+// If q is nil, no filtering is done.
 func (r *RetryBucketHandler) WrappedObjects(ctx context.Context, q *storage.Query) ObjectIteratorWrapper {
 	return &RetryObjectIterator{Retry: r.Retry, iterator: r.handler.Objects(ctx, q)}
 }
@@ -42,11 +46,19 @@ type ObjectIteratorWrapper interface {
 	Next() (*storage.ObjectAttrs, error)
 }
 
+// RetryObjectIterator implements the ObjectIteratorWrapper interface
 type RetryObjectIterator struct {
 	Retry    vfs.Retry
 	iterator *storage.ObjectIterator
 }
 
+// Next returns the next result, wrapped in retry. Its second return value is iterator.Done if
+// there are no more results. Once Next returns iterator.Done, all subsequent
+// calls will return iterator.Done.
+//
+// If Query.Delimiter is non-empty, some of the ObjectAttrs returned by Next will
+// have a non-empty Prefix field, and a zero value for all other fields. These
+// represent prefixes.
 func (r *RetryObjectIterator) Next() (*storage.ObjectAttrs, error) {
 	return objectAttributeRetry(r.Retry, func() (*storage.ObjectAttrs, error) {
 		return r.iterator.Next()

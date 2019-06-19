@@ -7,11 +7,11 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v4/mocks"
+	"github.com/c2fo/vfs/v5/mocks"
+	"github.com/c2fo/vfs/v5/utils"
 )
 
 type locationTestSuite struct {
@@ -29,20 +29,22 @@ func (lt *locationTestSuite) TestList() {
 	expectedFileList := []string{"file.txt", "file2.txt"}
 	keyListFromAPI := []string{"dir1/file.txt", "dir1/file2.txt"}
 	bucket := "bucket"
-	locPath := "dir1/"
+	locPath := "/dir1/"
+	prefix := "dir1/"
 	delimiter := "/"
 	isTruncated := false
 	lt.s3apiMock.On("ListObjects", &s3.ListObjectsInput{
 		Bucket:    &bucket,
-		Prefix:    &locPath,
+		Prefix:    &prefix,
 		Delimiter: &delimiter,
 	}).Return(&s3.ListObjectsOutput{
 		Contents:    convertKeysToS3Objects(keyListFromAPI),
 		IsTruncated: &isTruncated,
-		Prefix:      &locPath,
+		Prefix:      &prefix,
 	}, nil).Once()
 
-	loc := &Location{lt.fs, locPath, bucket}
+	loc, err := lt.fs.NewLocation(bucket, locPath)
+	lt.NoError(err)
 	fileList, err := loc.List()
 	lt.Nil(err, "Shouldn't return an error when successfully returning list.")
 	lt.Len(fileList, len(expectedFileList), "Should return the expected number of files.")
@@ -58,33 +60,35 @@ func (lt *locationTestSuite) TestList_pagedCall() {
 	secondKeyList := []string{"dir1/file3.txt", "dir1/file4.txt"}
 	expectedFileList := []string{"file.txt", "file2.txt", "file3.txt", "file4.txt"}
 	bucket := "bucket"
-	locPath := "dir1/"
+	locPath := "/dir1/"
+	prefix := "dir1/"
 	delimiter := "/"
 	isTruncatedTrue := true
 	isTruncatedFalse := false
 	lt.s3apiMock.On("ListObjects", &s3.ListObjectsInput{
 		Bucket:    &bucket,
-		Prefix:    &locPath,
+		Prefix:    &prefix,
 		Delimiter: &delimiter,
 	}).Return(&s3.ListObjectsOutput{
 		Contents:    convertKeysToS3Objects(firstKeyList),
 		IsTruncated: &isTruncatedTrue,
 		NextMarker:  &firstCallOutputMarker,
-		Prefix:      &locPath,
+		Prefix:      &prefix,
 	}, nil)
 
 	lt.s3apiMock.On("ListObjects", &s3.ListObjectsInput{
 		Bucket:    &bucket,
-		Prefix:    &locPath,
+		Prefix:    &prefix,
 		Delimiter: &delimiter,
 		Marker:    &firstCallOutputMarker,
 	}).Return(&s3.ListObjectsOutput{
 		Contents:    convertKeysToS3Objects(secondKeyList),
 		IsTruncated: &isTruncatedFalse,
-		Prefix:      &locPath,
+		Prefix:      &prefix,
 	}, nil)
 
-	loc := &Location{lt.fs, locPath, bucket}
+	loc, err := lt.fs.NewLocation(bucket, locPath)
+	lt.NoError(err)
 	fileList, err := loc.List()
 	lt.Nil(err, "Shouldn't return an error when successfully returning list.")
 	lt.Len(fileList, len(expectedFileList), "Should return the expected number of files.")
@@ -98,9 +102,9 @@ func (lt *locationTestSuite) TestListByPrefix() {
 	expectedFileList := []string{"file1.txt", "file2.txt"}
 	keyListFromAPI := []string{"dir1/file1.txt", "dir1/file2.txt"}
 	bucket := "bucket"
-	locPath := "dir1/"
+	locPath := "/dir1/"
 	prefix := "fil"
-	apiCallPrefix := path.Join(locPath, prefix)
+	apiCallPrefix := utils.RemoveLeadingSlash(path.Join(locPath, prefix))
 	delimiter := "/"
 	isTruncated := false
 	lt.s3apiMock.On("ListObjects", &s3.ListObjectsInput{
@@ -112,7 +116,8 @@ func (lt *locationTestSuite) TestListByPrefix() {
 		IsTruncated: &isTruncated,
 		Prefix:      &apiCallPrefix,
 	}, nil).Once()
-	loc := &Location{lt.fs, locPath, bucket}
+	loc, err := lt.fs.NewLocation(bucket, locPath)
+	lt.NoError(err)
 	fileList, err := loc.ListByPrefix(prefix)
 	lt.Nil(err, "Shouldn't return an error when successfully returning list.")
 	lt.Len(fileList, len(expectedFileList), "Should return expected number of file keys.")
@@ -126,19 +131,21 @@ func (lt *locationTestSuite) TestListByRegex() {
 	expectedFileList := []string{"file1.txt", "file2.txt"}
 	keysReturnedFromAPI := append(expectedFileList, "file3.png", "file4.jpg")
 	bucket := "bucket"
-	locPath := ""
+	locPath := "/blah/"
+	prefix := "blah/"
 	delimiter := "/"
 	isTruncated := false
 	lt.s3apiMock.On("ListObjects", &s3.ListObjectsInput{
 		Bucket:    &bucket,
-		Prefix:    &locPath,
+		Prefix:    &prefix,
 		Delimiter: &delimiter,
 	}).Return(&s3.ListObjectsOutput{
 		Contents:    convertKeysToS3Objects(keysReturnedFromAPI),
 		IsTruncated: &isTruncated,
-		Prefix:      &locPath,
+		Prefix:      &prefix,
 	}, nil).Once()
-	loc := &Location{lt.fs, locPath, bucket}
+	loc, err := lt.fs.NewLocation(bucket, locPath)
+	lt.NoError(err)
 	fileTypeRegex, err := regexp.Compile("txt$")
 	if err != nil {
 		lt.Fail("Failed to compile regex for test.")
@@ -154,26 +161,27 @@ func (lt *locationTestSuite) TestListByRegex() {
 
 func (lt *locationTestSuite) TestVolume() {
 	bucket := "bucket"
-	loc := &Location{lt.fs, "", bucket}
+	loc, err := lt.fs.NewLocation(bucket, "/")
+	lt.NoError(err)
 	lt.Equal(bucket, loc.Volume(), "Volume() should return the bucket name on location.")
 }
 
 func (lt *locationTestSuite) TestPath() {
-	loc, err := lt.fs.NewLocation("bucket", "path/")
+	loc, err := lt.fs.NewLocation("bucket", "/path/")
 	lt.NoError(err)
 	lt.Equal("/path/", loc.Path(), "Path() should return the path on location.")
 
-	loc2, err2 := lt.fs.NewLocation("bucket", "/path/")
+	loc2, err2 := lt.fs.NewLocation("bucket", "/path/../newpath/")
 	lt.NoError(err2)
-	lt.Equal("/path/", loc2.Path(), "Path() should return the path on location.")
+	lt.Equal("/newpath/", loc2.Path(), "Path() should return the path on location.")
 
-	loc3, err3 := lt.fs.NewLocation("bucket", "path")
+	loc3, err3 := lt.fs.NewLocation("bucket", "/path/./to/")
 	lt.NoError(err3)
-	lt.Equal("/path/", loc3.Path(), "Path() should return the path on location.")
+	lt.Equal("/path/to/", loc3.Path(), "Path() should return the path on location.")
 }
 
 func (lt *locationTestSuite) TestNewFile() {
-	loc, err := lt.fs.NewLocation("bucket", "some/path/to/")
+	loc, err := lt.fs.NewLocation("bucket", "/some/path/to/")
 	lt.NoError(err)
 	lt.Equal("/some/path/to/", loc.Path(), "Path() should return the path on location.")
 
@@ -189,7 +197,8 @@ func (lt *locationTestSuite) TestExists_true() {
 	lt.s3apiMock.On("HeadBucket", &s3.HeadBucketInput{
 		Bucket: &bucket,
 	}).Return(&s3.HeadBucketOutput{}, nil).Once()
-	loc := &Location{lt.fs, "", bucket}
+	loc, err := lt.fs.NewLocation(bucket, "/")
+	lt.NoError(err)
 	exists, err := loc.Exists()
 	lt.Nil(err, "No error expected from Exists")
 	lt.True(exists, "Call to Exists expected to return true.")
@@ -201,7 +210,8 @@ func (lt *locationTestSuite) TestExists_false() {
 	lt.s3apiMock.On("HeadBucket", &s3.HeadBucketInput{
 		Bucket: &bucket,
 	}).Return(nil, awserr.New(s3.ErrCodeNoSuchBucket, "NoSuchBucket", nil)).Once()
-	loc := &Location{lt.fs, "", bucket}
+	loc, err := lt.fs.NewLocation(bucket, "/")
+	lt.NoError(err)
 	exists, err := loc.Exists()
 	lt.Nil(err, "No error expected from Exists")
 	lt.False(exists, "Call to Exists expected to return true.")
@@ -209,37 +219,38 @@ func (lt *locationTestSuite) TestExists_false() {
 }
 
 func (lt *locationTestSuite) TestChangeDir() {
-	loc := &Location{lt.fs, "", "bucket"}
+	loc := &Location{fileSystem: lt.fs, prefix: "/", bucket: "bucket"}
 
-	err1 := loc.ChangeDir("..")
-	assert.NoError(lt.T(), err1, "no error expected")
+	err1 := loc.ChangeDir("../")
+	lt.NoError(err1, "no error expected")
 	lt.Equal("/", loc.Path())
 
-	err2 := loc.ChangeDir("/hello")
-	assert.NoError(lt.T(), err2, "no error expected")
+	err2 := loc.ChangeDir("hello/")
+	lt.NoError(err2, "no error expected")
 	lt.Equal("/hello/", loc.Path())
 
-	err3 := loc.ChangeDir("../.././..")
-	assert.NoError(lt.T(), err3, "no error expected")
+	err3 := loc.ChangeDir("../.././../")
+	lt.NoError(err3, "no error expected")
 	lt.Equal("/", loc.Path())
 
 	err4 := loc.ChangeDir("here/is/a/path/")
-	assert.NoError(lt.T(), err4, "no error expected")
+	lt.NoError(err4, "no error expected")
 	lt.Equal("/here/is/a/path/", loc.Path())
 
 	err5 := loc.ChangeDir("../")
-	assert.NoError(lt.T(), err5, "no error expected")
+	lt.NoError(err5, "no error expected")
 	lt.Equal("/here/is/a/", loc.Path())
 }
 
 func (lt *locationTestSuite) TestNewLocation() {
-	loc := &Location{lt.fs, "old", "bucket"}
-	newLoc, err := loc.NewLocation("new/path")
-	lt.Nil(err, "No error from successful call to NewLocation")
+	loc, err := lt.fs.NewLocation("bucket", "/old/")
+	lt.NoError(err)
+	newLoc, err := loc.NewLocation("new/path/")
+	lt.NoError(err, "No error from successful call to NewLocation")
 	lt.Equal("/old/new/path/", newLoc.Path(), "New location should have correct path set")
 	lt.Equal("/old/", loc.Path(), "Ensure original path is unchanged.")
 
-	newRelLoc, err := newLoc.NewLocation("../../some/path")
+	newRelLoc, err := newLoc.NewLocation("../../some/path/")
 	lt.NoError(err)
 	lt.Equal("/old/some/path/", newRelLoc.Path(), "NewLocation works with rel dot paths")
 }
@@ -252,9 +263,10 @@ func (lt *locationTestSuite) TestStringURI() {
 func (lt *locationTestSuite) TestDeleteFile() {
 	lt.s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 	lt.s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
-	loc := &Location{lt.fs, "old", "bucket"}
+	loc, err := lt.fs.NewLocation("bucket", "/old/")
+	lt.NoError(err)
 
-	err := loc.DeleteFile("filename.txt")
+	err = loc.DeleteFile("filename.txt")
 	lt.Nil(err, "Successful delete should not return an error.")
 	lt.s3apiMock.AssertExpectations(lt.T())
 }

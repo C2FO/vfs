@@ -2,7 +2,7 @@
 package all
 
 import (
-	_ "github.com/c2fo/vfs/v4/backend/gs" // register gs backend
-	_ "github.com/c2fo/vfs/v4/backend/os" // register os backend
-	_ "github.com/c2fo/vfs/v4/backend/s3" // register s3 backend
+	_ "github.com/c2fo/vfs/v5/backend/gs" // register gs backend
+	_ "github.com/c2fo/vfs/v5/backend/os" // register os backend
+	_ "github.com/c2fo/vfs/v5/backend/s3" // register s3 backend
 )

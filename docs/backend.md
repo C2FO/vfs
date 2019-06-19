@@ -3,11 +3,11 @@
 ---
 
 
-Package backend provides a means of allowing backend filesystems to
+Package backend provides a means of allowing backend file systems to
 self-register on load via an init() call to backend.Register("some scheme",
-vfs.Filesystem)
+vfs.FileSystem)
 
-In this way, a caller of vfs backends can simply load the backend filesystem
+In this way, a caller of vfs backends can simply load the backend file system
 (and ONLY those needed) and begin using it:
 
     package main
@@ -23,7 +23,7 @@ In this way, a caller of vfs backends can simply load the backend filesystem
        var err error
        var osfile, s3file vfs.File
 
-        // THEN begin using the filesystems
+        // THEN begin using the file systems
         osfile, err = backend.Backend(os.Scheme).NewFile("", "/path/to/file.txt")
         if err != nil {
             panic(err)
@@ -88,14 +88,14 @@ That's it. Simple.
 ```go
 func Backend(name string) vfs.FileSystem
 ```
-Backend returns the backend filesystem by name
+Backend returns the backend file system by name
 
 #### func  Register
 
 ```go
 func Register(name string, v vfs.FileSystem)
 ```
-Register a new filesystem in backend map
+Register a new file system in backend map
 
 #### func  RegisteredBackends
 
@@ -109,11 +109,11 @@ RegisteredBackends returns an array of backend names
 ```go
 func Unregister(name string)
 ```
-Unregister unregisters a filesystem from backend map
+Unregister unregisters a file system from backend map
 
 #### func  UnregisterAll
 
 ```go
 func UnregisterAll()
 ```
-UnregisterAll unregisters all filesystems from backend map
+UnregisterAll unregisters all file systems from backend map

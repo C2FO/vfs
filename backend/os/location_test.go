@@ -2,7 +2,6 @@ package os
 
 import (
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"regexp"
 	"testing"
@@ -10,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v4"
-	"github.com/c2fo/vfs/v4/utils"
+	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/utils"
 )
 
 /**********************************
@@ -22,26 +21,29 @@ type osLocationTest struct {
 	suite.Suite
 	testFile   vfs.File
 	fileSystem *FileSystem
+	tmploc     vfs.Location
 }
 
 func (s *osLocationTest) SetupSuite() {
-	setupTestFiles()
+	fs := &FileSystem{}
+	dir, err := ioutil.TempDir("", "os_location_test")
+	dir = utils.EnsureTrailingSlash(dir)
+	s.NoError(err)
+	s.tmploc, err = fs.NewLocation("", dir)
+	s.NoError(err)
+	setupTestFiles(s.tmploc)
 }
 
 func (s *osLocationTest) TearDownSuite() {
-	teardownTestFiles()
+	teardownTestFiles(s.tmploc)
 }
 
 func (s *osLocationTest) SetupTest() {
-	fs := &FileSystem{}
-	file, err := fs.NewFile("", "test_files/test.txt")
-
+	file, err := s.tmploc.NewFile("test_files/test.txt")
 	if err != nil {
 		s.Fail("No file was opened")
 	}
-
 	s.testFile = file
-	s.fileSystem = fs
 }
 
 func (s *osLocationTest) TestList() {
@@ -77,9 +79,6 @@ func (s *osLocationTest) TestListByPrefix() {
 	expected := []string{"prefix-file.txt"}
 	actual, _ := s.testFile.Location().ListByPrefix("prefix")
 	s.Equal(expected, actual)
-
-	_, err := s.testFile.Location().ListByPrefix("bad/prefix")
-	s.EqualError(err, utils.BadFilePrefix, "got expected error")
 }
 
 func (s *osLocationTest) TestListByRegex() {
@@ -90,7 +89,7 @@ func (s *osLocationTest) TestListByRegex() {
 }
 
 func (s *osLocationTest) TestExists() {
-	otherFile, _ := s.fileSystem.NewFile("", "foo/foo.txt")
+	otherFile, _ := s.tmploc.NewFile("foo/foo.txt")
 	s.True(s.testFile.Location().Exists())
 	s.False(otherFile.Location().Exists())
 }
@@ -114,12 +113,12 @@ func (s *osLocationTest) TestNewFile() {
 }
 
 func (s *osLocationTest) TestChangeDir() {
-	otherFile, _ := s.fileSystem.NewFile("", "foo/foo.txt")
+	otherFile, _ := s.tmploc.NewFile("foo/foo.txt")
 	fileLocation := otherFile.Location()
 	cwd := fileLocation.Path()
 	err := fileLocation.ChangeDir("other/")
 	assert.NoError(s.T(), err, "change dir error not expected")
-	s.Equal(fileLocation.Path(), filepath.Join(cwd, "other/"))
+	s.Equal(fileLocation.Path(), utils.EnsureTrailingSlash(filepath.Join(cwd, "other")))
 }
 
 func (s *osLocationTest) TestVolume() {
@@ -152,17 +151,9 @@ func (s *osLocationTest) TestStringer() {
 }
 
 func (s *osLocationTest) TestDeleteFile() {
-	dir, err := ioutil.TempDir("test_files", "example")
-	s.NoError(err, "Setup not expected to fail.")
-	defer func() {
-		derr := os.RemoveAll(dir)
-		s.NoError(derr, "Cleanup shouldn't fail.")
-	}()
-
 	expectedText := "file to delete"
 	fileName := "test.txt"
-	location := Location{dir, s.fileSystem}
-	file, err := location.NewFile(fileName)
+	file, err := s.tmploc.NewFile(fileName)
 	s.NoError(err, "Creating file to test delete shouldn't fail")
 
 	_, err = file.Write([]byte(expectedText))
@@ -172,7 +163,7 @@ func (s *osLocationTest) TestDeleteFile() {
 	s.NoError(err, "Exists shouldn't throw error.")
 	s.True(exists, "Exists should return true for test file.")
 
-	s.NoError(location.DeleteFile(fileName), "Deleting the file shouldn't throw an error.")
+	s.NoError(s.tmploc.DeleteFile(fileName), "Deleting the file shouldn't throw an error.")
 	exists, err = file.Exists()
 	s.NoError(err, "Shouldn't throw error testing for exists after delete.")
 	s.False(exists, "Exists should return false after deleting the file.")

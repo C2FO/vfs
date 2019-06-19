@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v4"
-	"github.com/c2fo/vfs/v4/mocks"
+	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/mocks"
 )
 
 type fileTestSuite struct {
@@ -31,7 +31,7 @@ func (ts *fileTestSuite) SetupTest() {
 	var err error
 	s3apiMock = &mocks.S3API{}
 	fs = FileSystem{client: s3apiMock}
-	testFile, err = fs.NewFile("bucket", "some/path/to/file.txt")
+	testFile, err = fs.NewFile("bucket", "/some/path/to/file.txt")
 	if err != nil {
 		ts.Fail("Shouldn't return error creating test s3.File instance.")
 	}
@@ -68,10 +68,8 @@ func (ts *fileTestSuite) TestRead() {
 
 // TODO: Write on Close() (actual s3 calls wait until file is closed to be made.)
 func (ts *fileTestSuite) TestWrite() {
-	file, err := fs.NewFile("bucket", "hello.txt")
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file")
-	}
+	file, err := fs.NewFile("bucket", "/tmp/hello.txt")
+	ts.NoError(err, "Shouldn't fail creating new file")
 
 	contents := []byte("Hello world!")
 	count, err := file.Write(contents)
@@ -82,10 +80,8 @@ func (ts *fileTestSuite) TestWrite() {
 
 func (ts *fileTestSuite) TestSeek() {
 	contents := "hello world!"
-	file, err := fs.NewFile("bucket", "hello.txt")
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file")
-	}
+	file, err := fs.NewFile("bucket", "/tmp/hello.txt")
+	ts.NoError(err, "Shouldn't fail creating new file")
 
 	s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{
 		Body: nopCloser{bytes.NewBufferString(contents)},
@@ -116,10 +112,8 @@ func (ts *fileTestSuite) TestSeek() {
 }
 
 func (ts *fileTestSuite) TestGetLocation() {
-	file, err := fs.NewFile("bucket", "path/hello.txt")
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file.")
-	}
+	file, err := fs.NewFile("bucket", "/path/hello.txt")
+	ts.NoError(err, "Shouldn't fail creating new file.")
 
 	location := file.Location()
 	ts.Equal("s3", location.FileSystem().Scheme(), "Should initialize location with FS underlying file.")
@@ -221,43 +215,34 @@ func (ts *fileTestSuite) TestMoveToFile_CopyError() {
 }
 
 func (ts *fileTestSuite) TestCopyToLocation() {
-	expectedText := "hello world!"
-	otherFs := new(mocks.FileSystem)
-	otherFs.On("Scheme", mock.Anything).Return("")
-	otherFile := new(mocks.File)
-	location := new(mocks.Location)
-	location.On("FileSystem", mock.Anything).Return(otherFs)
-	location.On("Volume").Return("bucket")
-
-	s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{
-		Body: nopCloser{bytes.NewBufferString(expectedText)},
-	}, nil)
-	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
-	file, err := fs.NewFile("bucket", "/hello.txt")
-	if err != nil {
-		ts.Fail("Shouldn't return error creating test s3.File instance.")
+	s3Mock1 := &mocks.S3API{}
+	s3Mock1.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(nil, nil)
+	s3Mock1.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
+	f := &File{
+		fileSystem: &FileSystem{
+			client: s3Mock1,
+		},
+		bucket: "bucket",
+		key:    "/hello.txt",
 	}
 
 	defer func() {
-		closeErr := file.Close()
+		closeErr := f.Close()
 		assert.NoError(ts.T(), closeErr, "no error expected")
 	}()
 
-	otherFs.On("Scheme").Return("")
-	otherFs.On("NewFile", mock.Anything, mock.Anything).Return(otherFile, nil)
-	otherFile.On("Write", mock.Anything).Return(len(expectedText), nil)
-	otherFile.On("Close", mock.Anything).Return(nil)
-	location.On("Path", mock.Anything).Return("/someother/path")
-	_, err = file.CopyToLocation(location)
-	if err != nil {
-		ts.Fail("Shouldn't return error for this call to CopyToLocation")
+	l := &Location{
+		fileSystem: &FileSystem{
+			client: &mocks.S3API{},
+		},
+		bucket: "bucket",
+		prefix: "/subdir/",
 	}
 
-	location.AssertExpectations(ts.T())
-	otherFs.AssertExpectations(ts.T())
-	otherFs.AssertCalled(ts.T(), "NewFile", "bucket", "/someother/path/hello.txt")
-	otherFile.AssertExpectations(ts.T())
-	otherFile.AssertCalled(ts.T(), "Write", []byte(expectedText))
+	// no error "copying" objects
+	_, err := f.CopyToLocation(l)
+	ts.NoError(err, "Shouldn't return error for this call to CopyToLocation")
+
 }
 
 func (ts *fileTestSuite) TestCopyToLocationWithinS3() {
@@ -421,30 +406,31 @@ func (ts *fileTestSuite) TestUploadInput() {
 	fs = FileSystem{client: &mocks.S3API{}}
 	file, _ := fs.NewFile("mybucket", "/some/file/test.txt")
 	ts.Equal("AES256", *uploadInput(file.(*File)).ServerSideEncryption, "sse was set")
-	ts.Equal("some/file/test.txt", *uploadInput(file.(*File)).Key, "key was set")
+	ts.Equal("/some/file/test.txt", *uploadInput(file.(*File)).Key, "key was set")
 	ts.Equal("mybucket", *uploadInput(file.(*File)).Bucket, "bucket was set")
 }
 
 func (ts *fileTestSuite) TestNewFile() {
-	// fs is nil
-	_, err := newFile(nil, "", "")
-	ts.Errorf(err, "non-nil s3.fileSystem pointer is required")
-
 	fs := &FileSystem{}
+	// fs is nil
+	_, err := fs.NewFile("", "")
+	ts.Errorf(err, "non-nil s3.FileSystem pointer is required")
+
 	// bucket is ""
-	_, err = newFile(fs, "", "asdf")
+	_, err = fs.NewFile("", "asdf")
 	ts.Errorf(err, "non-empty strings for bucket and key are required")
 	// key is ""
-	_, err = newFile(fs, "asdf", "")
+	_, err = fs.NewFile("asdf", "")
 	ts.Errorf(err, "non-empty strings for bucket and key are required")
 
 	//
-	file, err := newFile(fs, "mybucket", "/path/to/key")
+	bucket := "mybucket"
+	key := "/path/to/key"
+	file, err := fs.NewFile(bucket, key)
 	ts.NoError(err, "newFile should succeed")
 	ts.IsType(&File{}, file, "newFile returned a File struct")
-	ts.Equal("mybucket", file.bucket)
-	ts.Equal("path/to/key", file.key)
-
+	ts.Equal(bucket, file.Location().Volume())
+	ts.Equal(key, file.Path())
 }
 
 func TestFile(t *testing.T) {

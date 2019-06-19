@@ -1,4 +1,4 @@
-module github.com/c2fo/vfs/v4
+module github.com/c2fo/vfs/v5
 
 go 1.12
 

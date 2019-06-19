@@ -20,19 +20,19 @@ Or call directly:
   import "github.com/c2fo/vfs/backend/s3"
 
   func DoSomething() {
-      fs := s3.NewFilesystem()
+      fs := s3.NewFileSystem()
       ...
   }
 
-s3 can be augmented with the following implementation-specific methods.  Backend returns vfs.Filesystem interface so it
-would have to be cast as s3.Filesystem to use the following:
+s3 can be augmented with the following implementation-specific methods.  Backend returns vfs.FileSystem interface so it
+would have to be cast as s3.FileSystem to use the following:
 
   func DoSomething() {
 
       ...
 
-      // cast if fs was created using backend.Backend().  Not necessary if created directly from s3.NewFilesystem().
-      fs = fs.(s3.Filesystem)
+      // cast if fs was created using backend.Backend().  Not necessary if created directly from s3.NewFileSystem().
+      fs = fs.(s3.FileSystem)
 
       // to pass in client options
       fs = fs.WithOptions(
