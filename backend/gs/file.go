@@ -195,7 +195,7 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	return newFile, delErr
 }
 
-// MoveToFile puts the contents of File into the targetFile passed using File.CopyToFile.
+// MoveToFile puts the contents of File into the target vfs.File passed passed in using File.CopyToFile.
 // If the copy succeeds, the source file is deleted. Any errors from the copy or delete are
 // returned.
 func (f *File) MoveToFile(file vfs.File) error {

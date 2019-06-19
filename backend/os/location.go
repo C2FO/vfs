@@ -28,7 +28,7 @@ func (l *Location) NewFile(fileName string) (vfs.File, error) {
 	if fileName == "" {
 		return nil, errors.New("non-empty string filePath is required")
 	}
-	err := utils.ValidateRelFilePath(fileName)
+	err := utils.ValidateRelativeFilePath(fileName)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +171,7 @@ func (l *Location) ChangeDir(relativePath string) error {
 	if relativePath == "" {
 		return errors.New("non-empty string relativePath is required")
 	}
-	err := utils.ValidateRelLocationPath(relativePath)
+	err := utils.ValidateRelativeLocationPath(relativePath)
 	if err != nil {
 		return err
 	}

@@ -222,7 +222,7 @@ func (s *utilsTest) TestValidateAbsFilePath() {
 	}
 
 	for _, validationTest := range tests {
-		err := utils.ValidateAbsFilePath(validationTest.path)
+		err := utils.ValidateAbsoluteFilePath(validationTest.path)
 		if !validationTest.passExpected {
 			s.EqualError(err, utils.ErrBadAbsFilePath, validationTest.message)
 		} else {
@@ -286,7 +286,7 @@ func (s *utilsTest) TestValidateAbsLocationPath() {
 	}
 
 	for _, validationTest := range tests {
-		err := utils.ValidateAbsLocationPath(validationTest.path)
+		err := utils.ValidateAbsoluteLocationPath(validationTest.path)
 		if !validationTest.passExpected {
 			s.EqualError(err, utils.ErrBadAbsLocationPath, validationTest.message)
 		} else {
@@ -350,7 +350,7 @@ func (s *utilsTest) TestValidateRelFilePath() {
 	}
 
 	for _, validationTest := range tests {
-		err := utils.ValidateRelFilePath(validationTest.path)
+		err := utils.ValidateRelativeFilePath(validationTest.path)
 		if !validationTest.passExpected {
 			s.EqualError(err, utils.ErrBadRelFilePath, validationTest.message)
 		} else {
@@ -414,7 +414,7 @@ func (s *utilsTest) TestValidateRelLocationPath() {
 	}
 
 	for _, validationTest := range tests {
-		err := utils.ValidateRelLocationPath(validationTest.path)
+		err := utils.ValidateRelativeLocationPath(validationTest.path)
 		if !validationTest.passExpected {
 			s.EqualError(err, utils.ErrBadRelLocationPath, validationTest.message)
 		} else {

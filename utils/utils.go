@@ -37,32 +37,32 @@ func RemoveLeadingSlash(path string) string {
 	return strings.TrimLeft(path, "/")
 }
 
-// ValidateAbsFilePath ensures that a file path has a leading slash but not a trailing slash
-func ValidateAbsFilePath(name string) error {
+// ValidateAbsoluteFilePath ensures that a file path has a leading slash but not a trailing slash
+func ValidateAbsoluteFilePath(name string) error {
 	if !strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") {
 		return errors.New(ErrBadAbsFilePath)
 	}
 	return nil
 }
 
-// ValidateRelFilePath ensures that a file path has neither leading nor trailing slashes
-func ValidateRelFilePath(name string) error {
+// ValidateRelativeFilePath ensures that a file path has neither leading nor trailing slashes
+func ValidateRelativeFilePath(name string) error {
 	if strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") {
 		return errors.New(ErrBadRelFilePath)
 	}
 	return nil
 }
 
-// ValidateAbsLocationPath ensure that a file path has both leading and trailing slashes
-func ValidateAbsLocationPath(name string) error {
+// ValidateAbsoluteLocationPath ensure that a file path has both leading and trailing slashes
+func ValidateAbsoluteLocationPath(name string) error {
 	if !strings.HasPrefix(name, "/") || !strings.HasSuffix(name, "/") {
 		return errors.New(ErrBadAbsLocationPath)
 	}
 	return nil
 }
 
-// ValidateRelLocationPath ensure that a file path has no leading slash but has a trailing slash
-func ValidateRelLocationPath(name string) error {
+// ValidateRelativeLocationPath ensure that a file path has no leading slash but has a trailing slash
+func ValidateRelativeLocationPath(name string) error {
 	if strings.HasPrefix(name, "/") || !strings.HasSuffix(name, "/") {
 		return errors.New(ErrBadRelLocationPath)
 	}

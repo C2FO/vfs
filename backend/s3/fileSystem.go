@@ -36,7 +36,7 @@ func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
 	if volume == "" || name == "" {
 		return nil, errors.New("non-empty strings for bucket and key are required")
 	}
-	if err := utils.ValidateAbsFilePath(name); err != nil {
+	if err := utils.ValidateAbsoluteFilePath(name); err != nil {
 		return nil, err
 	}
 
@@ -55,7 +55,7 @@ func (fs *FileSystem) NewLocation(volume string, name string) (vfs.Location, err
 	if volume == "" || name == "" {
 		return nil, errors.New("non-empty strings for bucket and key are required")
 	}
-	if err := utils.ValidateAbsLocationPath(name); err != nil {
+	if err := utils.ValidateAbsoluteLocationPath(name); err != nil {
 		return nil, err
 	}
 
