@@ -80,8 +80,8 @@ func (s *vfsTestSuite) SetupSuite() {
 func (s *vfsTestSuite) TestScheme() {
 	for scheme, location := range s.testLocations {
 		fmt.Printf("************** TESTING scheme: %s **************\n", scheme)
-		//s.FileSystem(location)
-		//s.Location(location)
+		s.FileSystem(location)
+		s.Location(location)
 		s.File(location)
 	}
 }
