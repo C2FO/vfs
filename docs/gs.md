@@ -25,12 +25,12 @@ Or call directly:
     import "github.com/c2fo/vfs/backend/gs"
 
     func DoSomething() {
-        fs := gs.NewFilesystem()
+        fs := gs.NewFileSystem()
         ...
     }
 
 gs can be augmented with the following implementation-specific methods. [Backend](backend.md)
-returns [vfs.FileSystem](../README.md#type-filesystem) interface so it would have to be cast as gs.Filesystem to
+returns [vfs.FileSystem](../README.md#type-filesystem) interface so it would have to be cast as gs.FileSystem to
 use the following:
 
     func DoSomething() {
@@ -38,7 +38,7 @@ use the following:
         ...
 
         // cast if fs was created using backend.Backend().  Not necessary if created directly from gs.NewFilsystem().
-        fs = fs.(gs.Filesystem)
+        fs = fs.(gs.FileSystem)
 
         // to use your own "context"
         ctx := context.Background()
@@ -85,7 +85,7 @@ See: https://github.com/googleapis/google-cloud-go/tree/master/storage
 ```go
 const Scheme = "gs"
 ```
-Scheme defines the filesystem type.
+Scheme defines the file system type.
 
 #### type File
 
@@ -242,7 +242,7 @@ type FileSystem struct {
 }
 ```
 
-FileSystem implements [vfs.FileSystem](../README.md#type-filesystem) for the GCS filesystem.
+FileSystem implements [vfs.FileSystem](../README.md#type-filesystem) for the GCS file system.
 
 #### func  NewFileSystem
 
@@ -250,7 +250,7 @@ FileSystem implements [vfs.FileSystem](../README.md#type-filesystem) for the GCS
 func NewFileSystem() *FileSystem
 ```
 NewFileSystem initializer for [FileSystem](#type-filesystem) struct accepts google cloud storage
-client and returns Filesystem or error.
+client and returns FileSystem or error.
 
 #### func (*FileSystem) Client
 
@@ -293,7 +293,7 @@ Scheme return "gs" as the initial part of a file URI ie: gs://
 ```go
 func (fs *FileSystem) WithClient(client *storage.Client) *FileSystem
 ```
-WithClient passes in a google storage client and returns the filesystem
+WithClient passes in a google storage client and returns the FileSystem
 (chainable)
 
 #### func (*FileSystem) WithContext
@@ -301,14 +301,14 @@ WithClient passes in a google storage client and returns the filesystem
 ```go
 func (fs *FileSystem) WithContext(ctx context.Context) *FileSystem
 ```
-WithContext passes in user context and returns the filesystem (chainable)
+WithContext passes in user context and returns the FileSystem (chainable)
 
 #### func (*FileSystem) WithOptions
 
 ```go
 func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem
 ```
-WithOptions sets options for client and returns the filesystem (chainable)
+WithOptions sets options for client and returns the FileSystem (chainable)
 
 #### type Location
 

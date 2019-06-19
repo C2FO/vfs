@@ -65,7 +65,7 @@ func (l *Location) Path() string {
 	return utils.EnsureLeadingSlash(utils.EnsureTrailingSlash(l.prefix))
 }
 
-// Exists returns true if the bucket exists, and the user in the underlying s3.fileSystem.Client has the appropriate
+// Exists returns true if the bucket exists, and the user in the underlying s3.fileSystem.Client() has the appropriate
 // permissions. Will receive false without an error if the bucket simply doesn't exist. Otherwise could receive
 // false and any errors passed back from the API.
 func (l *Location) Exists() (bool, error) {
@@ -151,7 +151,7 @@ func (l *Location) DeleteFile(fileName string) error {
 	return file.Delete()
 }
 
-// FileSystem returns a vfs.fileSystem interface of the location's underlying fileSystem.
+// FileSystem returns a vfs.FileSystem interface of the location's underlying file system.
 func (l *Location) FileSystem() vfs.FileSystem {
 	return l.fileSystem
 }

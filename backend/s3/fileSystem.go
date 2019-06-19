@@ -12,11 +12,11 @@ import (
 	"github.com/c2fo/vfs/v5/utils"
 )
 
-// Scheme defines the filesystem type.
+// Scheme defines the file system type.
 const Scheme = "s3"
 const name = "AWS S3"
 
-// FileSystem implements vfs.Filesystem for the S3 filesystem.
+// FileSystem implements vfs.FileSystem for the S3 file system.
 type FileSystem struct {
 	client  s3iface.S3API
 	options vfs.Options
@@ -31,7 +31,7 @@ func (fs *FileSystem) Retry() vfs.Retry {
 // NewFile function returns the s3 implementation of vfs.File.
 func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
 	if fs == nil {
-		return nil, errors.New("non-nil s3.fileSystem pointer is required")
+		return nil, errors.New("non-nil s3.FileSystem pointer is required")
 	}
 	if volume == "" || name == "" {
 		return nil, errors.New("non-empty strings for bucket and key are required")
@@ -50,7 +50,7 @@ func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
 // NewLocation function returns the s3 implementation of vfs.Location.
 func (fs *FileSystem) NewLocation(volume string, name string) (vfs.Location, error) {
 	if fs == nil {
-		return nil, errors.New("non-nil s3.fileSystem pointer is required")
+		return nil, errors.New("non-nil s3.FileSystem pointer is required")
 	}
 	if volume == "" || name == "" {
 		return nil, errors.New("non-empty strings for bucket and key are required")
@@ -97,7 +97,7 @@ func (fs *FileSystem) Client() (s3iface.S3API, error) {
 	return fs.client, nil
 }
 
-// WithOptions sets options for client and returns the filesystem (chainable)
+// WithOptions sets options for client and returns the file system (chainable)
 func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 
 	// only set options if vfs.Options is s3.Options
@@ -109,7 +109,7 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 	return fs
 }
 
-// WithClient passes in an s3 client and returns the filesystem (chainable)
+// WithClient passes in an s3 client and returns the file system (chainable)
 func (fs *FileSystem) WithClient(client interface{}) *FileSystem {
 	switch client.(type) {
 	case s3iface.S3API, *s3.S3:
@@ -119,12 +119,12 @@ func (fs *FileSystem) WithClient(client interface{}) *FileSystem {
 	return fs
 }
 
-// NewFileSystem initializer for fileSystem struct accepts aws-sdk s3iface.S3API client and returns Filesystem or error.
+// NewFileSystem initializer for FileSystem struct accepts aws-sdk s3iface.S3API client and returns Filesystem or error.
 func NewFileSystem() *FileSystem {
 	return &FileSystem{}
 }
 
 func init() {
-	//registers a default Filesystem
+	//registers a default FileSystem
 	backend.Register(Scheme, NewFileSystem())
 }

@@ -100,7 +100,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	return file.Seek(offset, whence)
 }
 
-// Exists true if the file exists on the filesystem, otherwise false, and an error, if any.
+// Exists true if the file exists on the file system, otherwise false, and an error, if any.
 func (f *File) Exists() (bool, error) {
 	_, err := os.Stat(f.Path())
 	if err != nil {

@@ -10,8 +10,8 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/c2fo/vfs)](https://goreportcard.com/report/github.com/c2fo/vfs)
 [![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)
 
-Package vfs provides a pluggable, extensible, and opinionated set of filesystem
-functionality for Go across a number of filesystem types such as os, S3, and
+Package vfs provides a pluggable, extensible, and opinionated set of file system
+functionality for Go across a number of file system types such as os, S3, and
 GCS.
 
 
@@ -21,16 +21,16 @@ When building our platform, initially we wrote a library that was something to
 the effect of
 
       if config.DISK == "S3" {
-    	  // do some s3 filesystem operation
+    	  // do some s3 file system operation
       } else if config.DISK == "mock" {
           // fake something
       } else {
           // do some native os.xxx operation
       }
 
-Not only was ugly but because the behaviors of each "filesystem" were 
+Not only was ugly but because the behaviors of each "file system" were 
 different and we had to constantly alter the file locations and pass a bucket string (even
-if the fs didn't know what a bucket was).
+if the file system didn't know what a bucket was).
 
 We found a handful of third-party libraries that were interesting but none of
 them had everything we needed/wanted. Of particular inspiration was
@@ -38,22 +38,22 @@ https://github.com/spf13/afero in its composition of the super-powerful stdlib
 [io.*](https://godoc.org/io) interfaces. Unfortunately, it didn't support Google Cloud Storage and there
 was still a lot of passing around of strings and structs. Few, if any, of the
 vfs-like libraries provided interfaces to easily and confidently create new
-filesystem backends.
+file system backends.
 
 ###### What we needed/wanted was the following(and more):
 
 * self-contained set of structs that could be passed around like a file/dir handle
 * the struct would represent an existing or nonexistent file/dir
-* provide common (and only common) functionality across all filesystem so that after initialization, we don't care
-      what the underlying filesystem is and can therefore write our code agnostically/portably
+* provide common (and only common) functionality across all file system so that after initialization, we don't care
+      what the underlying file system is and can therefore write our code agnostically/portably
 * use [io.*](https://godoc.org/io) interfaces such as [io.Reader](https://godoc.org/io#Reader) and [io.Writer](https://godoc.org/io#Writer) without needing to call a separate function
-* extensibility to easily add other needed filesystems like Microsoft Azure Cloud File Storage or SFTP
+* extensibility to easily add other needed file systems like Microsoft Azure Cloud File Storage or SFTP
 * prefer native atomic functions when possible (ie S3 to S3 moving would use the native move api call rather than
       copy-delete)
-* a uniform way of addressing files regardless of filesystem.  This is why we use complete URI's in vfssimple
+* a uniform way of addressing files regardless of file system.  This is why we use complete URI's in vfssimple
 * [fmt.Stringer](https://godoc.org/fmt#Stringer) interface so that the file struct passed to a log message (or other Stringer use) would show the URI
-* mockable filesystem
-* pluggability so that third-party implemenations of our interfaces could be used
+* mockable file system
+* pluggability so that third-party implementations of our interfaces could be used
 
 
 ### Install
@@ -65,13 +65,13 @@ Go install:
 
 ### Usage
 
-We provide [vfssimple](docs/vfssimple.md) as basic way of initializing filesystem backends (see each
+We provide [vfssimple](docs/vfssimple.md) as basic way of initializing file system backends (see each
 implementations's docs about authentication). [vfssimple](docs/vfssimple.md) pulls in every c2fo/vfs
 backend. If you need to reduce the backend requirements (and app memory
 footprint) or add a third party backend, you'll need to implement your own
 "factory". See [backend](docs/backend.md) doc for more info.
 
-You can then use those filesystems to initialize locations which you'll be
+You can then use those file systems to initialize locations which you'll be
 referencing frequently, or initialize files directly
 
     osFile, err := vfssimple.NewFile("file:///path/to/file.txt")
@@ -82,7 +82,7 @@ referencing frequently, or initialize files directly
 
     osTmpFile, err := osLocation.NewFile("anotherFile.txt") // file at /tmp/anotherFile.txt
 
-With a number of files and locations between s3 and the local filesystem you can
+With a number of files and locations between s3 and the local file system you can
 perform a number of actions without any consideration for the system's api or
 implementation details.
 
@@ -112,7 +112,7 @@ File's [io.*](https://godoc.org/io) interfaces may be used directly:
 will first delegate actual copying in the following:
   1. if the io.Reader also implements io.WriterTo, WriteTo() will do the copy
   2. if the io.Writer also implements io.ReaderFrom, ReadFrom() will do the copy
-  3. finally, if neither 1 or 2, io.Copy wil do it's own buffered copy
+  3. finally, if neither 1 or 2, io.Copy will do it's own buffered copy
 
 In case 3, and most implementations of cases 1 and 2, if reader is empty, Write() never gets called. What that means for
 vfs is there is no way for us to ensure that an empty file does or doesn't get written on an io.Copy().  For instance 
@@ -177,17 +177,17 @@ for more information.
 
 ###### absolute path
 - A path is said to be absolute if it provides the entire context
-need to find a file, including the filesystem root. An absolute path must
+need to find a file, including the file system root. An absolute path must
 begin with a slash and may include . and .. directories.
 
 ###### file path
 - A file path ends with a filename and therefore may not end with a slash.  It may be relative or absolute.
 
 ###### location path
-- A location/dir path must end with a slash.  It may be relative or absolute.
+- A location/directory path must end with a slash.  It may be relative or absolute.
 
 ###### relative path
-- A relative path is a way to locate a dir or file relative to
+- A relative path is a way to locate a directory or file relative to
 another directory. A relative path may not begin with a slash but may include .
 and .. directories.
 
@@ -209,7 +209,7 @@ type File interface {
 	io.Writer
 	fmt.Stringer
 
-	// Exists returns boolean if the file exists on the filesystem.  Returns an error, if any.
+	// Exists returns boolean if the file exists on the file system.  Returns an error, if any.
 	Exists() (bool, error)
 
 	// Location returns the vfs.Location for the File.
@@ -246,7 +246,7 @@ type File interface {
 	//   * The current instance of the file will be removed.
 	MoveToFile(file File) error
 
-	// Delete unlinks the File on the filesystem.
+	// Delete unlinks the File on the file system.
 	Delete() error
 
 	// LastModified returns the timestamp the file was last modified (as *time.Time).
@@ -271,8 +271,8 @@ type File interface {
 }
 ```
 
-File represents a file on a filesystem. A File may or may not actually exist on
-the filesystem.
+File represents a file on a file system. A File may or may not actually exist on
+the file system.
 
 #### type FileSystem
 
@@ -283,7 +283,7 @@ type FileSystem interface {
 	//   * Accepts volume and an absolute file path.
 	//   * Upon success, a vfs.File, representing the file's new path (location path + file relative path), will be returned.
 	//   * On error, nil is returned for the file.
-	//   * Note that not all filesystems will have a "volume" and will therefore be "":
+	//   * Note that not all file systems will have a "volume" and will therefore be "":
 	//       file:///path/to/file has a volume of "" and name /path/to/file
 	//     whereas
 	//       s3://mybucket/path/to/file has a volume of "mybucket and name /path/to/file
@@ -294,7 +294,7 @@ type FileSystem interface {
 	// NewLocation initializes a Location on the specified volume with the given path.
 	//
 	//   * Accepts volume and an absolute location path.
-	//   * The file may or may not already exist. Note that on key-store filesystems like S3 or GCS, paths never truly exist.
+	//   * The file may or may not already exist. Note that on key-store file systems like S3 or GCS, paths never truly exist.
 	//   * On error, nil is returned for the location.
 	//
 	// See NewFile for note on volume.
@@ -306,12 +306,12 @@ type FileSystem interface {
 	// Scheme returns the uri scheme used by the FileSystem: s3, file, gs, etc.
 	Scheme() string
 
-	// Retry will return the retry function to be used by any filesystem.
+	// Retry will return the retry function to be used by any file system.
 	Retry() Retry
 }
 ```
 
-FileSystem represents a filesystem with any authentication accounted for.
+FileSystem represents a file system with any authentication accounted for.
 
 #### type Location
 
@@ -348,14 +348,14 @@ type Location interface {
 	// Volume returns the volume as string. In URI parlance, volume equates to authority.
 	// For example s3://mybucket/path/to/file.txt, volume would return "mybucket".
 	//
-	// Note: Some filesystems may not have a volume and will return "".
+	// Note: Some file systems may not have a volume and will return "".
 	Volume() string
 
 	// Path returns absolute location path, ie /some/path/to/.  An absolute path must be resolved to it's shortest path:
 	// see path.Clean
 	Path() string
 
-	// Exists returns boolean if the location exists on the filesystem. Returns an error if any.
+	// Exists returns boolean if the location exists on the file system. Returns an error if any.
 	Exists() (bool, error)
 
 	// NewLocation is an initializer for a new Location relative to the existing one.
@@ -409,9 +409,9 @@ type Location interface {
 }
 ```
 
-Location represents a filesystem path which serves as a start point for
+Location represents a file system path which serves as a start point for
 directory-like functionality. A location may or may not actually exist on the
-filesystem.
+file system.
 
 #### type Options
 
@@ -419,7 +419,7 @@ filesystem.
 type Options interface{}
 ```
 
-Options are structs that contain various options specific to the filesystem
+Options are structs that contain various options specific to the file system
 
 #### type Retry
 

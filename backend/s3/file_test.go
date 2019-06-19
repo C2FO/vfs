@@ -414,7 +414,7 @@ func (ts *fileTestSuite) TestNewFile() {
 	fs := &FileSystem{}
 	// fs is nil
 	_, err := fs.NewFile("", "")
-	ts.Errorf(err, "non-nil s3.fileSystem pointer is required")
+	ts.Errorf(err, "non-nil s3.FileSystem pointer is required")
 
 	// bucket is ""
 	_, err = fs.NewFile("", "asdf")

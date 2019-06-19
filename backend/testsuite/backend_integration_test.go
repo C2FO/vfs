@@ -88,16 +88,16 @@ func (s *vfsTestSuite) TestScheme() {
 
 //Test FileSystem
 func (s *vfsTestSuite) FileSystem(baseLoc vfs.Location) {
-	fmt.Println("****** testing filesystem ******")
+	fmt.Println("****** testing vfs.FileSystem ******")
 
-	//setup filesystem
+	//setup FileSystem
 	fs := baseLoc.FileSystem()
 	// NewFile initializes a File on the specified volume at path 'absFilePath'.
 	//
 	//   * Accepts volume and an absolute file path.
 	//   * Upon success, a vfs.File, representing the file's new path (location path + file relative path), will be returned.
 	//   * On error, nil is returned for the file.
-	//   * Note that not all filesystems will have a "volume" and will therefore be "":
+	//   * Note that not all file systems will have a "volume" and will therefore be "":
 	//       file:///path/to/file has a volume of "" and name /path/to/file
 	//     whereas
 	//       s3://mybucket/path/to/file has a volume of "mybucket and name /path/to/file
@@ -127,7 +127,7 @@ func (s *vfsTestSuite) FileSystem(baseLoc vfs.Location) {
 	// NewLocation initializes a Location on the specified volume with the given path.
 	//
 	//   * Accepts volume and an absolute location path.
-	//   * The file may or may not already exist. Note that on key-store filesystems like S3 or GCS, paths never truly exist.
+	//   * The file may or may not already exist. Note that on key-store file systems like S3 or GCS, paths never truly exist.
 	//   * On error, nil is returned for the location.
 	//
 	// See NewFile for note on volume.
@@ -156,7 +156,7 @@ func (s *vfsTestSuite) FileSystem(baseLoc vfs.Location) {
 
 //Test Location
 func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
-	fmt.Println("****** testing location ******")
+	fmt.Println("****** testing vfs.Location ******")
 
 	srcLoc, err := baseLoc.NewLocation("locTestSrc/")
 	s.NoError(err, "there should be no error")
@@ -268,7 +268,7 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 	prefix := fmt.Sprintf("%s://%s%s", cdTestLoc.FileSystem().Scheme(), cdTestLoc.Volume(), "/")
 	s.True(strings.HasPrefix(cdTestLoc.URI(), prefix), "should start with schema and abs slash")
 
-	/* Exists returns boolean if the location exists on the filesystem. Returns an error if any.
+	/* Exists returns boolean if the location exists on the file system. Returns an error if any.
 
 		   TODO: *************************************************************************************************************
 			     note that Exists is not consistent among implementations. GCSs and S3 always return true if the bucket exist.
@@ -413,7 +413,7 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 
 //Test File
 func (s *vfsTestSuite) File(baseLoc vfs.Location) {
-	fmt.Println("****** testing file ******")
+	fmt.Println("****** testing vfs.File ******")
 	srcLoc, err := baseLoc.NewLocation("fileTestSrc/")
 	s.NoError(err)
 	defer func() {
@@ -736,7 +736,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 	*/
 
 	/*
-		Delete unlinks the File on the filesystem.
+		Delete unlinks the File on the file system.
 
 		Delete() error
 	*/

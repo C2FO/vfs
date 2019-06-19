@@ -10,21 +10,21 @@ import (
 var mmu sync.RWMutex
 var m map[string]vfs.FileSystem
 
-// Register a new filesystem in backend map
+// Register a new file system in backend map
 func Register(name string, v vfs.FileSystem) {
 	mmu.Lock()
 	m[name] = v
 	mmu.Unlock()
 }
 
-// Unregister unregisters a filesystem from backend map
+// Unregister unregisters a file system from backend map
 func Unregister(name string) {
 	mmu.Lock()
 	delete(m, name)
 	mmu.Unlock()
 }
 
-// UnregisterAll unregisters all filesystems from backend map
+// UnregisterAll unregisters all file systems from backend map
 func UnregisterAll() {
 	// mainly for tests
 	mmu.Lock()
@@ -32,7 +32,7 @@ func UnregisterAll() {
 	mmu.Unlock()
 }
 
-// Backend returns the backend filesystem by name
+// Backend returns the backend file system by name
 func Backend(name string) vfs.FileSystem {
 	mmu.RLock()
 	defer mmu.RUnlock()

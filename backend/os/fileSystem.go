@@ -8,11 +8,11 @@ import (
 	"github.com/c2fo/vfs/v5/utils"
 )
 
-//Scheme defines the filesystem type.
+//Scheme defines the file system type.
 const Scheme = "file"
 const name = "os"
 
-// FileSystem implements vfs.Filesystem for the OS filesystem.
+// FileSystem implements vfs.Filesystem for the OS file system.
 type FileSystem struct{}
 
 // Retry will return a retrier provided via options, or a no-op if none is provided.

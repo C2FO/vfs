@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Defined stricter definitions in interfaces, largely related to input requiements being more
 URI compliant.
 - FileSystem's NewFile and NewLocation required absolute paths.  Locations NewFile and NewLocation require relative paths.
-- Added/Updated several now utils functions for URI validation across implementations.
+- Added/Updated several new utils functions for URI validation across implementations.
 - Ensure native methods are being used for atomic functions like copy or move/rename where possible
 - Document expected behavior with empty readers in all copy and move function as well as io.Copy
 - ListByPrefix now allows relative paths.
@@ -21,7 +21,7 @@ between implementations.
 - Examples of io.Copy usage in docs.
 ### Fixed
 - Fixed [#10](https://github.com/C2FO/vfs/issues/10)
-- Fixed vfssimple bug that would return os filesystem if the uri had the word 'file' anywhere in it even if was s3, like s3://bucket/path/to/file.txt
+- Fixed vfssimple bug that would return os file system if the uri had the word 'file' anywhere in it even if was s3, like s3://bucket/path/to/file.txt
 - Fixed bug where MoveToLocation was returning the old file with updated location rather
 than a brand new file with new location.  Since File may represent a non-existant file, the original file should still be valid.
 

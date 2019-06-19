@@ -13,7 +13,7 @@ import (
 )
 
 // NewLocation is a convenience function that allows for instantiating a location based on a uri string. Any
-// backend filesystem is supported, though some may require prior configuration. See the docs for
+// backend file system is supported, though some may require prior configuration. See the docs for
 // specific requirements of each
 func NewLocation(uri string) (vfs.Location, error) {
 	fs, host, path, err := parseSupportedURI(uri)
@@ -25,7 +25,7 @@ func NewLocation(uri string) (vfs.Location, error) {
 }
 
 // NewFile is a convenience function that allows for instantiating a file based on a uri string. Any
-// backend filesystem is supported, though some may require prior configuration. See the docs for
+// backend file system is supported, though some may require prior configuration. See the docs for
 // specific requirements of each.
 func NewFile(uri string) (vfs.File, error) {
 	fs, host, path, err := parseSupportedURI(uri)

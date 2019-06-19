@@ -12,11 +12,11 @@ import (
 	"github.com/c2fo/vfs/v5/utils"
 )
 
-//Scheme defines the filesystem type.
+//Scheme defines the file system type.
 const Scheme = "gs"
 const name = "Google Cloud Storage"
 
-// FileSystem implements vfs.Filesystem for the GCS filesystem.
+// FileSystem implements vfs.FileSystem for the GCS file system.
 type FileSystem struct {
 	client  *storage.Client
 	ctx     context.Context
@@ -52,7 +52,7 @@ func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
 // NewLocation function returns the GCS implementation of vfs.Location.
 func (fs *FileSystem) NewLocation(volume string, name string) (loc vfs.Location, err error) {
 	if fs == nil {
-		return nil, errors.New("non-nil gs.fileSystem pointer is required")
+		return nil, errors.New("non-nil gs.FileSystem pointer is required")
 	}
 	if volume == "" || name == "" {
 		return nil, errors.New("non-empty strings for bucket and key are required")
@@ -92,7 +92,7 @@ func (fs *FileSystem) Client() (*storage.Client, error) {
 	return fs.client, nil
 }
 
-// WithOptions sets options for client and returns the filesystem (chainable)
+// WithOptions sets options for client and returns the file system (chainable)
 func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 	fs.options = opts
 	//we set client to nil to ensure that a new client is created using the new context when Client() is called
@@ -100,7 +100,7 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 	return fs
 }
 
-// WithContext passes in user context and returns the filesystem (chainable)
+// WithContext passes in user context and returns the file system (chainable)
 func (fs *FileSystem) WithContext(ctx context.Context) *FileSystem {
 	fs.ctx = ctx
 	//we set client to nil to ensure that a new client is created using the new context when Client() is called
@@ -108,7 +108,7 @@ func (fs *FileSystem) WithContext(ctx context.Context) *FileSystem {
 	return fs
 }
 
-// WithClient passes in a google storage client and returns the filesystem (chainable)
+// WithClient passes in a google storage client and returns the file system (chainable)
 func (fs *FileSystem) WithClient(client *storage.Client) *FileSystem {
 	fs.client = client
 	return fs

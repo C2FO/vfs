@@ -7,14 +7,14 @@ import (
 	"time"
 )
 
-// FileSystem represents a filesystem with any authentication accounted for.
+// FileSystem represents a file system with any authentication accounted for.
 type FileSystem interface {
 	// NewFile initializes a File on the specified volume at path 'absFilePath'.
 	//
 	//   * Accepts volume and an absolute file path.
 	//   * Upon success, a vfs.File, representing the file's new path (location path + file relative path), will be returned.
 	//   * On error, nil is returned for the file.
-	//   * Note that not all filesystems will have a "volume" and will therefore be "":
+	//   * Note that not all file systems will have a "volume" and will therefore be "":
 	//       file:///path/to/file has a volume of "" and name /path/to/file
 	//     whereas
 	//       s3://mybucket/path/to/file has a volume of "mybucket and name /path/to/file
@@ -25,7 +25,7 @@ type FileSystem interface {
 	// NewLocation initializes a Location on the specified volume with the given path.
 	//
 	//   * Accepts volume and an absolute location path.
-	//   * The file may or may not already exist. Note that on key-store filesystems like S3 or GCS, paths never truly exist.
+	//   * The file may or may not already exist. Note that on key-store file systems like S3 or GCS, paths never truly exist.
 	//   * On error, nil is returned for the location.
 	//
 	// See NewFile for note on volume.
@@ -37,12 +37,12 @@ type FileSystem interface {
 	// Scheme returns the uri scheme used by the FileSystem: s3, file, gs, etc.
 	Scheme() string
 
-	// Retry will return the retry function to be used by any filesystem.
+	// Retry will return the retry function to be used by any file system.
 	Retry() Retry
 }
 
-// Location represents a filesystem path which serves as a start point for directory-like functionality.  A location may
-// or may not actually exist on the filesystem.
+// Location represents a file system path which serves as a start point for directory-like functionality.  A location may
+// or may not actually exist on the file system.
 type Location interface {
 	// String returns the fully qualified absolute URI for the Location.  IE, file://bucket/some/path/
 	fmt.Stringer
@@ -75,14 +75,14 @@ type Location interface {
 	// Volume returns the volume as string. In URI parlance, volume equates to authority.
 	// For example s3://mybucket/path/to/file.txt, volume would return "mybucket".
 	//
-	// Note: Some filesystems may not have a volume and will return "".
+	// Note: Some file systems may not have a volume and will return "".
 	Volume() string
 
 	// Path returns absolute location path, ie /some/path/to/.  An absolute path must be resolved to it's shortest path:
 	// see path.Clean
 	Path() string
 
-	// Exists returns boolean if the location exists on the filesystem. Returns an error if any.
+	// Exists returns boolean if the location exists on the file system. Returns an error if any.
 	Exists() (bool, error)
 
 	// NewLocation is an initializer for a new Location relative to the existing one.
@@ -137,7 +137,7 @@ type Location interface {
 	URI() string
 }
 
-// File represents a file on a filesystem.  A File may or may not actually exist on the filesystem.
+// File represents a file on a file system.  A File may or may not actually exist on the file system.
 type File interface {
 	io.Closer
 	io.Reader
@@ -145,7 +145,7 @@ type File interface {
 	io.Writer
 	fmt.Stringer
 
-	// Exists returns boolean if the file exists on the filesystem.  Returns an error, if any.
+	// Exists returns boolean if the file exists on the file system.  Returns an error, if any.
 	Exists() (bool, error)
 
 	// Location returns the vfs.Location for the File.
@@ -182,7 +182,7 @@ type File interface {
 	//   * The current instance of the file will be removed.
 	MoveToFile(file File) error
 
-	// Delete unlinks the File on the filesystem.
+	// Delete unlinks the File on the file system.
 	Delete() error
 
 	// LastModified returns the timestamp the file was last modified (as *time.Time).
@@ -206,7 +206,7 @@ type File interface {
 	URI() string
 }
 
-// Options are structs that contain various options specific to the filesystem
+// Options are structs that contain various options specific to the file system
 type Options interface{}
 
 // Retry is a function that can be used to wrap any operation into a definable retry operation. The wrapped argument

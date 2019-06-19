@@ -182,7 +182,7 @@ func (l *Location) ChangeDir(relativePath string) error {
 	return nil
 }
 
-// FileSystem returns a vfs.FileSystem interface of the location's underlying fileSystem.
+// FileSystem returns a vfs.FileSystem interface of the location's underlying file system.
 func (l *Location) FileSystem() vfs.FileSystem {
 	return l.fileSystem
 }

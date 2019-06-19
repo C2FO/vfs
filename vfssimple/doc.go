@@ -1,5 +1,5 @@
 /*
-Package vfssimple provides a basic and easy to use set of functions to any supported backend filesystem by using full URI's:
+Package vfssimple provides a basic and easy to use set of functions to any supported backend file system by using full URI's:
   * Local OS:             file:///some/path/to/file.txt
   * Amazon S3:            s3://mybucket/path/to/file.txt
   * Google Cloud Storage: gs://mybucket/path/to/file.txt
@@ -36,7 +36,7 @@ Just import vfssimple.
 
 Authentication and Options
 
-vfssimple is largely an example of how to initialize a set of backend filesystems.  It only provides a default
+vfssimple is largely an example of how to initialize a set of backend file systems.  It only provides a default
 initialization of the individual file systems.  See backend docs for specific authentication info for each backend but
 generally speaking, most backends can use Environment variables to set credentials or client options.
 
