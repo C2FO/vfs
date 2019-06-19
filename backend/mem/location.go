@@ -148,12 +148,9 @@ func (l *Location) ChangeDir(relLocPath string) error {
 //FileSystem returns the type of filesystem location exists on, if it exists at all
 func (l *Location) FileSystem() vfs.FileSystem {
 
-	existence, _ := l.Exists()
-	if existence {
 
 		return l.fileSystem
-	}
-	return nil
+
 
 }
 
@@ -174,10 +171,10 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 		return nil, lerr
 	}
 
-	file := &File{timeStamp: time.Now(), isRef: false, name: path.Base(nameStr), cursor: 0,
-		isOpen: false, exists: false, location: loc, fileSystem: l.fileSystem}
-	l.fileSystem.fsMap[l.volume][nameStr] = &obj{true, file}
-	l.fileSystem.fsMap[l.volume][path.Dir(nameStr)] = &obj{false, loc}
+	file := &File{timeStamp: time.Now(), name: path.Base(nameStr), cursor: 0,
+		isOpen: false, exists: false, location: loc}
+//	l.fileSystem.fsMap[l.volume][nameStr] = &obj{true, file}
+//	l.fileSystem.fsMap[l.volume][path.Dir(nameStr)] = &obj{false, loc}
 
 	return file, nil
 

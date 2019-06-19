@@ -29,11 +29,13 @@ func (fs *FileSystem) Retry() vfs.Retry {
 
 /*
 NewFile function returns the mem implementation of vfs.File.
-Since this is inside "fileSystem" we assume that the path given for name is absolute.
-If a non-absolute path is given, a leading slashed is tagged onto the path to make it so.
-Additionally, a file does not technically exist until it is written to (common to write zero bytes
-as a way of "initializing" the file). Although it may exist on the fsMap, its member "exists" won't
-become true until something is written
+Since this is inside "fileSystem" we assume that the caller knows that the CWD is the root.
+If a non-absolute path is given, an error is thrown.Additionally, a file does not
+technically exist until a call to "Touch()" is made on it. The "Touch" call links the
+file with the fileSystem's map and brings it into existence.
+If a file is written to before a touch call, Write() will take care of that call.  This is
+true for other functions as well and existence only poses a problem in the context of deletion
+or copying FROM a non-existent file.
 */
 func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, error) {
 
@@ -46,27 +48,12 @@ func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, erro
 	if nerr != nil {
 		return nil, nerr
 	}
-	file.fileSystem = fs
 	tmp, err := fs.NewLocation(volume, path.Dir(path.Clean(absFilePath)))
 	if err != nil {
 		return nil, err
 	}
-	var locObject obj
-	var fileObject obj
-	fileObject.i = file
-	fileObject.isFile = true
-	locObject.i = tmp
-	locObject.isFile = false
-	file.location = tmp
-	if _, ok := fs.fsMap[volume]; !ok { //if the objMap map does not exist for the volume yet, then we go ahead and create it.
-		fs.fsMap[volume] = make(objMap)
-	}
-	fs.fsMap[volume][absFilePath] = &fileObject
-	locationPath:=utils.AddTrailingSlash(path.Clean(path.Dir(absFilePath)))
-	if _,ok := fs.fsMap[volume][locationPath];!ok{
-		fs.fsMap[volume][locationPath] = &locObject
-	}
 
+	file.location = tmp
 	return file, nil
 }
 

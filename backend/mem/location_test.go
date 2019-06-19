@@ -39,8 +39,7 @@ func (s *memLocationTest) SetupTest() {
 	s.testFile = file.(*File)
 	s.fileSystem = fs
 	//s.fileSystem.Initialize()
-	s.NoError(WriteZeroBytes(s.testFile), "Unexpected error writing zero bytes to file")
-
+	Touch(s.testFile)
 }
 
 //TestFSName tests out whether or not the location knows what filesystem it is on
@@ -87,24 +86,31 @@ func (s *memLocationTest) TestList_NonExistentDirectory() {
 //TestListByPrefix creates some files and provides a prefix. Succeeds on correct string slice returned
 func (s *memLocationTest) TestListByPrefix() {
 
-	_, nerr := s.fileSystem.NewFile("", "/foo.txt")
+	f1, nerr := s.fileSystem.NewFile("", "/foo.txt")
 	s.NoError(nerr, "Unexpected error creating a new file")
+	Touch(f1)
 
-	_, nerr2 := s.fileSystem.NewFile("", "/home/test_files/subdir/file1.txt")
+	f2, nerr2 := s.fileSystem.NewFile("", "/home/test_files/subdir/file1.txt")
 	s.NoError(nerr2, "Unexpected error creating a new file")
+	Touch(f2)
 
-	_, nerr3 := s.fileSystem.NewFile("", "/home/test_files/subdir/file2.txt")
+	f3, nerr3 := s.fileSystem.NewFile("", "/home/test_files/subdir/file2.txt")
 	s.NoError(nerr3, "Unexpected error creating a new file")
+	Touch(f3)
 
-	_, nerr4 := s.fileSystem.NewFile("", "/home/directories/test/mat.txt")
+	f4, nerr4 := s.fileSystem.NewFile("", "/home/directories/test/mat.txt")
 	s.NoError(nerr4, "Unexpected error creating a new file")
+	Touch(f4)
 
-	_, nerr5 := s.fileSystem.NewFile("", "/test/files/car.txt")
+	f5, nerr5 := s.fileSystem.NewFile("", "/test/files/car.txt")
 	s.NoError(nerr5, "Unexpected error creating a new file")
+	Touch(f5)
 
 	loc, lerr := s.fileSystem.NewLocation("", "/home/test_files/subdir")
 	s.NoError(lerr, "Unexpected error creating a location")
-	nameSlice, _ := loc.ListByPrefix("f")
+
+	nameSlice, lerr:= loc.ListByPrefix("f")
+	s.NoError(lerr,"Unexpected error obtaining list by prefix")
 	expectedSlice := []string{"file1.txt", "file2.txt"}
 	s.Equal(expectedSlice, nameSlice)
 	emptySlice, _ := s.testFile.Location().ListByPrefix("m")
@@ -117,7 +123,7 @@ func (s *memLocationTest) TestListByRegex() {
 	newFile, nerr := s.fileSystem.NewFile("", "/test_files/test.txt")
 	s.NoError(nerr, "Unexpected error creating a new file")
 
-	s.NoError(WriteZeroBytes(newFile), "Unexpected error writing zero bytes")
+	Touch(newFile)
 	expected := []string{"test.txt"}
 
 	regex, comperr := regexp.Compile("[est]+")
@@ -184,7 +190,7 @@ func (s *memLocationTest) TestNewLocation2() {
 	otherFile, lerr := loc.NewFile("dir/file2.txt")
 	s.NoError(lerr, "Unexpected error creating a file from location")
 
-	s.NoError(WriteZeroBytes(otherFile), "Unexpected error writing zero bytes")
+	Touch(otherFile)
 	s.Equal(newFile.Location().Path(), otherFile.Location().Path(), "Absolute location paths should be equal")
 
 }
@@ -205,7 +211,7 @@ func (s *memLocationTest) TestChangeDir() {
 	newFile, nerr := s.fileSystem.NewFile("", "/dir/to/change/change.txt")
 	s.NoError(nerr, "Unexpected error creating a new file")
 
-	s.NoError(WriteZeroBytes(newFile), "Unexpected error writing to file")
+	Touch(newFile)
 	loc := newFile.Location()
 
 	//changing directory
@@ -221,7 +227,7 @@ func (s *memLocationTest) TestVolume() {
 
 	newFile, nerr := s.fileSystem.NewFile("D:", "/path/to/file/example.txt")
 	s.NoError(nerr, "Unexpected error creating a file")
-	s.NoError(WriteZeroBytes(newFile), "Unexpected error writing zero bytes")
+	Touch(newFile)
 	s.NoError(newFile.Close(), "Unexpected error closing file")
 	// For Unix, this returns an empty string. For windows, it would be something like 'C:'
 	s.Equal("D:", newFile.Location().Volume())
@@ -232,7 +238,7 @@ func (s *memLocationTest) TestPath() {
 	file, nerr := s.fileSystem.NewFile("", "/some/file/test.txt")
 	s.NoError(nerr, "Unexpected error creating a new file")
 
-	s.NoError(WriteZeroBytes(file), "Unexpected write error")
+	Touch(file)
 	location := file.Location()
 	s.Equal("/some/file/", location.Path())
 	//deleting file
@@ -243,7 +249,7 @@ func (s *memLocationTest) TestPath() {
 func (s *memLocationTest) TestURI() {
 	file, nerr := s.fileSystem.NewFile("", "/some/file/test.txt")
 	s.NoError(nerr, "Unexpected error creating a new file")
-	s.NoError(WriteZeroBytes(file),"Unexpected error writing zero bytes")
+	Touch(file)
 	location := file.Location()
 	_, eerr := location.Exists()
 	s.NoError(eerr, "Unexpected error checking for existence")
@@ -257,7 +263,7 @@ func (s *memLocationTest) TestStringer() {
 	file, nerr := s.fileSystem.NewFile("C", "/some/file/test.txt")
 	s.NoError(nerr, "Unexpected error creating a new file")
 
-	s.NoError(WriteZeroBytes(file), "Unexpected error writing zero bytes to file")
+	Touch(file)
 	location := file.Location()
 	expected := "mem://C/some/file/"
 	s.Equal(expected, location.String(), "%s does not match %s", location.String(), expected)
@@ -271,15 +277,15 @@ func (s *memLocationTest) TestDeleteFile() {
 	newFile, err := s.fileSystem.NewFile("", "/home/bar.txt")
 	s.NoError(err, "Unexpected error creating a new file")
 	//attempt to delete newFile
-	s.Error(newFile.Delete()    , "Expected existence error")         //expected an error since newFile does not yet exist
-	s.NoError(WriteZeroBytes(newFile), "Unexpected error writing zero bytes") //after a write call, it now exists
+	s.Error(newFile.Delete()    , "Expected existence error")        //expected an error since newFile does not yet exist
+	Touch(newFile)
 
 	otherFile, nerr := s.fileSystem.NewFile("", "/foo.txt")
 	s.NoError(nerr, "Unexpected error creating a new file")
 
 	//attempt to delete otherFile
-	s.Error(otherFile.Location().DeleteFile(otherFile.Name()) , "Expected existence error")                                //want to catch the delete error
-	s.NoError(WriteZeroBytes(otherFile), "Unexpected error writing zero bytes") //bring it to existence with a call to write
+	s.Error(otherFile.Location().DeleteFile(otherFile.Name()) , "Expected existence error") //want to catch the delete error
+	Touch(otherFile)                      //bring it to existence with a touch
 	existence, eerr := otherFile.Exists()
 	s.True(existence)
 	s.NoError(eerr, "Unexpected existence error")
