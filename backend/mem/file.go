@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"github.com/c2fo/vfs/v4"
-	"github.com/c2fo/vfs/v4/utils"
 	"io"
 	"path"
 	"time"
@@ -13,7 +12,7 @@ import (
 //File implements vfs.File interface for os fs.
 type File struct {
 	exists       bool
-	timeStamp    time.Time
+	lastModified time.Time
 	isOpen       bool
 	fileContents []byte       //the file contents
 	name         string       //the base name of the file
@@ -26,24 +25,9 @@ type File struct {
 func doesNotExist() error {
 	return errors.New("This file does not exist!")
 }
-func copyFail() error {
-	return errors.New("This file was not successfully copied")
-}
 
 func copyFailNil() error {
 	return errors.New("The target file passed in was nil")
-}
-
-func deleteError() error {
-	return errors.New("Deletion was unsuccessful")
-}
-
-func moveToLocationError() error {
-	return errors.New("Move to location unexpectedly failed")
-}
-
-func writeError() error {
-	return errors.New("Unexpected Write Error")
 }
 
 func seekError() error {
@@ -79,18 +63,18 @@ func (f *File) Read(p []byte) (n int, err error) {
 		return 0, nil
 	}
 
-	if f.cursor == len(f.fileContents) {
+	if f.cursor == len(f.fileContents) { //if the cursor is at the end of the file
 		return 0, io.EOF
 	}
 	for i := f.cursor; i < length; i++ {
 		f.cursor++
-		if i >= length || i >= len(f.fileContents) {
+		if i >= length || i >= len(f.fileContents) { //if "i" is greater than the length of p or length of the fileContents
 			break
 		}
 		if i == length {
 			break
 		}
-		p[i] = f.fileContents[i]
+		p[i] = f.fileContents[i] //otherwise simply copy each index to p
 	}
 
 	return length, nil
@@ -145,8 +129,8 @@ func (f *File) Write(p []byte) (n int, err error) {
 	if f.isOpen == false {
 		f.isOpen = true
 	}
-	if ex,_:=f.Exists();!ex{
-		Touch(f)
+	if ex, _ := f.Exists(); !ex {
+		f.Touch()
 	}
 	length := len(p)
 
@@ -169,7 +153,7 @@ func (f *File) Write(p []byte) (n int, err error) {
 
 	}
 
-	f.timeStamp = time.Now()
+	f.lastModified = time.Now()
 	return length - 1, err
 }
 
@@ -184,9 +168,7 @@ guarantee its existence, but creating one and writing to it does
 */
 func (f *File) Exists() (bool, error) {
 
-
-
-	if f!=nil {
+	if f != nil {
 		//does it exist on the map?
 		vol := f.Location().Volume()
 		fullPath := f.Path()
@@ -195,7 +177,7 @@ func (f *File) Exists() (bool, error) {
 		if _, ok := (*mapRef)[vol]; ok {
 			if object, ok2 := (*mapRef)[vol][fullPath]; ok2 {
 
-				if object !=nil && object.i.(*File).exists {
+				if object != nil && object.i.(*File).exists {
 					return true, nil
 				}
 			}
@@ -243,9 +225,9 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 	if nerr != nil {
 		return nil, nerr
 	}
-
-	Touch(newFile)
-
+	if location.FileSystem().Scheme() == "mem"{
+	newFile.(*File).Touch()
+}
 	cerr := f.CopyToFile(newFile)
 	if cerr != nil {
 		return nil, cerr
@@ -261,7 +243,7 @@ use its previous path to call it using the systemMap
 */
 func (f *File) CopyToFile(target vfs.File) error {
 
-	if ex,_:=f.Exists();!ex{
+	if ex, _ := f.Exists(); !ex {
 		return doesNotExist()
 	}
 
@@ -271,7 +253,9 @@ func (f *File) CopyToFile(target vfs.File) error {
 
 	if ex, eerr := target.Exists(); !ex {
 		if eerr == nil {
-			Touch(target)
+			if target.Location().FileSystem().Scheme() == "mem" {
+				target.(*File).Touch()
+			}
 		} else {
 			return eerr
 		}
@@ -319,16 +303,14 @@ creating a copy of 'f' in "location".  'f' is subsequently  deleted
 */
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 
-	if ex,eerr:=f.Exists();!ex{
-		if eerr==nil{
-			Touch(f)
-		}else{
+	if ex, eerr := f.Exists(); !ex {
+		if eerr == nil {
+			f.Touch()
+		} else {
 			return nil, doesNotExist()
 		}
 
 	}
-
-
 
 	testPath := path.Join(location.Path(), f.Name()) //this is a potential path to a file that can be fed into the objMap portion of fsMap
 	loc := location.(*Location)
@@ -356,7 +338,7 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 		return nil, nerr
 	}
 
-	Touch(newFile)
+	newFile.(*File).Touch()
 
 	cerr := f.CopyToFile(newFile) //copying over the data
 	if cerr != nil {
@@ -392,7 +374,7 @@ func (f *File) MoveToFile(file vfs.File) error {
 			return nerr
 		}
 
-		Touch(newFile)
+		newFile.(*File).Touch()
 		copyErr := f.CopyToFile(newFile)
 		if copyErr != nil {
 			return copyErr
@@ -405,7 +387,7 @@ func (f *File) MoveToFile(file vfs.File) error {
 	if nerr2 != nil {
 		return nerr2
 	}
-	Touch(newFile)
+	newFile.(*File).Touch()
 	copyErr := f.CopyToFile(newFile)
 	if copyErr != nil {
 		return copyErr
@@ -421,14 +403,13 @@ Delete removes the file from the fs. Sets it path in the fsMap to nil,
 */
 func (f *File) Delete() error {
 
-	if ex,_:=f.Exists();!ex{
+	if ex, _ := f.Exists(); !ex {
 		return doesNotExist()
 	}
 
-	if f==nil{
+	if f == nil {
 		return errors.New("Cannot operate on a nil file reference")
 	}
-
 
 	loc := f.Location().(*Location)
 	mapRef := &loc.fileSystem.fsMap
@@ -450,19 +431,19 @@ func (f *File) Delete() error {
 //newFile creates an in-mem vfs file given the name then returns it
 func newFile(name string) (*File, error) {
 	return &File{
-		timeStamp: time.Now(), name: name, cursor: 0,
+		lastModified: time.Now(), name: name, cursor: 0,
 		isOpen: false, exists: false,
 	}, nil
 
 }
 
-//LastModified simply returns the file's timeStamp, if the file exists
+//LastModified simply returns the file's lastModified, if the file exists
 func (f *File) LastModified() (*time.Time, error) {
 
 	existence, err := f.Exists()
 
 	if existence {
-		return &f.timeStamp, err
+		return &f.lastModified, err
 	}
 	return nil, err
 }
@@ -502,35 +483,4 @@ func (f *File) URI() string {
 	str := f.Path()
 	buf.WriteString(str)
 	return buf.String()
-}
-
-func Touch(file vfs.File){
-	if file==nil{
-		return
-	}
-	name:=file.Location().FileSystem().Name()
-	if name=="os"{
-		_,_=file.Write(make([]byte,0))
-		return
-
-	}
-	f:=file.(*File)
-	f.exists=true
-	var locObject obj
-	var fileObject obj
-	fileObject.i = f
-	fileObject.isFile = true
-	loc:=f.Location().(*Location)
-	volume:=loc.Volume()
-	locObject.i = f.Location()
-	locObject.isFile = false
-	mapRef := &loc.fileSystem.fsMap
-	if _, ok := (*mapRef)[volume]; !ok { //if the objMap map does not exist for the volume yet, then we go ahead and create it.
-		(*mapRef)[volume] = make(objMap)
-	}
-	(*mapRef)[volume][f.Path()] = &fileObject
-	locationPath:=utils.AddTrailingSlash(path.Clean(path.Dir(f.Path())))
-	if _,ok := (*mapRef)[volume][locationPath];!ok{
-		(*mapRef)[volume][locationPath] = &locObject
-	}
 }

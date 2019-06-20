@@ -7,6 +7,7 @@ import (
 	"github.com/c2fo/vfs/v4/utils"
 	"path"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 )
@@ -37,7 +38,8 @@ func (l *Location) List() ([]string, error) {
 	mapRef := &l.fileSystem.fsMap           //setting mapRef to this value for code readability
 	if _, ok := (*mapRef)[l.Volume()]; ok { //are there paths on this volume?
 		list := (*mapRef)[l.Volume()].fileNamesHere(str) //getting a list of the file names on this location
-		return list, nil                                 // "fileNamesHere" returns an empty list if no files were found
+
+		return list, nil // "fileNamesHere" returns an empty list if no files were found
 	}
 	return make([]string, 0), nil //if the volume has nothing on it, return an empty list as well
 }
@@ -58,6 +60,7 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 		for i := range paths {
 			if strings.Contains(paths[i], str) {
 				list = append(list, path.Base(paths[i]))
+				sort.Strings(list)
 			}
 		}
 	}
@@ -148,16 +151,14 @@ func (l *Location) ChangeDir(relLocPath string) error {
 //FileSystem returns the type of filesystem location exists on, if it exists at all
 func (l *Location) FileSystem() vfs.FileSystem {
 
-
-		return l.fileSystem
-
+	return l.fileSystem
 
 }
 
 //NewFile creates a vfs file given its relative path and tags it onto "l's" path
 func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 
-	if path.IsAbs(relFilePath){
+	if path.IsAbs(relFilePath) {
 		return nil, errors.New("Expected relative path, got an absolute")
 	}
 	pref := l.Path()
@@ -171,10 +172,10 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 		return nil, lerr
 	}
 
-	file := &File{timeStamp: time.Now(), name: path.Base(nameStr), cursor: 0,
+	file := &File{lastModified: time.Now(), name: path.Base(nameStr), cursor: 0,
 		isOpen: false, exists: false, location: loc}
-//	l.fileSystem.fsMap[l.volume][nameStr] = &obj{true, file}
-//	l.fileSystem.fsMap[l.volume][path.Dir(nameStr)] = &obj{false, loc}
+	//	l.fileSystem.fsMap[l.volume][nameStr] = &obj{true, file}
+	//	l.fileSystem.fsMap[l.volume][path.Dir(nameStr)] = &obj{false, loc}
 
 	return file, nil
 
@@ -182,7 +183,7 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 
 //DeleteFile locates the file given the fileName and calls delete on it
 func (l *Location) DeleteFile(relFilePath string) error {
-	if path.IsAbs(relFilePath){
+	if path.IsAbs(relFilePath) {
 		return errors.New("Expected relative path, got an absolute")
 	}
 	vol := l.Volume()
