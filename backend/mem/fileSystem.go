@@ -1,10 +1,9 @@
 package mem
 
 import (
-	"errors"
-	"github.com/c2fo/vfs/v4"
-	"github.com/c2fo/vfs/v4/backend"
-	"github.com/c2fo/vfs/v4/utils"
+	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/backend"
+	"github.com/c2fo/vfs/v5/utils"
 	"path"
 	"time"
 )
@@ -20,7 +19,7 @@ type obj struct {
 }
 type objMap map[string]*obj
 type FileSystem struct {
-	fsMap    map[string]objMap
+	fsMap map[string]objMap
 }
 
 // FileSystem will return a retrier provided via options, or a no-op if none is provided.
@@ -40,16 +39,16 @@ or copying FROM a non-existent file.
 */
 func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, error) {
 
-	if !path.IsAbs(absFilePath) {
-
-		return nil, errors.New("Creation failed, provide an absolute path for file creation in the FS")
+	verr := utils.ValidateAbsoluteFilePath(absFilePath)
+	if verr != nil {
+		return nil, verr
 	}
 
-	file, nerr := newFile(path.Base(path.Clean(absFilePath)))
+	file, nerr := newFile(path.Base(absFilePath)) //validateAbsFile path will throw an error if there was a trailing slash, hence not calling path.Clean()
 	if nerr != nil {
 		return nil, nerr
 	}
-	tmp, err := fs.NewLocation(volume, path.Dir(path.Clean(absFilePath)))
+	tmp, err := fs.NewLocation(volume, utils.EnsureTrailingSlash(path.Dir(absFilePath)))
 	if err != nil {
 		return nil, err
 	}
@@ -65,20 +64,17 @@ is created on a non-existent location, then it will be created
 */
 func (fs *FileSystem) NewLocation(volume string, absLocPath string) (vfs.Location, error) {
 
-	if !path.IsAbs(absLocPath) {
-		return nil, errors.New("Location creation failed, provide an absolute path for location creation in the FS")
-
+	verr := utils.ValidateAbsoluteLocationPath(absLocPath)
+	if verr != nil {
+		return nil, verr
 	}
-	str := utils.AddTrailingSlash(path.Clean(absLocPath))
-		return &Location{
-			fileSystem: fs,
-			name:       str,
-			exists:     false,
-			volume:     volume,
-		}, nil
-
-
-
+	str := utils.EnsureTrailingSlash(path.Clean(absLocPath))
+	return &Location{
+		fileSystem: fs,
+		name:       str,
+		exists:     false,
+		volume:     volume,
+	}, nil
 
 }
 
@@ -101,7 +97,6 @@ func init() {
 	backend.Register(Scheme, &FileSystem{})
 
 }
-
 
 //getKeys is used to get a list of absolute paths on a specified volume. These paths are a mixture of files and locations
 func (o objMap) getKeys() []string {
@@ -140,7 +135,7 @@ func (o objMap) fileNamesHere(absLocPath string) []string {
 		object := o[paths[i]] //retrieve the object
 		if object.isFile {    //if the object is a file, cast its interface, i, to a file and append to the slice
 			file := object.i.(*File)
-			if utils.AddTrailingSlash(path.Dir(file.Path())) == absLocPath {
+			if utils.EnsureTrailingSlash(path.Dir(file.Path())) == absLocPath {
 				fileList = append(fileList, file.Name())
 			}
 		}
@@ -150,11 +145,11 @@ func (o objMap) fileNamesHere(absLocPath string) []string {
 
 //Touch takes a mem file, makes it existent, and updates the lastModified lastModified
 func (f *File) Touch() {
-	if f==nil{
+	if f == nil {
 		return
 	}
 
-	f.exists=true
+	f.exists = true
 	f.lastModified = time.Now()
 	//files and locations are contained in objects of type "obj".
 	// An obj has a blank interface and a boolean that indicates whether or not it is a file
@@ -162,19 +157,19 @@ func (f *File) Touch() {
 	var fileObject obj
 	fileObject.i = f
 	fileObject.isFile = true
-	loc:=f.Location().(*Location)
-	volume:=loc.Volume()
+	loc := f.Location().(*Location)
+	volume := loc.Volume()
 	locObject.i = f.Location()
 	locObject.isFile = false
 
-	mapRef := &loc.fileSystem.fsMap	//just a less clunky way of accessing the fsMap
+	mapRef := &loc.fileSystem.fsMap      //just a less clunky way of accessing the fsMap
 	if _, ok := (*mapRef)[volume]; !ok { //if the objMap map does not exist for the volume yet, then we go ahead and create it.
 		(*mapRef)[volume] = make(objMap)
 	}
 
-	(*mapRef)[volume][f.Path()] = &fileObject	//setting the map at Volume volume and path of f to this fileObject
-	locationPath:=utils.AddTrailingSlash(path.Clean(path.Dir(f.Path())))
-	if _,ok := (*mapRef)[volume][locationPath];!ok{		//checking for that locations existence to avoid redundancy
+	(*mapRef)[volume][f.Path()] = &fileObject //setting the map at Volume volume and path of f to this fileObject
+	locationPath := utils.EnsureTrailingSlash(path.Clean(path.Dir(f.Path())))
+	if _, ok := (*mapRef)[volume][locationPath]; !ok { //checking for that locations existence to avoid redundancy
 		(*mapRef)[volume][locationPath] = &locObject
 	}
 }

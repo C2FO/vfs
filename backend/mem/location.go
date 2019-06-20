@@ -1,10 +1,9 @@
 package mem
 
 import (
-	"bytes"
 	"errors"
-	"github.com/c2fo/vfs/v4"
-	"github.com/c2fo/vfs/v4/utils"
+	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/utils"
 	"path"
 	"regexp"
 	"sort"
@@ -91,7 +90,7 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 	return list, nil
 }
 
-//Volume returns the volume of the current fs. In-Memory-Fs has no volume
+//Volume returns the volume of the current fs.
 func (l *Location) Volume() string {
 	return l.volume
 }
@@ -99,7 +98,9 @@ func (l *Location) Volume() string {
 //Path returns the full, absolute path of the location with leading and trailing slashes
 func (l *Location) Path() string {
 
-	return utils.AddTrailingSlash(path.Clean(l.name))
+	//just to be sure that we return a trailing and leading slash
+	str := utils.EnsureTrailingSlash(path.Clean(l.name))
+	return utils.EnsureLeadingSlash(str)
 
 }
 
@@ -129,9 +130,12 @@ NewLocation creates a new location at the
 given relative path, which is tagged onto the current locations absolute path
 */
 func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
-
+	lerr := utils.ValidateRelativeLocationPath(relLocPath)
+	if lerr != nil {
+		return nil, lerr
+	}
 	str := path.Join(l.Path(), relLocPath)
-	str = utils.AddTrailingSlash(path.Clean(str))
+	str = utils.EnsureTrailingSlash(path.Clean(str))
 	return &Location{
 		fileSystem: l.fileSystem,
 		name:       str,
@@ -143,6 +147,10 @@ func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
 
 //ChangeDir simply changes the directory of the location
 func (l *Location) ChangeDir(relLocPath string) error {
+	lerr := utils.ValidateRelativeLocationPath(relLocPath)
+	if lerr != nil {
+		return lerr
+	}
 	l.name = path.Join(l.name, relLocPath)
 	return nil
 
@@ -158,8 +166,9 @@ func (l *Location) FileSystem() vfs.FileSystem {
 //NewFile creates a vfs file given its relative path and tags it onto "l's" path
 func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 
-	if path.IsAbs(relFilePath) {
-		return nil, errors.New("Expected relative path, got an absolute")
+	perr := utils.ValidateRelativeFilePath(relFilePath)
+	if perr != nil {
+		return nil, perr
 	}
 	pref := l.Path()
 	str := relFilePath
@@ -167,24 +176,22 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 
 	nameStr = path.Join(pref, str)
 
-	loc, lerr := l.fileSystem.NewLocation("", path.Dir(nameStr))
+	loc, lerr := l.fileSystem.NewLocation("", utils.EnsureTrailingSlash(path.Dir(nameStr)))
 	if lerr != nil {
 		return nil, lerr
 	}
 
 	file := &File{lastModified: time.Now(), name: path.Base(nameStr), cursor: 0,
 		isOpen: false, exists: false, location: loc}
-	//	l.fileSystem.fsMap[l.volume][nameStr] = &obj{true, file}
-	//	l.fileSystem.fsMap[l.volume][path.Dir(nameStr)] = &obj{false, loc}
-
 	return file, nil
 
 }
 
 //DeleteFile locates the file given the fileName and calls delete on it
 func (l *Location) DeleteFile(relFilePath string) error {
-	if path.IsAbs(relFilePath) {
-		return errors.New("Expected relative path, got an absolute")
+	perr := utils.ValidateRelativeFilePath(relFilePath)
+	if perr != nil {
+		return perr
 	}
 	vol := l.Volume()
 	fullPath := path.Join(l.Path(), relFilePath)
@@ -202,12 +209,5 @@ func (l *Location) DeleteFile(relFilePath string) error {
 //URI returns the URI of the location if the location exists
 func (l *Location) URI() string {
 
-	var buf bytes.Buffer
-	pref := "mem://"
-	buf.WriteString(pref)
-	buf.WriteString(l.Volume())
-	str := l.Path()
-	buf.WriteString(str)
-	retStr := utils.AddTrailingSlash(buf.String())
-	return retStr
+	return utils.GetLocationURI(l)
 }
