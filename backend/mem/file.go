@@ -1,9 +1,9 @@
 package mem
 
 import (
-	"bytes"
 	"errors"
-	"github.com/c2fo/vfs/v4"
+	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/utils"
 	"io"
 	"path"
 	"time"
@@ -190,7 +190,7 @@ func (f *File) Exists() (bool, error) {
 //Location simply returns the file's underlying location struct pointer
 func (f *File) Location() vfs.Location {
 
-	newLoc, err := f.location.NewLocation("")
+	newLoc, err := f.location.FileSystem().NewLocation(f.location.Volume(), f.location.Path())
 	if err != nil {
 		panic(err)
 	}
@@ -225,9 +225,10 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 	if nerr != nil {
 		return nil, nerr
 	}
-	if location.FileSystem().Scheme() == "mem"{
-	newFile.(*File).Touch()
-}
+	_, werr := newFile.Write(make([]byte, 0)) //writing to existence. Whatever the underlying vfs implementation is will take care of this
+	if werr != nil {
+		return nil, werr
+	}
 	cerr := f.CopyToFile(newFile)
 	if cerr != nil {
 		return nil, cerr
@@ -239,7 +240,8 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
  CopyToFile copies the receiver file into the target file.
 The target file is deleted, so any references to it will
 be nil.  In order to access the target after calling CopyToFile
-use its previous path to call it using the systemMap
+use its previous path to call it using the fsMap.  Additionally,
+after this is called, f's cursor will reset as if it had been closed.
 */
 func (f *File) CopyToFile(target vfs.File) error {
 
@@ -253,8 +255,15 @@ func (f *File) CopyToFile(target vfs.File) error {
 
 	if ex, eerr := target.Exists(); !ex {
 		if eerr == nil {
-			if target.Location().FileSystem().Scheme() == "mem" {
-				target.(*File).Touch()
+			_, _ = target.Write(make([]byte, 0)) //bringing the target into existence
+			if err := utils.TouchCopy(f, target); err != nil {
+				return err
+			}
+			if cerr1 := f.Close(); cerr1 != nil {
+				return cerr1
+			}
+			if cerr2 := target.Close(); cerr2 != nil {
+				return cerr2
 			}
 		} else {
 			return eerr
@@ -265,6 +274,9 @@ func (f *File) CopyToFile(target vfs.File) error {
 	if serr1 != nil {
 		return serr1
 	}
+
+	//oldCursor := int64(f.cursor)
+
 	_, serr2 := f.Seek(0, 0)
 	if serr2 != nil {
 		return serr2
@@ -273,10 +285,7 @@ func (f *File) CopyToFile(target vfs.File) error {
 	if sizeErr != nil {
 		return sizeErr
 	}
-	oldCursor, serr3 := f.Seek(10, 2)
-	if serr3 == nil { //want it to throw error because we just want the current cursor position
-		return serr3
-	}
+
 	bSlice := make([]byte, int(size))
 	_, rerr := f.Read(bSlice)
 	if rerr != nil {
@@ -293,7 +302,7 @@ func (f *File) CopyToFile(target vfs.File) error {
 		return closeErr
 	}
 
-	_, serr4 := f.Seek(oldCursor, 0)
+	_, serr4 := f.Seek(0, 0)
 	return serr4
 }
 
@@ -305,7 +314,10 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 
 	if ex, eerr := f.Exists(); !ex {
 		if eerr == nil {
-			f.Touch()
+			_, werr := f.Write(make([]byte, 0))
+			if werr != nil {
+				return nil, werr
+			}
 		} else {
 			return nil, doesNotExist()
 		}
@@ -320,7 +332,6 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 		//this block checks if the file already exists at location, if it does, deletes it and inserts the file we have
 		if _, ok2 := (*mapRef)[vol][testPath]; ok2 { //if the file already exists at that location
 			file := (*mapRef)[vol][testPath].i.(*File)
-
 			cerr := f.CopyToFile(file)
 			if cerr != nil {
 				return nil, cerr
@@ -333,13 +344,16 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 			return file, nil
 		}
 	}
+	// if the file doesn't yet exist at the location, create it there
 	newFile, nerr := location.NewFile(f.Name()) //creating the file in the desired location
 	if nerr != nil {
 		return nil, nerr
 	}
 
-	newFile.(*File).Touch()
-
+	_, werr := newFile.Write(make([]byte, 0)) //initialize the file
+	if werr != nil {
+		return nil, werr
+	}
 	cerr := f.CopyToFile(newFile) //copying over the data
 	if cerr != nil {
 		return nil, cerr
@@ -374,7 +388,10 @@ func (f *File) MoveToFile(file vfs.File) error {
 			return nerr
 		}
 
-		newFile.(*File).Touch()
+		_, werr := newFile.Write(make([]byte, 0))
+		if werr != nil {
+			return werr
+		}
 		copyErr := f.CopyToFile(newFile)
 		if copyErr != nil {
 			return copyErr
@@ -387,7 +404,10 @@ func (f *File) MoveToFile(file vfs.File) error {
 	if nerr2 != nil {
 		return nerr2
 	}
-	newFile.(*File).Touch()
+	_, werr := newFile.Write(make([]byte, 0))
+	if werr != nil {
+		return werr
+	}
 	copyErr := f.CopyToFile(newFile)
 	if copyErr != nil {
 		return copyErr
@@ -472,15 +492,6 @@ func (f *File) Name() string {
 //URI returns the file's URI, if it exists
 func (f *File) URI() string {
 
-	existence, _ := f.Exists()
-	if !existence {
-		return ""
-	}
-	var buf bytes.Buffer
-	pref := "mem://"
-	buf.WriteString(pref)
-	buf.WriteString(f.location.Volume())
-	str := f.Path()
-	buf.WriteString(str)
-	return buf.String()
+	return utils.GetFileURI(f)
+
 }

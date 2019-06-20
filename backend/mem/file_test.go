@@ -1,9 +1,9 @@
 package mem
 
 import (
-	"github.com/c2fo/vfs/v4"
-	"github.com/c2fo/vfs/v4/backend"
-	_os "github.com/c2fo/vfs/v4/backend/os"
+	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/backend"
+	_os "github.com/c2fo/vfs/v5/backend/os"
 	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"log"
@@ -38,7 +38,7 @@ func (s *memFileTest) SetupTest() {
 func (s *memFileTest) TeardownTest() {
 	err := s.testFile.Close()
 	s.NoError(err, "close error not expected")
-	s.NoError( s.testFile.Delete(), "Delete failed unexpectedly")
+	s.NoError(s.testFile.Delete(), "Delete failed unexpectedly")
 }
 
 //TestZBR ensures that we can always read zero bytes
@@ -419,7 +419,12 @@ func (s *memFileTest) TestCopyToFileOS() {
 	expectedText := "Hello World!"
 	var osFile vfs.File
 	var err error
-	osFile, err = backend.Backend(_os.Scheme).NewFile("", "test_files/foo.txt")
+	dir, err := ioutil.TempDir("", "osDir")
+	if err != nil {
+		log.Fatal(err)
+	}
+	osFileName := filepath.Join(dir, "osFile.txt")
+	osFile, err = backend.Backend(_os.Scheme).NewFile("", osFileName)
 	s.NoError(err, "Unexpected error creating osFile")
 	_, werr := osFile.Write(make([]byte, 0))
 	s.NoError(werr, "Unexpected error writing zero bytes to osFile")

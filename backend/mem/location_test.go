@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v4"
+	"github.com/c2fo/vfs/v5"
 )
 
 /**********************************
@@ -28,9 +28,8 @@ func (s *memLocationTest) TearDownSuite() {
 }
 
 func (s *memLocationTest) SetupTest() {
-	fs := &FileSystem{
-		make(map[string]objMap),
-	}
+	fs := &FileSystem{}
+	fs.Initialize()
 
 	file, nerr := fs.NewFile("", "/test_files/test.txt")
 	s.NoError(nerr, "File creation was not successful so it does not exist")
@@ -105,7 +104,7 @@ func (s *memLocationTest) TestListByPrefix() {
 	s.NoError(nerr5, "Unexpected error creating a new file")
 	f5.(*File).Touch()
 
-	loc, lerr := s.fileSystem.NewLocation("", "/home/test_files/subdir")
+	loc, lerr := s.fileSystem.NewLocation("", "/home/test_files/subdir/")
 	s.NoError(lerr, "Unexpected error creating a location")
 
 	nameSlice, lerr := loc.ListByPrefix("f")
@@ -182,7 +181,7 @@ func (s *memLocationTest) TestNewLocation2() {
 
 	s.NoError(newFile.Close(), "Unexpected error closing file")
 
-	loc, nerr2 := s.fileSystem.NewLocation("C", "/newLocTest")
+	loc, nerr2 := s.fileSystem.NewLocation("C", "/newLocTest/")
 	s.NoError(nerr2, "Unexpected error creating a new location")
 	s.False(loc.Exists())
 
@@ -214,7 +213,7 @@ func (s *memLocationTest) TestChangeDir() {
 	loc := newFile.Location()
 
 	//changing directory
-	s.NoError(loc.ChangeDir("extraDir"), "Unexpected error while changing directory")
+	s.NoError(loc.ChangeDir("extraDir/"), "Unexpected error while changing directory")
 	exists, eerr := loc.Exists()
 	s.NoError(eerr, "Unexpected error checking for Existence")
 	s.False(exists)
@@ -284,7 +283,7 @@ func (s *memLocationTest) TestDeleteFile() {
 
 	//attempt to delete otherFile
 	s.Error(otherFile.Location().DeleteFile(otherFile.Name()), "Expected existence error") //want to catch the delete error
-	otherFile.(*File).Touch()                                                                                //bring it to existence with a touch
+	otherFile.(*File).Touch()                                                              //bring it to existence with a touch
 	existence, eerr := otherFile.Exists()
 	s.True(existence)
 	s.NoError(eerr, "Unexpected existence error")
