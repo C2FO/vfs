@@ -6,6 +6,7 @@ import (
 	"github.com/c2fo/vfs/v4/backend"
 	"github.com/c2fo/vfs/v4/utils"
 	"path"
+	"time"
 )
 
 //Scheme defines the filesystem type.
@@ -102,7 +103,7 @@ func init() {
 }
 
 
-
+//getKeys is used to get a list of absolute paths on a specified volume. These paths are a mixture of files and locations
 func (o objMap) getKeys() []string {
 	keyList := make([]string, 0)
 	for i := range o {
@@ -145,4 +146,35 @@ func (o objMap) fileNamesHere(absLocPath string) []string {
 		}
 	}
 	return fileList
+}
+
+//Touch takes a mem file, makes it existent, and updates the lastModified lastModified
+func (f *File) Touch() {
+	if f==nil{
+		return
+	}
+
+	f.exists=true
+	f.lastModified = time.Now()
+	//files and locations are contained in objects of type "obj".
+	// An obj has a blank interface and a boolean that indicates whether or not it is a file
+	var locObject obj
+	var fileObject obj
+	fileObject.i = f
+	fileObject.isFile = true
+	loc:=f.Location().(*Location)
+	volume:=loc.Volume()
+	locObject.i = f.Location()
+	locObject.isFile = false
+
+	mapRef := &loc.fileSystem.fsMap	//just a less clunky way of accessing the fsMap
+	if _, ok := (*mapRef)[volume]; !ok { //if the objMap map does not exist for the volume yet, then we go ahead and create it.
+		(*mapRef)[volume] = make(objMap)
+	}
+
+	(*mapRef)[volume][f.Path()] = &fileObject	//setting the map at Volume volume and path of f to this fileObject
+	locationPath:=utils.AddTrailingSlash(path.Clean(path.Dir(f.Path())))
+	if _,ok := (*mapRef)[volume][locationPath];!ok{		//checking for that locations existence to avoid redundancy
+		(*mapRef)[volume][locationPath] = &locObject
+	}
 }
