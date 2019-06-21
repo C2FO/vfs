@@ -2,13 +2,14 @@ package mem
 
 import (
 	"errors"
-	"github.com/c2fo/vfs/v5"
-	"github.com/c2fo/vfs/v5/utils"
 	"path"
 	"regexp"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/utils"
 )
 
 //Location implements the vfs.Location interface specific to in-memory fs.
@@ -33,8 +34,8 @@ If there are no files at location, then an empty slice will be returned
 
 func (l *Location) List() ([]string, error) {
 
-	str := l.Path()                         //full path of this location
-	mapRef := &l.fileSystem.fsMap           //setting mapRef to this value for code readability
+	str := l.Path()               //full path of this location
+	mapRef := &l.fileSystem.fsMap //setting mapRef to this value for code readability
 	if _, ok := (*mapRef)[l.Volume()]; ok { //are there paths on this volume?
 		list := (*mapRef)[l.Volume()].fileNamesHere(str) //getting a list of the file names on this location
 
@@ -176,7 +177,7 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 
 	nameStr = path.Join(pref, str)
 
-	loc, lerr := l.fileSystem.NewLocation("", utils.EnsureTrailingSlash(path.Dir(nameStr)))
+	loc, lerr := l.fileSystem.NewLocation(l.Volume(), utils.EnsureTrailingSlash(path.Dir(nameStr)))
 	if lerr != nil {
 		return nil, lerr
 	}

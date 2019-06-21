@@ -1,16 +1,17 @@
 package mem
 
 import (
-	"github.com/c2fo/vfs/v5"
-	"github.com/c2fo/vfs/v5/backend"
-	_os "github.com/c2fo/vfs/v5/backend/os"
-	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
 	"path/filepath"
 	"testing"
+
+	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/backend"
+	_os "github.com/c2fo/vfs/v5/backend/os"
+	"github.com/stretchr/testify/suite"
 )
 
 /**********************************

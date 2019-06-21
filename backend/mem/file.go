@@ -2,11 +2,12 @@ package mem
 
 import (
 	"errors"
-	"github.com/c2fo/vfs/v5"
-	"github.com/c2fo/vfs/v5/utils"
 	"io"
 	"path"
 	"time"
+
+	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/utils"
 )
 
 //File implements vfs.File interface for os fs.
@@ -18,7 +19,6 @@ type File struct {
 	name         string       //the base name of the file
 	cursor       int          //the index that the buffer (fileContents) is at
 	location     vfs.Location //the location that the file exists on
-
 }
 
 /*		******* Error Functions *******		*/

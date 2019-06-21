@@ -1,4 +1,4 @@
-// +build vfsintegration
+// build vfsintegration
 
 package testsuite
 
@@ -17,6 +17,7 @@ import (
 	"github.com/c2fo/vfs/v5/backend/gs"
 	_os "github.com/c2fo/vfs/v5/backend/os"
 	"github.com/c2fo/vfs/v5/backend/s3"
+	"github.com/c2fo/vfs/v5/backend/mem"
 	"github.com/c2fo/vfs/v5/utils"
 	"github.com/c2fo/vfs/v5/vfssimple"
 	"github.com/stretchr/testify/suite"
@@ -56,6 +57,11 @@ func copyGSLocation(loc vfs.Location) vfs.Location {
 	return &cp
 }
 
+func copyMemLocation(loc vfs.Location) vfs.Location {
+	cp := *loc.(*mem.Location)
+	return &cp
+}
+
 func (s *vfsTestSuite) SetupSuite() {
 	locs := os.Getenv("VFS_INTEGRATION_LOCATIONS")
 	s.testLocations = make(map[string]vfs.Location)
@@ -69,6 +75,8 @@ func (s *vfsTestSuite) SetupSuite() {
 			s.testLocations[l.FileSystem().Scheme()] = copyS3Location(l)
 		case "gs":
 			s.testLocations[l.FileSystem().Scheme()] = copyGSLocation(l)
+		case "mem":
+			s.testLocations[l.FileSystem().Scheme()] = copyMemLocation(l)
 		default:
 			panic(fmt.Sprintf("unknown scheme: %s", l.FileSystem().Scheme()))
 		}
@@ -230,7 +238,8 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 		if validates {
 			s.NoError(err, "there should be no error")
 			expected := fmt.Sprintf("%s://%s%s", srcLoc.FileSystem().Scheme(), srcLoc.Volume(), path.Clean(path.Join(srcLoc.Path(), name)))
-			s.Equal(expected, file.URI(), "uri's should match")
+			actual := file.URI()
+			s.Equal(expected, actual, `uri's should match for fs.NewFile("%s", "%s")`, baseLoc.Volume(), name)
 		} else {
 			s.Error(err, "should have validation error for scheme and name: %s : +%s+", srcLoc.FileSystem().Scheme(), name)
 		}
