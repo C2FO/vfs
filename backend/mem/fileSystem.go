@@ -9,76 +9,65 @@ import (
 	"github.com/c2fo/vfs/v5/utils"
 )
 
-//Scheme defines the FileSystem type's underlying implementation.
+//Scheme defines the filesystem type.
 const Scheme = "mem"
 const name = "In-Memory Filesystem"
 
+// FileSystem implements vfs.Filesystem for the mem filesystem.
 type obj struct {
 	isFile bool
 	i      interface{}
 }
 type objMap map[string]*obj
-
-// FileSystem implements vfs.FileSystem for an in-memory file system.
 type FileSystem struct {
 	fsMap map[string]objMap
 }
 
-// Retry will return a retrier provided via options, or a no-op if none is provided.
+// FileSystem will return a retrier provided via options, or a no-op if none is provided.
 func (fs *FileSystem) Retry() vfs.Retry {
 	return vfs.DefaultRetryer()
 }
 
 /*
-NewFile function returns the in-memory implementation of vfs.File.
-Since this is inside FileSystem, we assume that the caller knows that the CWD is the root.
-If a non-absolute path is given, an error is thrown. Additionally, a file does not
+NewFile function returns the mem implementation of vfs.File.
+Since this is inside "fileSystem" we assume that the caller knows that the CWD is the root.
+If a non-absolute path is given, an error is thrown.Additionally, a file does not
 technically exist until a call to "Touch()" is made on it. The "Touch" call links the
-file with FileSystem's map and brings it into existence.
+file with the fileSystem's map and brings it into existence.
 If a file is written to before a touch call, Write() will take care of that call.  This is
 true for other functions as well and existence only poses a problem in the context of deletion
 or copying FROM a non-existent file.
 */
 func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, error) {
 
-	err := utils.ValidateAbsoluteFilePath(absFilePath)
+	verr := utils.ValidateAbsoluteFilePath(absFilePath)
+	if verr != nil {
+		return nil, verr
+	}
+
+	file, nerr := newFile(path.Base(absFilePath)) //validateAbsFile path will throw an error if there was a trailing slash, hence not calling path.Clean()
+	if nerr != nil {
+		return nil, nerr
+	}
+	tmp, err := fs.NewLocation(volume, utils.EnsureTrailingSlash(path.Dir(absFilePath)))
 	if err != nil {
 		return nil, err
 	}
 
-	location, err := fs.NewLocation(volume, utils.EnsureTrailingSlash(path.Dir(absFilePath)))
-	if err != nil {
-		return nil, err
-	}
-	mapRef := location.(*Location).fileSystem.fsMap
-	if _, ok := mapRef[volume];ok{
-		fileList := mapRef[volume].filesHere(location.Path())
-		for _,file := range fileList{
-			if file.Name() == path.Base(absFilePath){
-				return file,nil
-			}
-		}
-	}
-	file, err := newFile(path.Base(absFilePath)) //validateAbsFile path will throw an error if there was a trailing slash, hence not calling path.Clean()
-	if err != nil {
-		return nil, err
-	}
-
-
-	file.location = location
+	file.location = tmp
 	return file, nil
 }
 
 /*
-NewLocation function returns the in-memory implementation of vfs.Location.
-A location always exists. If a file is created on a location that has not yet
-been made in the fsMap, then the location will be created with the file
+NewLocation function returns the mem implementation of vfs.Location.
+A location does not exist unless at least one file lives on it. If a file
+is created on a non-existent location, then it will be created
 */
 func (fs *FileSystem) NewLocation(volume string, absLocPath string) (vfs.Location, error) {
 
-	err := utils.ValidateAbsoluteLocationPath(absLocPath)
-	if err != nil {
-		return nil, err
+	verr := utils.ValidateAbsoluteLocationPath(absLocPath)
+	if verr != nil {
+		return nil, verr
 	}
 	str := utils.EnsureTrailingSlash(path.Clean(absLocPath))
 	return &Location{
@@ -90,20 +79,15 @@ func (fs *FileSystem) NewLocation(volume string, absLocPath string) (vfs.Locatio
 
 }
 
-// Name returns the name of the underlying FileSystem
+// Name returns "mem"
 func (fs *FileSystem) Name() string {
 	return name
 }
 
-// Scheme returns the scheme of the underlying FileSystem
+// Scheme return "file" as the initial part of a file URI ie: file://
 func (fs *FileSystem) Scheme() string {
 	return Scheme
 }
-
-/*
-Initialize is used to initialize the fsMap for an in-memory FileSystem.
-DISCLAIMER: nothing will work until this call is made
-*/
 func (fs *FileSystem) Initialize() {
 
 	fs.fsMap = make(map[string]objMap)
@@ -111,8 +95,7 @@ func (fs *FileSystem) Initialize() {
 }
 
 func init() {
-	backend.Register(Scheme, &FileSystem{make(map[string]objMap)}) //even though the map is being made here, a call
-	// to Initialize needs to be made to properly use FileSystem
+	backend.Register(Scheme, &FileSystem{})
 
 }
 
@@ -133,7 +116,7 @@ func (o objMap) filesHere(absLocPath string) []*File {
 	for i := range paths {
 
 		object := o[paths[i]] //retrieve the object
-		if object.isFile {    //if the object is a file, cast its interface, i, to a file and append to the slice
+		if object.isFile { //if the object is a file, cast its interface, i, to a file and append to the slice
 			file := object.i.(*File)
 			if file.Location().Path() == absLocPath {
 				fileList = append(fileList, file)
@@ -143,15 +126,15 @@ func (o objMap) filesHere(absLocPath string) []*File {
 	return fileList
 }
 
-//fileNamesHere returns a list of base names of files found at the absolute location path provided.  If none are there, returns an empty slice
+//fileHere returns a list of file pointers found at the absolute location path provided.  If none are there, returns an empty slice
 func (o objMap) fileNamesHere(absLocPath string) []string {
 
 	paths := o.getKeys()
 	fileList := make([]string, 0)
 	for i := range paths {
 
-		object := o[paths[i]]               //retrieve the object
-		if object != nil && object.isFile { //if the object is a file, cast its interface, i, to a file and append the name to the slice
+		object := o[paths[i]] //retrieve the object
+		if object.isFile { //if the object is a file, cast its interface, i, to a file and append to the slice
 			file := object.i.(*File)
 			if utils.EnsureTrailingSlash(path.Dir(file.Path())) == absLocPath {
 				fileList = append(fileList, file.Name())
@@ -161,7 +144,7 @@ func (o objMap) fileNamesHere(absLocPath string) []string {
 	return fileList
 }
 
-//Touch takes a in-memory vfs.File, makes it existent, and updates the lastModified
+//Touch takes a mem file, makes it existent, and updates the lastModified lastModified
 func (f *File) Touch() {
 	if f == nil {
 		return
@@ -180,14 +163,14 @@ func (f *File) Touch() {
 	locObject.i = f.Location()
 	locObject.isFile = false
 
-	mapRef := loc.fileSystem.fsMap      //just a less clunky way of accessing the fsMap
-	if _, ok := mapRef[volume]; !ok { //if the objMap map does not exist for the volume yet, then we go ahead and create it.
-		mapRef[volume] = make(objMap)
+	mapRef := &loc.fileSystem.fsMap //just a less clunky way of accessing the fsMap
+	if _, ok := (*mapRef)[volume]; !ok { //if the objMap map does not exist for the volume yet, then we go ahead and create it.
+		(*mapRef)[volume] = make(objMap)
 	}
 
-	mapRef[volume][f.Path()] = &fileObject //setting the map at Volume volume and path of f to this fileObject
+	(*mapRef)[volume][f.Path()] = &fileObject //setting the map at Volume volume and path of f to this fileObject
 	locationPath := utils.EnsureTrailingSlash(path.Clean(path.Dir(f.Path())))
-	if _, ok := mapRef[volume][locationPath]; !ok { //checking for that locations existence to avoid redundancy
-		mapRef[volume][locationPath] = &locObject
+	if _, ok := (*mapRef)[volume][locationPath]; !ok { //checking for that locations existence to avoid redundancy
+		(*mapRef)[volume][locationPath] = &locObject
 	}
 }

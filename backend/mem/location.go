@@ -1,7 +1,6 @@
 package mem
 
 import (
-	"bytes"
 	"errors"
 	"path"
 	"regexp"
@@ -13,7 +12,7 @@ import (
 	"github.com/c2fo/vfs/v5/utils"
 )
 
-//Location implements the vfs.Location interface specific to in-memory FileSystem.
+//Location implements the vfs.Location interface specific to in-memory fs.
 type Location struct {
 	exists     bool
 	firstTime  bool
@@ -35,10 +34,10 @@ If there are no files at location, then an empty slice will be returned
 
 func (l *Location) List() ([]string, error) {
 
-	str := l.Path()                         //full path of this location
-	mapRef := l.fileSystem.fsMap           //setting mapRef to this value for code readability
-	if _, ok := mapRef[l.Volume()]; ok { //are there paths on this volume?
-		list := mapRef[l.Volume()].fileNamesHere(str) //getting a list of the file names on this location
+	str := l.Path()               //full path of this location
+	mapRef := &l.fileSystem.fsMap //setting mapRef to this value for code readability
+	if _, ok := (*mapRef)[l.Volume()]; ok { //are there paths on this volume?
+		list := (*mapRef)[l.Volume()].fileNamesHere(str) //getting a list of the file names on this location
 
 		return list, nil // "fileNamesHere" returns an empty list if no files were found
 	}
@@ -55,15 +54,13 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 
 	list := make([]string, 0)
 	str := path.Join(l.Path(), prefix)
-	mapRef := l.fileSystem.fsMap
-	if _, ok := mapRef[l.volume]; ok {
-		paths := mapRef[l.volume].getKeys()
+	mapRef := &l.fileSystem.fsMap
+	if _, ok := (*mapRef)[l.volume]; ok {
+		paths := (*mapRef)[l.volume].getKeys()
 		for i := range paths {
 			if strings.Contains(paths[i], str) {
-				if path.Ext(paths[i]) != "" && strings.Contains(str, utils.EnsureTrailingSlash(path.Dir(paths[i]))) {
-					list = append(list, path.Base(paths[i]))
-					sort.Strings(list)
-				}
+				list = append(list, path.Base(paths[i]))
+				sort.Strings(list)
 			}
 		}
 	}
@@ -82,9 +79,9 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 
 	list := make([]string, 0)
 	str := l.Path()
-	mapRef := l.fileSystem.fsMap
-	if _, ok := mapRef[l.Volume()]; ok {
-		namesHere := mapRef[l.Volume()].fileNamesHere(str)
+	mapRef := &l.fileSystem.fsMap
+	if _, ok := (*mapRef)[l.Volume()]; ok {
+		namesHere := (*mapRef)[l.Volume()].fileNamesHere(str)
 		for i := range namesHere {
 			if regex.MatchString(namesHere[i]) {
 				list = append(list, namesHere[i])
@@ -94,7 +91,7 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 	return list, nil
 }
 
-//Volume returns the volume of the current FileSystem.
+//Volume returns the volume of the current fs.
 func (l *Location) Volume() string {
 	return l.volume
 }
@@ -108,11 +105,25 @@ func (l *Location) Path() string {
 
 }
 
-//Exists always returns true on locations
+//Exists reports whether or not a location exists. Creating a location does not guarantee its existence
 func (l *Location) Exists() (bool, error) {
 
-	l.exists = true
-	return true, nil
+	data, _ := l.List()
+	if len(data) == 0 {
+		return false, nil
+	}
+	mapRef := &l.fileSystem.fsMap
+	if _, ok := (*mapRef)[l.volume]; ok {
+		fileList := (*mapRef)[l.volume].filesHere(l.Path())
+		for i := range fileList {
+			if fileList[i].exists {
+				return true, nil
+			}
+		}
+	}
+	l.exists = false
+	return false, nil
+
 }
 
 /*
@@ -120,9 +131,9 @@ NewLocation creates a new location at the
 given relative path, which is tagged onto the current locations absolute path
 */
 func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
-	err := utils.ValidateRelativeLocationPath(relLocPath)
-	if err != nil {
-		return nil, err
+	lerr := utils.ValidateRelativeLocationPath(relLocPath)
+	if lerr != nil {
+		return nil, lerr
 	}
 	str := path.Join(l.Path(), relLocPath)
 	str = utils.EnsureTrailingSlash(path.Clean(str))
@@ -137,67 +148,51 @@ func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
 
 //ChangeDir simply changes the directory of the location
 func (l *Location) ChangeDir(relLocPath string) error {
-	err := utils.ValidateRelativeLocationPath(relLocPath)
-	if err != nil {
-		return err
+	lerr := utils.ValidateRelativeLocationPath(relLocPath)
+	if lerr != nil {
+		return lerr
 	}
 	l.name = path.Join(l.name, relLocPath)
 	return nil
 
 }
 
-//FileSystem returns the type of file system location exists on, if it exists at all
+//FileSystem returns the type of filesystem location exists on, if it exists at all
 func (l *Location) FileSystem() vfs.FileSystem {
 
 	return l.fileSystem
 
 }
 
-//NewFile creates a vfs.File given its relative path and tags it onto "l's" path
+//NewFile creates a vfs file given its relative path and tags it onto "l's" path
 func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 
-	err := utils.ValidateRelativeFilePath(relFilePath)
-	if err != nil {
-		return nil, err
+	perr := utils.ValidateRelativeFilePath(relFilePath)
+	if perr != nil {
+		return nil, perr
 	}
-	/*
-	after validating the path, we check to see if the
-	file already exists. if it does, return a reference to it
-	 */
-	mapRef := l.fileSystem.fsMap
-	if _, ok := mapRef[l.volume];ok{
-		fileList := mapRef[l.volume].filesHere(l.Path())
-		for _,file := range fileList{
-			if file.Name() == path.Base(relFilePath){
-				return file,nil
-			}
-		}
-	}
-	/*
-	since the file didn't already exist, we will create a
-	location and the file (NewLocation takes care of duplicates)
-	*/
 	pref := l.Path()
 	str := relFilePath
 	var nameStr string
+
 	nameStr = path.Join(pref, str)
 
-	loc, err := l.fileSystem.NewLocation(l.Volume(), utils.EnsureTrailingSlash(path.Dir(nameStr)))
-	if err != nil {
-		return nil, err
+	loc, lerr := l.fileSystem.NewLocation(l.Volume(), utils.EnsureTrailingSlash(path.Dir(nameStr)))
+	if lerr != nil {
+		return nil, lerr
 	}
 
 	file := &File{lastModified: time.Now(), name: path.Base(nameStr), cursor: 0,
-		isOpen: false, exists: false, location: loc, writeBuffer: new(bytes.Buffer)}
+		isOpen: false, exists: false, location: loc}
 	return file, nil
 
 }
 
 //DeleteFile locates the file given the fileName and calls delete on it
 func (l *Location) DeleteFile(relFilePath string) error {
-	err := utils.ValidateRelativeFilePath(relFilePath)
-	if err != nil {
-		return err
+	perr := utils.ValidateRelativeFilePath(relFilePath)
+	if perr != nil {
+		return perr
 	}
 	vol := l.Volume()
 	fullPath := path.Join(l.Path(), relFilePath)
