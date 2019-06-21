@@ -184,7 +184,7 @@ func (f *File) Delete() error {
 func (f *File) Close() error {
 
 	if f.tempFile != nil {
-		defer f.tempFile.Close()
+		defer func() { _ = f.tempFile.Close() }()
 
 		err := os.Remove(f.tempFile.Name())
 		if err != nil && !os.IsNotExist(err) {
@@ -251,6 +251,49 @@ func (f *File) Write(data []byte) (res int, err error) {
 		f.writeBuffer = bytes.NewBuffer([]byte{})
 	}
 	return f.writeBuffer.Write(data)
+}
+
+// Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
+// Returns error if unable to touch File.
+func (f *File) Touch() error {
+
+	//check if file exists
+	exists, err := f.Exists()
+	if err != nil {
+		return err
+	}
+
+	// file doesn't already exist so create it
+	if !exists {
+		_, err = f.Write([]byte(""))
+		if err != nil {
+			return err
+		}
+
+		if err := f.Close(); err != nil {
+			return err
+		}
+	} else {
+		// file already exists so update its last modified date
+
+		// setup a tempfile
+		tempfile, err := f.Location().
+			NewFile(fmt.Sprintf("%s.%d", f.Name(), time.Now().UnixNano()/1000000))
+
+		// copy file file to tempfile
+		err = f.CopyToFile(tempfile)
+		if err != nil {
+			return err
+		}
+
+		// move tempfile back to file
+		err = tempfile.MoveToFile(f)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // URI returns the File's URI as a string.

@@ -190,6 +190,19 @@ func (lt *locationTestSuite) TestNewFile() {
 
 	newrelfile, _ := loc.NewFile("../../where/file.txt")
 	lt.Equal("/some/where/file.txt", newrelfile.Path(), "Newfile relative dot path works")
+
+	// test nil pointer
+	var nilLoc *Location
+	_, err = nilLoc.NewFile( "/path/to/file.txt")
+	lt.EqualError(err, "non-nil s3.Location pointer is required", "errors returned by NewFile")
+
+	//test empty path error
+	_, err = loc.NewFile( "")
+	lt.EqualError(err, "non-empty string filePath is required", "errors returned by NewFile")
+
+	//test validation error
+	_, err = loc.NewFile( "/absolute/path/to/file.txt")
+	lt.EqualError(err, utils.ErrBadRelFilePath, "errors returned by NewLocation")
 }
 
 func (lt *locationTestSuite) TestExists_true() {
@@ -219,6 +232,11 @@ func (lt *locationTestSuite) TestExists_false() {
 }
 
 func (lt *locationTestSuite) TestChangeDir() {
+	//test nil Location
+	var nilLoc *Location
+	err := nilLoc.ChangeDir("path/to/")
+	lt.EqualErrorf(err, "non-nil s3.Location pointer is required", "error expeced for nil location")
+
 	loc := &Location{fileSystem: lt.fs, prefix: "/", bucket: "bucket"}
 
 	err1 := loc.ChangeDir("../")
@@ -253,6 +271,19 @@ func (lt *locationTestSuite) TestNewLocation() {
 	newRelLoc, err := newLoc.NewLocation("../../some/path/")
 	lt.NoError(err)
 	lt.Equal("/old/some/path/", newRelLoc.Path(), "NewLocation works with rel dot paths")
+
+	// test nil pointer
+	var nilLoc *Location
+	_, err = nilLoc.NewLocation( "/path/to/")
+	lt.EqualError(err, "non-nil s3.Location pointer is required", "errors returned by NewLocation")
+
+	//test empty path error
+	_, err = loc.NewLocation( "")
+	lt.EqualError(err, "non-empty string relativePath is required", "errors returned by NewLocation")
+
+	//test validation error
+	_, err = loc.NewLocation( "/absolute/path/to/")
+	lt.EqualError(err, utils.ErrBadRelLocationPath, "errors returned by NewLocation")
 }
 
 func (lt *locationTestSuite) TestStringURI() {
