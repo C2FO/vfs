@@ -6,7 +6,6 @@ import (
 	"io"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/c2fo/vfs/v5"
 )
@@ -40,7 +39,7 @@ func RemoveLeadingSlash(path string) string {
 
 // ValidateAbsoluteFilePath ensures that a file path has a leading slash but not a trailing slash
 func ValidateAbsoluteFilePath(name string) error {
-	if name == "" || !strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") {
+	if !strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") || len(name)==0 {
 		return errors.New(ErrBadAbsFilePath)
 	}
 	return nil
@@ -49,7 +48,7 @@ func ValidateAbsoluteFilePath(name string) error {
 // ValidateRelativeFilePath ensures that a file path has neither leading nor trailing slashes
 func ValidateRelativeFilePath(name string) error {
 
-	if name == "" || strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") {
+	if strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/")  || len(name) == 0{
 		return errors.New(ErrBadRelFilePath)
 	}
 	return nil
@@ -57,16 +56,17 @@ func ValidateRelativeFilePath(name string) error {
 
 // ValidateAbsoluteLocationPath ensure that a file path has both leading and trailing slashes
 func ValidateAbsoluteLocationPath(name string) error {
-	if name == "" || !strings.HasPrefix(name, "/") || !strings.HasSuffix(name, "/") {
+	if !strings.HasPrefix(name, "/") || !strings.HasSuffix(name, "/") || len(name)==0{
 		return errors.New(ErrBadAbsLocationPath)
 	}
 	return nil
+
 
 }
 
 // ValidateRelativeLocationPath ensure that a file path has no leading slash but has a trailing slash
 func ValidateRelativeLocationPath(name string) error {
-	if name == "" || strings.HasPrefix(name, "/") || !strings.HasSuffix(name, "/") {
+	if strings.HasPrefix(name, "/") || !strings.HasSuffix(name, "/")|| len(name)==0 {
 		return errors.New(ErrBadRelLocationPath)
 	}
 	return nil
@@ -112,26 +112,6 @@ func TouchCopy(writer, reader vfs.File) error {
 		if _, err := io.Copy(writer, reader); err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-// UpdateLastModifiedByMoving is used by some backends' Touch() method when a file already exists.
-func UpdateLastModifiedByMoving(file vfs.File) error {
-	// setup a tempfile
-	tempfile, err := file.Location().
-		NewFile(fmt.Sprintf("%s.%d", file.Name(), time.Now().UnixNano()))
-
-	// copy file file to tempfile
-	err = file.CopyToFile(tempfile)
-	if err != nil {
-		return err
-	}
-
-	// move tempfile back to file
-	err = tempfile.MoveToFile(file)
-	if err != nil {
-		return err
 	}
 	return nil
 }

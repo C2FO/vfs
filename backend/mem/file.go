@@ -4,6 +4,8 @@ import (
 	"errors"
 	"io"
 	"path"
+	"reflect"
+	"strings"
 	"time"
 
 	"github.com/c2fo/vfs/v5"
@@ -15,6 +17,7 @@ type File struct {
 	exists       bool
 	lastModified time.Time
 	isOpen       bool
+	contents	strings.Builder
 	fileContents []byte       //the file contents
 	name         string       //the base name of the file
 	cursor       int          //the index that the buffer (fileContents) is at
@@ -50,7 +53,9 @@ func (f *File) Close() error {
 
 //Read implements the io.Reader interface.  Returns number of bytes read and potential errors
 func (f *File) Read(p []byte) (n int, err error) {
+
 	//if file exists:
+	offset:=f.cursor
 	if f.isOpen == false {
 		f.isOpen = true
 	}
@@ -58,26 +63,31 @@ func (f *File) Read(p []byte) (n int, err error) {
 	if !existence {
 		return 0, eerr
 	}
-	length := len(p)
-	if length == 0 { //length of byte slice is zero, just return 0 and nil
+	readBufLen := len(p)
+	if readBufLen == 0 { //readBufLen of byte slice is zero, just return 0 and nil
 		return 0, nil
 	}
-
+	fileContentLength:=len(f.fileContents)
 	if f.cursor == len(f.fileContents) { //if the cursor is at the end of the file
 		return 0, io.EOF
 	}
-	for i := f.cursor; i < length; i++ {
-		f.cursor++
-		if i >= length || i >= len(f.fileContents) { //if "i" is greater than the length of p or length of the fileContents
-			break
-		}
-		if i == length {
-			break
-		}
-		p[i] = f.fileContents[i] //otherwise simply copy each index to p
-	}
+	j:=0
+	i:=f.cursor
+	for i =range p {
 
-	return length, nil
+		if i == readBufLen || f.cursor == fileContentLength { //if "i" is greater than the readBufLen of p or readBufLen of the fileContents
+			return i, io.EOF
+		}
+
+		p[i] = f.fileContents[f.cursor] //otherwise simply copy each index to p
+		j++
+		f.cursor++
+
+	}
+	if f.cursor>len(f.fileContents){
+		f.cursor = len(f.fileContents)
+	}
+	return readBufLen - offset, nil
 
 }
 
@@ -154,7 +164,7 @@ func (f *File) Write(p []byte) (n int, err error) {
 	}
 
 	f.lastModified = time.Now()
-	return length - 1, err
+	return length , err
 }
 
 //String implements the io.Stringer interface. It returns a string representation of the file's URI
@@ -255,55 +265,27 @@ func (f *File) CopyToFile(target vfs.File) error {
 
 	if ex, eerr := target.Exists(); !ex {
 		if eerr == nil {
-			_, _ = target.Write(make([]byte, 0)) //bringing the target into existence
-			if err := utils.TouchCopy(f, target); err != nil {
+			//	_, _ = target.Write(make([]byte, 0)) //bringing the target into existence
+			if _,err := target.Write(f.fileContents); err != nil {
 				return err
 			}
-			if cerr1 := f.Close(); cerr1 != nil {
-				return cerr1
-			}
-			if cerr2 := target.Close(); cerr2 != nil {
-				return cerr2
-			}
-		} else {
-			return eerr
+			f.Close()
+			target.Close()
 		}
-	}
 
-	_, serr1 := target.Seek(0, 0)
-	if serr1 != nil {
-		return serr1
 	}
-
-	//oldCursor := int64(f.cursor)
-
-	_, serr2 := f.Seek(0, 0)
-	if serr2 != nil {
-		return serr2
+	if _,err := target.Write(f.fileContents); err != nil {
+		return err
 	}
-	size, sizeErr := f.Size()
-	if sizeErr != nil {
-		return sizeErr
-	}
-
-	bSlice := make([]byte, int(size))
-	_, rerr := f.Read(bSlice)
-	if rerr != nil {
-		return rerr
-	}
-
-	_, werr := target.Write(bSlice)
-	if werr != nil {
-		return werr
-	}
-
-	closeErr := target.Close()
-	if closeErr != nil {
-		return closeErr
-	}
-
-	_, serr4 := f.Seek(0, 0)
-	return serr4
+	target.Close()
+	//if err := utils.TouchCopy(target,f); err != nil {
+		//return err
+	//}
+	//if cerr := target.Close(); cerr != nil {
+	//	return cerr
+	//}
+	//Close file (f) reader
+	return f.Close()
 }
 
 /*
@@ -341,6 +323,7 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 			if derr != nil {
 				return nil, derr
 			}
+
 			return file, nil
 		}
 	}
@@ -359,7 +342,7 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 		return nil, cerr
 	}
 
-	derr := f.Delete()
+	derr := f.Delete() //delete the receiver
 	if derr != nil {
 		return nil, derr
 	}
@@ -368,53 +351,15 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 
 /*
 MoveToFile creates a newFile, and moves it to "file".
-If names are same, "file" is deleted and newFile takes its place.
 The receiver is always deleted (since it's being "moved")
 */
-
 func (f *File) MoveToFile(file vfs.File) error {
 
-	if f.Name() == file.Name() {
-
-		loc := file.Location()
-
-		derr := file.Delete()
-		if derr != nil {
-			return derr
-		}
-
-		newFile, nerr := loc.NewFile(f.Name())
-		if nerr != nil {
-			return nerr
-		}
-
-		_, werr := newFile.Write(make([]byte, 0))
-		if werr != nil {
-			return werr
-		}
-		copyErr := f.CopyToFile(newFile)
-		if copyErr != nil {
-			return copyErr
-		}
-
-		return f.Delete()
-	}
-
-	newFile, nerr2 := file.Location().NewFile(f.Name())
-	if nerr2 != nil {
-		return nerr2
-	}
-	_, werr := newFile.Write(make([]byte, 0))
-	if werr != nil {
-		return werr
-	}
-	copyErr := f.CopyToFile(newFile)
-	if copyErr != nil {
-		return copyErr
+	if err := f.CopyToFile(file); err != nil {
+		return err
 	}
 
 	return f.Delete()
-
 }
 
 /*
@@ -471,7 +416,8 @@ func (f *File) LastModified() (*time.Time, error) {
 //Size returns the size of the file contents.  In our case, the length of the file's byte slice
 func (f *File) Size() (uint64, error) {
 
-	return uint64(len(f.fileContents)), nil
+	return uint64(uintptr(len(f.fileContents)) * reflect.TypeOf(f.fileContents).Elem().Size()),nil
+	//return uint64(len(f.fileContents)), nil
 
 }
 

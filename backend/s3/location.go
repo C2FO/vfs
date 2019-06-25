@@ -92,8 +92,8 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 	if l == nil {
 		return nil, errors.New("non-nil s3.Location pointer is required")
 	}
-	if lerr := utils.ValidateRelativeLocationPath(relativePath); lerr != nil {
-		return nil, lerr
+	if lerr:=utils.ValidateRelativeLocationPath(relativePath);lerr!=nil{
+		return nil,lerr
 	}
 
 	//make a copy of the original location first, then ChangeDir, leaving the original location as-is
@@ -112,7 +112,9 @@ func (l *Location) ChangeDir(relativePath string) error {
 	if l == nil {
 		return errors.New("non-nil s3.Location pointer is required")
 	}
-
+	if relativePath == "" {
+		return errors.New("non-empty string relativePath is required")
+	}
 	err := utils.ValidateRelativeLocationPath(relativePath)
 	if err != nil {
 		return err
@@ -127,7 +129,9 @@ func (l *Location) NewFile(filePath string) (vfs.File, error) {
 	if l == nil {
 		return nil, errors.New("non-nil s3.Location pointer is required")
 	}
-
+	if filePath == "" {
+		return nil, errors.New("non-empty string filePath is required")
+	}
 	err := utils.ValidateRelativeFilePath(filePath)
 	if err != nil {
 		return nil, err

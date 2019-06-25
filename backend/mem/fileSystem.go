@@ -95,7 +95,7 @@ func (fs *FileSystem) Initialize() {
 }
 
 func init() {
-	backend.Register(Scheme, &FileSystem{})
+	backend.Register(Scheme, &FileSystem{make(map[string]objMap)})
 
 }
 
