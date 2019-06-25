@@ -39,6 +39,10 @@ func (l *Location) NewFile(fileName string) (vfs.File, error) {
 // DeleteFile deletes the file of the given name at the location. This is meant to be a short cut for instantiating a
 // new file and calling delete on that with all the necessary error handling overhead.
 func (l *Location) DeleteFile(fileName string) error {
+	perr := utils.ValidateRelativeFilePath(fileName)
+	if perr != nil {
+		return perr
+	}
 	file, err := l.NewFile(fileName)
 	if err != nil {
 		return err
@@ -150,6 +154,9 @@ func (l *Location) String() string {
 func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 	if l == nil {
 		return nil, errors.New("non-nil os.Location pointer is required")
+	}
+	if lerr:=utils.ValidateRelativeLocationPath(relativePath);lerr!=nil{
+		return nil,lerr
 	}
 
 	//make a copy of the original location first, then ChangeDir, leaving the original location as-is

@@ -567,7 +567,7 @@ func (s *memFileTest) TestMoveToFile2() {
 	expectedSlice := []byte("Hello World!")
 	newFile, nerr := s.fileSystem.NewFile("", "/samples/diffName.txt")
 	s.NoError(nerr, "File creation was not successful so it does not exist")
-	newPath := "/samples/test.txt" //this is the path used to retrieve the file after it has been moved
+	//newPath := "/samples/test.txt" //this is the path used to retrieve the file after it has been moved
 	newFile.(*File).Touch()
 	_, werr := s.testFile.Write(expectedSlice)
 	s.NoError(werr, "Write failed unexpectedly")
@@ -579,13 +579,13 @@ func (s *memFileTest) TestMoveToFile2() {
 	merr := s.testFile.MoveToFile(newFile)
 	s.NoError(merr, "Move to file failed")
 	newFileSlice := make([]byte, len("Hello World!"))
-	newFile = s.fileSystem.fsMap[""][newPath].i.(*File)
+	//newFile = s.fileSystem.fsMap[""][newPath].i.(*File)
 	s.False(s.testFile.Exists())
 
 	_, rerr := newFile.Read(newFileSlice)
 	s.NoError(rerr, "Read unexpectedly failed")
 	s.Equal(string(expectedSlice), string(newFileSlice))
-	s.Equal("/samples/test.txt", newFile.Path())
+	s.Equal("/samples/diffName.txt", newFile.Path())
 
 }
 
@@ -599,7 +599,7 @@ func (s *memFileTest) TestWrite() {
 	length := len(bSlice)
 	num, werr1 := s.testFile.Write(bSlice)
 	s.NoError(werr1, "Write did not work as expected")
-	s.EqualValues(length-1, num)
+	s.EqualValues(length, num)
 
 }
 

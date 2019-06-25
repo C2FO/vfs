@@ -92,6 +92,9 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 	if l == nil {
 		return nil, errors.New("non-nil s3.Location pointer is required")
 	}
+	if lerr:=utils.ValidateRelativeLocationPath(relativePath);lerr!=nil{
+		return nil,lerr
+	}
 
 	//make a copy of the original location first, then ChangeDir, leaving the original location as-is
 	newLocation := &Location{}
@@ -143,6 +146,10 @@ func (l *Location) NewFile(filePath string) (vfs.File, error) {
 
 // DeleteFile removes the file at fileName path.
 func (l *Location) DeleteFile(fileName string) error {
+	perr := utils.ValidateRelativeFilePath(fileName)
+	if perr != nil {
+		return perr
+	}
 	file, err := l.NewFile(fileName)
 	if err != nil {
 		return err

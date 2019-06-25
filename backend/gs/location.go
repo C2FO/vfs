@@ -113,7 +113,9 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 	if l == nil {
 		return nil, errors.New("non-nil gs.Location pointer is required")
 	}
-
+	if lerr:=utils.ValidateRelativeLocationPath(relativePath); lerr!=nil{
+		return nil,lerr
+	}
 	//make a copy of the original location first, then ChangeDir, leaving the original location as-is
 	newLocation := &Location{}
 	*newLocation = *l
@@ -170,6 +172,9 @@ func (l *Location) DeleteFile(fileName string) error {
 	file, err := l.NewFile(fileName)
 	if err != nil {
 		return err
+	}
+	if perr:=utils.ValidateRelativeFilePath(fileName); perr!=nil{
+		return perr
 	}
 
 	return file.Delete()
