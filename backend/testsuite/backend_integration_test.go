@@ -1,4 +1,4 @@
-// build vfsintegration
+// +build vfsintegration
 
 package testsuite
 

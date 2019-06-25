@@ -65,7 +65,7 @@ func (s *memLocationTest) TestList_NonExistentDirectory() {
 
 	exists, err := location.Exists()
 	s.Nil(err, "error isn't expected")
-	s.False(exists, "location should return false for Exists")
+	s.True(exists, "location should return true for Exists")
 
 	contents, err := location.List()
 	s.Nil(err, "error isn't expected")
@@ -148,7 +148,7 @@ func (s *memLocationTest) TestExists() {
 	otherFile, nerr := s.fileSystem.NewFile("", "/foo/foo.txt")
 	s.NoError(nerr, "Unexpected error creating a new file")
 	s.True(s.testFile.Location().Exists())
-	s.False(otherFile.Location().Exists())
+	s.True(otherFile.Location().Exists())
 }
 
 //TestNewLocation ensures that we can create new locations, even with relative dot paths
@@ -183,7 +183,7 @@ func (s *memLocationTest) TestNewLocation2() {
 
 	loc, nerr2 := s.fileSystem.NewLocation("C", "/newLocTest/")
 	s.NoError(nerr2, "Unexpected error creating a new location")
-	s.False(loc.Exists())
+	s.True(loc.Exists())
 
 	otherFile, lerr := loc.NewFile("dir/file2.txt")
 	s.NoError(lerr, "Unexpected error creating a file from location")
@@ -216,7 +216,7 @@ func (s *memLocationTest) TestChangeDir() {
 	s.NoError(loc.ChangeDir("extraDir/"), "Unexpected error while changing directory")
 	exists, eerr := loc.Exists()
 	s.NoError(eerr, "Unexpected error checking for Existence")
-	s.False(exists)
+	s.True(exists)
 	s.False(newFile.Location().Path() == loc.Path())
 }
 
