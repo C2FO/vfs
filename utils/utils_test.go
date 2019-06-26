@@ -324,7 +324,7 @@ func (s *utilsTest) TestValidateRelFilePath() {
 		},
 		{
 			path:         "",
-			passExpected: true,
+			passExpected: false,
 			message:      "empty string",
 		},
 		{
