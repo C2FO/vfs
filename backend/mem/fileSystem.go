@@ -116,7 +116,7 @@ func (o objMap) filesHere(absLocPath string) []*File {
 	for i := range paths {
 
 		object := o[paths[i]] //retrieve the object
-		if object.isFile { //if the object is a file, cast its interface, i, to a file and append to the slice
+		if object.isFile {    //if the object is a file, cast its interface, i, to a file and append to the slice
 			file := object.i.(*File)
 			if file.Location().Path() == absLocPath {
 				fileList = append(fileList, file)
@@ -133,8 +133,8 @@ func (o objMap) fileNamesHere(absLocPath string) []string {
 	fileList := make([]string, 0)
 	for i := range paths {
 
-		object := o[paths[i]] //retrieve the object
-		if object.isFile { //if the object is a file, cast its interface, i, to a file and append to the slice
+		object := o[paths[i]]               //retrieve the object
+		if object != nil && object.isFile { //if the object is a file, cast its interface, i, to a file and append to the slice
 			file := object.i.(*File)
 			if utils.EnsureTrailingSlash(path.Dir(file.Path())) == absLocPath {
 				fileList = append(fileList, file.Name())
@@ -163,7 +163,7 @@ func (f *File) Touch() {
 	locObject.i = f.Location()
 	locObject.isFile = false
 
-	mapRef := &loc.fileSystem.fsMap //just a less clunky way of accessing the fsMap
+	mapRef := &loc.fileSystem.fsMap      //just a less clunky way of accessing the fsMap
 	if _, ok := (*mapRef)[volume]; !ok { //if the objMap map does not exist for the volume yet, then we go ahead and create it.
 		(*mapRef)[volume] = make(objMap)
 	}
