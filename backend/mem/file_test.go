@@ -173,7 +173,7 @@ func (s *memFileTest) TestSeek2() {
 	_, err = newFile.Seek(1, 1)
 	s.Error(err, "Expected seek to throw an error")
 	//trying to read should also be an error:
-	_, err := newFile.Read(make([]byte, 1))
+	_, err = newFile.Read(make([]byte, 1))
 	s.Error(err, "Expected read error")
 
 	_, err = newFile.Seek(0, 0)
