@@ -4,20 +4,17 @@ import (
 	"errors"
 	"io"
 	"path"
-	"reflect"
-	"strings"
 	"time"
 
 	"github.com/c2fo/vfs/v5"
 	"github.com/c2fo/vfs/v5/utils"
 )
 
-//File implements vfs.File interface for os fs.
+//File implements vfs.File interface for mem fs.
 type File struct {
 	exists       bool
 	lastModified time.Time
 	isOpen       bool
-	contents	strings.Builder
 	fileContents []byte       //the file contents
 	name         string       //the base name of the file
 	cursor       int          //the index that the buffer (fileContents) is at
@@ -55,7 +52,7 @@ func (f *File) Close() error {
 func (f *File) Read(p []byte) (n int, err error) {
 
 	//if file exists:
-	offset:=f.cursor
+	offset := f.cursor
 	if f.isOpen == false {
 		f.isOpen = true
 	}
@@ -67,13 +64,13 @@ func (f *File) Read(p []byte) (n int, err error) {
 	if readBufLen == 0 { //readBufLen of byte slice is zero, just return 0 and nil
 		return 0, nil
 	}
-	fileContentLength:=len(f.fileContents)
+	fileContentLength := len(f.fileContents)
 	if f.cursor == len(f.fileContents) { //if the cursor is at the end of the file
 		return 0, io.EOF
 	}
-	j:=0
-	i:=f.cursor
-	for i =range p {
+	j := 0        //j is the incrementer for the readBuffer. It always starts at 0, but the cursor may not
+	i := f.cursor //i takes the position of the cursor
+	for i = range p {
 
 		if i == readBufLen || f.cursor == fileContentLength { //if "i" is greater than the readBufLen of p or readBufLen of the fileContents
 			return i, io.EOF
@@ -84,7 +81,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 		f.cursor++
 
 	}
-	if f.cursor>len(f.fileContents){
+	if f.cursor > len(f.fileContents) {
 		f.cursor = len(f.fileContents)
 	}
 	return readBufLen - offset, nil
@@ -142,20 +139,20 @@ func (f *File) Write(p []byte) (n int, err error) {
 	if ex, _ := f.Exists(); !ex {
 		f.Touch()
 	}
-	length := len(p)
+	writeBufferLength := len(p)
 
-	if length == 0 {
+	if writeBufferLength == 0 {
 
 		return 0, nil
 	}
-	for length > len(f.fileContents)-f.cursor || length > len(f.fileContents) {
-		f.fileContents = append(f.fileContents, make([]byte, 1)...)
+	if len(f.fileContents)-f.cursor <= writeBufferLength {
+		f.fileContents = append(f.fileContents, make([]byte, writeBufferLength)...) //extend the filecontent slice by as much as we need
 	}
-	for i := 0; i < length; i++ {
-		if i >= length || i >= len(f.fileContents) {
+	for i := 0; i < writeBufferLength; i++ {
+		if i >= writeBufferLength || i >= len(f.fileContents) {
 			break
 		}
-		if i == length {
+		if i == writeBufferLength {
 			break
 		}
 		f.fileContents[f.cursor] = p[i]
@@ -164,7 +161,7 @@ func (f *File) Write(p []byte) (n int, err error) {
 	}
 
 	f.lastModified = time.Now()
-	return length , err
+	return writeBufferLength, err
 }
 
 //String implements the io.Stringer interface. It returns a string representation of the file's URI
@@ -265,26 +262,27 @@ func (f *File) CopyToFile(target vfs.File) error {
 
 	if ex, eerr := target.Exists(); !ex {
 		if eerr == nil {
-			//	_, _ = target.Write(make([]byte, 0)) //bringing the target into existence
-			if _,err := target.Write(f.fileContents); err != nil {
+			if _, err := target.Write(f.fileContents); err != nil {
 				return err
 			}
-			f.Close()
-			target.Close()
+			cerr := f.Close()
+			if cerr != nil {
+				return cerr
+			}
+			cerr = target.Close()
+			if cerr != nil {
+				return cerr
+			}
 		}
 
 	}
-	if _,err := target.Write(f.fileContents); err != nil {
+	if _, err := target.Write(f.fileContents); err != nil {
 		return err
 	}
-	target.Close()
-	//if err := utils.TouchCopy(target,f); err != nil {
-		//return err
-	//}
-	//if cerr := target.Close(); cerr != nil {
-	//	return cerr
-	//}
-	//Close file (f) reader
+	cerr := target.Close()
+	if cerr != nil {
+		return cerr
+	}
 	return f.Close()
 }
 
@@ -305,28 +303,34 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 		}
 
 	}
+	/*
+		 if the underling fs is in-mem, then this is the native way of
+		replacing a file with the same name as "f" at the location
+	*/
+	if location.FileSystem().Scheme() == "mem" {
+		testPath := path.Join(location.Path(), f.Name()) //this is a potential path to a file that can be fed into the objMap portion of fsMap
+		loc := location.(*Location)
+		mapRef := &loc.fileSystem.fsMap //mapRef just makes it easier to refer to "loc.fileSystem.fsMap"
+		vol := loc.Volume()
+		if _, ok := (*mapRef)[vol]; ok { //this checks if the specified volume has any keys
+			//this block checks if the file already exists at location, if it does, deletes it and inserts the file we have
+			if _, ok2 := (*mapRef)[vol][testPath]; ok2 { //if the file already exists at that location
+				file := (*mapRef)[vol][testPath].i.(*File)
+				cerr := f.CopyToFile(file)
+				if cerr != nil {
+					return nil, cerr
+				}
 
-	testPath := path.Join(location.Path(), f.Name()) //this is a potential path to a file that can be fed into the objMap portion of fsMap
-	loc := location.(*Location)
-	mapRef := &loc.fileSystem.fsMap //mapRef just makes it easier to refer to "loc.fileSystem.fsMap"
-	vol := loc.Volume()
-	if _, ok := (*mapRef)[vol]; ok { //this checks if the specified volume has any keys
-		//this block checks if the file already exists at location, if it does, deletes it and inserts the file we have
-		if _, ok2 := (*mapRef)[vol][testPath]; ok2 { //if the file already exists at that location
-			file := (*mapRef)[vol][testPath].i.(*File)
-			cerr := f.CopyToFile(file)
-			if cerr != nil {
-				return nil, cerr
+				derr := f.Delete()
+				if derr != nil {
+					return nil, derr
+				}
+
+				return file, nil
 			}
-
-			derr := f.Delete()
-			if derr != nil {
-				return nil, derr
-			}
-
-			return file, nil
 		}
 	}
+
 	// if the file doesn't yet exist at the location, create it there
 	newFile, nerr := location.NewFile(f.Name()) //creating the file in the desired location
 	if nerr != nil {
@@ -416,8 +420,7 @@ func (f *File) LastModified() (*time.Time, error) {
 //Size returns the size of the file contents.  In our case, the length of the file's byte slice
 func (f *File) Size() (uint64, error) {
 
-	return uint64(uintptr(len(f.fileContents)) * reflect.TypeOf(f.fileContents).Elem().Size()),nil
-	//return uint64(len(f.fileContents)), nil
+	return uint64(len(f.fileContents)), nil
 
 }
 
@@ -430,7 +433,6 @@ func (f *File) Path() string {
 
 //Name returns the file's base name
 func (f *File) Name() string {
-	//if file exists
 
 	return f.name
 }

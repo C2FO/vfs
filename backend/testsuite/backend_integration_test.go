@@ -15,9 +15,9 @@ import (
 
 	"github.com/c2fo/vfs/v5"
 	"github.com/c2fo/vfs/v5/backend/gs"
+	"github.com/c2fo/vfs/v5/backend/mem"
 	_os "github.com/c2fo/vfs/v5/backend/os"
 	"github.com/c2fo/vfs/v5/backend/s3"
-	"github.com/c2fo/vfs/v5/backend/mem"
 	"github.com/c2fo/vfs/v5/utils"
 	"github.com/c2fo/vfs/v5/vfssimple"
 	"github.com/stretchr/testify/suite"
