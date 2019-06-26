@@ -19,7 +19,7 @@ type obj struct {
 }
 type objMap map[string]*obj
 
-// FileSystem implements vfs.FileSystem for the an in-memory file system.
+// FileSystem implements vfs.FileSystem for an in-memory file system.
 type FileSystem struct {
 	fsMap map[string]objMap
 }
