@@ -34,8 +34,8 @@ If there are no files at location, then an empty slice will be returned
 
 func (l *Location) List() ([]string, error) {
 
-	str := l.Path()               //full path of this location
-	mapRef := &l.fileSystem.fsMap //setting mapRef to this value for code readability
+	str := l.Path()                         //full path of this location
+	mapRef := &l.fileSystem.fsMap           //setting mapRef to this value for code readability
 	if _, ok := (*mapRef)[l.Volume()]; ok { //are there paths on this volume?
 		list := (*mapRef)[l.Volume()].fileNamesHere(str) //getting a list of the file names on this location
 
@@ -59,7 +59,7 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 		paths := (*mapRef)[l.volume].getKeys()
 		for i := range paths {
 			if strings.Contains(paths[i], str) {
-				if path.Ext(paths[i]) != "" && strings.Contains(str,utils.EnsureTrailingSlash(path.Dir(paths[i]))) {
+				if path.Ext(paths[i]) != "" && strings.Contains(str, utils.EnsureTrailingSlash(path.Dir(paths[i]))) {
 					list = append(list, path.Base(paths[i]))
 					sort.Strings(list)
 				}
@@ -109,23 +109,23 @@ func (l *Location) Path() string {
 
 //Exists reports whether or not a location exists. Creating a location does not guarantee its existence
 func (l *Location) Exists() (bool, error) {
-/*
-	data, _ := l.List()
-	if len(data) == 0 {
-		return false, nil
-	}
-	fmt.Println(l.Path())
-	mapRef := &l.fileSystem.fsMap
-	if _, ok := (*mapRef)[l.volume]; ok {
-		if _,ok2:=(*mapRef)[l.volume][l.Path()];ok2{
-			return true, nil
+	/*
+		data, _ := l.List()
+		if len(data) == 0 {
+			return false, nil
 		}
-	}
-	l.exists = false
-	return false, nil
- */
-l.exists=true
-return true,nil
+		fmt.Println(l.Path())
+		mapRef := &l.fileSystem.fsMap
+		if _, ok := (*mapRef)[l.volume]; ok {
+			if _,ok2:=(*mapRef)[l.volume][l.Path()];ok2{
+				return true, nil
+			}
+		}
+		l.exists = false
+		return false, nil
+	*/
+	l.exists = true
+	return true, nil
 }
 
 /*
