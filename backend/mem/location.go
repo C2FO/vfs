@@ -12,7 +12,7 @@ import (
 	"github.com/c2fo/vfs/v5/utils"
 )
 
-//Location implements the vfs.Location interface specific to in-memory fs.
+//Location implements the vfs.Location interface specific to in-memory filesystem.
 type Location struct {
 	exists     bool
 	firstTime  bool
@@ -93,7 +93,7 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 	return list, nil
 }
 
-//Volume returns the volume of the current fs.
+//Volume returns the volume of the current filesystem.
 func (l *Location) Volume() string {
 	return l.volume
 }
@@ -107,23 +107,9 @@ func (l *Location) Path() string {
 
 }
 
-//Exists reports whether or not a location exists. Creating a location does not guarantee its existence
+//Exists always returns true on locations
 func (l *Location) Exists() (bool, error) {
-	/*
-		data, _ := l.List()
-		if len(data) == 0 {
-			return false, nil
-		}
-		fmt.Println(l.Path())
-		mapRef := &l.fileSystem.fsMap
-		if _, ok := (*mapRef)[l.volume]; ok {
-			if _,ok2:=(*mapRef)[l.volume][l.Path()];ok2{
-				return true, nil
-			}
-		}
-		l.exists = false
-		return false, nil
-	*/
+
 	l.exists = true
 	return true, nil
 }
@@ -133,9 +119,9 @@ NewLocation creates a new location at the
 given relative path, which is tagged onto the current locations absolute path
 */
 func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
-	lerr := utils.ValidateRelativeLocationPath(relLocPath)
-	if lerr != nil {
-		return nil, lerr
+	err := utils.ValidateRelativeLocationPath(relLocPath)
+	if err != nil {
+		return nil, err
 	}
 	str := path.Join(l.Path(), relLocPath)
 	str = utils.EnsureTrailingSlash(path.Clean(str))
@@ -150,9 +136,9 @@ func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
 
 //ChangeDir simply changes the directory of the location
 func (l *Location) ChangeDir(relLocPath string) error {
-	lerr := utils.ValidateRelativeLocationPath(relLocPath)
-	if lerr != nil {
-		return lerr
+	err := utils.ValidateRelativeLocationPath(relLocPath)
+	if err != nil {
+		return err
 	}
 	l.name = path.Join(l.name, relLocPath)
 	return nil
@@ -169,9 +155,9 @@ func (l *Location) FileSystem() vfs.FileSystem {
 //NewFile creates a vfs file given its relative path and tags it onto "l's" path
 func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 
-	perr := utils.ValidateRelativeFilePath(relFilePath)
-	if perr != nil {
-		return nil, perr
+	err := utils.ValidateRelativeFilePath(relFilePath)
+	if err != nil {
+		return nil, err
 	}
 	pref := l.Path()
 	str := relFilePath
@@ -179,9 +165,9 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 
 	nameStr = path.Join(pref, str)
 
-	loc, lerr := l.fileSystem.NewLocation(l.Volume(), utils.EnsureTrailingSlash(path.Dir(nameStr)))
-	if lerr != nil {
-		return nil, lerr
+	loc, err := l.fileSystem.NewLocation(l.Volume(), utils.EnsureTrailingSlash(path.Dir(nameStr)))
+	if err != nil {
+		return nil, err
 	}
 
 	file := &File{lastModified: time.Now(), name: path.Base(nameStr), cursor: 0,
@@ -192,9 +178,9 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 
 //DeleteFile locates the file given the fileName and calls delete on it
 func (l *Location) DeleteFile(relFilePath string) error {
-	perr := utils.ValidateRelativeFilePath(relFilePath)
-	if perr != nil {
-		return perr
+	err := utils.ValidateRelativeFilePath(relFilePath)
+	if err != nil {
+		return err
 	}
 	vol := l.Volume()
 	fullPath := path.Join(l.Path(), relFilePath)
