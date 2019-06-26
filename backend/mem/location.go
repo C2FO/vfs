@@ -12,7 +12,7 @@ import (
 	"github.com/c2fo/vfs/v5/utils"
 )
 
-//Location implements the vfs.Location interface specific to in-memory filesystem.
+//Location implements the vfs.Location interface specific to in-memory FileSystem.
 type Location struct {
 	exists     bool
 	firstTime  bool
@@ -93,7 +93,7 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 	return list, nil
 }
 
-//Volume returns the volume of the current filesystem.
+//Volume returns the volume of the current FileSystem.
 func (l *Location) Volume() string {
 	return l.volume
 }
@@ -145,14 +145,14 @@ func (l *Location) ChangeDir(relLocPath string) error {
 
 }
 
-//FileSystem returns the type of filesystem location exists on, if it exists at all
+//FileSystem returns the type of file system location exists on, if it exists at all
 func (l *Location) FileSystem() vfs.FileSystem {
 
 	return l.fileSystem
 
 }
 
-//NewFile creates a vfs file given its relative path and tags it onto "l's" path
+//NewFile creates a vfs.File given its relative path and tags it onto "l's" path
 func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 
 	err := utils.ValidateRelativeFilePath(relFilePath)

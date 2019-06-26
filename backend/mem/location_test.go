@@ -19,14 +19,6 @@ type memLocationTest struct {
 	fileSystem *FileSystem
 }
 
-func (s *memLocationTest) SetupSuite() {
-
-}
-
-func (s *memLocationTest) TearDownSuite() {
-	//teardownTestFiles()
-}
-
 func (s *memLocationTest) SetupTest() {
 	fs := &FileSystem{}
 	fs.Initialize()
@@ -36,7 +28,6 @@ func (s *memLocationTest) SetupTest() {
 
 	s.testFile = file.(*File)
 	s.fileSystem = fs
-	//s.fileSystem.Initialize()
 	s.testFile.(*File).Touch()
 }
 

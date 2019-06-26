@@ -338,8 +338,8 @@ func (s *memFileTest) TestCopyToNilFile() {
 	s.Error(err, "Expected error for copying to nil file")
 }
 
-//TestCopyToLocationOS copies a file from the mem fs over
-// to a location on the  OS fs and checks for success
+//TestCopyToLocationOS copies a file from the in-memory FileSystem over
+// to a location on the  OS FileSystem and checks for success
 func (s *memFileTest) TestCopyToLocationOS() {
 
 	expectedText := "hello world!"
@@ -384,7 +384,7 @@ func (s *memFileTest) TestCopyToLocationOS() {
 	s.NoError(cleanErr, "Unexpected error cleaning up osFiles")
 }
 
-//TestCopyToFile tests "CopyToFile()" between two files both in the mem FS
+//TestCopyToFile tests "CopyToFile()" between two files both in the in-memory FileSystem
 func (s *memFileTest) TestCopyToFile() {
 
 	expectedText := "hello world"
@@ -413,7 +413,7 @@ func (s *memFileTest) TestCopyToFile() {
 
 }
 
-//TestCopyToFileOS tests "CopyToFile()" between one file in the mem FS and the other in the os FS
+//TestCopyToFileOS tests "CopyToFile()" between one file in the in-memory FileSystem and the other in the os FileSystem
 func (s *memFileTest) TestCopyToFileOS() {
 
 	expectedText := "Hello World!"

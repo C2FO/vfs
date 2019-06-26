@@ -10,7 +10,7 @@ import (
 	"github.com/c2fo/vfs/v5/utils"
 )
 
-//File implements vfs.File interface for mem filesystem.
+//File implements vfs.File interface for the in-memory implementation of FileSystem.
 type File struct {
 	exists       bool
 	lastModified time.Time
@@ -304,7 +304,7 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 
 	}
 	/*
-		 if the underling filesystem is in-memory, then this is the native way of
+		 if the underling FileSystem is in-memory, then this is the native way of
 		replacing a file with the same name as "f" at the location
 	*/
 	if location.FileSystem().Scheme() == "mem" {
@@ -367,7 +367,7 @@ func (f *File) MoveToFile(file vfs.File) error {
 }
 
 /*
-Delete removes the file from the filesystem. Sets it path in the fsMap to nil,
+Delete removes the file from the FileSystem. Sets it path in the fsMap to nil,
  and also nils the file's members
 */
 func (f *File) Delete() error {
