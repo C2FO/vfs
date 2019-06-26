@@ -40,14 +40,14 @@ or copying FROM a non-existent file.
 */
 func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, error) {
 
-	verr := utils.ValidateAbsoluteFilePath(absFilePath)
-	if verr != nil {
-		return nil, verr
+	err := utils.ValidateAbsoluteFilePath(absFilePath)
+	if err != nil {
+		return nil, err
 	}
 
-	file, nerr := newFile(path.Base(absFilePath)) //validateAbsFile path will throw an error if there was a trailing slash, hence not calling path.Clean()
-	if nerr != nil {
-		return nil, nerr
+	file, err := newFile(path.Base(absFilePath)) //validateAbsFile path will throw an error if there was a trailing slash, hence not calling path.Clean()
+	if err != nil {
+		return nil, err
 	}
 	tmp, err := fs.NewLocation(volume, utils.EnsureTrailingSlash(path.Dir(absFilePath)))
 	if err != nil {
@@ -65,9 +65,9 @@ is created on a non-existent location, then it will be created
 */
 func (fs *FileSystem) NewLocation(volume string, absLocPath string) (vfs.Location, error) {
 
-	verr := utils.ValidateAbsoluteLocationPath(absLocPath)
-	if verr != nil {
-		return nil, verr
+	err := utils.ValidateAbsoluteLocationPath(absLocPath)
+	if err != nil {
+		return nil, err
 	}
 	str := utils.EnsureTrailingSlash(path.Clean(absLocPath))
 	return &Location{
