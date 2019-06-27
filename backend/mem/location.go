@@ -35,9 +35,9 @@ If there are no files at location, then an empty slice will be returned
 func (l *Location) List() ([]string, error) {
 
 	str := l.Path()                         //full path of this location
-	mapRef := &l.fileSystem.fsMap           //setting mapRef to this value for code readability
-	if _, ok := (*mapRef)[l.Volume()]; ok { //are there paths on this volume?
-		list := (*mapRef)[l.Volume()].fileNamesHere(str) //getting a list of the file names on this location
+	mapRef := l.fileSystem.fsMap           //setting mapRef to this value for code readability
+	if _, ok := mapRef[l.Volume()]; ok { //are there paths on this volume?
+		list := mapRef[l.Volume()].fileNamesHere(str) //getting a list of the file names on this location
 
 		return list, nil // "fileNamesHere" returns an empty list if no files were found
 	}
@@ -54,9 +54,9 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 
 	list := make([]string, 0)
 	str := path.Join(l.Path(), prefix)
-	mapRef := &l.fileSystem.fsMap
-	if _, ok := (*mapRef)[l.volume]; ok {
-		paths := (*mapRef)[l.volume].getKeys()
+	mapRef := l.fileSystem.fsMap
+	if _, ok := mapRef[l.volume]; ok {
+		paths := mapRef[l.volume].getKeys()
 		for i := range paths {
 			if strings.Contains(paths[i], str) {
 				if path.Ext(paths[i]) != "" && strings.Contains(str, utils.EnsureTrailingSlash(path.Dir(paths[i]))) {
@@ -81,9 +81,9 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 
 	list := make([]string, 0)
 	str := l.Path()
-	mapRef := &l.fileSystem.fsMap
-	if _, ok := (*mapRef)[l.Volume()]; ok {
-		namesHere := (*mapRef)[l.Volume()].fileNamesHere(str)
+	mapRef := l.fileSystem.fsMap
+	if _, ok := mapRef[l.Volume()]; ok {
+		namesHere := mapRef[l.Volume()].fileNamesHere(str)
 		for i := range namesHere {
 			if regex.MatchString(namesHere[i]) {
 				list = append(list, namesHere[i])

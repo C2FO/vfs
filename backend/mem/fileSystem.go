@@ -170,14 +170,14 @@ func (f *File) Touch() {
 	locObject.i = f.Location()
 	locObject.isFile = false
 
-	mapRef := &loc.fileSystem.fsMap      //just a less clunky way of accessing the fsMap
-	if _, ok := (*mapRef)[volume]; !ok { //if the objMap map does not exist for the volume yet, then we go ahead and create it.
-		(*mapRef)[volume] = make(objMap)
+	mapRef := loc.fileSystem.fsMap      //just a less clunky way of accessing the fsMap
+	if _, ok := mapRef[volume]; !ok { //if the objMap map does not exist for the volume yet, then we go ahead and create it.
+		mapRef[volume] = make(objMap)
 	}
 
-	(*mapRef)[volume][f.Path()] = &fileObject //setting the map at Volume volume and path of f to this fileObject
+	mapRef[volume][f.Path()] = &fileObject //setting the map at Volume volume and path of f to this fileObject
 	locationPath := utils.EnsureTrailingSlash(path.Clean(path.Dir(f.Path())))
-	if _, ok := (*mapRef)[volume][locationPath]; !ok { //checking for that locations existence to avoid redundancy
-		(*mapRef)[volume][locationPath] = &locObject
+	if _, ok := mapRef[volume][locationPath]; !ok { //checking for that locations existence to avoid redundancy
+		mapRef[volume][locationPath] = &locObject
 	}
 }

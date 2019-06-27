@@ -180,9 +180,9 @@ func (f *File) Exists() (bool, error) {
 		vol := f.Location().Volume()
 		fullPath := f.Path()
 		loc := f.Location().(*Location)
-		mapRef := &loc.fileSystem.fsMap
-		if _, ok := (*mapRef)[vol]; ok {
-			if object, ok2 := (*mapRef)[vol][fullPath]; ok2 {
+		mapRef := loc.fileSystem.fsMap
+		if _, ok := mapRef[vol]; ok {
+			if object, ok2 := mapRef[vol][fullPath]; ok2 {
 
 				if object != nil && object.i.(*File).exists {
 					return true, nil
@@ -215,11 +215,11 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 	testPath := path.Join(path.Clean(location.Path()), f.Name())
 	thisLoc := f.Location().(*Location)
-	mapRef := &thisLoc.fileSystem.fsMap
+	mapRef := thisLoc.fileSystem.fsMap
 	vol := thisLoc.Volume()
-	if _, ok := (*mapRef)[vol]; ok { //making sure that this volume has keys at all
-		if _, ok2 := (*mapRef)[vol][testPath]; ok2 { //if file w/name exists @ loc, simply copy contents over
-			file := (*mapRef)[vol][testPath].i.(*File) //casting obj to a file
+	if _, ok :=mapRef[vol]; ok { //making sure that this volume has keys at all
+		if _, ok2 := mapRef[vol][testPath]; ok2 { //if file w/name exists @ loc, simply copy contents over
+			file := mapRef[vol][testPath].i.(*File) //casting obj to a file
 			cerr := f.CopyToFile(file)
 			if cerr != nil {
 				return nil, cerr
@@ -310,12 +310,12 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	if location.FileSystem().Scheme() == "mem" {
 		testPath := path.Join(location.Path(), f.Name()) //this is a potential path to a file that can be fed into the objMap portion of fsMap
 		loc := location.(*Location)
-		mapRef := &loc.fileSystem.fsMap //mapRef just makes it easier to refer to "loc.fileSystem.fsMap"
+		mapRef := loc.fileSystem.fsMap //mapRef just makes it easier to refer to "loc.fileSystem.fsMap"
 		vol := loc.Volume()
-		if _, ok := (*mapRef)[vol]; ok { //this checks if the specified volume has any keys
+		if _, ok := mapRef[vol]; ok { //this checks if the specified volume has any keys
 			//this block checks if the file already exists at location, if it does, deletes it and inserts the file we have
-			if _, ok2 := (*mapRef)[vol][testPath]; ok2 { //if the file already exists at that location
-				file := (*mapRef)[vol][testPath].i.(*File)
+			if _, ok2 := mapRef[vol][testPath]; ok2 { //if the file already exists at that location
+				file := mapRef[vol][testPath].i.(*File)
 				err := f.CopyToFile(file)
 				if err != nil {
 					return nil, err
@@ -381,16 +381,16 @@ func (f *File) Delete() error {
 	}
 
 	loc := f.Location().(*Location)
-	mapRef := &loc.fileSystem.fsMap
-	if _, ok := (*mapRef)[loc.Volume()]; ok { //if there are keys at this volume
-		if thisObj, ok2 := (*mapRef)[loc.Volume()][f.Path()]; ok2 { //checking for the object that should contain the file at this key
+	mapRef := loc.fileSystem.fsMap
+	if _, ok := mapRef[loc.Volume()]; ok { //if there are keys at this volume
+		if thisObj, ok2 := mapRef[loc.Volume()][f.Path()]; ok2 { //checking for the object that should contain the file at this key
 			str := f.Path()
 			file := thisObj.i.(*File) //casting a file to the object's "i" interface
 			file.exists = false
 			file = nil
 			thisObj.i = nil
 			thisObj = nil
-			(*mapRef)[loc.Volume()][str] = nil //setting that key to nil so it truly no longer lives on this system
+			mapRef[loc.Volume()][str] = nil //setting that key to nil so it truly no longer lives on this system
 		}
 	}
 
