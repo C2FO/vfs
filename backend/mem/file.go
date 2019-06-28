@@ -11,6 +11,7 @@ import (
 )
 
 //File implements vfs.File interface for the in-memory implementation of FileSystem.
+//TODO: this is NOT thread safe!
 type File struct {
 	exists       bool
 	lastModified time.Time

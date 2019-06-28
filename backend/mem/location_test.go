@@ -1,6 +1,7 @@
 package mem
 
 import (
+	"path"
 	"regexp"
 	"testing"
 
@@ -192,6 +193,38 @@ func (s *memLocationTest) TestNewFile() {
 	newfile, nerr := loc.NewFile("../../bam/this.txt")
 	s.NoError(nerr, "Unexpected error creating a new file")
 	s.Equal("/foo/bam/this.txt", newfile.Path(), "relative dot path works")
+}
+/*
+TestNewFile creates two files with the same name and ensures
+that the second creation returns a reference to the first
+*/
+func (s *memLocationTest) TestNewFileSameName(){
+	sharedPath := "/path/to/file.txt"
+	firstFile,err := s.fileSystem.NewFile("",sharedPath)
+
+	s.NoError(err,"Unexpected error creating a file")
+	location := firstFile.Location()
+
+	expectedText := "hey y'all!"
+	_, err = firstFile.Write([]byte(expectedText))
+	s.NoError(err,"Unexpected error writing to file")
+
+	secondFile, err := location.NewFile(path.Base(sharedPath))
+	s.NoError(err,"Unexpected error creating a file")
+	expectedSlice := make([]byte,len(expectedText))
+
+	//since secondFile references firstFile, reading will throw an error as we never closed or seeked firstFile
+	_, err = secondFile.Read(expectedSlice)
+	s.Error(err,"Expected read error since firstFile was never closed")
+
+	//after this call, we can expect to be able to read from secondFile since its reference, firstFile, was closed
+	s.NoError(firstFile.Close(),"Unexpected error closing file")
+
+	_, err = secondFile.Read(expectedSlice)
+	s.NoError(err,"Unexpected read error")
+
+	s.Equal(expectedText,string(expectedSlice))
+
 }
 
 //TestChangeDir tests that we can change the directory on a location but that it doesn't change the file's location

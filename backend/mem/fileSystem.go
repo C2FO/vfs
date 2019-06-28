@@ -46,16 +46,26 @@ func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, erro
 		return nil, err
 	}
 
+	location, err := fs.NewLocation(volume, utils.EnsureTrailingSlash(path.Dir(absFilePath)))
+	if err != nil {
+		return nil, err
+	}
+	mapRef := location.(*Location).fileSystem.fsMap
+	if _, ok := mapRef[volume];ok{
+		fileList := mapRef[volume].filesHere(location.Path())
+		for _,file := range fileList{
+			if file.Name() == path.Base(absFilePath){
+				return file,nil
+			}
+		}
+	}
 	file, err := newFile(path.Base(absFilePath)) //validateAbsFile path will throw an error if there was a trailing slash, hence not calling path.Clean()
 	if err != nil {
 		return nil, err
 	}
-	tmp, err := fs.NewLocation(volume, utils.EnsureTrailingSlash(path.Dir(absFilePath)))
-	if err != nil {
-		return nil, err
-	}
 
-	file.location = tmp
+
+	file.location = location
 	return file, nil
 }
 
