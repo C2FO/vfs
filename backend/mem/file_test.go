@@ -206,6 +206,7 @@ func (s *memFileTest) TestSeek2() {
 	//trying to read should also be an error:
 	_, err = newFile.Read(make([]byte, 1))
 	s.Error(err, "Expected read error")
+	s.NoError(newFile.Close(), "Unexpected close error")
 
 	_, err = newFile.Seek(0, 0)
 	s.NoError(err, "Unexpected seek error")
@@ -270,7 +271,7 @@ func (s *memFileTest) TestSeek() {
 
 	_, err = file.Seek(0, 0)
 	s.NoError(err, "seek error not expected")
-
+	s.NoError(file.Close(),"Unexpected close error")
 	_, err = file.Read(data)
 	s.NoError(err, "read error not expected")
 	s.NoError(file.Close(), "close error not expected")
@@ -303,9 +304,8 @@ func (s *memFileTest) TestCopyToLocation() {
 	_, err = s.testFile.Write([]byte(expectedText))
 	s.NoError(err, "Unexpected write error")
 
-	//seeking to the start of the file from the end of the file (offset of -12 takes us to the start)
-	_, err = s.testFile.Seek(-12, 2)
-	s.NoError(err, "Seek unexpectedly threw an error")
+
+	s.NoError(s.testFile.Close(), "Unexpected close error")
 
 	readSlice1 := make([]byte, len(expectedText))
 	readSlice2 := make([]byte, len(expectedText))
@@ -351,6 +351,7 @@ func (s *memFileTest) TestCopyToLocationOW() {
 	copiedFile, err := s.testFile.CopyToLocation(newFile.Location())
 	s.NoError(err, "CopyToLocation unexpectedly failed")
 	s.True(copiedFile != nil)
+	copiedFile.Close()
 
 	s.EqualValues("/home/test.txt", copiedFile.Path())
 	_, err = copiedFile.Read(readSlice)
@@ -543,7 +544,7 @@ func (s *memFileTest) TestMoveToLocation2() {
 	s.NoError(err, "Unexpected error creating file")
 	_, err = otherFile.Write([]byte(expectedText))
 	s.NoError(err, "Unexpected write error")
-
+	s.NoError(otherFile.Close(),"Unexpected close error")
 	str1 := newFile.Path()
 	file, _ := otherFile.MoveToLocation(newFile.Location())
 	str2 := file.Path()
@@ -646,9 +647,11 @@ func (s *memFileTest) TestWrite2() {
 	_, err = file.Seek(0, 0)
 	s.NoError(err, "seek error not expected")
 	_, err = file.Read(data)
+	s.Error(err, "read error  expected")
+
+	s.NoError(file.Close(), "close error not expected")
+	_, err = file.Read(data)
 	s.NoError(err, "read error not expected")
-	err = file.Close()
-	s.NoError(err, "close error not expected")
 
 	s.Equal(expectedText, string(data))
 
@@ -696,6 +699,10 @@ func (s *memFileTest) TestSize() {
 	s.NoError(err, "Unexpected write error")
 	_, err = otherFile.Write(make([]byte, 32))
 	s.NoError(err, "Unexpected write error")
+
+	s.NoError(s.testFile.Close(),"Unexpected close error")
+	s.NoError(otherFile.Close(),"Unexpected close error")
+
 	size1, err := s.testFile.Size()
 	s.NoError(err, "Unexpected error retrieving size")
 	size2, err := otherFile.Size()

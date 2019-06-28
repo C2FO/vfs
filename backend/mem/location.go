@@ -1,6 +1,7 @@
 package mem
 
 import (
+	"bytes"
 	"errors"
 	"path"
 	"regexp"
@@ -187,7 +188,7 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 	}
 
 	file := &File{lastModified: time.Now(), name: path.Base(nameStr), cursor: 0,
-		isOpen: false, exists: false, location: loc}
+		isOpen: false, exists: false, location: loc, writeBuffer: new(bytes.Buffer)}
 	return file, nil
 
 }

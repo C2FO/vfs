@@ -1,9 +1,11 @@
 package mem
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"path"
+	"sync"
 	"time"
 
 	"github.com/c2fo/vfs/v5"
@@ -16,10 +18,12 @@ type File struct {
 	exists       bool
 	lastModified time.Time
 	isOpen       bool
+	writeBuffer  *bytes.Buffer
 	contents     []byte       //the file contents
 	name         string       //the base name of the file
 	cursor       int          //the index that the buffer (contents) is at
 	location     vfs.Location //the location that the file exists on
+	mutex        sync.Mutex
 }
 
 /*		******* Error Functions *******		*/
@@ -42,6 +46,14 @@ func (f *File) Close() error {
 
 	if f == nil {
 		return errors.New("Cannot close a nil file")
+	}
+	if f.writeBuffer.Len() > 0{
+		bufferContents := f.writeBuffer.Bytes()
+		for i ,_ := range bufferContents{
+			f.contents = append(f.contents,bufferContents[i])
+
+		}
+		f.writeBuffer = new(bytes.Buffer)
 	}
 
 	f.isOpen = false
@@ -72,6 +84,9 @@ func (f *File) Read(p []byte) (n int, err error) {
 	j := 0        //j is the incrementer for the readBuffer. It always starts at 0, but the cursor may not
 	i := f.cursor //i takes the position of the cursor
 	for i = range p {
+		if !f.isOpen{
+			return i,errors.New("file is closed")
+		}
 
 		if i == readBufLen || f.cursor == fileContentLength { //if "i" is greater than the readBufLen of p or readBufLen of the contents
 			return i, io.EOF
@@ -133,14 +148,18 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 }
 
 //Write implements the io.Writer interface. Returns number of bytes written and any errors
-func (f *File) Write(p []byte) (n int, err error) {
+func (f *File) Write(p []byte) (int,  error) {
 	if f.isOpen == false {
 		f.isOpen = true
 	}
+
 	if ex, _ := f.Exists(); !ex {
 		f.Touch()
 	}
-	writeBufferLength := len(p)
+	num,err :=f.writeBuffer.Write(p)
+	return num, err
+
+	/*
 
 	if writeBufferLength == 0 {
 
@@ -163,6 +182,8 @@ func (f *File) Write(p []byte) (n int, err error) {
 
 	f.lastModified = time.Now()
 	return writeBufferLength, err
+
+	 */
 }
 
 //String implements the io.Stringer interface. It returns a string representation of the file's URI
@@ -218,7 +239,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 	thisLoc := f.Location().(*Location)
 	mapRef := thisLoc.fileSystem.fsMap
 	vol := thisLoc.Volume()
-	if _, ok :=mapRef[vol]; ok { //making sure that this volume has keys at all
+	if _, ok := mapRef[vol]; ok { //making sure that this volume has keys at all
 		if _, ok2 := mapRef[vol][testPath]; ok2 { //if file w/name exists @ loc, simply copy contents over
 			file := mapRef[vol][testPath].i.(*File) //casting obj to a file
 			cerr := f.CopyToFile(file)
@@ -260,9 +281,13 @@ func (f *File) CopyToFile(target vfs.File) error {
 	if target == nil {
 		return copyFailNil()
 	}
+	if target.Location().FileSystem().Scheme() == "mem"{
+		target.(*File).contents = make([]byte,0)
+	}
 
 	if ex, err := target.Exists(); !ex {
 		if err == nil {
+
 			if _, werr := target.Write(f.contents); err != nil {
 				return werr
 			}
@@ -402,7 +427,7 @@ func (f *File) Delete() error {
 func newFile(name string) (*File, error) {
 	return &File{
 		lastModified: time.Now(), name: name, cursor: 0,
-		isOpen: false, exists: false,
+		isOpen: false, exists: false, writeBuffer: new(bytes.Buffer),
 	}, nil
 
 }
