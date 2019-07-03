@@ -64,6 +64,49 @@ func (s *osFileTest) TestExists() {
 	s.False(otherFileExists)
 }
 
+func (s *osFileTest) TestTouch() {
+
+	//set up testfile
+	testfile, err := s.tmploc.NewFile("test_files/foo.txt")
+	s.NoError(err)
+
+	// testfile should NOT exist
+	exists, err := testfile.Exists()
+	s.NoError(err)
+	s.False(exists)
+
+	//touch file
+	err = testfile.Touch()
+	s.NoError(err)
+
+	// testfile SHOULD exist
+	exists, err = testfile.Exists()
+	s.NoError(err)
+	s.True(exists)
+
+	// size should be zero
+	size, err := testfile.Size()
+	s.NoError(err)
+	s.Equal(size, uint64(0), "size should be zero")
+
+	//capture last_modified
+	firstModTime, err := testfile.LastModified()
+	s.NoError(err)
+
+	//touch again
+	err = testfile.Touch()
+	s.NoError(err)
+
+	// size should still be zero
+	size, err = testfile.Size()
+	s.NoError(err)
+	s.Equal(size, uint64(0), "size should be zero")
+
+	//LastModified should be later than previous LastModified
+	nextModTime, err := testfile.LastModified()
+	s.True(firstModTime.Before(*nextModTime), "Last Modified was updated")
+}
+
 func (s *osFileTest) TestOpenFile() {
 	expectedText := "hello world"
 	data := make([]byte, len(expectedText))
@@ -236,6 +279,31 @@ func (s *osFileTest) TestMoveToLocation() {
 	origFound, eerr := origFile.Exists()
 	s.NoError(eerr, "exists error not expected")
 	s.False(origFound)
+
+
+	// test non-sheme MoveToLocation
+	mockLocation := new(mocks.Location)
+	mockfs := new(mocks.FileSystem)
+
+	// Expected behavior
+	mockfs.On("Scheme").Return("mock")
+	fsMockFile := new(mocks.File)
+	fsMockFile.On("Write", mock.Anything).Return(10,nil)
+	fsMockFile.On("Close").Return(nil)
+	mockfs.On("NewFile", mock.Anything, mock.Anything).Return( fsMockFile,nil)
+	mockLocation.On("FileSystem").Return(mockfs)
+	mockLocation.On("Volume").Return("")
+	mockLocation.On("Path").Return("/some/path/to/")
+	mockLocation.On("Close").Return(nil)
+	mockLocation.On("NewFile", mock.Anything).Return(&File{}, nil)
+	mockFile := new(mocks.File)
+	mockFile.On("Location").Return(mockLocation, nil)
+	mockFile.On("Name").Return("/some/path/to/move.txt")
+	mockFile.On("Location ").Return(mockLocation, nil)
+	mockfs.On("NewLocation", mock.Anything, mock.Anything).Return(mockLocation)
+
+	_, err = movedFile.MoveToLocation(mockLocation)
+	s.NoError(err)
 }
 
 func (s *osFileTest) TestMoveToFile() {
@@ -284,6 +352,29 @@ func (s *osFileTest) TestMoveToFile() {
 	s.NoError(cErr, "close error not expected")
 
 	s.Equal(text, string(data))
+
+
+	// test non-sheme MoveToFile
+	mockFile := new(mocks.File)
+	mockLocation := new(mocks.Location)
+	mockfs := new(mocks.FileSystem)
+
+	// Expected behavior
+	mockfs.On("Scheme").Return("mock")
+	fsMockFile := new(mocks.File)
+	fsMockFile.On("Write", mock.Anything).Return(13,nil)
+	fsMockFile.On("Close").Return(nil)
+	mockfs.On("NewFile", mock.Anything, mock.Anything).Return( fsMockFile,nil)
+	mockLocation.On("FileSystem").Return(mockfs)
+	mockLocation.On("Volume").Return("")
+	mockLocation.On("Path").Return("/some/path/to/")
+	mockLocation.On("Close").Return(nil)
+	mockFile.On("Location").Return(mockLocation, nil)
+	mockFile.On("Name").Return("/some/path/to/file.txt")
+	mockFile.On("Location ").Return(mockLocation, nil)
+	mockfs.On("NewLocation", mock.Anything, mock.Anything).Return(mockLocation)
+
+	s.NoError( file2.MoveToFile(mockFile))
 }
 
 func (s *osFileTest) TestWrite() {
