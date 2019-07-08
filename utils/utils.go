@@ -114,6 +114,7 @@ func TouchCopy(writer, reader vfs.File) error {
 	return nil
 }
 
+// UpdateLastModifiedByMoving is used by some backends' Touch() method when a file already exists.
 func UpdateLastModifiedByMoving(file vfs.File) error {
 	// setup a tempfile
 	tempfile, err := file.Location().
