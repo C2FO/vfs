@@ -259,7 +259,7 @@ func (f *File) Touch() error {
 func (f *File) updateLastModifiedByMoviing() error {
 	// setup a tempfile
 	tempfile, err := f.Location().
-		NewFile(fmt.Sprintf("%s.%d", f.Name(), time.Now().UnixNano()/1000000))
+		NewFile(fmt.Sprintf("%s.%d", f.Name(), time.Now().UnixNano()))
 
 	// copy file file to tempfile
 	err = f.CopyToFile(tempfile)
