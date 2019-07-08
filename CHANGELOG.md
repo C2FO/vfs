@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [5.0.0] - 2019-06-18
+## [5.0.0] - 2019-07-08
 ### Changed
 - Defined stricter definitions in interfaces, largely related to input requiements being more
 URI compliant.
@@ -18,6 +18,7 @@ URI compliant.
 ### Added
 - Integration test suite for backened developers that ensures expected interface behaviors and tests interactions
 between implementations.
+- Added Touch() method to File interface.
 - Examples of io.Copy usage in docs.
 ### Fixed
 - Fixed [#10](https://github.com/C2FO/vfs/issues/10)
