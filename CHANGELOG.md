@@ -5,8 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [5.0.1] - 2019-07-08
+### Added
+- Added Touch() method to File interface and implemented in each backend.
+- Increased test coverage in both os and s3 backends.
 
-## [5.0.0] - 2019-07-08
+## [5.0.0] - 2019-06-18
 ### Changed
 - Defined stricter definitions in interfaces, largely related to input requiements being more
 URI compliant.
@@ -18,7 +22,6 @@ URI compliant.
 ### Added
 - Integration test suite for backened developers that ensures expected interface behaviors and tests interactions
 between implementations.
-- Added Touch() method to File interface.
 - Examples of io.Copy usage in docs.
 ### Fixed
 - Fixed [#10](https://github.com/C2FO/vfs/issues/10)
