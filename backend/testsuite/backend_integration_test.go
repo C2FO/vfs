@@ -698,6 +698,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 	// Returns error if unable to touch File.
 
 	touchedFile, err := srcLoc.NewFile("touch.txt")
+	s.NoError(err)
 	defer func() { _ = touchedFile.Delete() }()
 	exists, err = touchedFile.Exists()
 	s.NoError(err)

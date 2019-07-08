@@ -212,12 +212,11 @@ func (f *File) Touch() error {
 		}
 		f.file = file
 		return f.Close()
-	} else {
-		mtime := time.Now()
-		atime := time.Now()
-		if err := os.Chtimes(f.Path(), atime, mtime); err != nil {
-			return err
-		}
+	}
+	mtime := time.Now()
+	atime := time.Now()
+	if err := os.Chtimes(f.Path(), atime, mtime); err != nil {
+		return err
 	}
 	return nil
 }

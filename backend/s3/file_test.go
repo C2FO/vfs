@@ -267,7 +267,7 @@ func (ts *fileTestSuite) TestTouch() {
 
 	s3Mock1.AssertExpectations(ts.T())
 
-	// test non-existant length
+	// test non-existent length
 	s3Mock2 := &mocks.S3API{}
 	s3Mock2.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, awserr.New(s3.ErrCodeNoSuchKey, "", nil)).Once()
 	s3Mock2.On("PutObjectRequest", mock.AnythingOfType("*s3.PutObjectInput")).Return(&request.Request{HTTPRequest: &http.Request{Header: make(map[string][]string), URL: &url.URL{}}}, &s3.PutObjectOutput{})

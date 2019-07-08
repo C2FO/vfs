@@ -27,7 +27,7 @@ between implementations.
 - Fixed [#10](https://github.com/C2FO/vfs/issues/10)
 - Fixed vfssimple bug that would return os file system if the uri had the word 'file' anywhere in it even if was s3, like s3://bucket/path/to/file.txt
 - Fixed bug where MoveToLocation was returning the old file with updated location rather
-than a brand new file with new location.  Since File may represent a non-existant file, the original file should still be valid.
+than a brand new file with new location.  Since File may represent a non-existent file, the original file should still be valid.
 
 ## [4.0.0] - 2019-05-22
 

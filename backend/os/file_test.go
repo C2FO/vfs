@@ -104,6 +104,7 @@ func (s *osFileTest) TestTouch() {
 
 	//LastModified should be later than previous LastModified
 	nextModTime, err := testfile.LastModified()
+	s.NoError(err)
 	s.True(firstModTime.Before(*nextModTime), "Last Modified was updated")
 }
 

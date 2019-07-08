@@ -235,7 +235,7 @@ func (lt *locationTestSuite) TestChangeDir() {
 	//test nil Location
 	var nilLoc *Location
 	err := nilLoc.ChangeDir("path/to/")
-	lt.EqualErrorf(err, "non-nil s3.Location pointer is required", "error expeced for nil location")
+	lt.EqualErrorf(err, "non-nil s3.Location pointer is required", "error expected for nil location")
 
 	loc := &Location{fileSystem: lt.fs, prefix: "/", bucket: "bucket"}
 
