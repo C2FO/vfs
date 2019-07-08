@@ -250,29 +250,10 @@ func (f *File) Touch() error {
 	}
 
 	if enabled {
-		return f.updateLastModifiedByMoviing()
+		return utils.UpdateLastModifiedByMoving(f)
 	}
 
 	return f.updateLastModifiedByAttrUpdate()
-}
-
-func (f *File) updateLastModifiedByMoviing() error {
-	// setup a tempfile
-	tempfile, err := f.Location().
-		NewFile(fmt.Sprintf("%s.%d", f.Name(), time.Now().UnixNano()))
-
-	// copy file file to tempfile
-	err = f.CopyToFile(tempfile)
-	if err != nil {
-		return err
-	}
-
-	// move tempfile back to file
-	err = tempfile.MoveToFile(f)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (f *File) updateLastModifiedByAttrUpdate() error {

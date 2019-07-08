@@ -259,25 +259,7 @@ func (f *File) Touch() error {
 		}
 	} else {
 		// file already exists so update its last modified date
-
-		// setup a tempfile
-		tempfile, err := f.Location().
-			NewFile(fmt.Sprintf("%s.%d", f.Name(), time.Now().UnixNano()))
-		if err != nil {
-			return err
-		}
-
-		// copy file file to tempfile
-		err = f.CopyToFile(tempfile)
-		if err != nil {
-			return err
-		}
-
-		// move tempfile back to file
-		err = tempfile.MoveToFile(f)
-		if err != nil {
-			return err
-		}
+		return utils.UpdateLastModifiedByMoving(f)
 	}
 
 	return nil
