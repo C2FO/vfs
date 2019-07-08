@@ -262,7 +262,7 @@ func (f *File) Touch() error {
 
 		// setup a tempfile
 		tempfile, err := f.Location().
-			NewFile(fmt.Sprintf("%s.%d", f.Name(), time.Now().UnixNano()/1000000))
+			NewFile(fmt.Sprintf("%s.%d", f.Name(), time.Now().UnixNano()))
 		if err != nil {
 			return err
 		}
