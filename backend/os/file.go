@@ -197,6 +197,26 @@ func (f *File) String() string {
 	return f.URI()
 }
 
+// Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
+// Returns error if unable to touch File.
+func (f *File) Touch() error {
+	exists, err := f.Exists()
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		file, err := f.openFile()
+		if err != nil {
+			return err
+		}
+		f.file = file
+		return f.Close()
+	}
+	now := time.Now()
+	return os.Chtimes(f.Path(), now, now)
+}
+
 func (f *File) copyWithName(name string, location vfs.Location) (vfs.File, error) {
 	newFile, err := location.FileSystem().NewFile(location.Volume(), path.Join(location.Path(), name))
 	if err != nil {

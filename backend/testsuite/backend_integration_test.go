@@ -1,4 +1,4 @@
-// +build vfsintegration
+//+build vfsintegration
 
 package testsuite
 
@@ -694,46 +694,37 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 		s.NoError(err)
 	}
 
-	// Test empty reader used to io.Copy
+	// Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
+	// Returns error if unable to touch File.
 
-	// TODO: ***************************************************************************************************
-	//  it has yet to be determined what behavior should occur
-	//  likely we will not expect io.Copy to produce a file since that seems to be the general expected behavior
-	//  however, does that mean then that we enforce that it should NOT create a file, like it does in OS.
-	//  Also, Should we ensure that an empty write() doesn't create a file on close()?
-	//  ********************************************************************************************************
+	touchedFile, err := srcLoc.NewFile("touch.txt")
+	s.NoError(err)
+	defer func() { _ = touchedFile.Delete() }()
+	exists, err = touchedFile.Exists()
+	s.NoError(err)
+	s.False(exists, "%s shouldn't yet exist", touchedFile)
 
-	/*
-		setup reader and vfs.File target
-		emptyIOReader, err := srcLoc.NewFile("srcEmptyfile.txt")
-		s.NoError(err)
-		_, err = emptyIOReader.Write([]byte(""))
-		s.NoError(err)
-		s.NoError(emptyIOReader.Close())
+	err = touchedFile.Touch()
+	s.NoError(err)
+	exists, err = touchedFile.Exists()
+	s.NoError(err)
+	s.True(exists, "%s now exists", touchedFile)
 
-		emptyTargetFile, err := srcLoc.NewFile("emptyfile.txt")
-		s.NoError(err)
+	size, err := touchedFile.Size()
+	s.NoError(err)
+	s.Equal(uint64(0), size, "%s should be empty", touchedFile)
 
-		fmt.Println(emptyTargetFile)
-		// use io.Copy
-		byteCount, err := io.Copy(emptyTargetFile, emptyIOReader)
-		s.NoError(err, "should have no error copying emtpy file")
-		s.Equal(int64(0), byteCount, "should copy zero bytes")
+	//capture last modified
+	modified, err := touchedFile.LastModified()
+	s.NoError(err)
 
-		//does target exist?
-		exists, err = emptyTargetFile.Exists()
-		s.NoError(err)
-		s.True(exists, "new empty file should exist")
-
-		//does size match?
-		size, err := emptyTargetFile.Size()
-		s.NoError(err)
-		s.Equal(uint64(0), size, "new empty file should have size of 0")
-
-		//clean up
-		err = emptyTargetFile.Delete()
-		s.NoError(err)
-	*/
+	//wait for eventual constency
+	time.Sleep(1 * time.Second)
+	err = touchedFile.Touch()
+	s.NoError(err)
+	newModified, err := touchedFile.LastModified()
+	s.NoError(err)
+	s.True(newModified.UnixNano() > modified.UnixNano(), "touch updated modified date for %s", touchedFile)
 
 	/*
 		Delete unlinks the File on the file system.

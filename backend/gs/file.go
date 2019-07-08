@@ -164,7 +164,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 	return newFile, nil
 }
 
-// CopyToFile puts the contents of File into the targetFile passed. Uses the GCS CopierFrom
+// CopyToFile puts the contents of File into the target vfs.File passed in. Uses the GCS CopierFrom
 // method if the target file is also on GCS, otherwise uses io.Copy.
 func (f *File) CopyToFile(file vfs.File) error {
 	if tf, ok := file.(*File); ok {
@@ -195,7 +195,7 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	return newFile, delErr
 }
 
-// MoveToFile puts the contents of File into the target vfs.File passed passed in using File.CopyToFile.
+// MoveToFile puts the contents of File into the target vfs.File passed in using File.CopyToFile.
 // If the copy succeeds, the source file is deleted. Any errors from the copy or delete are
 // returned.
 func (f *File) MoveToFile(file vfs.File) error {
@@ -218,6 +218,113 @@ func (f *File) Delete() error {
 		return err
 	}
 	return handle.Delete(f.fileSystem.ctx)
+}
+
+// Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
+// Returns error if unable to touch File.
+func (f *File) Touch() error {
+
+	//check if file exists
+	exists, err := f.Exists()
+	if err != nil {
+		return err
+	}
+
+	// if file doesn't already exist, create it
+	if !exists {
+		return f.createEmptyFile()
+	}
+
+	// already exists so update it so Last-Modified is updated
+
+	//  With versioning enabled, updates to custom meta won't update Updated date:
+	//  from https://godoc.org/cloud.google.com/go/storage#ObjectAttrs:
+	//        // Updated is the creation or modification time of the object.
+	//        // For buckets with versioning enabled, changing an object's
+	//        // metadata does not change this property. This field is read-only.
+	//        Updated time.Time
+
+	enabled, err := f.isBucketVersioningEnabled()
+	if err != nil {
+		return err
+	}
+
+	if enabled {
+		return utils.UpdateLastModifiedByMoving(f)
+	}
+
+	return f.updateLastModifiedByAttrUpdate()
+}
+
+func (f *File) updateLastModifiedByAttrUpdate() error {
+
+	//save original metadata (in case it was set already)
+	objAttrs, err := f.getObjectAttrs()
+	if err != nil {
+		return err
+	}
+	oldMetaData := objAttrs.Metadata
+
+	// setup dummy metadata tag and update object with it
+	var updateAttrs storage.ObjectAttrsToUpdate
+	updateAttrs.Metadata = map[string]string{"updateMe": "true"}
+
+	obj, err := f.getObjectHandle()
+	if err != nil {
+		return err
+	}
+
+	cctx, cancel := context.WithCancel(f.fileSystem.ctx)
+	defer func() { cancel() }()
+
+	_, err = obj.Update(cctx, updateAttrs)
+	if err != nil {
+		return err
+	}
+
+	//now switch metadata back to original values
+	updateAttrs.Metadata = oldMetaData
+	_, err = obj.Update(cctx, updateAttrs)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (f *File) isBucketVersioningEnabled() (bool, error) {
+	client, err := f.fileSystem.Client()
+	if err != nil {
+		return false, err
+	}
+	cctx, cancel := context.WithCancel(f.fileSystem.ctx)
+	defer func() { cancel() }()
+	attrs, err := client.Bucket(f.bucket).Attrs(cctx)
+	if err != nil {
+		return false, err
+	}
+	return attrs.VersioningEnabled, nil
+}
+
+func (f *File) createEmptyFile() error {
+
+	handle, err := f.getObjectHandle()
+	if err != nil {
+		return err
+	}
+
+	//write zero length file.
+	ctx, cancel := context.WithCancel(f.fileSystem.ctx)
+	defer func() { cancel() }()
+
+	w := handle.NewWriter(ctx)
+	defer func() { _ = w.Close() }()
+	if _, err := w.Write(make([]byte, 0)); err != nil {
+		return err
+	}
+
+	// return early
+	return nil
 }
 
 // LastModified returns the 'Updated' property from the GCS attributes.

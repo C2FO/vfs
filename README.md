@@ -106,9 +106,8 @@ File's [io.*](https://godoc.org/io) interfaces may be used directly:
 
     byteCount, err := io.Copy(gsFile, reader)
     err := gsFile.Close()
-    
-###### Note:
-[io.Copy()](https://godoc.org/io#Copy) doesn't strictly define what happens if a reader is empty.  This is complicated because io.Copy
+
+Note: [io.Copy()](https://godoc.org/io#Copy) doesn't strictly define what happens if a reader is empty.  This is complicated because io.Copy
 will first delegate actual copying in the following:
   1. if the io.Reader also implements io.WriterTo, WriteTo() will do the copy
   2. if the io.Writer also implements io.ReaderFrom, ReadFrom() will do the copy
@@ -153,7 +152,9 @@ Things to add:
 Brought to you by the Enterprise Pipeline team at C2FO:
 
 * John Judd - john.judd@c2fo.com
+
 * Jason Coble - [@jasonkcoble](https://twitter.com/jasonkcoble) - jason@c2fo.com
+
 * Chris Roush – chris.roush@c2fo.com
 
 https://github.com/c2fo/
@@ -401,6 +402,10 @@ type Location interface {
 	//
 	// * Accepts relative file path.
 	DeleteFile(relFilePath string) error
+
+	// Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
+	// Returns error if unable to touch File.
+	Touch() error
 
 	// URI returns the fully qualified absolute URI for the Location.  IE, s3://bucket/some/path/
 	//

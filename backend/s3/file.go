@@ -133,28 +133,12 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 // name at the given location. If the given location is also s3, the AWS API for copying
 // files will be utilized, otherwise, standard io.Copy will be done to the new file.
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
-	// This is a copy to s3, from s3, we should attempt to utilize the AWS S3 API for this.
-	if location.FileSystem().Scheme() == Scheme {
-		return f.copyWithinS3ToLocation(location)
-	}
-
-	newFile, err := location.FileSystem().NewFile(location.Volume(), path.Join(location.Path(), f.Name()))
+	newFile, err := location.NewFile(f.Name())
 	if err != nil {
 		return nil, err
 	}
 
-	if err := utils.TouchCopy(newFile, f); err != nil {
-		return nil, err
-	}
-	//Close target file to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
-	if cerr := newFile.Close(); cerr != nil {
-		return nil, cerr
-	}
-	//Close file (f) reader
-	if cerr := f.Close(); cerr != nil {
-		return nil, cerr
-	}
-	return newFile, nil
+	return newFile, f.CopyToFile(newFile)
 }
 
 // CRUD Operations
@@ -184,7 +168,7 @@ func (f *File) Delete() error {
 func (f *File) Close() error {
 
 	if f.tempFile != nil {
-		defer f.tempFile.Close()
+		defer func() { _ = f.tempFile.Close() }()
 
 		err := os.Remove(f.tempFile.Name())
 		if err != nil && !os.IsNotExist(err) {
@@ -253,6 +237,34 @@ func (f *File) Write(data []byte) (res int, err error) {
 	return f.writeBuffer.Write(data)
 }
 
+// Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
+// Returns error if unable to touch File.
+func (f *File) Touch() error {
+
+	//check if file exists
+	exists, err := f.Exists()
+	if err != nil {
+		return err
+	}
+
+	// file doesn't already exist so create it
+	if !exists {
+		_, err = f.Write([]byte(""))
+		if err != nil {
+			return err
+		}
+
+		if err := f.Close(); err != nil {
+			return err
+		}
+	} else {
+		// file already exists so update its last modified date
+		return utils.UpdateLastModifiedByMoving(f)
+	}
+
+	return nil
+}
+
 // URI returns the File's URI as a string.
 func (f *File) URI() string {
 	return utils.GetFileURI(f)
@@ -287,24 +299,6 @@ func (f *File) copyWithinS3ToFile(targetFile *File) error {
 	_, err = client.CopyObject(copyInput)
 
 	return err
-}
-
-func (f *File) copyWithinS3ToLocation(location vfs.Location) (vfs.File, error) {
-	copyInput := new(s3.CopyObjectInput).
-		SetKey(path.Join(location.Path(), f.Name())).
-		SetBucket(location.Volume()).
-		SetCopySource(path.Join(f.bucket, f.key))
-
-	client, err := f.fileSystem.Client()
-	if err != nil {
-		return nil, err
-	}
-	_, err = client.CopyObject(copyInput)
-	if err != nil {
-		return nil, err
-	}
-
-	return location.FileSystem().NewFile(location.Volume(), path.Join(location.Path(), f.Name()))
 }
 
 func (f *File) checkTempFile() error {
