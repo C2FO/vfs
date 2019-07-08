@@ -281,7 +281,7 @@ func (s *osFileTest) TestMoveToLocation() {
 	s.False(origFound)
 
 
-	// test non-sheme MoveToLocation
+	// test non-scheme MoveToLocation
 	mockLocation := new(mocks.Location)
 	mockfs := new(mocks.FileSystem)
 
@@ -353,8 +353,7 @@ func (s *osFileTest) TestMoveToFile() {
 
 	s.Equal(text, string(data))
 
-
-	// test non-sheme MoveToFile
+	// test non-scheme MoveToFile
 	mockFile := new(mocks.File)
 	mockLocation := new(mocks.Location)
 	mockfs := new(mocks.FileSystem)

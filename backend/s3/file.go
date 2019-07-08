@@ -133,28 +133,12 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 // name at the given location. If the given location is also s3, the AWS API for copying
 // files will be utilized, otherwise, standard io.Copy will be done to the new file.
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
-	// This is a copy to s3, from s3, we should attempt to utilize the AWS S3 API for this.
-	if location.FileSystem().Scheme() == Scheme {
-		return f.copyWithinS3ToLocation(location)
-	}
-
-	newFile, err := location.FileSystem().NewFile(location.Volume(), path.Join(location.Path(), f.Name()))
+	newFile, err := location.NewFile(f.Name())
 	if err != nil {
 		return nil, err
 	}
 
-	if err := utils.TouchCopy(newFile, f); err != nil {
-		return nil, err
-	}
-	//Close target file to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
-	if cerr := newFile.Close(); cerr != nil {
-		return nil, cerr
-	}
-	//Close file (f) reader
-	if cerr := f.Close(); cerr != nil {
-		return nil, cerr
-	}
-	return newFile, nil
+	return newFile, f.CopyToFile(newFile)
 }
 
 // CRUD Operations
@@ -330,24 +314,6 @@ func (f *File) copyWithinS3ToFile(targetFile *File) error {
 	_, err = client.CopyObject(copyInput)
 
 	return err
-}
-
-func (f *File) copyWithinS3ToLocation(location vfs.Location) (vfs.File, error) {
-	copyInput := new(s3.CopyObjectInput).
-		SetKey(path.Join(location.Path(), f.Name())).
-		SetBucket(location.Volume()).
-		SetCopySource(path.Join(f.bucket, f.key))
-
-	client, err := f.fileSystem.Client()
-	if err != nil {
-		return nil, err
-	}
-	_, err = client.CopyObject(copyInput)
-	if err != nil {
-		return nil, err
-	}
-
-	return location.FileSystem().NewFile(location.Volume(), path.Join(location.Path(), f.Name()))
 }
 
 func (f *File) checkTempFile() error {
