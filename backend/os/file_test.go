@@ -280,7 +280,6 @@ func (s *osFileTest) TestMoveToLocation() {
 	s.NoError(eerr, "exists error not expected")
 	s.False(origFound)
 
-
 	// test non-scheme MoveToLocation
 	mockLocation := new(mocks.Location)
 	mockfs := new(mocks.FileSystem)
@@ -288,9 +287,9 @@ func (s *osFileTest) TestMoveToLocation() {
 	// Expected behavior
 	mockfs.On("Scheme").Return("mock")
 	fsMockFile := new(mocks.File)
-	fsMockFile.On("Write", mock.Anything).Return(10,nil)
+	fsMockFile.On("Write", mock.Anything).Return(10, nil)
 	fsMockFile.On("Close").Return(nil)
-	mockfs.On("NewFile", mock.Anything, mock.Anything).Return( fsMockFile,nil)
+	mockfs.On("NewFile", mock.Anything, mock.Anything).Return(fsMockFile, nil)
 	mockLocation.On("FileSystem").Return(mockfs)
 	mockLocation.On("Volume").Return("")
 	mockLocation.On("Path").Return("/some/path/to/")
@@ -361,9 +360,9 @@ func (s *osFileTest) TestMoveToFile() {
 	// Expected behavior
 	mockfs.On("Scheme").Return("mock")
 	fsMockFile := new(mocks.File)
-	fsMockFile.On("Write", mock.Anything).Return(13,nil)
+	fsMockFile.On("Write", mock.Anything).Return(13, nil)
 	fsMockFile.On("Close").Return(nil)
-	mockfs.On("NewFile", mock.Anything, mock.Anything).Return( fsMockFile,nil)
+	mockfs.On("NewFile", mock.Anything, mock.Anything).Return(fsMockFile, nil)
 	mockLocation.On("FileSystem").Return(mockfs)
 	mockLocation.On("Volume").Return("")
 	mockLocation.On("Path").Return("/some/path/to/")
@@ -373,7 +372,7 @@ func (s *osFileTest) TestMoveToFile() {
 	mockFile.On("Location ").Return(mockLocation, nil)
 	mockfs.On("NewLocation", mock.Anything, mock.Anything).Return(mockLocation)
 
-	s.NoError( file2.MoveToFile(mockFile))
+	s.NoError(file2.MoveToFile(mockFile))
 }
 
 func (s *osFileTest) TestWrite() {
