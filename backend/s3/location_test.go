@@ -198,7 +198,7 @@ func (lt *locationTestSuite) TestNewFile() {
 
 	//test empty path error
 	_, err = loc.NewFile("")
-	lt.EqualError(err, "non-empty string filePath is required", "errors returned by NewFile")
+	lt.EqualError(err, utils.ErrBadRelFilePath, "errors returned by NewFile")
 
 	//test validation error
 	_, err = loc.NewFile("/absolute/path/to/file.txt")
@@ -279,7 +279,7 @@ func (lt *locationTestSuite) TestNewLocation() {
 
 	//test empty path error
 	_, err = loc.NewLocation("")
-	lt.EqualError(err, "non-empty string relativePath is required", "errors returned by NewLocation")
+	lt.EqualError(err, utils.ErrBadRelLocationPath, "errors returned by NewLocation")
 
 	//test validation error
 	_, err = loc.NewLocation("/absolute/path/to/")
