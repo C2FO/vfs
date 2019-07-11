@@ -754,7 +754,3 @@ func TestMemFile(t *testing.T) {
 	_ = os.Remove("test_files/new.txt")
 }
 
-func (s *memFileTest) teardownTestFiles() {
-
-	s.fileSystem.fsMap = nil
-}

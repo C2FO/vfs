@@ -25,14 +25,17 @@ type memFile struct{
 	isOpen 		bool
 	filepath 	string
 }
-//File implements vfs.File interface for the in-memory implementation of FileSystem.
-//TODO: this is NOT thread safe!
+/*
+
+	//File implements vfs.File interface for the in-memory implementation of FileSystem.
+	//A file struct holds a pointer to a single memFile.  Multiple threads will refer to the same
+	//memFile. Simultaneous reading is allowed, but writing and closing are protected by locks.
+*/
 type File struct {
 	memFile      *memFile
 	exists       bool
 	lastModified time.Time
 	isOpen       bool
-	//writeBuffer  *bytes.Buffer
 	contents     []byte       //the file contents
 	name         string       //the base name of the file
 	cursor       int          //the index that the buffer (contents) is at
@@ -85,28 +88,31 @@ func (f *File) Read(p []byte) (n int, err error) {
 	if f.isOpen == false {
 		f.isOpen = true
 	}
-	existence, err := f.Exists()
-	if !existence {
+	exists, err := f.Exists()
+	if err != nil {
 		return 0, err
 	}
-	readBufLen := len(p)
-	if readBufLen == 0 { //readBufLen of byte slice is zero, just return 0 and nil
+	if !exists {
 		return 0, nil
 	}
+	readBufferLength := len(p)
+	if readBufferLength == 0 { //readBufferLength of byte slice is zero, just return 0 and nil
+		return 0, nil
+	}
+
 	f.update()	//in case the file contents have changed
 
 	fileContentLength := len(f.contents)
-	if f.cursor == len(f.contents) { //if the cursor is at the end of the file
+	if f.cursor == fileContentLength { //if the cursor is at the end of the file
 		return 0, io.EOF
 	}
 	j := 0        //j is the incrementer for the readBuffer. It always starts at 0, but the cursor may not
-	i := f.cursor //i takes the position of the cursor
-	for i = range p {
+	for i := range p {
 		if !f.isOpen{
 			return i,errors.New("file is closed")
 		}
 
-		if i == readBufLen || f.cursor == fileContentLength { //if "i" is greater than the readBufLen of p or readBufLen of the contents
+		if i == readBufferLength || f.cursor == fileContentLength { //if "i" is greater than the readBufferLength of p or readBufferLength of the contents
 			return i, io.EOF
 		}
 
@@ -118,7 +124,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 	if f.cursor > len(f.contents) {
 		f.cursor = len(f.contents)
 	}
-	return readBufLen - offset, nil
+	return readBufferLength - offset, nil
 
 }
 
@@ -167,7 +173,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 
 //Write implements the io.Writer interface. Returns number of bytes written and any errors
 func (f *File) Write(p []byte) (int,  error) {
-	if f.isOpen == false {
+	if !f.isOpen {
 		f.isOpen = true
 	}
 

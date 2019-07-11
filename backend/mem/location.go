@@ -124,6 +124,17 @@ func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
 	}
 	str := path.Join(l.Path(), relLocPath)
 	str = utils.EnsureTrailingSlash(path.Clean(str))
+	mapRef := l.fileSystem.fsMap
+	//if the location already exists on the map, just return that one
+	if object,ok := mapRef[l.volume]; ok{
+		paths := object.getKeys()
+		for _,potentialPath := range paths{
+			if ok := potentialPath == str;ok{
+				return mapRef[l.volume][potentialPath].i.(*Location),nil
+			}
+		}
+
+	}
 	return &Location{
 		fileSystem: l.fileSystem,
 		name:       str,
@@ -178,8 +189,7 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 	*/
 	pref := l.Path()
 	str := relFilePath
-	var nameStr string
-	nameStr = path.Join(pref, str)
+	nameStr := path.Join(pref, str)
 
 	loc, err := l.fileSystem.NewLocation(l.Volume(), utils.EnsureTrailingSlash(path.Dir(nameStr)))
 	if err != nil {
@@ -192,7 +202,6 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 	file.location = loc
 	file.memFile = newMemFile(file)
 	return file, nil
-
 }
 
 //DeleteFile locates the file given the fileName and calls delete on it
