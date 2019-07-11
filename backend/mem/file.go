@@ -12,18 +12,35 @@ import (
 	"github.com/c2fo/vfs/v5/utils"
 )
 
-//File implements vfs.File interface for the in-memory implementation of FileSystem.
-//TODO: this is NOT thread safe!
+
+
+type memFile struct{
+	sync.Mutex
+	writeBuffer *bytes.Buffer
+	exists     bool
+	contents []byte
+	location vfs.Location
+	lastModified time.Time
+	name 		string
+	isOpen 		bool
+	filepath 	string
+}
+/*
+
+	//File implements vfs.File interface for the in-memory implementation of FileSystem.
+	//A file struct holds a pointer to a single memFile.  Multiple threads will refer to the same
+	//memFile. Simultaneous reading is allowed, but writing and closing are protected by locks.
+*/
 type File struct {
+	memFile      *memFile
 	exists       bool
 	lastModified time.Time
 	isOpen       bool
-	writeBuffer  *bytes.Buffer
 	contents     []byte       //the file contents
 	name         string       //the base name of the file
 	cursor       int          //the index that the buffer (contents) is at
 	location     vfs.Location //the location that the file exists on
-	mutex        sync.Mutex
+
 }
 
 /*		******* Error Functions *******		*/
@@ -47,17 +64,19 @@ func (f *File) Close() error {
 	if f == nil {
 		return errors.New("Cannot close a nil file")
 	}
-	if f.writeBuffer.Len() > 0{
-		bufferContents := f.writeBuffer.Bytes()
+	f.memFile.Lock()
+	if f.memFile.writeBuffer.Len() > 0{
+		bufferContents := f.memFile.writeBuffer.Bytes()
 		for i ,_ := range bufferContents{
-			f.contents = append(f.contents,bufferContents[i])
+			f.memFile.contents = append(f.memFile.contents,bufferContents[i])
 
 		}
-		f.writeBuffer = new(bytes.Buffer)
+		f.memFile.writeBuffer = new(bytes.Buffer)
 	}
 
-	f.isOpen = false
+	f.memFile.isOpen = false
 	f.cursor = 0
+	f.memFile.Unlock()
 	return nil
 }
 
@@ -69,26 +88,31 @@ func (f *File) Read(p []byte) (n int, err error) {
 	if f.isOpen == false {
 		f.isOpen = true
 	}
-	existence, err := f.Exists()
-	if !existence {
+	exists, err := f.Exists()
+	if err != nil {
 		return 0, err
 	}
-	readBufLen := len(p)
-	if readBufLen == 0 { //readBufLen of byte slice is zero, just return 0 and nil
+	if !exists {
 		return 0, nil
 	}
+	readBufferLength := len(p)
+	if readBufferLength == 0 { //readBufferLength of byte slice is zero, just return 0 and nil
+		return 0, nil
+	}
+
+	f.update()	//in case the file contents have changed
+
 	fileContentLength := len(f.contents)
-	if f.cursor == len(f.contents) { //if the cursor is at the end of the file
+	if f.cursor == fileContentLength { //if the cursor is at the end of the file
 		return 0, io.EOF
 	}
 	j := 0        //j is the incrementer for the readBuffer. It always starts at 0, but the cursor may not
-	i := f.cursor //i takes the position of the cursor
-	for i = range p {
+	for i := range p {
 		if !f.isOpen{
 			return i,errors.New("file is closed")
 		}
 
-		if i == readBufLen || f.cursor == fileContentLength { //if "i" is greater than the readBufLen of p or readBufLen of the contents
+		if i == readBufferLength || f.cursor == fileContentLength { //if "i" is greater than the readBufferLength of p or readBufferLength of the contents
 			return i, io.EOF
 		}
 
@@ -100,7 +124,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 	if f.cursor > len(f.contents) {
 		f.cursor = len(f.contents)
 	}
-	return readBufLen - offset, nil
+	return readBufferLength - offset, nil
 
 }
 
@@ -149,41 +173,25 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 
 //Write implements the io.Writer interface. Returns number of bytes written and any errors
 func (f *File) Write(p []byte) (int,  error) {
-	if f.isOpen == false {
+	if !f.isOpen {
 		f.isOpen = true
 	}
 
-	if ex, _ := f.Exists(); !ex {
-		f.Touch()
+	if ex, err := f.Exists(); !ex {
+		if err !=nil {
+			return 0, err
+		}
+		err = f.Touch()
+		if err != nil {
+			return 0,err
+		}
 	}
-	num,err :=f.writeBuffer.Write(p)
+	f.memFile.Lock()
+	num,err := f.memFile.writeBuffer.Write(p)
+	f.memFile.lastModified = time.Now()
+	f.memFile.Unlock()
 	return num, err
 
-	/*
-
-	if writeBufferLength == 0 {
-
-		return 0, nil
-	}
-	if len(f.contents)-f.cursor <= writeBufferLength {
-		f.contents = append(f.contents, make([]byte, writeBufferLength)...) //extend the filecontent slice by as much as we need
-	}
-	for i := 0; i < writeBufferLength; i++ {
-		if i >= writeBufferLength || i >= len(f.contents) {
-			break
-		}
-		if i == writeBufferLength {
-			break
-		}
-		f.contents[f.cursor] = p[i]
-		f.cursor++
-
-	}
-
-	f.lastModified = time.Now()
-	return writeBufferLength, err
-
-	 */
 }
 
 //String implements the io.Stringer interface. It returns a string representation of the file's URI
@@ -206,13 +214,14 @@ func (f *File) Exists() (bool, error) {
 		if _, ok := mapRef[vol]; ok {
 			if object, ok2 := mapRef[vol][fullPath]; ok2 {
 
-				if object != nil && object.i.(*File).exists {
+				if object != nil && object.i.(*memFile).exists {
 					return true, nil
 				}
 			}
 		}
 		return false, nil
 	}
+
 	return false, errors.New("Receiver is a nil value")
 }
 
@@ -235,14 +244,21 @@ the given location
 
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
+	if ok, err := f.Exists(); !ok{
+		return nil, err
+	}
 	testPath := path.Join(path.Clean(location.Path()), f.Name())
 	thisLoc := f.Location().(*Location)
 	mapRef := thisLoc.fileSystem.fsMap
 	vol := thisLoc.Volume()
+
 	if _, ok := mapRef[vol]; ok { //making sure that this volume has keys at all
 		if _, ok2 := mapRef[vol][testPath]; ok2 { //if file w/name exists @ loc, simply copy contents over
-			file := mapRef[vol][testPath].i.(*File) //casting obj to a file
+			memFile := mapRef[vol][testPath].i.(*memFile) //casting obj to a file
+			file := memToVFs(memFile)
+
 			cerr := f.CopyToFile(file)
+
 			if cerr != nil {
 				return nil, cerr
 			}
@@ -282,14 +298,14 @@ func (f *File) CopyToFile(target vfs.File) error {
 		return copyFailNil()
 	}
 	if target.Location().FileSystem().Scheme() == "mem"{
-		target.(*File).contents = make([]byte,0)
+		target.(*File).memFile.contents = make([]byte,0)
 	}
 
 	if ex, err := target.Exists(); !ex {
 		if err == nil {
 
-			if _, werr := target.Write(f.contents); err != nil {
-				return werr
+			if _, err := target.Write(f.memFile.contents); err != nil {
+				return err
 			}
 			err = f.Close()
 			if err != nil {
@@ -302,7 +318,7 @@ func (f *File) CopyToFile(target vfs.File) error {
 		}
 
 	}
-	if _, err := target.Write(f.contents); err != nil {
+	if _, err := target.Write(f.memFile.contents); err != nil {
 		return err
 	}
 	err := target.Close()
@@ -338,10 +354,14 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 		loc := location.(*Location)
 		mapRef := loc.fileSystem.fsMap //mapRef just makes it easier to refer to "loc.fileSystem.fsMap"
 		vol := loc.Volume()
+		f.location.FileSystem().(*FileSystem).Lock()
+
 		if _, ok := mapRef[vol]; ok { //this checks if the specified volume has any keys
 			//this block checks if the file already exists at location, if it does, deletes it and inserts the file we have
 			if _, ok2 := mapRef[vol][testPath]; ok2 { //if the file already exists at that location
-				file := mapRef[vol][testPath].i.(*File)
+				memFile := mapRef[vol][testPath].i.(*memFile)
+				f.location.FileSystem().(*FileSystem).Unlock()
+				file := memToVFs(memFile)
 				err := f.CopyToFile(file)
 				if err != nil {
 					return nil, err
@@ -356,7 +376,7 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 			}
 		}
 	}
-
+	f.location.FileSystem().(*FileSystem).Unlock()
 	// if the file doesn't yet exist at the location, create it there
 	newFile, err := location.NewFile(f.Name()) //creating the file in the desired location
 	if err != nil {
@@ -384,7 +404,9 @@ MoveToFile creates a newFile, and moves it to "file".
 The receiver is always deleted (since it's being "moved")
 */
 func (f *File) MoveToFile(file vfs.File) error {
-
+	if ok, err := f.Exists(); !ok{
+		return err
+	}
 	if err := f.CopyToFile(file); err != nil {
 		return err
 	}
@@ -405,13 +427,16 @@ func (f *File) Delete() error {
 	if ex, _ := f.Exists(); !ex {
 		return doesNotExist()
 	}
-
+	f.memFile.Lock()
+	defer f.memFile.Unlock()
 	loc := f.Location().(*Location)
 	mapRef := loc.fileSystem.fsMap
+	f.location.FileSystem().(*FileSystem).Lock()
+	defer 	f.location.FileSystem().(*FileSystem).Unlock()
 	if _, ok := mapRef[loc.Volume()]; ok { //if there are keys at this volume
 		if thisObj, ok2 := mapRef[loc.Volume()][f.Path()]; ok2 { //checking for the object that should contain the file at this key
 			str := f.Path()
-			file := thisObj.i.(*File) //casting a file to the object's "i" interface
+			file := thisObj.i.(*memFile) //casting a file to the object's "i" interface
 			file.exists = false
 			file = nil
 			thisObj.i = nil
@@ -427,11 +452,25 @@ func (f *File) Delete() error {
 func newFile(name string) (*File, error) {
 	return &File{
 		lastModified: time.Now(), name: name, cursor: 0,
-		isOpen: false, exists: false, writeBuffer: new(bytes.Buffer),
+		isOpen: false, exists: false,
 	}, nil
 
 }
 
+func newMemFile(file *File) *memFile{
+
+	return &memFile{
+		sync.Mutex{},
+		new(bytes.Buffer),
+		false,
+		make([]byte,0),
+		file.location,
+		file.lastModified,
+		file.name,
+		false,
+		file.Path(),
+	}
+}
 //LastModified simply returns the file's lastModified, if the file exists
 func (f *File) LastModified() (*time.Time, error) {
 
@@ -445,10 +484,49 @@ func (f *File) LastModified() (*time.Time, error) {
 
 //Size returns the size of the file contents.  In our case, the length of the file's byte slice
 func (f *File) Size() (uint64, error) {
-
+	f.update()
 	return uint64(len(f.contents)), nil
 
 }
+//Touch takes a in-memory vfs.File, makes it existent, and updates the lastModified
+func (f *File) Touch() error {
+	if f == nil {
+		return errors.New("Receiver is nil")
+	}
+	if f.memFile.exists{
+		f.exists = true
+		return nil
+	}
+	f.memFile.exists = true
+	f.exists = true
+	f.lastModified = time.Now()
+	//files and locations are contained in objects of type "obj".
+	// An obj has a blank interface and a boolean that indicates whether or not it is a file
+	var locObject obj
+	var fileObject obj
+	fileObject.i = f.memFile
+	fileObject.isFile = true
+
+	loc := f.Location().(*Location)
+	volume := loc.Volume()
+	locObject.i = f.Location()
+	locObject.isFile = false
+	f.location.FileSystem().(*FileSystem).Lock()
+	defer f.location.FileSystem().(*FileSystem).Unlock()
+	mapRef := loc.fileSystem.fsMap      //just a less clunky way of accessing the fsMap
+	if _, ok := mapRef[volume]; !ok { //if the objMap map does not exist for the volume yet, then we go ahead and create it.
+		mapRef[volume] = make(objMap)
+	}
+
+	mapRef[volume][f.Path()] = &fileObject //setting the map at Volume volume and path of f to this fileObject
+	f.memFile = mapRef[volume][f.Path()].i.(*memFile)
+	locationPath := utils.EnsureTrailingSlash(path.Clean(path.Dir(f.Path())))
+	if _, ok := mapRef[volume][locationPath]; !ok { //checking for that locations existence to avoid redundancy
+		mapRef[volume][locationPath] = &locObject
+	}
+	return nil
+}
+
 
 //Path returns the absolute path to the file
 func (f *File) Path() string {
@@ -467,4 +545,26 @@ func (f *File) URI() string {
 
 	return utils.GetFileURI(f)
 
+}
+//update updates a memFile's contents slice and cursor members
+func (f *File) update(){
+	if ok := string(f.contents) != string(f.memFile.contents); ok{
+		f.cursor = 0
+		f.contents = f.memFile.contents
+		f.lastModified = f.memFile.lastModified
+		f.location = f.memFile.location
+	}
+}
+
+func memToVFs(file *memFile) vfs.File{
+	return &File{
+		file,
+		true,
+		file.lastModified,
+		true,
+		file.contents,
+		file.name,
+		0,
+		file.location,
+	}
 }

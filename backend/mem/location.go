@@ -1,13 +1,11 @@
 package mem
 
 import (
-	"bytes"
 	"errors"
 	"path"
 	"regexp"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/c2fo/vfs/v5"
 	"github.com/c2fo/vfs/v5/utils"
@@ -126,6 +124,17 @@ func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
 	}
 	str := path.Join(l.Path(), relLocPath)
 	str = utils.EnsureTrailingSlash(path.Clean(str))
+	mapRef := l.fileSystem.fsMap
+	//if the location already exists on the map, just return that one
+	if object,ok := mapRef[l.volume]; ok{
+		paths := object.getKeys()
+		for _,potentialPath := range paths{
+			if ok := potentialPath == str;ok{
+				return mapRef[l.volume][potentialPath].i.(*Location),nil
+			}
+		}
+
+	}
 	return &Location{
 		fileSystem: l.fileSystem,
 		name:       str,
@@ -168,8 +177,9 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 	if _, ok := mapRef[l.volume];ok{
 		fileList := mapRef[l.volume].filesHere(l.Path())
 		for _,file := range fileList{
-			if file.Name() == path.Base(relFilePath){
-				return file,nil
+			if file.name == path.Base(relFilePath){
+				fileCopy := deepCopy(file)
+				return fileCopy,nil
 			}
 		}
 	}
@@ -179,34 +189,41 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 	*/
 	pref := l.Path()
 	str := relFilePath
-	var nameStr string
-	nameStr = path.Join(pref, str)
+	nameStr := path.Join(pref, str)
 
 	loc, err := l.fileSystem.NewLocation(l.Volume(), utils.EnsureTrailingSlash(path.Dir(nameStr)))
 	if err != nil {
 		return nil, err
 	}
-
-	file := &File{lastModified: time.Now(), name: path.Base(nameStr), cursor: 0,
-		isOpen: false, exists: false, location: loc, writeBuffer: new(bytes.Buffer)}
+	file,err := newFile(path.Base(nameStr))
+	if err != nil{
+		return nil, err
+	}
+	file.location = loc
+	file.memFile = newMemFile(file)
 	return file, nil
-
 }
 
 //DeleteFile locates the file given the fileName and calls delete on it
 func (l *Location) DeleteFile(relFilePath string) error {
+	l.fileSystem.Lock()
+	defer l.fileSystem.Unlock()
 	err := utils.ValidateRelativeFilePath(relFilePath)
 	if err != nil {
 		return err
 	}
 	vol := l.Volume()
 	fullPath := path.Join(l.Path(), relFilePath)
-
-	if _, ok := l.fileSystem.fsMap[vol]; ok {
-		if _, ok2 := l.fileSystem.fsMap[vol][fullPath]; ok2 {
-			file := l.fileSystem.fsMap[vol][fullPath].i.(*File)
-			derr := file.Delete()
-			return derr
+	mapRef := l.fileSystem.fsMap
+	if _, ok := mapRef[vol]; ok {
+		if thisObj, ok2 := mapRef[vol][fullPath]; ok2 {
+			file := thisObj.i.(*memFile)
+			file.exists = false
+			file = nil
+			thisObj.i = nil
+			thisObj = nil
+			mapRef[vol][fullPath] = nil //setting that key to nil so it truly no longer lives on this system
+			return nil
 		}
 	}
 	return errors.New("This file does not exist")

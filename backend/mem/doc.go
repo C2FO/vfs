@@ -20,7 +20,8 @@ Or call directly:
   import _mem "github.com/c2fo/vfs/backend/mem"
 
   func DoSomething() {
-      fs := &_mem.FileSystem{}
+	fs := &_mem.FileSystem{}
+	fs.Initialize()
       ...
   }
 

@@ -1,4 +1,4 @@
-//+build vfsintegration
+// build vfsintegration
 
 package testsuite
 
@@ -57,6 +57,11 @@ func copyGSLocation(loc vfs.Location) vfs.Location {
 	return &cp
 }
 
+func copyMemLocation(loc vfs.Location) vfs.Location {
+	cp := *loc.(*mem.Location)
+	return &cp
+}
+
 func (s *vfsTestSuite) SetupSuite() {
 	locs := os.Getenv("VFS_INTEGRATION_LOCATIONS")
 	s.testLocations = make(map[string]vfs.Location)
@@ -70,6 +75,8 @@ func (s *vfsTestSuite) SetupSuite() {
 			s.testLocations[l.FileSystem().Scheme()] = copyS3Location(l)
 		case "gs":
 			s.testLocations[l.FileSystem().Scheme()] = copyGSLocation(l)
+		case "mem":
+			s.testLocations[l.FileSystem().Scheme()] = copyMemLocation(l)
 		default:
 			panic(fmt.Sprintf("unknown scheme: %s", l.FileSystem().Scheme()))
 		}
@@ -231,7 +238,8 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 		if validates {
 			s.NoError(err, "there should be no error")
 			expected := fmt.Sprintf("%s://%s%s", srcLoc.FileSystem().Scheme(), srcLoc.Volume(), path.Clean(path.Join(srcLoc.Path(), name)))
-			s.Equal(expected, file.URI(), "uri's should match")
+			actual := file.URI()
+			s.Equal(expected, actual, `uri's should match for fs.NewFile("%s", "%s")`, baseLoc.Volume(), name)
 		} else {
 			s.Error(err, "should have validation error for scheme and name: %s : +%s+", srcLoc.FileSystem().Scheme(), name)
 		}
@@ -695,37 +703,46 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 		s.NoError(err)
 	}
 
-	// Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
-	// Returns error if unable to touch File.
+	// Test empty reader used to io.Copy
 
-	touchedFile, err := srcLoc.NewFile("touch.txt")
-	s.NoError(err)
-	defer func() { _ = touchedFile.Delete() }()
-	exists, err = touchedFile.Exists()
-	s.NoError(err)
-	s.False(exists, "%s shouldn't yet exist", touchedFile)
+	// TODO: ***************************************************************************************************
+	//  it has yet to be determined what behavior should occur
+	//  likely we will not expect io.Copy to produce a file since that seems to be the general expected behavior
+	//  however, does that mean then that we enforce that it should NOT create a file, like it does in OS.
+	//  Also, Should we ensure that an empty write() doesn't create a file on close()?
+	//  ********************************************************************************************************
 
-	err = touchedFile.Touch()
-	s.NoError(err)
-	exists, err = touchedFile.Exists()
-	s.NoError(err)
-	s.True(exists, "%s now exists", touchedFile)
+	/*
+		setup reader and vfs.File target
+		emptyIOReader, err := srcLoc.NewFile("srcEmptyfile.txt")
+		s.NoError(err)
+		_, err = emptyIOReader.Write([]byte(""))
+		s.NoError(err)
+		s.NoError(emptyIOReader.Close())
 
-	size, err := touchedFile.Size()
-	s.NoError(err)
-	s.Equal(uint64(0), size, "%s should be empty", touchedFile)
+		emptyTargetFile, err := srcLoc.NewFile("emptyfile.txt")
+		s.NoError(err)
 
-	//capture last modified
-	modified, err := touchedFile.LastModified()
-	s.NoError(err)
+		fmt.Println(emptyTargetFile)
+		// use io.Copy
+		byteCount, err := io.Copy(emptyTargetFile, emptyIOReader)
+		s.NoError(err, "should have no error copying emtpy file")
+		s.Equal(int64(0), byteCount, "should copy zero bytes")
 
-	//wait for eventual constency
-	time.Sleep(1 * time.Second)
-	err = touchedFile.Touch()
-	s.NoError(err)
-	newModified, err := touchedFile.LastModified()
-	s.NoError(err)
-	s.True(newModified.UnixNano() > modified.UnixNano(), "touch updated modified date for %s", touchedFile)
+		//does target exist?
+		exists, err = emptyTargetFile.Exists()
+		s.NoError(err)
+		s.True(exists, "new empty file should exist")
+
+		//does size match?
+		size, err := emptyTargetFile.Size()
+		s.NoError(err)
+		s.Equal(uint64(0), size, "new empty file should have size of 0")
+
+		//clean up
+		err = emptyTargetFile.Delete()
+		s.NoError(err)
+	*/
 
 	/*
 		Delete unlinks the File on the file system.

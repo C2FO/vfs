@@ -2,6 +2,7 @@ package mem
 
 import (
 	"path"
+	"sync"
 	"time"
 
 	"github.com/c2fo/vfs/v5"
@@ -21,6 +22,7 @@ type objMap map[string]*obj
 
 // FileSystem implements vfs.FileSystem for an in-memory file system.
 type FileSystem struct {
+	sync.Mutex
 	fsMap map[string]objMap
 }
 
@@ -54,8 +56,10 @@ func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, erro
 	if _, ok := mapRef[volume];ok{
 		fileList := mapRef[volume].filesHere(location.Path())
 		for _,file := range fileList{
-			if file.Name() == path.Base(absFilePath){
-				return file,nil
+			if file.name == path.Base(absFilePath){
+				fileCopy := deepCopy(file)
+				fileCopy.memFile = file
+				return fileCopy,nil
 			}
 		}
 	}
@@ -63,9 +67,9 @@ func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, erro
 	if err != nil {
 		return nil, err
 	}
-
-
 	file.location = location
+	memFile := newMemFile(file)
+	file.memFile = memFile
 	return file, nil
 }
 
@@ -111,7 +115,7 @@ func (fs *FileSystem) Initialize() {
 }
 
 func init() {
-	backend.Register(Scheme, &FileSystem{make(map[string]objMap)}) //even though the map is being made here, a call
+	backend.Register(Scheme, &FileSystem{sync.Mutex{},make(map[string]objMap)}) //even though the map is being made here, a call
 	// to Initialize needs to be made to properly use FileSystem
 
 }
@@ -126,16 +130,16 @@ func (o objMap) getKeys() []string {
 }
 
 //fileHere returns a list of file pointers found at the absolute location path provided.  If none are there, returns an empty slice
-func (o objMap) filesHere(absLocPath string) []*File {
+func (o objMap) filesHere(absLocPath string) []*memFile {
 
 	paths := o.getKeys()
-	fileList := make([]*File, 0)
+	fileList := make([]*memFile, 0)
 	for i := range paths {
 
 		object := o[paths[i]] //retrieve the object
 		if object.isFile {    //if the object is a file, cast its interface, i, to a file and append to the slice
-			file := object.i.(*File)
-			if file.Location().Path() == absLocPath {
+			file := object.i.(*memFile)
+			if file.location.Path() == absLocPath {
 				fileList = append(fileList, file)
 			}
 		}
@@ -152,42 +156,28 @@ func (o objMap) fileNamesHere(absLocPath string) []string {
 
 		object := o[paths[i]]               //retrieve the object
 		if object != nil && object.isFile { //if the object is a file, cast its interface, i, to a file and append the name to the slice
-			file := object.i.(*File)
-			if utils.EnsureTrailingSlash(path.Dir(file.Path())) == absLocPath {
-				fileList = append(fileList, file.Name())
+			file := object.i.(*memFile)
+			if utils.EnsureTrailingSlash(file.location.Path()) == absLocPath {
+				fileList = append(fileList, file.name)
 			}
 		}
 	}
 	return fileList
 }
 
-//Touch takes a in-memory vfs.File, makes it existent, and updates the lastModified
-func (f *File) Touch() {
-	if f == nil {
-		return
+
+func deepCopy(srcFile *memFile) *File{
+	destination, err := newFile(srcFile.name)
+	if err != nil{
+		panic(err)
 	}
 
-	f.exists = true
-	f.lastModified = time.Now()
-	//files and locations are contained in objects of type "obj".
-	// An obj has a blank interface and a boolean that indicates whether or not it is a file
-	var locObject obj
-	var fileObject obj
-	fileObject.i = f
-	fileObject.isFile = true
-	loc := f.Location().(*Location)
-	volume := loc.Volume()
-	locObject.i = f.Location()
-	locObject.isFile = false
-
-	mapRef := loc.fileSystem.fsMap      //just a less clunky way of accessing the fsMap
-	if _, ok := mapRef[volume]; !ok { //if the objMap map does not exist for the volume yet, then we go ahead and create it.
-		mapRef[volume] = make(objMap)
-	}
-
-	mapRef[volume][f.Path()] = &fileObject //setting the map at Volume volume and path of f to this fileObject
-	locationPath := utils.EnsureTrailingSlash(path.Clean(path.Dir(f.Path())))
-	if _, ok := mapRef[volume][locationPath]; !ok { //checking for that locations existence to avoid redundancy
-		mapRef[volume][locationPath] = &locObject
-	}
+	//source := srcFile.(*File)
+	destination.memFile = srcFile
+	destination.location = srcFile.location
+	destination.exists = srcFile.exists
+	destination.isOpen = srcFile.isOpen
+	destination.lastModified = srcFile.lastModified
+	destination.contents = srcFile.contents
+	return destination
 }

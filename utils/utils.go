@@ -6,7 +6,6 @@ import (
 	"io"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/c2fo/vfs/v5"
 )
@@ -112,26 +111,6 @@ func TouchCopy(writer, reader vfs.File) error {
 		if _, err := io.Copy(writer, reader); err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-// UpdateLastModifiedByMoving is used by some backends' Touch() method when a file already exists.
-func UpdateLastModifiedByMoving(file vfs.File) error {
-	// setup a tempfile
-	tempfile, err := file.Location().
-		NewFile(fmt.Sprintf("%s.%d", file.Name(), time.Now().UnixNano()))
-
-	// copy file file to tempfile
-	err = file.CopyToFile(tempfile)
-	if err != nil {
-		return err
-	}
-
-	// move tempfile back to file
-	err = tempfile.MoveToFile(file)
-	if err != nil {
-		return err
 	}
 	return nil
 }
