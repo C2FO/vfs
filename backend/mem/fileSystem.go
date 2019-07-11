@@ -165,43 +165,6 @@ func (o objMap) fileNamesHere(absLocPath string) []string {
 	return fileList
 }
 
-//Touch takes a in-memory vfs.File, makes it existent, and updates the lastModified
-func (f *File) Touch() {
-	if f == nil {
-		return
-	}
-	if f.memFile.exists{
-		f.exists = true
-		return
-	}
-	f.memFile.exists = true
-	f.exists = true
-	f.lastModified = time.Now()
-	//files and locations are contained in objects of type "obj".
-	// An obj has a blank interface and a boolean that indicates whether or not it is a file
-	var locObject obj
-	var fileObject obj
-	fileObject.i = f.memFile
-	fileObject.isFile = true
-
-	loc := f.Location().(*Location)
-	volume := loc.Volume()
-	locObject.i = f.Location()
-	locObject.isFile = false
-	f.location.FileSystem().(*FileSystem).Lock()
-	defer f.location.FileSystem().(*FileSystem).Unlock()
-	mapRef := loc.fileSystem.fsMap      //just a less clunky way of accessing the fsMap
-	if _, ok := mapRef[volume]; !ok { //if the objMap map does not exist for the volume yet, then we go ahead and create it.
-		mapRef[volume] = make(objMap)
-	}
-
-	mapRef[volume][f.Path()] = &fileObject //setting the map at Volume volume and path of f to this fileObject
-	f.memFile = mapRef[volume][f.Path()].i.(*memFile)
-	locationPath := utils.EnsureTrailingSlash(path.Clean(path.Dir(f.Path())))
-	if _, ok := mapRef[volume][locationPath]; !ok { //checking for that locations existence to avoid redundancy
-		mapRef[volume][locationPath] = &locObject
-	}
-}
 
 func deepCopy(srcFile *memFile) *File{
 	destination, err := newFile(srcFile.name)

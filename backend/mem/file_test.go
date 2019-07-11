@@ -33,7 +33,7 @@ func (s *memFileTest) SetupTest() {
 	//initializing our test file. casting it, and bringing it into existence by calling Touch() on it
 	s.testFile = file.(*File)
 	s.fileSystem = fs
-	s.testFile.Touch()
+	s.NoError(s.testFile.Touch(), "Unexpected error touching file")
 }
 
 func (s *memFileTest) TeardownTest() {
@@ -138,10 +138,10 @@ func (s *memFileTest) TestDelete() {
 
 	newFile, err := s.fileSystem.NewFile("", "/home/bar.txt")
 	s.NoError(err, "Unexpected creation error")
-	newFile.(*File).Touch()
+	s.NoError(newFile.Touch(),"Unexpected error touching file")
 	otherFile, err := s.fileSystem.NewFile("", "/foo.txt")
 	s.NoError(err, "Unexpected creation error")
-	otherFile.(*File).Touch()
+	s.NoError(otherFile.Touch(),"Unexpected error touching file")
 	existence, err := otherFile.Exists()
 	s.True(existence)
 	s.NoError(err, "Unexpected existence error")
@@ -161,7 +161,7 @@ func (s *memFileTest) TestExists1() {
 
 	otherFile, err := s.fileSystem.NewFile("", "/foo.txt")
 	s.NoError(err, "Unexpected error creating file")
-	otherFile.(*File).Touch()
+	s.NoError(otherFile.Touch(),"Unexpected error touching file")
 	doesExist1, err := otherFile.Exists()
 	s.NoError(err, "Unexpected existence error")
 	s.True(doesExist1)
@@ -171,7 +171,7 @@ func (s *memFileTest) TestExists1() {
 func (s *memFileTest) TestExists2() {
 	otherFile, err := s.fileSystem.NewFile("", "/test_file/foo.txt")
 	s.NoError(err, "Unexpected error creating file")
-	otherFile.(*File).Touch()
+	s.NoError(otherFile.Touch(),"Unexpected error touching file")
 	//deleting otherFile and asserting non-existence
 	s.NoError(otherFile.Delete(), "Delete unexpectedly failed")
 	existence, err := otherFile.Exists()
@@ -184,7 +184,7 @@ func (s *memFileTest) TestNewFile() {
 
 	file, err := s.fileSystem.NewFile("", "/test_file/foo.txt")
 	s.NoError(err, "Unexpected error creating file")
-	file.(*File).Touch()
+	s.NoError(file.Touch(),"Unexpected error touching file")
 	filePath := file.Path()
 	returnedFile, err := s.fileSystem.NewFile(file.Location().Volume(),filePath) //checking our system map for a match to the given fileName
 	s.NoError(err,"Unexpected error retrieving file")
@@ -232,12 +232,12 @@ func (s *memFileTest) TestNameToURI() {
 	name := "/test_files/examples/foo.txt"
 	file, err := s.fileSystem.NewFile("C", name)
 	s.NoError(err, "Unexpected error creating file")
-	file.(*File).Touch()
+	s.NoError(file.Touch(),"Unexpected error touching file")
 	//fsMap returns an "obj" so to get a file we need to cast its member interface to a file
 	returnedFile, err := s.fileSystem.NewFile("C","/test_files/examples/foo.txt")
 	s.NoError(err,"Unexpected error retrieving file")
 
-	returnedFile.(*File).Touch()
+	s.NoError(returnedFile.Touch(),"Unexpected error touching file")
 	//checking existence in the fsMap using "retFile's" path
 	existence, err := returnedFile.Exists()
 	s.NoError(err, "Unexpected existence error")
@@ -312,7 +312,7 @@ func (s *memFileTest) TestCopyToLocation() {
 	copiedFile, cerr := s.testFile.CopyToLocation(newFile.Location())
 	s.NoError(cerr, "CopyToLocation unexpectedly failed")
 
-	copiedFile.(*File).Touch()
+	s.NoError(copiedFile.Touch(),"Unexpected error touching file")
 	s.True(copiedFile != nil)
 	//making sure the path was correctly updated
 	s.EqualValues("/home/test.txt", copiedFile.Path())
@@ -335,7 +335,7 @@ func (s *memFileTest) TestCopyToLocationOW() {
 
 	newFile, err := s.fileSystem.NewFile("C", "/home/test.txt")
 	s.NoError(err, "Unexpected error creating a file")
-	newFile.(*File).Touch()
+	s.NoError(newFile.Touch(),"Unexpected error touching file")
 	originalText := "goodbye world!"
 	_, err = newFile.Write([]byte(originalText))
 	s.NoError(err, "Unexpected write error")
@@ -428,7 +428,7 @@ func (s *memFileTest) TestCopyToFile() {
 	s.NoError(err, "No error expected from Write but got one")
 	s.NoError(s.testFile.Close(), "Unexpected error closing a file")
 
-	otherFile.(*File).Touch()
+	s.NoError(otherFile.Touch(),"Unexpected error touching file")
 	err = s.testFile.CopyToFile(otherFile)
 	s.NoError(err, "Copy to file failed unexpectedly")
 
@@ -513,7 +513,7 @@ func (s *memFileTest) TestMoveToLocation() {
 
 	newFile, err := s.fileSystem.NewFile("", "/otherDir/foo.txt")
 	s.NoError(err, "Unexpected error creating file")
-	newFile.(*File).Touch()
+	s.NoError(newFile.Touch(),"Unexpected error touching file")
 	str1 := newFile.Path()
 	file, err := newFile.MoveToLocation(s.testFile.Location())
 	s.NoError(err, "Unexpected move to location error")
@@ -522,7 +522,7 @@ func (s *memFileTest) TestMoveToLocation() {
 	s.NoError(err, "Unexpected existence error")
 	s.False(exists)
 
-	newFile.(*File).Touch()
+	s.NoError(newFile.Touch(),"Unexpected error touching file")
 	str2 := file.Path()
 	s.Equal(path.Base(str1), path.Base(str2))
 	s.Equal("/test_files/", file.Location().Path())
@@ -535,7 +535,7 @@ func (s *memFileTest) TestMoveToLocation2() {
 	expectedText := "Who ya calling pinhead?"
 	newFile, err := s.fileSystem.NewFile("", "/otherDir/foo.txt")
 	s.NoError(err, "Unexpected error creating file")
-	newFile.(*File).Touch()
+	s.NoError(newFile.Touch(),"Unexpected error touching file")
 
 	otherFile, err := s.fileSystem.NewFile("", "/thisDir/foo.txt")
 	s.NoError(err, "Unexpected error creating file")
@@ -566,7 +566,7 @@ func (s *memFileTest) TestMoveToFile() {
 	expectedSlice := []byte("Hello World!")
 	newFile, err := s.fileSystem.NewFile("", "/samples/test.txt")
 	s.NoError(err, "Unexpected error creating file")
-	newFile.(*File).Touch()
+	s.NoError(newFile.Touch(),"Unexpected error touching file")
 
 	_, err = s.testFile.Write(expectedSlice)
 	s.NoError(err, "Write failed unexpectedly")
@@ -598,7 +598,7 @@ func (s *memFileTest) TestMoveToFile2() {
 	newFile, err := s.fileSystem.NewFile("", "/samples/diffName.txt")
 	s.NoError(err, "File creation was not successful so it does not exist")
 	//newPath := "/samples/test.txt" //this is the path used to retrieve the file after it has been moved
-	newFile.(*File).Touch()
+	s.NoError(newFile.Touch(),"Unexpected error touching file")
 	_, err = s.testFile.Write(expectedSlice)
 	s.NoError(err, "Write failed unexpectedly")
 	s.NoError(s.testFile.Close(), "Unexpected close error")
@@ -686,7 +686,7 @@ func (s *memFileTest) TestLastModified() {
 func (s *memFileTest) TestName() {
 	newFile, err := s.fileSystem.NewFile("", "/test_files/lots/of/directories/here/we/go/test.txt")
 	s.NoError(err, "Unexpected error creating file")
-	newFile.(*File).Touch()
+	s.NoError(newFile.Touch(),"Unexpected error touching file")
 	s.Equal("test.txt", newFile.Name())
 }
 
@@ -721,7 +721,7 @@ func (s *memFileTest) TestPath() {
 
 	file1, err := s.fileSystem.NewFile("", "/directory/bar.txt")
 	s.NoError(err, "Unexpected error creating a new file")
-	file1.(*File).Touch()
+	s.NoError(file1.Touch(),"Unexpected error touching file")
 
 	str := "/directory/test_files/test.txt"
 	_, err = s.fileSystem.NewFile("", str)
@@ -733,7 +733,7 @@ func (s *memFileTest) TestPath() {
 func (s *memFileTest) TestURI() {
 	file, err := s.fileSystem.NewFile("C", "/test_files/lots/of/directories/here/we/go/test.txt")
 	s.NoError(err, "Unexpected error creating file")
-	file.(*File).Touch()
+	s.NoError(file.Touch(),"Unexpected error touching file")
 	uri := file.URI()
 	s.Equal("mem://C/test_files/lots/of/directories/here/we/go/test.txt", uri)
 }
@@ -743,7 +743,7 @@ func (s *memFileTest) TestStringer() {
 
 	file, err := s.fileSystem.NewFile("", "/test_files/lots/of/directories/here/we/go/test.txt")
 	s.NoError(err, "Unexpected error creating file")
-	file.(*File).Touch()
+	s.NoError(file.Touch(),"Unexpected error touching file")
 	str := file.String()
 	s.Equal("mem:///test_files/lots/of/directories/here/we/go/test.txt", str)
 

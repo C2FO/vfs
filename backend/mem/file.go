@@ -181,7 +181,10 @@ func (f *File) Write(p []byte) (int,  error) {
 		if err !=nil {
 			return 0, err
 		}
-		f.Touch()
+		err = f.Touch()
+		if err != nil {
+			return 0,err
+		}
 	}
 	f.memFile.Lock()
 	num,err := f.memFile.writeBuffer.Write(p)
@@ -485,6 +488,45 @@ func (f *File) Size() (uint64, error) {
 	return uint64(len(f.contents)), nil
 
 }
+//Touch takes a in-memory vfs.File, makes it existent, and updates the lastModified
+func (f *File) Touch() error {
+	if f == nil {
+		return errors.New("Receiver is nil")
+	}
+	if f.memFile.exists{
+		f.exists = true
+		return nil
+	}
+	f.memFile.exists = true
+	f.exists = true
+	f.lastModified = time.Now()
+	//files and locations are contained in objects of type "obj".
+	// An obj has a blank interface and a boolean that indicates whether or not it is a file
+	var locObject obj
+	var fileObject obj
+	fileObject.i = f.memFile
+	fileObject.isFile = true
+
+	loc := f.Location().(*Location)
+	volume := loc.Volume()
+	locObject.i = f.Location()
+	locObject.isFile = false
+	f.location.FileSystem().(*FileSystem).Lock()
+	defer f.location.FileSystem().(*FileSystem).Unlock()
+	mapRef := loc.fileSystem.fsMap      //just a less clunky way of accessing the fsMap
+	if _, ok := mapRef[volume]; !ok { //if the objMap map does not exist for the volume yet, then we go ahead and create it.
+		mapRef[volume] = make(objMap)
+	}
+
+	mapRef[volume][f.Path()] = &fileObject //setting the map at Volume volume and path of f to this fileObject
+	f.memFile = mapRef[volume][f.Path()].i.(*memFile)
+	locationPath := utils.EnsureTrailingSlash(path.Clean(path.Dir(f.Path())))
+	if _, ok := mapRef[volume][locationPath]; !ok { //checking for that locations existence to avoid redundancy
+		mapRef[volume][locationPath] = &locObject
+	}
+	return nil
+}
+
 
 //Path returns the absolute path to the file
 func (f *File) Path() string {
