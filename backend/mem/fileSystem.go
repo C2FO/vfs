@@ -136,7 +136,7 @@ func (o objMap) filesHere(absLocPath string) []*memFile {
 	for i := range paths {
 
 		object := o[paths[i]] //retrieve the object
-		if object.isFile {    //if the object is a file, cast its interface, i, to a file and append to the slice
+		if ok := object != nil && object.isFile;ok {    //if the object is a file, cast its interface, i, to a file and append to the slice
 			file := object.i.(*memFile)
 			if file.location.Path() == absLocPath {
 				fileList = append(fileList, file)
