@@ -49,7 +49,7 @@ func ValidateAbsoluteFilePath(name string) error {
 // ValidateRelativeFilePath ensures that a file path has neither leading nor trailing slashes
 func ValidateRelativeFilePath(name string) error {
 
-	if name == "" || strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") {
+	if strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") {
 		return errors.New(ErrBadRelFilePath)
 	}
 	return nil

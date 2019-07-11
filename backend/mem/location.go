@@ -165,6 +165,9 @@ func (l *Location) FileSystem() vfs.FileSystem {
 //NewFile creates a vfs.File given its relative path and tags it onto "l's" path
 func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 
+	if relFilePath == ""{
+		return nil, errors.New("Cannot use empty name for file")
+	}
 	err := utils.ValidateRelativeFilePath(relFilePath)
 	if err != nil {
 		return nil, err
