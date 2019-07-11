@@ -3,7 +3,6 @@ package mem
 import (
 	"path"
 	"sync"
-	"time"
 
 	"github.com/c2fo/vfs/v5"
 	"github.com/c2fo/vfs/v5/backend"
@@ -172,7 +171,6 @@ func deepCopy(srcFile *memFile) *File{
 		panic(err)
 	}
 
-	//source := srcFile.(*File)
 	destination.memFile = srcFile
 	destination.location = srcFile.location
 	destination.exists = srcFile.exists

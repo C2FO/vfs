@@ -495,6 +495,7 @@ func (f *File) Touch() error {
 	}
 	if f.memFile.exists{
 		f.exists = true
+		f.lastModified = time.Now()
 		return nil
 	}
 	f.memFile.exists = true
