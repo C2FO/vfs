@@ -267,6 +267,11 @@ type File interface {
 	// For file:///some/path/to/file.txt, it would return file.txt
 	Name() string
 
+    // Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
+	// Returns error if unable to touch File.
+	Touch() error
+
+
 	// URI returns the fully qualified absolute URI for the File.  IE, s3://bucket/some/path/to/file.txt
 	URI() string
 }
@@ -402,10 +407,6 @@ type Location interface {
 	//
 	// * Accepts relative file path.
 	DeleteFile(relFilePath string) error
-
-	// Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
-	// Returns error if unable to touch File.
-	Touch() error
 
 	// URI returns the fully qualified absolute URI for the Location.  IE, s3://bucket/some/path/
 	//
