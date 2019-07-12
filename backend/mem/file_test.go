@@ -2,7 +2,6 @@
 package mem
 
 import (
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -732,41 +731,6 @@ func (s *memFileTest) TestStringer() {
 
 }
 
-//This is a test to see how OS handles two references to the same file
-func (s *memFileTest) TestRandom() {
-
-	tempDir := os.TempDir()
-
-
-	filePath := filepath.Join(tempDir,"thisFile.txt")
-	fileToWorkWith, err := os.Create(filePath)
-	s.NoError(err,"Unexpected error opening osFile")
-	_,err = fileToWorkWith.Write([]byte("heyyyyy y'all this is a test write hahahahaahah more text and more text"))
-	s.NoError(err,"Unexpected write error")
-	s.NoError(fileToWorkWith.Close(),"Unexpected close error")
-
-
-	file1, err := os.Open(filePath)
-	s.NoError(err,"Unexpected error opening osFile")
-	seeked,err := file1.Seek(0,3)
-	s.NoError(err,"Unexpected seek error")
-	s.True(seeked>0)
-	readSlice := make([]byte,4)
-	_,err = file1.Read(readSlice)
-	s.Error(err,"Expected eof")
-	s.Equal(io.EOF,err)
-	file2, err := os.Open(filePath)
-	s.NoError(err,"Unexpected error opening osFile")
-	num,err := file2.Read(readSlice)
-	s.NoError(err,"Unexpected read error")
-	s.Equal(4,num)
-	s.Equal(nil,err)
-
-	readSlice = make([]byte,1)
-	_,err = file1.Read(readSlice)
-	s.Error(err,"Expected eof")
-	s.Equal(io.EOF,err)
-}
 
 func TestMemFile(t *testing.T) {
 	suite.Run(t, new(memFileTest))
