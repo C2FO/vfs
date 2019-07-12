@@ -1,4 +1,3 @@
-
 package mem
 
 import (
@@ -31,7 +30,6 @@ func (fs *FileSystem) Retry() vfs.Retry {
 	return vfs.DefaultRetryer()
 }
 
-
 //NewFile function returns the in-memory implementation of vfs.File.
 //Since this is inside FileSystem, we assume that the caller knows that the CWD is the root.
 //If a non-absolute path is given, an error is thrown. Additionally, a file does not
@@ -52,14 +50,14 @@ func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, erro
 		return nil, err
 	}
 	mapRef := location.(*Location).fileSystem.fsMap
-	if _, ok := mapRef[volume];ok{
+	if _, ok := mapRef[volume]; ok {
 		fileList := mapRef[volume].filesHere(location.Path())
-		for _,file := range fileList{
-			if file.name == path.Base(absFilePath){
+		for _, file := range fileList {
+			if file.name == path.Base(absFilePath) {
 				fileCopy := deepCopy(file)
 				file.location = location
 				fileCopy.(*File).memFile = file
-				return fileCopy,nil
+				return fileCopy, nil
 			}
 		}
 	}
@@ -68,11 +66,10 @@ func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, erro
 		name: path.Base(absFilePath),
 	}
 
-	memFile := newMemFile(file,location)
+	memFile := newMemFile(file, location)
 	file.memFile = memFile
 	return file, nil
 }
-
 
 //NewLocation function returns the in-memory implementation of vfs.Location.
 //A location always exists. If a file is created on a location that has not yet
@@ -103,7 +100,6 @@ func (fs *FileSystem) Scheme() string {
 	return Scheme
 }
 
-
 //Initialize is used to initialize the fsMap for an in-memory FileSystem.
 //DISCLAIMER: nothing will work until this call is made
 
@@ -114,8 +110,9 @@ func (fs *FileSystem) Initialize() {
 }
 
 func init() {
-	backend.Register(Scheme, &FileSystem{sync.Mutex{},make(map[string]objMap)}) //even though the map is being made here, a call
-	// to Initialize needs to be made to properly use FileSystem
+	//Even though the map is being made here, a call to
+	//Initialize needs to be made to properly use FileSystem
+	backend.Register(Scheme, &FileSystem{sync.Mutex{}, make(map[string]objMap)})
 
 }
 
@@ -135,8 +132,8 @@ func (o objMap) filesHere(absLocPath string) []*memFile {
 	fileList := make([]*memFile, 0)
 	for i := range paths {
 
-		object := o[paths[i]] //retrieve the object
-		if ok := object != nil && object.isFile;ok {    //if the object is a file, cast its interface, i, to a file and append to the slice
+		object := o[paths[i]]                         //retrieve the object
+		if ok := object != nil && object.isFile; ok { //if the object is a file, cast its interface, i, to a file and append to the slice
 			file := object.i.(*memFile)
 			if file.location.Path() == absLocPath {
 				fileList = append(fileList, file)
@@ -164,8 +161,7 @@ func (o objMap) fileNamesHere(absLocPath string) []string {
 	return fileList
 }
 
-
-func deepCopy(srcFile *memFile) vfs.File{
+func deepCopy(srcFile *memFile) vfs.File {
 	destination := &File{
 		name: srcFile.name,
 	}

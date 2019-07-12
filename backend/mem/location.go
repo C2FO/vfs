@@ -1,4 +1,3 @@
-
 package mem
 
 import (
@@ -31,8 +30,8 @@ func (l *Location) String() string {
 //If there are no files at location, then an empty slice will be returned
 func (l *Location) List() ([]string, error) {
 
-	str := l.Path()                         //full path of this location
-	mapRef := l.fileSystem.fsMap           //setting mapRef to this value for code readability
+	str := l.Path()                      //full path of this location
+	mapRef := l.fileSystem.fsMap         //setting mapRef to this value for code readability
 	if _, ok := mapRef[l.Volume()]; ok { //are there paths on this volume?
 		list := mapRef[l.Volume()].fileNamesHere(str) //getting a list of the file names on this location
 
@@ -116,11 +115,11 @@ func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
 	str = utils.EnsureTrailingSlash(path.Clean(str))
 	mapRef := l.fileSystem.fsMap
 	//if the location already exists on the map, just return that one
-	if object,ok := mapRef[l.volume]; ok{
+	if object, ok := mapRef[l.volume]; ok {
 		paths := object.getKeys()
-		for _,potentialPath := range paths{
-			if ok := potentialPath == str;ok{
-				return mapRef[l.volume][potentialPath].i.(*Location),nil
+		for _, potentialPath := range paths {
+			if ok := potentialPath == str; ok {
+				return mapRef[l.volume][potentialPath].i.(*Location), nil
 			}
 		}
 
@@ -155,7 +154,7 @@ func (l *Location) FileSystem() vfs.FileSystem {
 //NewFile creates a vfs.File given its relative path and tags it onto "l's" path
 func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 
-	if relFilePath == ""{
+	if relFilePath == "" {
 		return nil, errors.New("Cannot use empty name for file")
 	}
 	err := utils.ValidateRelativeFilePath(relFilePath)
@@ -166,12 +165,12 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 	//after validating the path, we check to see if the
 	//file already exists. if it does, return a reference to it
 	mapRef := l.fileSystem.fsMap
-	if _, ok := mapRef[l.volume];ok{
+	if _, ok := mapRef[l.volume]; ok {
 		fileList := mapRef[l.volume].filesHere(l.Path())
-		for _,file := range fileList{
-			if file.name == path.Base(relFilePath){
+		for _, file := range fileList {
+			if file.name == path.Base(relFilePath) {
 				fileCopy := deepCopy(file)
-				return fileCopy,nil
+				return fileCopy, nil
 			}
 		}
 	}
@@ -189,7 +188,7 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 	file := &File{
 		name: path.Base(nameStr),
 	}
-	file.memFile = newMemFile(file,loc)
+	file.memFile = newMemFile(file, loc)
 	return file, nil
 }
 
