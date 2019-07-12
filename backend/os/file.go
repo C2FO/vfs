@@ -1,6 +1,7 @@
 package os
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -92,6 +93,13 @@ func (f *File) Read(p []byte) (int, error) {
 // the file, 1 means relative to the current offset, and 2 means relative to the end.  It returns the new offset and
 // an error, if any.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
+
+	if exists, err := f.Exists(); !exists {
+		if err != nil {
+			return 0, err
+		}
+		return 0, errors.New("file does not exist")
+	}
 	file, err := f.openFile()
 	if err != nil {
 		return 0, err

@@ -67,10 +67,9 @@ func (s *memFileTest) TestRARO() {
 	_, err = s.testFile.Read(byteSlice) //initial read
 	s.NoError(err, "Unexpected read error")
 	_, err = s.testFile.Read(byteSlice2)
-	/* an error should occur here since the first read
-	moved the cursor all the way through and we did
-	not close the file before reading again
-	*/
+	//an error should occur here since the first read
+	//moved the cursor all the way through and we did
+	//not close the file before reading again
 	s.Error(err, "Read was expected to fail")
 }
 
@@ -90,21 +89,17 @@ func (s *memFileTest) TestRARC() {
 	_, err = s.testFile.Read(byteSlice2)
 	s.NoError(err, "Unexpected read error")
 
-	/* No error should occur here since the first read
-	moved the cursor all the way through but we closed
-	the file before reading again, so it should reset it.
-	*/
-
+	//No error should occur here since the first read
+	//moved the cursor all the way through but we closed
+	//the file before reading again, so it should reset it.
 	s.NoError(err, "Read after read failed!")
 	s.Equal(byteSlice, byteSlice2)
 
 }
 
-/*
-TestNewFileSameName creates two files with the same name and ensures
-that the second creation returns a reference to the first
-*/
-/*
+
+//TestNewFileSameName creates two files with the same name and ensures
+//that the second creation returns a reference to the first
 func (s *memFileTest) TestNewFileSameName(){
 	sharedPath := "/path/to/file.txt"
 	firstFile,err := s.fileSystem.NewFile("",sharedPath)
@@ -124,12 +119,11 @@ func (s *memFileTest) TestNewFileSameName(){
 	s.NoError(err,"Unexpected read error")
 	s.Equal(expectedText,string(expectedSlice))
 }
-*/
 
-/*
-TestDelete deletes the receiver file, then creates another file and deletes it.
-Succeeds only on both successful deletions
-*/
+
+
+//TestDelete deletes the receiver file, then creates another file and deletes it.
+//Succeeds only on both successful deletions
 func (s *memFileTest) TestDelete() {
 
 	newFile, err := s.fileSystem.NewFile("", "/home/bar.txt")
@@ -286,11 +280,9 @@ func (s *memFileTest) TestSeek() {
 
 }
 
-/*
-TestCopyToLocation copies a file to a location that has
- been passed in. Succeeds on existence of original file and its
-contents in new location
-*/
+//TestCopyToLocation copies a file to a location that has
+//been passed in. Succeeds on existence of original file and its
+//contents in new location
 func (s *memFileTest) TestCopyToLocation() {
 
 	newFile, err := s.fileSystem.NewFile("", "/home/foo.txt")
@@ -322,11 +314,9 @@ func (s *memFileTest) TestCopyToLocation() {
 
 }
 
-/*
-TestCopyToLocationOW copies a file to a location that has
- a file with the same name. Succeeds only on overwrite of file
- in specified location
-*/
+//TestCopyToLocationOW copies a file to a location that has
+//a file with the same name. Succeeds only on overwrite of file
+//in specified location
 func (s *memFileTest) TestCopyToLocationOW() {
 
 	newFile, err := s.fileSystem.NewFile("C", "/home/test.txt")
@@ -470,13 +460,11 @@ func (s *memFileTest) TestCopyToFileOS() {
 
 }
 
-/*
- TestEmptyCopy to file creates two files,
- one is empty the other is not. Calls
- CopyToFile using the empty one on t
- he non-empty one. Succeeds on the non-empty
- file becoming empty
-*/
+//TestEmptyCopy to file creates two files,
+//one is empty the other is not. Calls
+//CopyToFile using the empty one on t
+//he non-empty one. Succeeds on the non-empty
+//file becoming empty
 func (s *memFileTest) TestEmptyCopyToFile() {
 
 	expectedText := ""
@@ -553,10 +541,9 @@ func (s *memFileTest) TestMoveToLocation2() {
 
 }
 
-/*
-TestMoveToFile creates a newFile and moves the testFile to it.
-Test succeeds if the moved file has the correct data.  They share the same name, so this is effectively a "CopyToFile" call
-*/
+
+//TestMoveToFile creates a newFile and moves the testFile to it.
+//Test succeeds if the moved file has the correct data.  They share the same name, so this is effectively a "CopyToFile" call
 func (s *memFileTest) TestMoveToFile() {
 
 	expectedSlice := []byte("Hello World!")
@@ -567,10 +554,9 @@ func (s *memFileTest) TestMoveToFile() {
 	_, err = s.testFile.Write(expectedSlice)
 	s.NoError(err, "Write failed unexpectedly")
 	s.NoError(s.testFile.Close(), "Unexpected close error")
-	/*
-		after this call, newFile and "s.testFile" will be deleted.
-		we re-obtain the newFile pointer by calling it from our fsMap by giving it the (new) path and volume
-	*/
+
+	//after this call, newFile and "s.testFile" will be deleted.
+	//we re-obtain the newFile pointer by calling it from our fsMap by giving it the (new) path and volume
 	err = s.testFile.MoveToFile(newFile)
 	s.NoError(err, "Move to file failed")
 	newFileSlice := make([]byte, len("Hello World!"))
@@ -598,10 +584,9 @@ func (s *memFileTest) TestMoveToFile2() {
 	_, err = s.testFile.Write(expectedSlice)
 	s.NoError(err, "Write failed unexpectedly")
 	s.NoError(s.testFile.Close(), "Unexpected close error")
-	/*
-		after this call, newFile and "s.testFile" will be deleted.
-		we re-obtain the newFile by calling it from our fsMap by giving it the (new) path and volume
-	*/
+
+	//after this call, newFile and "s.testFile" will be deleted.
+	//we re-obtain the newFile by calling it from our fsMap by giving it the (new) path and volume
 	err = s.testFile.MoveToFile(newFile)
 	s.NoError(err, "Move to file failed")
 	newFileSlice := make([]byte, len("Hello World!"))
@@ -615,10 +600,9 @@ func (s *memFileTest) TestMoveToFile2() {
 
 }
 
-/*
-TestWrite writes a string to a file and checks for success by comparing the number of bytes
-written by "Write()" to the length of the slice it wrote from
-*/
+
+//TestWrite writes a string to a file and checks for success by comparing the number of bytes
+//written by "Write()" to the length of the slice it wrote from
 func (s *memFileTest) TestWrite() {
 	expectedText := "I'm fed up with this world" //-Tommy Wiseau
 	bSlice := []byte(expectedText)
@@ -661,11 +645,8 @@ func (s *memFileTest) TestWrite2() {
 	s.False(found2)
 }
 
-/*
-TestLastModified Writes to a file then retrives the value that LastModified() returns and the lastModified value
-stored in the File struct and compares them against eachother.  Successful if they are equal.
-*/
-
+//TestLastModified Writes to a file then retrives the value that LastModified() returns and the lastModified value
+//stored in the File struct and compares them against eachother.  Successful if they are equal.
 func (s *memFileTest) TestLastModified() {
 	data := "Hello World!"
 	sliceData := []byte(data)

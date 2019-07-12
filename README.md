@@ -303,6 +303,10 @@ type FileSystem interface {
 
 	// Name returns the name of the FileSystem ie: Amazon S3, os, Google Cloud Storage, etc.
 	Name() string
+	
+	// Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
+	// Returns error if unable to touch File.
+    Touch() error
 
 	// Scheme returns the uri scheme used by the FileSystem: s3, file, gs, etc.
 	Scheme() string
@@ -402,10 +406,6 @@ type Location interface {
 	//
 	// * Accepts relative file path.
 	DeleteFile(relFilePath string) error
-
-	// Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
-	// Returns error if unable to touch File.
-	Touch() error
 
 	// URI returns the fully qualified absolute URI for the Location.  IE, s3://bucket/some/path/
 	//

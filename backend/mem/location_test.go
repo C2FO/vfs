@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
-
 	"github.com/c2fo/vfs/v5"
 )
 
@@ -47,11 +46,9 @@ func (s *memLocationTest) TestList() {
 	s.Equal(expected, actual)
 }
 
-/*
-TestList_NonExistentDirectory is a test copied over from OS
-that creates locations and ensures that they do not exist
-by showing that no files live on those directories
-*/
+//TestList_NonExistentDirectory is a test copied over from OS
+//that creates locations and ensures that they do not exist
+//by showing that no files live on those directories
 func (s *memLocationTest) TestList_NonExistentDirectory() {
 	location, err := s.testFile.Location().NewLocation("not/a/directory/")
 	s.Nil(err, "error isn't expected")
@@ -161,10 +158,8 @@ func (s *memLocationTest) TestNewLocation() {
 	s.Equal("/bar/", relDir.Path(), "relative dot path works")
 }
 
-/*
- TestNewLocation2 tests to see whether a file can be made by passing a
-relative path to a location object that technically does not exist
-*/
+//TestNewLocation2 tests to see whether a file can be made by passing a
+//relative path to a location object that technically does not exist
 func (s *memLocationTest) TestNewLocation2() {
 
 	newFile, nerr := s.fileSystem.NewFile("C", "/newLocTest/dir/file.txt")
@@ -196,10 +191,9 @@ func (s *memLocationTest) TestNewFile() {
 	s.NoError(nerr, "Unexpected error creating a new file")
 	s.Equal("/foo/bam/this.txt", newfile.Path(), "relative dot path works")
 }
-/*
-TestNewFile creates two files with the same name and ensures
-that the second creation returns a reference to the first
-*/
+
+//TestNewFile creates two files with the same name and ensures
+//that the second creation returns a reference to the first
 func (s *memLocationTest) TestNewFileSameName(){
 	sharedPath := "/path/to/file.txt"
 	firstFile,err := s.fileSystem.NewFile("",sharedPath)

@@ -31,16 +31,15 @@ func (fs *FileSystem) Retry() vfs.Retry {
 	return vfs.DefaultRetryer()
 }
 
-/*
-NewFile function returns the in-memory implementation of vfs.File.
-Since this is inside FileSystem, we assume that the caller knows that the CWD is the root.
-If a non-absolute path is given, an error is thrown. Additionally, a file does not
-technically exist until a call to "Touch()" is made on it. The "Touch" call links the
-file with FileSystem's map and brings it into existence.
-If a file is written to before a touch call, Write() will take care of that call.  This is
-true for other functions as well and existence only poses a problem in the context of deletion
-or copying FROM a non-existent file.
-*/
+
+//NewFile function returns the in-memory implementation of vfs.File.
+//Since this is inside FileSystem, we assume that the caller knows that the CWD is the root.
+//If a non-absolute path is given, an error is thrown. Additionally, a file does not
+//technically exist until a call to "Touch()" is made on it. The "Touch" call links the
+//file with FileSystem's map and brings it into existence.
+//If a file is written to before a touch call, Write() will take care of that call.  This is
+//true for other functions as well and existence only poses a problem in the context of deletion
+//or copying FROM a non-existent file.
 func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, error) {
 
 	err := utils.ValidateAbsoluteFilePath(absFilePath)
@@ -74,11 +73,10 @@ func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, erro
 	return file, nil
 }
 
-/*
-NewLocation function returns the in-memory implementation of vfs.Location.
-A location always exists. If a file is created on a location that has not yet
-been made in the fsMap, then the location will be created with the file
-*/
+
+//NewLocation function returns the in-memory implementation of vfs.Location.
+//A location always exists. If a file is created on a location that has not yet
+//been made in the fsMap, then the location will be created with the file
 func (fs *FileSystem) NewLocation(volume string, absLocPath string) (vfs.Location, error) {
 
 	err := utils.ValidateAbsoluteLocationPath(absLocPath)
@@ -105,10 +103,10 @@ func (fs *FileSystem) Scheme() string {
 	return Scheme
 }
 
-/*
-Initialize is used to initialize the fsMap for an in-memory FileSystem.
-DISCLAIMER: nothing will work until this call is made
-*/
+
+//Initialize is used to initialize the fsMap for an in-memory FileSystem.
+//DISCLAIMER: nothing will work until this call is made
+
 func (fs *FileSystem) Initialize() {
 
 	fs.fsMap = make(map[string]objMap)

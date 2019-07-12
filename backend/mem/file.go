@@ -12,17 +12,17 @@ import (
 	"github.com/c2fo/vfs/v5/utils"
 )
 
-/*
-	//	memFile with name "filename" is the single representation of the structure that
-	//	all calls to "filename" will reference. The point of doing it this way is
-	//	to allow multiple read threads, and locking up writing and deletion.
-	//	Files referencing filename will check their own 'contents' slice against
-	//	"filename's" and is updated accordingly. This allows multiple threads to have the most
-	//	up-to-date file contents while also preserving the state of their own cursor that is
-	//	used in Read() and Seek() calls. Calls to Write() all reference
-	// 	"filename's" buffer, which is why it is locked. Data written into the writeBuffer
-	//	does not appear in "filename's" 'contents' slice until a call to Close() is made
-*/
+//
+//	memFile with name "filename" is the single representation of the structure that
+//	all calls to "filename" will reference. The point of doing it this way is
+//	to allow multiple read threads, and locking up writing and deletion.
+//	Files referencing filename will check their own 'contents' slice against
+//	"filename's" and is updated accordingly. This allows multiple threads to have the most
+//	up-to-date file contents while also preserving the state of their own cursor that is
+//	used in Read() and Seek() calls. Calls to Write() all reference
+// 	"filename's" buffer, which is why it is locked. Data written into the writeBuffer
+//	does not appear in "filename's" 'contents' slice until a call to Close() is made
+//
 type memFile struct {
 	sync.Mutex
 	writeBuffer  *bytes.Buffer
@@ -35,11 +35,11 @@ type memFile struct {
 	filepath     string
 }
 
-/*
-	//File implements vfs.File interface for the in-memory implementation of FileSystem.
-	//A file struct holds a pointer to a single memFile.  Multiple threads will refer to the same
-	//memFile. Simultaneous reading is allowed, but writing and closing are protected by locks.
-*/
+//
+//File implements vfs.File interface for the in-memory implementation of FileSystem.
+//A file struct holds a pointer to a single memFile.  Multiple threads will refer to the same
+//memFile. Simultaneous reading is allowed, but writing and closing are protected by locks.
+//
 type File struct {
 	memFile  *memFile
 	exists   bool
@@ -50,7 +50,8 @@ type File struct {
 
 }
 
-/*		******* Error Functions *******		*/
+//		////// Error Functions ///////		//
+//		////// Error Functions ///////		//
 func doesNotExist() error {
 	return errors.New("This file does not exist!")
 }
@@ -63,7 +64,7 @@ func seekError() error {
 	return errors.New("Seek could not complete the desired call")
 }
 
-/*		******************		*/
+///////////////////////////////////////////////////////////
 
 //Close imitates io.Closer by resetting the cursor and setting a boolean
 func (f *File) Close() error {
@@ -91,17 +92,18 @@ func (f *File) Close() error {
 //Read implements the io.Reader interface.  Returns number of bytes read and potential errors
 func (f *File) Read(p []byte) (n int, err error) {
 
-	//if file exists:
-	offset := f.cursor
-	if f.isOpen == false {
-		f.isOpen = true
-	}
 	if exists, err := f.Exists(); !exists {
 		if err != nil {
 			return 0, err
 		}
 		return 0, doesNotExist()
 	}
+	//if file exists:
+	offset := f.cursor
+	if f.isOpen == false {
+		f.isOpen = true
+	}
+
 	readBufferLength := len(p)
 	//readBufferLength of byte slice is zero, just return 0 and nil
 	if readBufferLength == 0 {
@@ -140,6 +142,13 @@ func (f *File) Read(p []byte) (n int, err error) {
 
 //Seek implements the io.Seeker interface.  Returns the current position of the cursor and errors if any
 func (f *File) Seek(offset int64, whence int) (int64, error) {
+
+	if exists, err := f.Exists(); !exists {
+		if err != nil {
+			return 0, err
+		}
+		return 0, doesNotExist()
+	}
 
 	length := len(f.contents)
 	if length == 0 && offset == 0 && whence == 0 {
@@ -209,10 +218,8 @@ func (f *File) String() string {
 	return f.URI()
 }
 
-/*
-Exists returns whether or not a file exists.  Creating a file does not
-guarantee its existence, but creating one and writing to it does
-*/
+//Exists returns whether or not a file exists.  Creating a file does not
+//guarantee its existence, but creating one and writing to it does
 func (f *File) Exists() (bool, error) {
 
 	if f != nil {
@@ -245,13 +252,10 @@ func (f *File) Location() vfs.Location {
 	return newLoc
 }
 
-/*
-CopyToLocation copies the current file to the given location.  If file exists
-at given location contents are simply overwritten using "CopyToFile", otherwise
-a newFile is made, takes the contents of the current file, and ends up at
-the given location
-*/
-
+//CopyToLocation copies the current file to the given location.  If file exists
+//at given location contents are simply overwritten using "CopyToFile", otherwise
+//a newFile is made, takes the contents of the current file, and ends up at
+//the given location
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 	if ok, err := f.Exists(); !ok {
@@ -297,13 +301,11 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 	return newFile, nil
 }
 
-/*
- CopyToFile copies the receiver file into the target file.
-The target file is deleted, so any references to it will
-be nil.  In order to access the target after calling CopyToFile
-use its previous path to call it using the fsMap.  Additionally,
-after this is called, f's cursor will reset as if it had been closed.
-*/
+//CopyToFile copies the receiver file into the target file.
+//The target file is deleted, so any references to it will
+//be nil.  In order to access the target after calling CopyToFile
+//use its previous path to call it using the fsMap.  Additionally,
+//after this is called, f's cursor will reset as if it had been closed.
 func (f *File) CopyToFile(target vfs.File) error {
 
 	if f == nil || target == nil {
@@ -345,10 +347,8 @@ func (f *File) CopyToFile(target vfs.File) error {
 	return f.Close()
 }
 
-/*
- MoveToLocation moves the receiver file to the passed in location. It does so by
-creating a copy of 'f' in "location".  'f' is subsequently  deleted
-*/
+//MoveToLocation moves the receiver file to the passed in location. It does so by
+//creating a copy of 'f' in "location".  'f' is subsequently  deleted
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 
 	if f == nil || location == nil {
@@ -361,10 +361,9 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 		}
 		return nil, doesNotExist()
 	}
-	/*
-		 if the underling FileSystem is in-memory, then this is the native way of
-		replacing a file with the same name as "f" at the location
-	*/
+
+	// if the underling FileSystem is in-memory, then this is the native way of
+	//replacing a file with the same name as "f" at the location
 	if location.FileSystem().Scheme() == "mem" {
 		//this is a potential path to a file that can be fed into the objMap portion of fsMap
 		testPath := path.Join(location.Path(), f.Name())
@@ -418,10 +417,8 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	return newFile, nil
 }
 
-/*
-MoveToFile creates a newFile, and moves it to "file".
-The receiver is always deleted (since it's being "moved")
-*/
+//MoveToFile creates a newFile, and moves it to "file".
+//The receiver is always deleted (since it's being "moved")
 func (f *File) MoveToFile(file vfs.File) error {
 	if f == nil {
 		return nilReference()
@@ -439,10 +436,8 @@ func (f *File) MoveToFile(file vfs.File) error {
 	return f.Delete()
 }
 
-/*
-Delete removes the file from the FileSystem. Sets it path in the fsMap to nil,
- and also nils the file's members
-*/
+//Delete removes the file from the FileSystem. Sets it path in the fsMap to nil,
+//and also nils the file's members
 func (f *File) Delete() error {
 
 	if f == nil {
@@ -458,15 +453,19 @@ func (f *File) Delete() error {
 	mapRef := loc.fileSystem.fsMap
 	f.memFile.location.FileSystem().(*FileSystem).Lock()
 	defer f.memFile.location.FileSystem().(*FileSystem).Unlock()
-	if _, ok := mapRef[loc.Volume()]; ok { //if there are keys at this volume
-		if thisObj, ok2 := mapRef[loc.Volume()][f.Path()]; ok2 { //checking for the object that should contain the file at this key
+	//if there are keys at this volume
+	if _, ok := mapRef[loc.Volume()]; ok {
+		//checking for the object that should contain the file at this key
+		if thisObj, ok2 := mapRef[loc.Volume()][f.Path()]; ok2 {
 			str := f.Path()
-			file := thisObj.i.(*memFile) //casting a file to the object's "i" interface
+			//casting a file to the object's "i" interface
+			file := thisObj.i.(*memFile)
 			file.exists = false
 			file = nil
 			thisObj.i = nil
 			thisObj = nil
-			mapRef[loc.Volume()][str] = nil //setting that key to nil so it truly no longer lives on this system
+			//setting that key to nil so it truly no longer lives on this system
+			mapRef[loc.Volume()][str] = nil
 		}
 	}
 
@@ -571,7 +570,6 @@ func (f *File) Path() string {
 		panic(nilReference())
 	}
 	return path.Join(f.Location().Path(), f.name)
-
 }
 
 //Name returns the basename of the file
@@ -588,7 +586,6 @@ func (f *File) URI() string {
 		panic(nilReference())
 	}
 	return utils.GetFileURI(f)
-
 }
 
 //synchronize updates a memFile's contents slice and cursor members

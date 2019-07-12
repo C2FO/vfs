@@ -27,11 +27,8 @@ func (l *Location) String() string {
 	return l.URI()
 }
 
-/*
-List finds all of the files living at the current location and returns them in a slice of strings.
-If there are no files at location, then an empty slice will be returned
-*/
-
+//List finds all of the files living at the current location and returns them in a slice of strings.
+//If there are no files at location, then an empty slice will be returned
 func (l *Location) List() ([]string, error) {
 
 	str := l.Path()                         //full path of this location
@@ -44,12 +41,9 @@ func (l *Location) List() ([]string, error) {
 	return make([]string, 0), nil //if the volume has nothing on it, return an empty list as well
 }
 
-/*
-ListByPrefix tags a prefix onto the current path and in a slice,
- returns all file base names whose full paths contain that substring
-Returns empty slice if nothing found
-*/
-
+//ListByPrefix tags a prefix onto the current path and in a slice,
+//returns all file base names whose full paths contain that substring
+//Returns empty slice if nothing found
 func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 
 	list := make([]string, 0)
@@ -70,13 +64,10 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 	return list, nil
 }
 
-/*
-ListByRegex takes a regular expression and returns
-a slice of strings containing the base names of files
-found that matched the regular expression.  Returns an
-empty slice upon nothing found
-*/
-
+//ListByRegex takes a regular expression and returns
+//a slice of strings containing the base names of files
+//found that matched the regular expression.  Returns an
+//empty slice upon nothing found
 func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 
 	list := make([]string, 0)
@@ -114,10 +105,8 @@ func (l *Location) Exists() (bool, error) {
 	return true, nil
 }
 
-/*
-NewLocation creates a new location at the
-given relative path, which is tagged onto the current locations absolute path
-*/
+//NewLocation creates a new location at the
+//given relative path, which is tagged onto the current locations absolute path
 func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
 	err := utils.ValidateRelativeLocationPath(relLocPath)
 	if err != nil {
@@ -173,10 +162,9 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	/*
-		after validating the path, we check to see if the
-		file already exists. if it does, return a reference to it
-	*/
+
+	//after validating the path, we check to see if the
+	//file already exists. if it does, return a reference to it
 	mapRef := l.fileSystem.fsMap
 	if _, ok := mapRef[l.volume];ok{
 		fileList := mapRef[l.volume].filesHere(l.Path())
@@ -187,10 +175,9 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 			}
 		}
 	}
-	/*
-		since the file didn't already exist, we will create a
-		location and the file (NewLocation takes care of duplicates)
-	*/
+
+	//since the file didn't already exist, we will create a
+	//location and the file (NewLocation takes care of duplicates)
 	pref := l.Path()
 	str := relFilePath
 	nameStr := path.Join(pref, str)

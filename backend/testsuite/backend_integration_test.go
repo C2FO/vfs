@@ -47,7 +47,7 @@ func copyOsLocation(loc vfs.Location) vfs.Location {
 	return ret
 }
 
-func copyMemLocation(loc vfs.Location) vfs.Location{
+func copyMemLocation(loc vfs.Location) vfs.Location {
 	cp := *loc.(*mem.Location)
 	return &cp
 }
@@ -745,6 +745,31 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 	exists, err = srcFile.Exists()
 	s.NoError(err)
 	s.False(exists, "file no longer exists")
+
+	//The following blocks test that an error is thrown when these operations are called on a non-existent file
+	srcFile, err = srcLoc.NewFile("thisFileDoesNotExist")
+	s.NoError(err, "unexpected error creating file")
+
+	exists, err = srcFile.Exists()
+	s.NoError(err)
+	s.False(exists, "file should not exist")
+
+	size, err = srcFile.Size()
+	s.Error(err, "expected error because file does not exist")
+	s.Equal(uint64(0x0), size)
+
+	_, err = srcFile.LastModified()
+	s.Error(err, "expected error because file does not exist")
+
+	seeked, err := srcFile.Seek(1, 2)
+	s.Error(err, "expected error because file does not exist")
+	s.Equal(int64(0x0), seeked)
+
+	_, err = srcFile.Read(make([]byte, 1))
+	s.Error(err, "expected error because file does not exist")
+
+	//end existence tests
+
 }
 
 func TestVFS(t *testing.T) {
