@@ -5,12 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-## [5.2.0] - 2019-07-08
+## [5.2.0] - 2019-07-16
 ### Added
 - In-Memory backend vfs implementation
 - Included the in-memory backend to the list of registered backends used in backend_integration_test
 - Checking for existence at the start of various File functions (size, seek, etc) and returning and error if the file does not exist on the OS backend
 - Tests in  backend_integration_test that ensure that operations done on non-existent files throw an error
+- mem.md in vfs/docs, updated link to it in the README.md
 ### Fixed
 - Relative path validation in utils.go now disallows empty names
 ### Changed
