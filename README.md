@@ -142,7 +142,6 @@ Things to add:
 
 * Add SFTP backend
 * Add Azure storage backend
-* Add in-memory backend
 * Provide better List() functionality with more abstracted filering and paging (iterator?) Retrun File structs vs URIs?
 * Add better/any context.Context() support
 

@@ -13,8 +13,7 @@ Rely on github.com/c2fo/vfs/backend
 Or call directly:
   import _mem "github.com/c2fo/vfs/backend/mem"
   func DoSomething() {
-	fs := &_mem.FileSystem{}
-	fs.Initialize()
+	fs := _mem.NewFileSystem()
       ...
   }
 */

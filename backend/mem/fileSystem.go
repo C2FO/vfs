@@ -103,16 +103,18 @@ func (fs *FileSystem) Scheme() string {
 //Initialize is used to initialize the fsMap for an in-memory FileSystem.
 //DISCLAIMER: nothing will work until this call is made
 
-func (fs *FileSystem) Initialize() {
+func  NewFileSystem() *FileSystem {
 
-	fs.fsMap = make(map[string]objMap)
+	return &FileSystem{
+		sync.Mutex{},
+		 make(map[string]objMap),
+	}
 
 }
 
 func init() {
 	//Even though the map is being made here, a call to
-	//Initialize needs to be made to properly use FileSystem
-	backend.Register(Scheme, &FileSystem{sync.Mutex{}, make(map[string]objMap)})
+	backend.Register(Scheme, NewFileSystem())
 
 }
 

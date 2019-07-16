@@ -20,11 +20,10 @@ type memLocationTest struct {
 }
 
 func (s *memLocationTest) SetupTest() {
-	fs := &FileSystem{}
-	fs.Initialize()
+	fs := NewFileSystem()
 
 	file, nerr := fs.NewFile("", "/test_files/test.txt")
-	s.NoError(nerr, "File creation was not successful so it does not exist")
+	s.NoError(nerr, "file creation was not successful so it does not exist")
 
 	s.testFile = file.(*File)
 	s.fileSystem = fs
@@ -58,16 +57,16 @@ func (s *memLocationTest) TestList_NonExistentDirectory() {
 
 	contents, err := location.List()
 	s.Nil(err, "error isn't expected")
-	s.Equal(0, len(contents), "List should return empty slice for non-existent directory")
+	s.Equal(0, len(contents), "list should return empty slice for non-existent directory")
 
 	prefixContents, err := location.ListByPrefix("anything")
 	s.Nil(err, "error isn't expected")
-	s.Equal(0, len(prefixContents), "ListByPrefix should return empty slice for non-existent directory")
+	s.Equal(0, len(prefixContents), "listByPrefix should return empty slice for non-existent directory")
 
 	regex, _ := regexp.Compile("[-]+")
 	regexContents, err := location.ListByRegex(regex)
 	s.Nil(err, "error isn't expected")
-	s.Equal(0, len(regexContents), "ListByRegex should return empty slice for non-existent directory")
+	s.Equal(0, len(regexContents), "listByRegex should return empty slice for non-existent directory")
 }
 
 //TestListByPrefix creates some files and provides a prefix. Succeeds on correct string slice returned
@@ -177,7 +176,7 @@ func (s *memLocationTest) TestNewLocationRelativePath() {
 	s.NoError(lerr, "unexpected error creating a file from location")
 
 	s.NoError(otherFile.Touch(), "unexpected error touching file")
-	s.Equal(newFile.Location().Path(), otherFile.Location().Path(), "Absolute location paths should be equal")
+	s.Equal(newFile.Location().Path(), otherFile.Location().Path(), "absolute location paths should be equal")
 
 }
 
