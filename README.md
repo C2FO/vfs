@@ -157,6 +157,8 @@ Brought to you by the Enterprise Pipeline team at C2FO:
 
 * Chris Roush – chris.roush@c2fo.com
 
+* Moe Zeid    - moe.zeid@c2fo.com
+
 https://github.com/c2fo/
 
 ### Contributing
