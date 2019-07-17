@@ -100,9 +100,7 @@ func (fs *FileSystem) Scheme() string {
 	return Scheme
 }
 
-//Initialize is used to initialize the fsMap for an in-memory FileSystem.
-//DISCLAIMER: nothing will work until this call is made
-
+//NewFileSystem is used to initialize the file system struct for an in-memory FileSystem.
 func  NewFileSystem() *FileSystem {
 
 	return &FileSystem{

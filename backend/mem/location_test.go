@@ -61,12 +61,12 @@ func (s *memLocationTest) TestList_NonExistentDirectory() {
 
 	prefixContents, err := location.ListByPrefix("anything")
 	s.Nil(err, "error isn't expected")
-	s.Equal(0, len(prefixContents), "listByPrefix should return empty slice for non-existent directory")
+	s.Equal(0, len(prefixContents), "ListByPrefix should return empty slice for non-existent directory")
 
 	regex, _ := regexp.Compile("[-]+")
 	regexContents, err := location.ListByRegex(regex)
 	s.Nil(err, "error isn't expected")
-	s.Equal(0, len(regexContents), "listByRegex should return empty slice for non-existent directory")
+	s.Equal(0, len(regexContents), "ListByRegex should return empty slice for non-existent directory")
 }
 
 //TestListByPrefix creates some files and provides a prefix. Succeeds on correct string slice returned

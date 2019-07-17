@@ -27,7 +27,6 @@ type memFileTest struct {
 
 func (s *memFileTest) SetupTest() {
 	fs := NewFileSystem()
-	//fs.Initialize() //initializing to create the fsMap
 	file, nerr := fs.NewFile("C", "/test_files/test.txt")
 	s.NoError(nerr, "unexpected error creating file")
 
@@ -293,7 +292,7 @@ func (s *memFileTest) TestCopyToLocation() {
 	readSlice2 := make([]byte, len(expectedText))
 
 	copiedFile, cerr := s.testFile.CopyToLocation(newFile.Location())
-	s.NoError(cerr, "copyToLocation unexpectedly failed")
+	s.NoError(cerr, "CopyToLocation unexpectedly failed")
 
 	s.NoError(copiedFile.Touch(), "unexpected error touching file")
 	s.True(copiedFile != nil)
@@ -329,7 +328,7 @@ func (s *memFileTest) TestCopyToLocationOW() {
 
 	readSlice := make([]byte, len(expectedText))
 	copiedFile, err := s.testFile.CopyToLocation(newFile.Location())
-	s.NoError(err, "copyToLocation unexpectedly failed")
+	s.NoError(err, "CopyToLocation unexpectedly failed")
 	s.True(copiedFile != nil)
 	s.NoError(copiedFile.Close(), "unexpected close error")
 
@@ -379,7 +378,7 @@ func (s *memFileTest) TestCopyToLocationOS() {
 	readSlice2 := make([]byte, len(expectedText))
 
 	copiedFile, err := s.testFile.CopyToLocation(osFile.Location())
-	s.NoError(err, "copyToLocation unexpectedly failed")
+	s.NoError(err, "CopyToLocation unexpectedly failed")
 	s.NoError(copiedFile.Close(), "unexpected Close error")
 
 	s.True(copiedFile != nil)
@@ -479,7 +478,7 @@ func (s *memFileTest) TestEmptyCopyToFile() {
 
 	s.NoError(emptyFile.Close(), "unexpected close error")
 	//call to CopyToFile
-	s.NoError(emptyFile.CopyToFile(otherFile), "copy to file failed unexpectedly")
+	s.NoError(emptyFile.CopyToFile(otherFile), "CopyToFile failed unexpectedly")
 
 	_, err = otherFile.Read(expectedSlice)
 	s.NoError(err, "unexpected Read error")
@@ -546,7 +545,7 @@ func (s *memFileTest) TestMoveToFile() {
 	s.NoError(newFile.Touch(), "unexpected error touching file")
 
 	_, err = s.testFile.Write(expectedSlice)
-	s.NoError(err, "write failed unexpectedly")
+	s.NoError(err, "Write failed unexpectedly")
 	s.NoError(s.testFile.Close(), "unexpected close error")
 
 	//after this call, newFile and "s.testFile" will be deleted.

@@ -196,9 +196,12 @@ FileSystem implements vfs.FileSystem for an in-memory file system.
 
 #### func  NewFileSystem
 
+
 ```go
 func NewFileSystem() *FileSystem
 ```
+NewFileSystem is used to initialize the file system struct for an in-memory FileSystem.
+
 
 #### func (*FileSystem) Name
 
