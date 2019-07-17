@@ -101,11 +101,11 @@ func (fs *FileSystem) Scheme() string {
 }
 
 //NewFileSystem is used to initialize the file system struct for an in-memory FileSystem.
-func  NewFileSystem() *FileSystem {
+func NewFileSystem() *FileSystem {
 
 	return &FileSystem{
 		sync.Mutex{},
-		 make(map[string]objMap),
+		make(map[string]objMap),
 	}
 
 }

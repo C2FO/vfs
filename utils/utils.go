@@ -119,6 +119,9 @@ func UpdateLastModifiedByMoving(file vfs.File) error {
 	// setup a tempfile
 	tempfile, err := file.Location().
 		NewFile(fmt.Sprintf("%s.%d", file.Name(), time.Now().UnixNano()))
+	if err != nil {
+		return err
+	}
 
 	// copy file file to tempfile
 	err = file.CopyToFile(tempfile)
