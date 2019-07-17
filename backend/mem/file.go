@@ -35,7 +35,6 @@ type memFile struct {
 	filepath     string
 }
 
-
 //File implements vfs.File interface for the in-memory implementation of FileSystem.
 //A file struct holds a pointer to a single memFile.  Multiple threads will refer to the same
 //memFile. Simultaneous reading is allowed, but writing and closing are protected by locks.
@@ -51,15 +50,15 @@ type File struct {
 
 //		////// Error Functions ///////		//
 func doesNotExist() error {
-	return errors.New("This file does not exist!")
+	return errors.New("this file does not exist")
 }
 
 func nilReference() error {
-	return errors.New("The target file passed in was nil")
+	return errors.New("the target file passed in was nil")
 }
 
 func seekError() error {
-	return errors.New("Seek could not complete the desired call")
+	return errors.New("seek could not complete the desired call")
 }
 
 ///////////////////////////////////////////////////////////
@@ -73,7 +72,7 @@ func (f *File) Close() error {
 	f.memFile.Lock()
 	if f.memFile.writeBuffer.Len() > 0 {
 		bufferContents := f.memFile.writeBuffer.Bytes()
-		for i, _ := range bufferContents {
+		for i := range bufferContents {
 			f.memFile.contents = append(f.memFile.contents, bufferContents[i])
 
 		}
@@ -149,43 +148,31 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	length := len(f.contents)
-	if length == 0 && offset == 0 && whence == 0 {
+
+	if num := int64(length) + int64(offset) + int64(whence); num == 0 {
 		return 0, nil
 	}
-
 	switch whence {
 
 	case 0:
 		if int(offset) < length && offset >= 0 {
 			f.cursor = int(offset)
 			return offset, nil
-		} else {
-			return int64(f.cursor), seekError()
 		}
-
 	case 1:
 		pos := f.cursor + int(offset)
 		if pos < length && pos >= 0 {
 			f.cursor = pos
 			return int64(pos), nil
-		} else {
-			return int64(f.cursor), seekError()
 		}
-
 	case 2:
 		pos := length + int(offset)
 		if pos < length && pos >= 0 {
 			f.cursor = pos
 			return int64(f.cursor), nil
-		} else {
-			return int64(f.cursor), seekError()
 		}
-
-	default:
-		return 0, seekError()
-
 	}
-
+	return int64(f.cursor), seekError()
 }
 
 //Write implements the io.Writer interface. Returns number of bytes written and any errors

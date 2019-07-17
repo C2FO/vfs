@@ -342,9 +342,8 @@ func (s *memFileTest) TestCopyToLocationOW() {
 //TestCopyToNilFile ensures that an error is thrown for trying to copy to a nil file
 func (s *memFileTest) TestCopyToNilFile() {
 
-	newFile, err := s.fileSystem.NewFile("", "/nilFile.txt")
-	s.NoError(err, "unexpected error creating file")
-	newFile = nil
+	newFile, err := s.fileSystem.NewFile("", "nilFile.txt")
+	s.Error(err, "expected error creating file (bad path)")
 	err = s.testFile.CopyToFile(newFile)
 	s.Error(err, "expected error for copying to nil file")
 }

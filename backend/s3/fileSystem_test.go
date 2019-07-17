@@ -49,6 +49,7 @@ func (ts *fileSystemTestSuite) TestNewFile_Error() {
 	//test validation error
 	file, err := s3fs.NewFile("bucketName", "relative/path/to/file.txt")
 	ts.EqualError(err, utils.ErrBadAbsFilePath, "errors returned by NewFile")
+	ts.Nil(file, "NewFile shouldn't return a file")
 
 	filePath := ""
 	file, err = s3fs.NewFile("", filePath)
@@ -72,6 +73,7 @@ func (ts *fileSystemTestSuite) TestNewLocation_Error() {
 	//test validation error
 	file, err := s3fs.NewLocation("bucketName", "relative/path/to/")
 	ts.EqualError(err, utils.ErrBadAbsLocationPath, "errors returned by NewLocation")
+	ts.Nil(file, "NewFile shouldn't return a file")
 
 	locPath := ""
 	file, err = s3fs.NewLocation("", locPath)
@@ -105,7 +107,7 @@ func (ts *fileSystemTestSuite) TestClient() {
 	badOpt := "not an s3.Options"
 	s3fs.client = nil
 	s3fs.options = badOpt
-	client, err = s3fs.Client()
+	_, err = s3fs.Client()
 	ts.Error(err, "error found")
 	ts.Equal("unable to create client, vfs.Options must be an s3.Options", err.Error(), "client was already set")
 
