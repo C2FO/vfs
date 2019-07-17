@@ -134,6 +134,7 @@ Feel free to send a pull request if you want to add your backend to the list.
   * [os backend](docs/os.md)
   * [gs backend](docs/gs.md)
   * [s3 backend](docs/s3.md)
+  * [in-memory backend](docs/mem.md)
 * [utils](docs/utils.md)
 
 ### Ideas
@@ -142,7 +143,6 @@ Things to add:
 
 * Add SFTP backend
 * Add Azure storage backend
-* Add in-memory backend
 * Provide better List() functionality with more abstracted filering and paging (iterator?) Retrun File structs vs URIs?
 * Add better/any context.Context() support
 
@@ -266,6 +266,10 @@ type File interface {
 	//
 	// For file:///some/path/to/file.txt, it would return file.txt
 	Name() string
+	
+	// Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
+    	// Returns error if unable to touch File.
+        Touch() error
 
 	// URI returns the fully qualified absolute URI for the File.  IE, s3://bucket/some/path/to/file.txt
 	URI() string
@@ -302,7 +306,7 @@ type FileSystem interface {
 	NewLocation(volume string, absLocPath string) (Location, error)
 
 	// Name returns the name of the FileSystem ie: Amazon S3, os, Google Cloud Storage, etc.
-	Name() string
+	Name() string	
 
 	// Scheme returns the uri scheme used by the FileSystem: s3, file, gs, etc.
 	Scheme() string
@@ -402,10 +406,6 @@ type Location interface {
 	//
 	// * Accepts relative file path.
 	DeleteFile(relFilePath string) error
-
-	// Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
-	// Returns error if unable to touch File.
-	Touch() error
 
 	// URI returns the fully qualified absolute URI for the Location.  IE, s3://bucket/some/path/
 	//
