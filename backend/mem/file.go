@@ -35,11 +35,10 @@ type memFile struct {
 	filepath     string
 }
 
-//
+
 //File implements vfs.File interface for the in-memory implementation of FileSystem.
 //A file struct holds a pointer to a single memFile.  Multiple threads will refer to the same
 //memFile. Simultaneous reading is allowed, but writing and closing are protected by locks.
-//
 type File struct {
 	memFile  *memFile
 	exists   bool
@@ -50,7 +49,6 @@ type File struct {
 
 }
 
-//		////// Error Functions ///////		//
 //		////// Error Functions ///////		//
 func doesNotExist() error {
 	return errors.New("This file does not exist!")

@@ -30,14 +30,18 @@ func (l *Location) String() string {
 //If there are no files at location, then an empty slice will be returned
 func (l *Location) List() ([]string, error) {
 
-	str := l.Path()                      //full path of this location
-	mapRef := l.fileSystem.fsMap         //setting mapRef to this value for code readability
-	if _, ok := mapRef[l.Volume()]; ok { //are there paths on this volume?
-		list := mapRef[l.Volume()].fileNamesHere(str) //getting a list of the file names on this location
-
-		return list, nil // "fileNamesHere" returns an empty list if no files were found
+	locPath := l.Path()
+	//setting mapRef to this value for code readability
+	mapRef := l.fileSystem.fsMap
+	//are there paths on this volume?
+	if _, ok := mapRef[l.Volume()]; ok {
+		//getting a list of the file names on this location
+		list := mapRef[l.Volume()].fileNamesHere(locPath)
+		// fileNamesHere() returns an empty list if no files were found
+		return list, nil
 	}
-	return make([]string, 0), nil //if the volume has nothing on it, return an empty list as well
+	//if the volume has nothing on it, return an empty list as well
+	return make([]string, 0), nil
 }
 
 //ListByPrefix tags a prefix onto the current path and in a slice,
@@ -155,7 +159,7 @@ func (l *Location) FileSystem() vfs.FileSystem {
 func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 
 	if relFilePath == "" {
-		return nil, errors.New("Cannot use empty name for file")
+		return nil, errors.New("cannot use empty name for file")
 	}
 	err := utils.ValidateRelativeFilePath(relFilePath)
 	if err != nil {
@@ -214,7 +218,7 @@ func (l *Location) DeleteFile(relFilePath string) error {
 			return nil
 		}
 	}
-	return errors.New("This file does not exist")
+	return errors.New("this file does not exist")
 }
 
 //URI returns the URI of the location if the location exists

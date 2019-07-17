@@ -19,7 +19,7 @@ type Location struct {
 	fileSystem vfs.FileSystem
 }
 
-// NewFile uses the properties of the calling location to generate a vfs.File (backed by a osFile). A string
+// NewFile uses the properties of the calling location to generate a vfs.File (backed by an os.File). A string
 // argument is expected to be a relative path to the location's current path.
 func (l *Location) NewFile(fileName string) (vfs.File, error) {
 	if l == nil {

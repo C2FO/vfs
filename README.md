@@ -306,8 +306,8 @@ type FileSystem interface {
 	NewLocation(volume string, absLocPath string) (Location, error)
 
 	// Name returns the name of the FileSystem ie: Amazon S3, os, Google Cloud Storage, etc.
-	Name() string
-	
+	Name() string	
+
 	// Scheme returns the uri scheme used by the FileSystem: s3, file, gs, etc.
 	Scheme() string
 
