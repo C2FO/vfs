@@ -14,14 +14,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/c2fo/vfs/v5"
 	"github.com/c2fo/vfs/v5/backend/gs"
 	"github.com/c2fo/vfs/v5/backend/mem"
 	_os "github.com/c2fo/vfs/v5/backend/os"
 	"github.com/c2fo/vfs/v5/backend/s3"
+	"github.com/c2fo/vfs/v5/backend/sftp"
 	"github.com/c2fo/vfs/v5/utils"
 	"github.com/c2fo/vfs/v5/vfssimple"
-	"github.com/stretchr/testify/suite"
 )
 
 type vfsTestSuite struct {
@@ -58,6 +60,11 @@ func copyS3Location(loc vfs.Location) vfs.Location {
 	return &cp
 }
 
+func copySFTPLocation(loc vfs.Location) vfs.Location {
+	cp := *loc.(*sftp.Location)
+	return &cp
+}
+
 func copyGSLocation(loc vfs.Location) vfs.Location {
 	cp := *loc.(*gs.Location)
 	return &cp
@@ -74,6 +81,8 @@ func (s *vfsTestSuite) SetupSuite() {
 			s.testLocations[l.FileSystem().Scheme()] = copyOsLocation(l)
 		case "s3":
 			s.testLocations[l.FileSystem().Scheme()] = copyS3Location(l)
+		case "sftp":
+			s.testLocations[l.FileSystem().Scheme()] = copySFTPLocation(l)
 		case "gs":
 			s.testLocations[l.FileSystem().Scheme()] = copyGSLocation(l)
 		case "mem":

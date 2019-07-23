@@ -47,7 +47,7 @@ file system backends.
 * provide common (and only common) functionality across all file system so that after initialization, we don't care
       what the underlying file system is and can therefore write our code agnostically/portably
 * use [io.*](https://godoc.org/io) interfaces such as [io.Reader](https://godoc.org/io#Reader) and [io.Writer](https://godoc.org/io#Writer) without needing to call a separate function
-* extensibility to easily add other needed file systems like Microsoft Azure Cloud File Storage or SFTP
+* extensibility to easily add other needed file systems like Microsoft Azure Cloud File Storage
 * prefer native atomic functions when possible (ie S3 to S3 moving would use the native move api call rather than
       copy-delete)
 * a uniform way of addressing files regardless of file system.  This is why we use complete URI's in vfssimple
@@ -135,13 +135,13 @@ Feel free to send a pull request if you want to add your backend to the list.
   * [gs backend](docs/gs.md)
   * [s3 backend](docs/s3.md)
   * [in-memory backend](docs/mem.md)
+  * [sftp backend](docs/sftp.md)
 * [utils](docs/utils.md)
 
 ### Ideas
 
 Things to add:
 
-* Add SFTP backend
 * Add Azure storage backend
 * Provide better List() functionality with more abstracted filering and paging (iterator?) Retrun File structs vs URIs?
 * Add better/any context.Context() support

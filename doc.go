@@ -91,9 +91,7 @@ Feel free to send a pull request if you want to add your backend to the list.
 Ideas
 
 Things to add:
-  * Add SFTP backend
   * Add Azure storage backend
-  * Add in-memory backend
   * Provide better List() functionality with more abstracted filering and paging (iterator?) Retrun File structs vs URIs?
   * Add better/any context.Context() support
 
@@ -104,6 +102,7 @@ Brought to you by the Enterprise Pipeline team at C2FO:
 * John Judd - john.judd@c2fo.com
 * Jason Coble - [@jasonkcoble](https://twitter.com/jasonkcoble) - jason@c2fo.com
 * Chris Roush – chris.roush@c2fo.com
+* Moe Zeid    - moe.zeid@c2fo.com
 
 https://github.com/c2fo/
 
