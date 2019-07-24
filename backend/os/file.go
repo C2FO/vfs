@@ -164,6 +164,9 @@ func (f *File) MoveToFile(file vfs.File) error {
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	// handle native os move/rename
 	if location.FileSystem().Scheme() == Scheme {
+		if err := ensureDir(location); err != nil {
+			return nil, err
+		}
 		err := os.Rename(f.Path(), path.Join(location.Path(), f.Name()))
 		if err != nil {
 			return nil, err
@@ -260,4 +263,15 @@ func (f *File) openFile() (*os.File, error) {
 	file, err := os.OpenFile(f.Path(), os.O_RDWR|os.O_CREATE, fileMode)
 	f.file = file
 	return file, err
+}
+
+func ensureDir(location vfs.Location) error {
+	if exists, err := location.Exists(); err != nil {
+		return err
+	} else if !exists {
+		if err := os.MkdirAll(location.Path(), os.ModeDir|0777); err != nil {
+			return err
+		}
+	}
+	return nil
 }
