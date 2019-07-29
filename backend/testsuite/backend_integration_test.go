@@ -658,6 +658,22 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 		//   * In the case of an error, nil is returned for the file.
 		//   * When moving within the same Scheme, native move/rename should be used where possible.
 		//   * If the file already exists, the contents will be overwritten with the current file's contents.
+		fileForNew, err := srcLoc.NewFile("fileForNew.txt")
+		s.NoError(err)
+
+		_, err = srcFile.Seek(0, 0)
+		s.NoError(err)
+		_, err = io.Copy(fileForNew, srcFile)
+		s.NoError(err)
+
+		newLoc, err := dstLoc.NewLocation("doesnotexist/")
+		s.NoError(err)
+		dstCopyNew, err := fileForNew.MoveToLocation(newLoc)
+		s.NoError(err)
+		exists, err = dstCopyNew.Exists()
+		s.NoError(err)
+		s.True(exists)
+
 		dstCopy1, err := copyFile1.MoveToLocation(dstLoc)
 		s.NoError(err)
 		// destination file should now exist
