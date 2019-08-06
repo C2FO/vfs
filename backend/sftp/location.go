@@ -25,7 +25,7 @@ type Location struct {
 func (l *Location) List() ([]string, error) {
 
 	var filenames []string
-	client, err := l.fileSystem.getClient(l.Authority)
+	client, err := l.fileSystem.Client(l.Authority)
 	if err != nil {
 		return filenames, err
 	}
@@ -47,7 +47,7 @@ func (l *Location) List() ([]string, error) {
 func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 
 	var filenames []string
-	client, err := l.fileSystem.getClient(l.Authority)
+	client, err := l.fileSystem.Client(l.Authority)
 	if err != nil {
 		return filenames, err
 	}
@@ -112,7 +112,7 @@ func (l *Location) Path() string {
 // Exists returns true if the remote SFTP file exists.
 func (l *Location) Exists() (bool, error) {
 
-	client, err := l.fileSystem.getClient(l.Authority)
+	client, err := l.fileSystem.Client(l.Authority)
 	if err != nil {
 		return false, err
 	}
@@ -157,7 +157,7 @@ func (l *Location) ChangeDir(relativePath string) error {
 	if relativePath == "" {
 		return errors.New("non-empty string relativePath is required")
 	}
-	err := utils.ValidateAbsoluteLocationPath(relativePath)
+	err := utils.ValidateRelativeLocationPath(relativePath)
 	if err != nil {
 		return err
 	}

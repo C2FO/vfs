@@ -3,11 +3,11 @@ package sftp
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"os/user"
+	"os"
 	"path"
+	"time"
 
-	"github.com/pkg/sftp"
+	_sftp "github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/c2fo/vfs/v5"
@@ -22,8 +22,7 @@ const name = "Secure File Transfer Protocol"
 // FileSystem implements vfs.Filesystem for the SFTP filesystem.
 type FileSystem struct {
 	options    vfs.Options
-	client     *sftp.Client
-	sftpclient *sftp.Client
+	sftpclient SFTPClient
 }
 
 // Retry will return the default no-op retrier. The SFTP client provides its own retryer interface, and is available
@@ -89,15 +88,15 @@ func (fs *FileSystem) Scheme() string {
 
 // Client returns the underlying sftp client, creating it, if necessary
 // See Overview for authentication resolution
-func (fs *FileSystem) Client(authority utils.Authority) (*sftp.Client, error) {
-	if fs.client == nil {
+func (fs *FileSystem) Client(authority utils.Authority) (SFTPClient, error) {
+	if fs.sftpclient == nil {
 		if fs.options == nil {
 			fs.options = Options{}
 		}
 
-		if _, ok := fs.options.(Options); ok {
+		if opts, ok := fs.options.(Options); ok {
 			var err error
-			fs.client, err = fs.getClient(authority)
+			fs.sftpclient, err = fs.getClient(authority, opts)
 			if err != nil {
 				return nil, err
 			}
@@ -105,7 +104,7 @@ func (fs *FileSystem) Client(authority utils.Authority) (*sftp.Client, error) {
 			return nil, fmt.Errorf("unable to create client, vfs.Options must be an sftp.Options")
 		}
 	}
-	return fs.client, nil
+	return fs.sftpclient, nil
 }
 
 // WithOptions sets options for client and returns the filesystem (chainable)
@@ -115,7 +114,7 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 	if opts, ok := opts.(Options); ok {
 		fs.options = opts
 		//we set client to nil to ensure that a new client is created using the new context when Client() is called
-		fs.client = nil
+		fs.sftpclient = nil
 	}
 	return fs
 }
@@ -124,7 +123,7 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 func (fs *FileSystem) WithClient(client interface{}) *FileSystem {
 	switch client.(type) {
 	case *ssh.Client:
-		fs.client = client.(*sftp.Client)
+		fs.sftpclient = client.(SFTPClient)
 		fs.options = nil
 	}
 	return fs
@@ -140,50 +139,26 @@ func init() {
 	backend.Register(Scheme, NewFileSystem())
 }
 
-func (fs *FileSystem) getClient(authority utils.Authority) (*sftp.Client, error) {
+func (fs *FileSystem) getClient(authority utils.Authority, opts Options) (client SFTPClient, err error) {
 	if fs.sftpclient != nil {
-
-		// Now in the main function DO:
-		secretKey, err := getKeyFile()
-		if err != nil {
-			panic(err)
-		}
-		// Define the Client Config as :
-		config := &ssh.ClientConfig{
-			User: authority.User,
-			Auth: []ssh.AuthMethod{
-				ssh.PublicKeys(secretKey),
-			},
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-			BannerCallback:  ssh.BannerDisplayStderr(),
-		}
-		//TODO begin timeout until session is created
-		sshClient, err := ssh.Dial("tcp", authority.Host, config)
-		if err != nil {
-			return nil, err
-		}
-
-		client, err := sftp.NewClient(sshClient)
-		if err != nil {
-			return nil, err
-		}
-
-		fs.sftpclient = client
+		return fs.sftpclient, nil
 	}
-
-	return fs.sftpclient, nil
+	return getClient(authority, opts)
 }
 
-func getKeyFile() (key ssh.Signer, err error) {
-	usr, _ := user.Current()
-	file := usr.HomeDir + "/.ssh/id_rsa"
-	buf, err := ioutil.ReadFile(file)
-	if err != nil {
-		return
-	}
-	key, err = ssh.ParsePrivateKeyWithPassphrase(buf, []byte("AlephBet6"))
-	if err != nil {
-		return
-	}
-	return
+type SFTPClient interface {
+	Chtimes(path string, atime, mtime time.Time) error
+	Create(path string) (*_sftp.File, error)
+	OpenFile(path string, f int) (*_sftp.File, error)
+	ReadDir(p string) ([]os.FileInfo, error)
+	Remove(path string) error
+	Rename(oldname, newname string) error
+	Stat(p string) (os.FileInfo, error)
 }
+
+/*
+type ReadWriteSeekCloser interface {
+	io.ReadWriteSeeker
+	io.Closer
+}
+*/

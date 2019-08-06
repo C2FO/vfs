@@ -25,7 +25,7 @@ type File struct {
 // LastModified returns the LastModified property of sftp file.
 func (f *File) LastModified() (*time.Time, error) {
 
-	client, err := f.fileSystem.getClient(f.Authority)
+	client, err := f.fileSystem.Client(f.Authority)
 	if err != nil {
 		return nil, err
 	}
@@ -50,12 +50,12 @@ func (f *File) Path() string {
 // Exists returns a boolean of whether or not the file exists on the sftp server
 func (f *File) Exists() (bool, error) {
 
-	client, err := f.fileSystem.getClient(f.Authority)
+	client, err := f.fileSystem.Client(f.Authority)
 	if err != nil {
 		return false, err
 	}
 
-	_, err = client.Open(f.Path())
+	_, err = client.OpenFile(f.Path(), os.O_RDONLY)
 	if err != nil && err == os.ErrNotExist {
 		return false, nil
 	} else if err != nil {
@@ -83,7 +83,7 @@ func (f *File) Touch() error {
 		return f.Close()
 	}
 
-	client, err := f.fileSystem.getClient(f.Authority)
+	client, err := f.fileSystem.Client(f.Authority)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func (f *File) Touch() error {
 // Size returns the size of the remote file.
 func (f *File) Size() (uint64, error) {
 
-	client, err := f.fileSystem.getClient(f.Authority)
+	client, err := f.fileSystem.Client(f.Authority)
 	if err != nil {
 		return 0, err
 	}
@@ -193,7 +193,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 // Delete removes the remote file.  Error is returned, if any.
 func (f *File) Delete() error {
-	client, err := f.fileSystem.getClient(f.Authority)
+	client, err := f.fileSystem.Client(f.Authority)
 	if err != nil {
 		return err
 	}
@@ -235,12 +235,25 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 
 // Write calls the underlying sftp.File Write.
 func (f *File) Write(data []byte) (res int, err error) {
-
-	file, err := f.openFile()
+	found, err := f.Exists()
 	if err != nil {
 		return 0, err
 	}
-	return file.Write(data)
+	if !found {
+
+		client, err := f.fileSystem.Client(f.Authority)
+		if err != nil {
+			return 0, err
+		}
+
+		file, err := client.Create(f.path)
+		if err != nil {
+			return 0, err
+		}
+		f.file = file
+	}
+
+	return f.file.Write(data)
 }
 
 // URI returns the File's URI as a string.
@@ -261,12 +274,12 @@ func (f *File) openFile() (*sftp.File, error) {
 		return f.file, nil
 	}
 
-	client, err := f.fileSystem.getClient(f.Authority)
+	client, err := f.fileSystem.Client(f.Authority)
 	if err != nil {
 		return nil, err
 	}
 
-	file, err := client.Open(f.path)
+	file, err := client.OpenFile(f.path, os.O_RDWR|os.O_CREATE)
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +288,7 @@ func (f *File) openFile() (*sftp.File, error) {
 }
 
 func (f *File) sftpRename(target *File) error {
-	client, err := f.fileSystem.getClient(f.Authority)
+	client, err := f.fileSystem.Client(f.Authority)
 	if err != nil {
 		return err
 	}

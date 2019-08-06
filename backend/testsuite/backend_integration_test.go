@@ -316,7 +316,7 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 	*/
 	exists, err := baseLoc.Exists()
 	s.NoError(err)
-	s.True(exists, "srcLoc location doesn't exist")
+	s.True(exists, "baseLoc location exists check")
 
 	//setup list tests
 	f1, err := srcLoc.NewFile("file1.txt")
