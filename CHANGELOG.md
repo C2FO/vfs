@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [5.2.3] - 2019-08-07
+### Fixed
+- The GS implementation of location.List() returned an empty string for files found inside a persistent "folder" object
+created in the UI or by createing a zero-length object ending with "/".  These objects are now ignored.
+- Fixed a gs-to-gs copy bug that became visible with integration tests aded in v5.2.2.
+
 ## [5.2.2] - 2019-07-17
 ### Fixed
 - The OS implementation of file.MoveToLocation() now ensures that the target directory exists before attempting to move the file
