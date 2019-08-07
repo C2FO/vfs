@@ -3,6 +3,7 @@
 package testsuite
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -353,6 +354,13 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 	s.NoError(err)
 	s.Equal(0, len(files), "non-existent location")
 
+	switch baseLoc.FileSystem().Scheme() {
+	case "gs":
+		fmt.Println("!!!!!! testing gs-specific List() tests !!!!!!")
+		s.gsList(baseLoc)
+	default:
+	}
+
 	// ListByPrefix returns a slice of strings representing the base names of the files found in Location whose filenames
 	// match the given prefix.
 	//
@@ -665,6 +673,8 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 		s.NoError(err)
 		_, err = io.Copy(fileForNew, srcFile)
 		s.NoError(err)
+		err = fileForNew.Close()
+		s.NoError(err)
 
 		newLoc, err := dstLoc.NewLocation("doesnotexist/")
 		s.NoError(err)
@@ -673,6 +683,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 		exists, err = dstCopyNew.Exists()
 		s.NoError(err)
 		s.True(exists)
+		s.NoError(dstCopyNew.Delete()) // clean up file
 
 		dstCopy1, err := copyFile1.MoveToLocation(dstLoc)
 		s.NoError(err)
@@ -786,6 +797,67 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 
 	//end existence tests
 
+}
+
+// gs-specific test cases
+func (s *vfsTestSuite) gsList(baseLoc vfs.Location) {
+	/*
+			test scenario:
+				When a persistent "folder" is created through the UI, it simply creates a zero length object
+		        with a trailing "/". The UI or gsutil knows to interpret these objects as folders but they are
+		        still just objects.  List(), in its current state, should ignore these objects.
+
+			If we create the following objects:
+			    gs://bucket/some/path/to/myfolder/         -- Note that object base name is "myfolder/"
+		        gs://bucket/some/path/to/myfolder/file.txt
+
+		    List() from location "gs://bucket/some/path/to/myfolder/" should only return object name "file.txt";
+			"myfolder/" should be ignored.
+	*/
+
+	/*
+		first create persisent "folder"
+	*/
+
+	// getting client since VFS doesn't allow a File ending with a slash
+	client, err := baseLoc.FileSystem().(*gs.FileSystem).Client()
+	s.NoError(err)
+
+	objHandle := client.
+		Bucket("enterprise-test").
+		Object(utils.RemoveLeadingSlash(baseLoc.Path() + "myfolder/"))
+
+	ctx := context.Background()
+
+	//write zero length object
+	writer := objHandle.NewWriter(ctx)
+	_, err = writer.Write([]byte(""))
+	s.NoError(err)
+	s.NoError(writer.Close())
+
+	/*
+		next create create a file inside the "folder"
+	*/
+
+	f, err := baseLoc.NewFile("myfolder/file.txt")
+	s.NoError(err)
+
+	_, err = f.Write([]byte("some text"))
+	s.NoError(err)
+	s.NoError(f.Close())
+
+	/*
+		finally list "folder" should only return file.txt
+	*/
+
+	files, err := f.Location().List()
+	s.NoError(err)
+	s.Equal(1, len(files), "check file count found")
+	s.Equal("file.txt", files[0], "file.txt was found")
+
+	// CLEAN UP
+	s.NoError(f.Delete(), "clean up file.txt")
+	s.NoError(objHandle.Delete(ctx))
 }
 
 func TestVFS(t *testing.T) {

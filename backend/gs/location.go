@@ -61,7 +61,7 @@ func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error) {
 			return nil, err
 		}
 		//only include objects, not "directories"
-		if objAttrs.Prefix == "" && objAttrs.Name != d {
+		if objAttrs.Prefix == "" && objAttrs.Name != d && !strings.HasSuffix(objAttrs.Name, "/") {
 			fn := strings.TrimPrefix(objAttrs.Name, utils.EnsureTrailingSlash(d))
 			fileNames = append(fileNames, fn)
 		}

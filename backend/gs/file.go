@@ -443,12 +443,8 @@ func (f *File) copyWithinGCSToFile(targetFile *File) error {
 		return gerr
 	}
 	copier.ContentType(attrs.ContentType)
-	_, cerr := copier.Run(f.fileSystem.ctx)
-	if cerr != nil {
-		return cerr
-	}
 
 	// Just copy content.
-	_, err = tHandle.WrappedCopierFrom(fHandle.ObjectHandle()).Run(f.fileSystem.ctx)
-	return err
+	_, cerr := copier.Run(f.fileSystem.ctx)
+	return cerr
 }
