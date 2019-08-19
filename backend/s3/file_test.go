@@ -25,15 +25,17 @@ type fileTestSuite struct {
 }
 
 var (
-	s3apiMock *mocks.S3API
-	fs        FileSystem
-	testFile  vfs.File
+	s3apiMock      *mocks.S3API
+	fs             FileSystem
+	testFile       vfs.File
+	defaultOptions Options
 )
 
 func (ts *fileTestSuite) SetupTest() {
 	var err error
 	s3apiMock = &mocks.S3API{}
-	fs = FileSystem{client: s3apiMock}
+	defaultOptions = Options{AccessKeyID: "abc"}
+	fs = FileSystem{client: s3apiMock, options: defaultOptions}
 	testFile, err = fs.NewFile("bucket", "/some/path/to/file.txt")
 	if err != nil {
 		ts.Fail("Shouldn't return error creating test s3.File instance.")
@@ -153,7 +155,8 @@ func (ts *fileTestSuite) TestNotExists() {
 func (ts *fileTestSuite) TestCopyToFile() {
 	targetFile := &File{
 		fileSystem: &FileSystem{
-			client: s3apiMock,
+			client:  s3apiMock,
+			options: defaultOptions,
 		},
 		bucket: "TestBucket",
 		key:    "testKey.txt",
@@ -165,6 +168,22 @@ func (ts *fileTestSuite) TestCopyToFile() {
 	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
 	s3apiMock.AssertExpectations(ts.T())
 }
+
+//func (ts *fileTestSuite) TestCopyToFileAlternateAuth() {
+//	targetFile := &File{
+//		fileSystem: &FileSystem{
+//			client: s3apiMock,
+//		},
+//		bucket: "TestBucket2",
+//		key:    "testKey2.txt",
+//	}
+//
+//	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
+//
+//	err := testFile.CopyToFile(targetFile)
+//	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
+//	s3apiMock.AssertExpectations(ts.T())
+//}
 
 func (ts *fileTestSuite) TestEmptyCopyToFile() {
 	targetFile := &mocks.File{}
@@ -185,7 +204,8 @@ func (ts *fileTestSuite) TestEmptyCopyToFile() {
 func (ts *fileTestSuite) TestMoveToFile() {
 	targetFile := &File{
 		fileSystem: &FileSystem{
-			client: s3apiMock,
+			client:  s3apiMock,
+			options: defaultOptions,
 		},
 		bucket: "TestBucket",
 		key:    "testKey.txt",
@@ -203,7 +223,8 @@ func (ts *fileTestSuite) TestMoveToFile() {
 func (ts *fileTestSuite) TestMoveToFile_CopyError() {
 	targetFile := &File{
 		fileSystem: &FileSystem{
-			client: s3apiMock,
+			client:  s3apiMock,
+			options: defaultOptions,
 		},
 		bucket: "TestBucket",
 		key:    "testKey.txt",
@@ -223,7 +244,8 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 	s3Mock1.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 	f := &File{
 		fileSystem: &FileSystem{
-			client: s3Mock1,
+			client:  s3Mock1,
+			options: defaultOptions,
 		},
 		bucket: "bucket",
 		key:    "/hello.txt",
@@ -236,7 +258,8 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 
 	l := &Location{
 		fileSystem: &FileSystem{
-			client: &mocks.S3API{},
+			client:  &mocks.S3API{},
+			options: defaultOptions,
 		},
 		bucket: "bucket",
 		prefix: "/subdir/",
@@ -257,7 +280,8 @@ func (ts *fileTestSuite) TestTouch() {
 	s3Mock1.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
 	file := &File{
 		fileSystem: &FileSystem{
-			client: s3Mock1,
+			client:  s3Mock1,
+			options: defaultOptions,
 		},
 		bucket: "newBucket",
 		key:    "/new/file/path/hello.txt",
@@ -274,7 +298,8 @@ func (ts *fileTestSuite) TestTouch() {
 	s3Mock2.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 	file2 := &File{
 		fileSystem: &FileSystem{
-			client: s3Mock2,
+			client:  s3Mock2,
+			options: defaultOptions,
 		},
 		bucket: "newBucket",
 		key:    "/new/file/path/hello.txt",
@@ -293,7 +318,8 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	s3Mock1.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 	f := &File{
 		fileSystem: &FileSystem{
-			client: s3Mock1,
+			client:  s3Mock1,
+			options: defaultOptions,
 		},
 		bucket: "newBucket",
 		key:    "/new/file/path/hello.txt",
@@ -345,7 +371,7 @@ func (ts *fileTestSuite) TestMoveToLocationFail() {
 	// If CopyToLocation fails we need to ensure DeleteObject isn't called.
 	otherFs := new(mocks.FileSystem)
 	location := new(mocks.Location)
-	location.On("NewFile", mock.Anything).Return(&File{}, nil)
+	location.On("NewFile", mock.Anything).Return(&File{fileSystem: &fs}, nil)
 
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(nil, errors.New("didn't copy, oh noes"))
 	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
