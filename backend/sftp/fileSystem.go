@@ -149,6 +149,7 @@ func (fs *FileSystem) getClient(authority utils.Authority, opts Options) (client
 type SFTPClient interface {
 	Chtimes(path string, atime, mtime time.Time) error
 	Create(path string) (*_sftp.File, error)
+	MkdirAll(path string) error
 	OpenFile(path string, f int) (*_sftp.File, error)
 	ReadDir(p string) ([]os.FileInfo, error)
 	Remove(path string) error

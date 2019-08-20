@@ -1,7 +1,6 @@
 package sftp
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"sync"
@@ -47,13 +46,6 @@ func getClient(authority utils.Authority, opts Options) (*_sftp.Client, error) {
 	client, err := _sftp.NewClient(sshClient)
 	if err != nil {
 		return nil, err
-	}
-	files, err := client.ReadDir("/")
-	if err != nil {
-		return nil, err
-	}
-	for _, f := range files {
-		fmt.Println(f.Name())
 	}
 
 	return client, nil

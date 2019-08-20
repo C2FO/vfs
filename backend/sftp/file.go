@@ -1,7 +1,6 @@
 package sftp
 
 import (
-	"bytes"
 	"os"
 	"path"
 	"time"
@@ -17,7 +16,6 @@ type File struct {
 	Authority   utils.Authority
 	path        string
 	file        *sftp.File
-	writeBuffer *bytes.Buffer
 }
 
 // Info Functions
@@ -127,6 +125,21 @@ func (f *File) MoveToFile(file vfs.File) error {
 	if tf, ok := file.(*File); ok &&
 		f.Authority.User == tf.Authority.User &&
 		f.Authority.Host == tf.Authority.Host {
+		//ensure destination exists before moving
+		exists, err := tf.Location().Exists()
+		if err != nil {
+			return err
+		}
+		if !exists {
+			client, err := f.fileSystem.Client(f.Authority)
+			if err != nil {
+				return err
+			}
+			err = client.MkdirAll(tf.Location().Path())
+			if err != nil {
+				return err
+			}
+		}
 		return f.sftpRename(tf)
 	}
 
@@ -216,6 +229,15 @@ func (f *File) Close() error {
 // Read calls the underlying sftp.File Read.
 func (f *File) Read(p []byte) (n int, err error) {
 
+	//ensure destination exists before reading (because openFile will auto-vivify the File)
+	exists, err := f.Exists()
+	if err != nil {
+		return 0, err
+	}
+	if !exists {
+		return 0, os.ErrNotExist
+	}
+
 	file, err := f.openFile()
 	if err != nil {
 		return 0, err
@@ -226,6 +248,15 @@ func (f *File) Read(p []byte) (n int, err error) {
 // Seek calls the underlying sftp.File Seek.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
 
+	//ensure destination exists before seeking (because openFile() will auto-vivify the File)
+	exists, err := f.Exists()
+	if err != nil {
+		return 0, err
+	}
+	if !exists {
+		return 0, os.ErrNotExist
+	}
+
 	file, err := f.openFile()
 	if err != nil {
 		return 0, err
@@ -235,25 +266,13 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 
 // Write calls the underlying sftp.File Write.
 func (f *File) Write(data []byte) (res int, err error) {
-	found, err := f.Exists()
+
+	file, err := f.openFile()
 	if err != nil {
 		return 0, err
 	}
-	if !found {
 
-		client, err := f.fileSystem.Client(f.Authority)
-		if err != nil {
-			return 0, err
-		}
-
-		file, err := client.Create(f.path)
-		if err != nil {
-			return 0, err
-		}
-		f.file = file
-	}
-
-	return f.file.Write(data)
+	return file.Write(data)
 }
 
 // URI returns the File's URI as a string.
@@ -275,6 +294,12 @@ func (f *File) openFile() (*sftp.File, error) {
 	}
 
 	client, err := f.fileSystem.Client(f.Authority)
+	if err != nil {
+		return nil, err
+	}
+
+	//vfs specifies that all implementations make dir path if it doesn't exist
+	err = client.MkdirAll(path.Dir(f.path))
 	if err != nil {
 		return nil, err
 	}

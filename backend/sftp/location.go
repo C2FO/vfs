@@ -32,6 +32,9 @@ func (l *Location) List() ([]string, error) {
 
 	fileinfos, err := client.ReadDir(l.Path())
 	if err != nil {
+		if err == os.ErrNotExist {
+			return filenames, nil
+		}
 		return filenames, err
 	}
 	for _, fileinfo := range fileinfos {
@@ -59,8 +62,8 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 	if r != rune('/') {
 		baseprefix = path.Base(fullpath)
 	}
-
-	fileinfos, err := client.ReadDir(l.Path())
+	fullpath = utils.EnsureTrailingSlash(path.Dir(fullpath))
+	fileinfos, err := client.ReadDir(fullpath)
 	if err != nil {
 		return filenames, err
 	}
