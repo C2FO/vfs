@@ -3,6 +3,7 @@ package sftp
 import (
 	"io/ioutil"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/google/uuid"
@@ -37,8 +38,14 @@ func getClient(authority utils.Authority, opts Options) (*_sftp.Client, error) {
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(), //todo consider making this configurable
 	}
 
+	//default to port 22
+	host := authority.Host
+	if !strings.Contains(host, ":") {
+		host = host + ":22"
+	}
+
 	//TODO begin timeout until session is created
-	sshClient, err := ssh.Dial("tcp", authority.Host, config)
+	sshClient, err := ssh.Dial("tcp", host, config)
 	if err != nil {
 		return nil, err
 	}
