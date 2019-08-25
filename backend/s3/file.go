@@ -292,6 +292,17 @@ func (f *File) copyWithinS3ToFile(targetFile *File) error {
 		SetKey(targetFile.key).
 		SetBucket(targetFile.bucket).
 		SetCopySource(path.Join(f.bucket, f.key))
+
+	if f.fileSystem.options == nil {
+		f.fileSystem.options = Options{}
+	}
+
+	if opts, ok := f.fileSystem.options.(Options); ok {
+		if opts.ACL != "" {
+			copyInput.SetACL(opts.ACL)
+		}
+	}
+
 	client, err := f.fileSystem.Client()
 	if err != nil {
 		return err
@@ -357,11 +368,23 @@ func (f *File) getObject() (io.ReadCloser, error) {
 //TODO: need to provide an implementation-agnostic container for providing config options such as SSE
 func uploadInput(f *File) *s3manager.UploadInput {
 	sseType := "AES256"
-	return &s3manager.UploadInput{
+	input := &s3manager.UploadInput{
 		Bucket:               &f.bucket,
 		Key:                  &f.key,
 		ServerSideEncryption: &sseType,
 	}
+
+	if f.fileSystem.options == nil {
+		f.fileSystem.options = Options{}
+	}
+
+	if opts, ok := f.fileSystem.options.(Options); ok {
+		if opts.ACL != "" {
+			input.ACL = &opts.ACL
+		}
+	}
+
+	return input
 }
 
 //WaitUntilFileExists attempts to ensure that a recently written file is available before moving on.  This is helpful for

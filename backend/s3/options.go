@@ -23,6 +23,7 @@ type Options struct {
 	SessionToken    string `json:"sessionToken,omitempty"`
 	Region          string `json:"region,omitempty"`
 	Endpoint        string `json:"endpoint,omitempty"`
+	ACL             string `json:"acl,omitempty"`
 	Retry           request.Retryer
 	MaxRetries      int
 }

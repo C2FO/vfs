@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.3.0] - 2019-08-24
+### Added
+- ACL can now be passed in as an s3.Option value. See 
+https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl for values.
+
 ## [5.2.3] - 2019-08-07
 ### Fixed
 - The GS implementation of location.List() returned an empty string for files found inside a persistent "folder" object
