@@ -40,6 +40,7 @@ would have to be cast as s3.FileSystem to use the following:
               AccessKeyID:     "AKIAIOSFODNN7EXAMPLE",
               SecretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
               Region:          "us-west-2",
+              ACL: 			   "bucket-owner-full-control",
           },
       )
 
@@ -51,6 +52,11 @@ would have to be cast as s3.FileSystem to use the following:
               }, nil)
       fs = fs.WithClient(s3apiMock)
   }
+
+Object ACL
+
+Canned ACL's can be passed in as an Option.  This string will be applied to all writes, moves, and copies.
+See https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl for values.
 
 Authentication
 
