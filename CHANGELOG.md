@@ -8,9 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.4.0] - 2019-08-24
 ### Added
-- Added fallback to TouchCopy for S3/GCS implementations for CopyTo and MoveTo operations between files and locations which
-use different authentication and region configurations. When possible, the directoy copy/move operations will be used by the underlying
-clients.
+- Added fallback to TouchCopy for S3/GCS implementations for CopyTo and MoveTo operations between files and locations which use different authentication and region configurations. When possible, the directoy copy/move operations will be used by the underlying clients.
 
 ## [5.3.0] - 2019-08-24
 ### Added

@@ -169,22 +169,6 @@ func (ts *fileTestSuite) TestCopyToFile() {
 	s3apiMock.AssertExpectations(ts.T())
 }
 
-//func (ts *fileTestSuite) TestCopyToFileAlternateAuth() {
-//	targetFile := &File{
-//		fileSystem: &FileSystem{
-//			client: s3apiMock,
-//		},
-//		bucket: "TestBucket2",
-//		key:    "testKey2.txt",
-//	}
-//
-//	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
-//
-//	err := testFile.CopyToFile(targetFile)
-//	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
-//	s3apiMock.AssertExpectations(ts.T())
-//}
-
 func (ts *fileTestSuite) TestEmptyCopyToFile() {
 	targetFile := &mocks.File{}
 	targetFile.On("Write", mock.Anything).Return(0, nil)
