@@ -133,15 +133,19 @@ func (f *File) Location() vfs.Location {
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 	// This is a copy to gcs, from gcs, we should attempt to utilize the Google Cloud Storage API for this.
 	if location.FileSystem().Scheme() == Scheme {
-		dest, err := location.NewFile(f.Name())
-		if err != nil {
-			return nil, err
+		options := location.FileSystem().(*FileSystem).options.(Options)
+		if f.isSameAuth(&options) {
+			dest, err := location.NewFile(f.Name())
+			if err != nil {
+				return nil, err
+			}
+
+			err = f.copyWithinGCSToFile(dest.(*File))
+			if err != nil {
+				return nil, err
+			}
+			return dest, nil
 		}
-		err = f.copyWithinGCSToFile(dest.(*File))
-		if err != nil {
-			return nil, err
-		}
-		return dest, nil
 	}
 
 	newFile, err := location.FileSystem().NewFile(location.Volume(), path.Join(location.Path(), f.Name()))
@@ -168,7 +172,10 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 // method if the target file is also on GCS, otherwise uses io.Copy.
 func (f *File) CopyToFile(file vfs.File) error {
 	if tf, ok := file.(*File); ok {
-		return f.copyWithinGCSToFile(tf)
+		options := tf.Location().FileSystem().(*FileSystem).options.(Options)
+		if f.isSameAuth(&options) {
+			return f.copyWithinGCSToFile(tf)
+		}
 	}
 
 	if err := utils.TouchCopy(file, f); err != nil {
@@ -325,6 +332,24 @@ func (f *File) createEmptyFile() error {
 
 	// return early
 	return nil
+}
+
+func (f *File) isSameAuth(options *Options) bool {
+	if options == nil || f.fileSystem.options == nil {
+		return false
+	}
+
+	fOptions := f.fileSystem.options.(Options)
+
+	if options.CredentialFile != "" && options.CredentialFile == fOptions.CredentialFile {
+		return true
+	}
+
+	if options.APIKey != "" && options.APIKey == fOptions.APIKey {
+		return true
+	}
+
+	return false
 }
 
 // LastModified returns the 'Updated' property from the GCS attributes.
