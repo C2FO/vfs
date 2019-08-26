@@ -172,9 +172,11 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 // method if the target file is also on GCS, otherwise uses io.Copy.
 func (f *File) CopyToFile(file vfs.File) error {
 	if tf, ok := file.(*File); ok {
-		options := tf.Location().FileSystem().(*FileSystem).options.(Options)
-		if f.isSameAuth(&options) {
-			return f.copyWithinGCSToFile(tf)
+		options, ok := tf.Location().FileSystem().(*FileSystem).options.(Options)
+		if ok {
+			if f.isSameAuth(&options) {
+				return f.copyWithinGCSToFile(tf)
+			}
 		}
 	}
 
