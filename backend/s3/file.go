@@ -91,7 +91,7 @@ func (f *File) Location() vfs.Location {
 // method if the target file is also on S3, otherwise uses io.Copy.
 func (f *File) CopyToFile(file vfs.File) error {
 	if tf, ok := file.(*File); ok {
-		return f.copyWithinS3ToFile(tf)
+		return f.copyFile(tf)
 	}
 
 	if err := utils.TouchCopy(file, f); err != nil {
@@ -287,29 +287,48 @@ func (f *File) getHeadObject() (*s3.HeadObjectOutput, error) {
 	return client.HeadObject(headObjectInput)
 }
 
-func (f *File) copyWithinS3ToFile(targetFile *File) error {
+// Copy from S3-to-S3 when accounts are the same between source and target and fall back to a
+// TouchCopy() call if they are different.
+func (f *File) copyFile(targetFile *File) error {
+	isSameAccount := false
+	hasAclOption := false
+
+	opts, hasOptions := f.fileSystem.options.(Options)
+	if hasOptions {
+		hasAclOption = opts.ACL != ""
+	}
+
+	if hasOptions && targetFile.fileSystem.options != nil {
+		isSameAccount = opts.AccessKeyID == targetFile.fileSystem.options.(Options).AccessKeyID
+	}
+
+	// If both files use the same account, copy with native library. Otherwise, copy to disk
+	// first before pushing out to the target file's location.
 	copyInput := new(s3.CopyObjectInput).
 		SetKey(targetFile.key).
 		SetBucket(targetFile.bucket).
 		SetCopySource(path.Join(f.bucket, f.key))
 
-	if f.fileSystem.options == nil {
-		f.fileSystem.options = Options{}
+	if hasOptions && hasAclOption {
+		copyInput.SetACL(opts.ACL)
 	}
 
-	if opts, ok := f.fileSystem.options.(Options); ok {
-		if opts.ACL != "" {
-			copyInput.SetACL(opts.ACL)
+	if isSameAccount {
+		client, err := f.fileSystem.Client()
+		if err != nil {
+			return err
 		}
-	}
 
-	client, err := f.fileSystem.Client()
-	if err != nil {
+		_, err = client.CopyObject(copyInput)
+
 		return err
 	}
-	_, err = client.CopyObject(copyInput)
 
-	return err
+	if err := utils.TouchCopy(targetFile, f); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (f *File) checkTempFile() error {
