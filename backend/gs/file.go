@@ -131,41 +131,15 @@ func (f *File) Location() vfs.Location {
 // name at the given location. If the given location is also GCS, the GCS API for copying
 // files will be utilized, otherwise, standard io.Copy will be done to the new file.
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
-	// This is a copy to gcs, from gcs, we should attempt to utilize the Google Cloud Storage API for this.
-	if location.FileSystem().Scheme() == Scheme {
-		options := location.FileSystem().(*FileSystem).options.(Options)
-		if f.isSameAuth(&options) {
-			dest, err := location.NewFile(f.Name())
-			if err != nil {
-				return nil, err
-			}
-
-			err = f.copyWithinGCSToFile(dest.(*File))
-			if err != nil {
-				return nil, err
-			}
-			return dest, nil
-		}
-	}
-
-	newFile, err := location.FileSystem().NewFile(location.Volume(), path.Join(location.Path(), f.Name()))
+	dest, err := location.NewFile(f.Name())
 	if err != nil {
 		return nil, err
 	}
-
-	if err := utils.TouchCopy(newFile, f); err != nil {
+	err = f.CopyToFile(dest)
+	if err != nil {
 		return nil, err
 	}
-
-	//Close target file to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
-	if cerr := newFile.Close(); cerr != nil {
-		return nil, cerr
-	}
-	//Close file (f) reader
-	if cerr := f.Close(); cerr != nil {
-		return nil, cerr
-	}
-	return newFile, nil
+	return dest, nil
 }
 
 // CopyToFile puts the contents of File into the target vfs.File passed in. Uses the GCS CopierFrom
@@ -337,6 +311,11 @@ func (f *File) createEmptyFile() error {
 }
 
 func (f *File) isSameAuth(options *Options) bool {
+	// If options are nil on both sides, assume Google's default context is used in both cases.
+	if options == nil && f.fileSystem.options == nil {
+		return true
+	}
+
 	if options == nil || f.fileSystem.options == nil {
 		return false
 	}
