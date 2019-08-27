@@ -91,7 +91,7 @@ func (f *File) Location() vfs.Location {
 // method if the target file is also on S3, otherwise uses io.Copy.
 func (f *File) CopyToFile(file vfs.File) error {
 	if tf, ok := file.(*File); ok {
-		return f.copyWithinS3ToFile(tf)
+		return f.copyFile(tf)
 	}
 
 	if err := utils.TouchCopy(file, f); err != nil {
@@ -287,7 +287,9 @@ func (f *File) getHeadObject() (*s3.HeadObjectOutput, error) {
 	return client.HeadObject(headObjectInput)
 }
 
-func (f *File) copyWithinS3ToFile(targetFile *File) error {
+// Copy from S3-to-S3 when accounts are the same between source and target and fall back to a
+// TouchCopy() call if they are different.
+func (f *File) copyFile(targetFile *File) error {
 	isSameAccount := false
 	hasAclOption := false
 
