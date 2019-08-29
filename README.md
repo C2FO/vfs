@@ -20,6 +20,7 @@ GCS.
 When building our platform, initially we wrote a library that was something to
 the effect of
 
+```go
       if config.DISK == "S3" {
     	  // do some s3 file system operation
       } else if config.DISK == "mock" {
@@ -27,6 +28,7 @@ the effect of
       } else {
           // do some native os.xxx operation
       }
+```
 
 Not only was ugly but because the behaviors of each "file system" were 
 different and we had to constantly alter the file locations and pass a bucket string (even
@@ -74,6 +76,7 @@ footprint) or add a third party backend, you'll need to implement your own
 You can then use those file systems to initialize locations which you'll be
 referencing frequently, or initialize files directly
 
+```go
     osFile, err := vfssimple.NewFile("file:///path/to/file.txt")
     s3File, err := vfssimple.NewFile("s3://bucket/prefix/file.txt")
 
@@ -81,11 +84,13 @@ referencing frequently, or initialize files directly
     s3Location, err := vfssimple.NewLocation("s3://bucket/")
 
     osTmpFile, err := osLocation.NewFile("anotherFile.txt") // file at /tmp/anotherFile.txt
+```
 
 With a number of files and locations between s3 and the local file system you can
 perform a number of actions without any consideration for the system's api or
 implementation details.
 
+```go
     osFileExists, err := osFile.Exists() // true, nil
     s3FileExists, err := s3File.Exists() // false, nil
     err = osFile.CopyToFile(s3File) // nil
@@ -98,14 +103,17 @@ implementation details.
     s3FileUri := s3File.URI() // s3://bucket/prefix/file.txt
     s3FileName := s3File.Name() // file.txt
     s3FilePath := s3File.Path() // /prefix/file.txt
+```
 
 File's [io.*](https://godoc.org/io) interfaces may be used directly:
 
+```go
     reader := strings.NewReader("Clear is better than clever")
     gsFile, err := vfssimple.NewFile("gs://somebucket/path/to/file.txt")
 
     byteCount, err := io.Copy(gsFile, reader)
     err := gsFile.Close()
+```
 
 Note: [io.Copy()](https://godoc.org/io#Copy) doesn't strictly define what happens if a reader is empty.  This is complicated because io.Copy
 will first delegate actual copying in the following:
@@ -439,7 +447,7 @@ retry operation. The wrapped argument is called by the underlying VFS
 implementation.
 
 Ex:
-
+```go
     var retrier Retry = func(wrapped func() error) error {
       var ret error
       for i := 0; i < 5; i++ {
@@ -447,7 +455,7 @@ Ex:
       }
       return ret
     }
-
+```
 #### func  DefaultRetryer
 
 ```go
