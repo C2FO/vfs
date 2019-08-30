@@ -12,10 +12,10 @@ import (
 
 //File implements vfs.File interface for SFTP fs.
 type File struct {
-	fileSystem  *FileSystem
-	Authority   utils.Authority
-	path        string
-	file        *sftp.File
+	fileSystem *FileSystem
+	Authority  utils.Authority
+	path       string
+	file       *sftp.File
 }
 
 // Info Functions

@@ -3,11 +3,11 @@ Package os built-in os lib VFS implementation.
 
 Usage
 
-Rely on github.com/c2fo/vfs/backend
+Rely on github.com/c2fo/vfs/v5/backend
 
   import(
-      "github.com/c2fo/vfs/backend"
-      "github.com/c2fo/vfs/backend/os"
+      "github.com/c2fo/vfs/v5/backend"
+      "github.com/c2fo/vfs/v5/backend/os"
   )
 
   func UseFs() error {
@@ -17,7 +17,7 @@ Rely on github.com/c2fo/vfs/backend
 
 Or call directly:
 
-  import _os "github.com/c2fo/vfs/backend/os"
+  import _os "github.com/c2fo/vfs/v5/backend/os"
 
   func DoSomething() {
       fs := &_os.FileSystem{}

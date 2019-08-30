@@ -22,7 +22,7 @@ const name = "Secure File Transfer Protocol"
 // FileSystem implements vfs.Filesystem for the SFTP filesystem.
 type FileSystem struct {
 	options    vfs.Options
-	sftpclient SFTPClient
+	sftpclient Client
 }
 
 // Retry will return the default no-op retrier. The SFTP client provides its own retryer interface, and is available
@@ -88,7 +88,7 @@ func (fs *FileSystem) Scheme() string {
 
 // Client returns the underlying sftp client, creating it, if necessary
 // See Overview for authentication resolution
-func (fs *FileSystem) Client(authority utils.Authority) (SFTPClient, error) {
+func (fs *FileSystem) Client(authority utils.Authority) (Client, error) {
 	if fs.sftpclient == nil {
 		if fs.options == nil {
 			fs.options = Options{}
@@ -123,7 +123,7 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 func (fs *FileSystem) WithClient(client interface{}) *FileSystem {
 	switch client.(type) {
 	case *ssh.Client:
-		fs.sftpclient = client.(SFTPClient)
+		fs.sftpclient = client.(Client)
 		fs.options = nil
 	}
 	return fs
@@ -139,14 +139,15 @@ func init() {
 	backend.Register(Scheme, NewFileSystem())
 }
 
-func (fs *FileSystem) getClient(authority utils.Authority, opts Options) (client SFTPClient, err error) {
+func (fs *FileSystem) getClient(authority utils.Authority, opts Options) (client Client, err error) {
 	if fs.sftpclient != nil {
 		return fs.sftpclient, nil
 	}
 	return getClient(authority, opts)
 }
 
-type SFTPClient interface {
+// Client is an interface to make it easier to test
+type Client interface {
 	Chtimes(path string, atime, mtime time.Time) error
 	Create(path string) (*_sftp.File, error)
 	MkdirAll(path string) error
@@ -156,10 +157,3 @@ type SFTPClient interface {
 	Rename(oldname, newname string) error
 	Stat(p string) (os.FileInfo, error)
 }
-
-/*
-type ReadWriteSeekCloser interface {
-	io.ReadWriteSeeker
-	io.Closer
-}
-*/

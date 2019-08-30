@@ -38,7 +38,7 @@ What we needed/wanted was the following(and more):
 Install
 
 Go install:
-  go get -u github.com/c2fo/vfs
+  go get -u github.com/c2fo/vfs/v5
 
 Usage
 

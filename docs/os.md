@@ -7,27 +7,30 @@ Package os built-in os lib VFS implementation.
 
 ### Usage
 
-Rely on github.com/c2fo/vfs/backend
+Rely on github.com/c2fo/vfs/v5/backend
 
+```go
     import(
-        "github.com/c2fo/vfs/backend"
-        "github.com/c2fo/vfs/backend/os"
+        "github.com/c2fo/vfs/v5/backend"
+        "github.com/c2fo/vfs/v5/backend/os"
     )
 
     func UseFs() error {
         fs, err := backend.Backend(os.Scheme)
         ...
     }
+```
 
 Or call directly:
 
-    import _os "github.com/c2fo/vfs/backend/os"
+```go
+    import _os "github.com/c2fo/vfs/v5/backend/os"
 
     func DoSomething() {
         fs := &_os.FileSystem{}
         ...
     }
-
+```
 
 ### See Also
 

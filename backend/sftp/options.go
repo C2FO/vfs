@@ -3,24 +3,31 @@ package sftp
 import (
 	"io/ioutil"
 	"os"
+	"path"
+	"runtime"
 	"strings"
-	"sync"
 
-	"github.com/google/uuid"
+	"github.com/mitchellh/go-homedir"
 	_sftp "github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/knownhosts"
 
 	"github.com/c2fo/vfs/v5"
 	"github.com/c2fo/vfs/v5/utils"
 )
 
+const systemWideKnownHosts = "/etc/ssh/ssh_known_hosts"
+
 // Options holds sftp-specific options.  Currently only client options are used.
 type Options struct {
-	KeyFilePath   string `json:"keyFilePath,omitempty"`   // env var VFS_SFTP_KEYFILE
-	KeyPassphrase string `json:"KeyPassphrase,omitempty"` // env var VFS_SFTP_KEYFILE_PASSPHRASE
-	Password      string `json:"accessKeyId,omitempty"`   // env var VFS_SFTP_PASSWORD
-	Retry         vfs.Retry
-	MaxRetries    int
+	Password          string `json:"accessKeyId,omitempty"`   // env var VFS_SFTP_PASSWORD
+	KeyFilePath       string `json:"keyFilePath,omitempty"`   // env var VFS_SFTP_KEYFILE
+	KeyPassphrase     string `json:"KeyPassphrase,omitempty"` // env var VFS_SFTP_KEYFILE_PASSPHRASE
+	KnownHostString   string // env var VFS_SFTP_KNOWN_HOST_STRING
+	KnownHostsFile    string // env var VFS_SFTP_KNOWN_HOSTS_FILE
+	KnonwHostCallback ssh.HostKeyCallback
+	Retry             vfs.Retry
+	MaxRetries        int
 }
 
 func getClient(authority utils.Authority, opts Options) (*_sftp.Client, error) {
@@ -31,11 +38,17 @@ func getClient(authority utils.Authority, opts Options) (*_sftp.Client, error) {
 		return nil, err
 	}
 
+	// get callback for handling known_hosts man-in-the-middle checks
+	hostKeyCallback, err := getHostKeyCallback(opts)
+	if err != nil {
+		return nil, err
+	}
+
 	// Define the Client Config
 	config := &ssh.ClientConfig{
 		User:            authority.User,
 		Auth:            authMethods,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), //todo consider making this configurable
+		HostKeyCallback: hostKeyCallback,
 	}
 
 	//default to port 22
@@ -58,52 +71,109 @@ func getClient(authority utils.Authority, opts Options) (*_sftp.Client, error) {
 	return client, nil
 }
 
-type sshConn struct {
-	conn     *ssh.Client
-	sessions map[string]*sftpSession
-	sync.RWMutex
-}
+// getHostKeyCallback gets host key callback for all known_hosts files
+func getHostKeyCallback(opts Options) (ssh.HostKeyCallback, error) {
+	var knownHostsFiles []string
+	switch {
 
-func (s *sshConn) NewSession() (*sftpSession, error) {
-	u := uuid.New().String()
+	// use explicit callback in Options
+	case opts.KnonwHostCallback != nil:
+		return opts.KnonwHostCallback, nil
 
-	client, err := _sftp.NewClient(s.conn)
+	case opts.KnownHostString != "":
+		hostKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(opts.KnownHostString))
+		if err != nil {
+			return nil, err
+		}
+		return ssh.FixedHostKey(hostKey), nil
+
+	// use env var known_hosts file path, ie, /home/bob/.ssh/known_hosts
+	case opts.KnownHostsFile != "":
+		//check first to prevent auto-vivification of file
+		found, err := foundFile(opts.KnownHostsFile)
+		if err != nil {
+			return nil, err
+		}
+		if found {
+			knownHostsFiles = append(knownHostsFiles, os.Getenv("VFS_SFTP_KNOWN_HOSTS"))
+			break
+		}
+		// use default if env var file wasn't found
+		fallthrough
+
+	// use env var known_hosts key string, ie, "AAAAB3Nz...cTqGvaDhgtAhw=="
+	case os.Getenv("VFS_SFTP_KNOWN_HOSTS_STRING") != "":
+		hostKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(os.Getenv("VFS_SFTP_KNOWN_HOSTS_STRING")))
+		if err != nil {
+			return nil, err
+		}
+		return ssh.FixedHostKey(hostKey), nil
+
+	// use env var known_hosts file path, ie, /home/bob/.ssh/known_hosts
+	case os.Getenv("VFS_SFTP_KNOWN_HOSTS_FILE") != "":
+		//check first to prevent auto-vivification of file
+		found, err := foundFile(os.Getenv("VFS_SFTP_KNOWN_HOSTS"))
+		if err != nil {
+			return nil, err
+		}
+		if found {
+			knownHostsFiles = append(knownHostsFiles, os.Getenv("VFS_SFTP_KNOWN_HOSTS"))
+			break
+		}
+		// use default if env var file wasn't found
+		fallthrough
+
+	// use user/system-wide known_hosts paths (as defined by OpenSSH https://man.openbsd.org/ssh)
+	default:
+		// add ~/.ssh/known_hosts
+		home, err := homedir.Dir()
+		if err != nil {
+			return nil, err
+		}
+		homeKnonwHostsPath := utils.EnsureLeadingSlash(path.Join(home, ".ssh/known_hosts"))
+
+		//check file existence first to prevent auto-vivification of file
+		found, err := foundFile(homeKnonwHostsPath)
+		if err != nil {
+			return nil, err
+		}
+		if found {
+			knownHostsFiles = append(knownHostsFiles, homeKnonwHostsPath)
+		}
+
+		// add /etc/ssh/.ssh/known_hosts for unix-like systems.  SSH doesn't exist natively on Windows and each
+		// implemenation has a different location for known_hosts. Better to specify in
+		if runtime.GOOS != "windows" {
+			//check file existence first to prevent auto-vivification of file
+			found, err := foundFile(systemWideKnownHosts)
+			if err != nil {
+				return nil, err
+			}
+			if found {
+				knownHostsFiles = append(knownHostsFiles, systemWideKnownHosts)
+			}
+		}
+	}
+
+	// get host key callback for all known_hosts files
+	cb, err := knownhosts.New(knownHostsFiles...)
 	if err != nil {
 		return nil, err
 	}
 
-	return &sftpSession{
-		Client: client,
-		s:      s,
-		uuid:   u,
-	}, nil
+	return cb, nil
 }
 
-func (s *sshConn) RemoveSession(uuid string) error {
-	s.Lock()
-	defer s.Unlock()
-	if sess, ok := s.sessions[uuid]; ok {
-		err := sess.Close()
-		if err != nil {
-
+func foundFile(file string) (bool, error) {
+	if _, err := os.Stat(file); err != nil {
+		if os.IsNotExist(err) {
+			// file does not exist
+			return false, nil
 		}
+		// other error
+		return false, err
 	}
-	return nil
-}
-
-// sftp session wraps sftp.Client so we can
-type sftpSession struct {
-	*_sftp.Client
-	s    *sshConn
-	uuid string
-}
-
-func (sf *sftpSession) Close() error {
-	err := sf.Client.Close()
-	if err != nil {
-		return err
-	}
-	return sf.s.RemoveSession(sf.uuid)
+	return true, nil
 }
 
 func getAuthMethods(opts Options) ([]ssh.AuthMethod, error) {
@@ -142,7 +212,6 @@ func getAuthMethods(opts Options) ([]ssh.AuthMethod, error) {
 }
 
 func getKeyFile(file, passphrase string) (key ssh.Signer, err error) {
-	//TODO: ssh.ParsePrivateKeyWithPassphrase() expects pemBytes.  DOes this work if not PEM?
 
 	buf, err := ioutil.ReadFile(file)
 	if err != nil {

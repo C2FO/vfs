@@ -11,7 +11,7 @@ Just import vfssimple.
   package main
 
   import(
-	"github.com/c2fo/vfs/vfssimple"
+	"github.com/c2fo/vfs/v5/vfssimple"
   )
 
   ...
@@ -48,9 +48,9 @@ file system.
   package main
 
   import(
-	"github.com/c2fo/vfs/vfssimple"
-	"github.com/c2fo/vfs/backend"
-	"github.com/c2fo/vfs/backend/s3"
+	"github.com/c2fo/vfs/v5/vfssimple"
+	"github.com/c2fo/vfs/v5/backend"
+	"github.com/c2fo/vfs/v5/backend/s3"
   )
 
   ...

@@ -138,7 +138,7 @@ func (l *Location) Exists() (bool, error) {
 // ChangeDir, which, for the SFTP implementation doesn't ever result in an error.
 func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 	if l == nil {
-		return nil, errors.New("non-nil pointer reciever is required")
+		return nil, errors.New("non-nil pointer receiver is required")
 	}
 
 	//make a copy of the original location first, then ChangeDir, leaving the original location as-is
@@ -155,7 +155,7 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 // so the only return is any error. For this implementation there are no errors.
 func (l *Location) ChangeDir(relativePath string) error {
 	if l == nil {
-		return errors.New("non-nil pointer reciever is required")
+		return errors.New("non-nil pointer receiver is required")
 	}
 	if relativePath == "" {
 		return errors.New("non-empty string relativePath is required")
@@ -172,7 +172,7 @@ func (l *Location) ChangeDir(relativePath string) error {
 // argument is expected to be a relative path to the location's current path.
 func (l *Location) NewFile(filePath string) (vfs.File, error) {
 	if l == nil {
-		return nil, errors.New("non-nil pointer reciever is required")
+		return nil, errors.New("non-nil pointer receiver is required")
 	}
 	if filePath == "" {
 		return nil, errors.New("non-empty string filePath is required")

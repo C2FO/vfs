@@ -1,7 +1,11 @@
 # utils
 
 ---
-    import "github.com/c2fo/vfs/utils"
+
+
+```go
+    import "github.com/c2fo/vfs/v5/utils"
+```
 
 #### Error Constants
 
@@ -102,3 +106,9 @@ func ValidateRelLocationPath(name string) error
 ```
 ValidateRelLocationPath ensure that a file path has no leading slash but has a
 trailing slash
+
+#### func UpdateLastModifiedByMoving
+```go
+func UpdateLastModifiedByMoving(file vfs.File) error
+```
+UpdateLastModifiedByMoving is used by some backends' Touch() method when a file already exists.
