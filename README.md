@@ -62,7 +62,7 @@ file system backends.
 
 Go install:
 
-    go get -u github.com/c2fo/vfs
+    go get -u github.com/c2fo/vfs/v5
 
 
 ### Usage
