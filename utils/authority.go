@@ -24,6 +24,9 @@ func (a Authority) String() string {
 
 // NewAuthority initializes Authority struct by parsing authority string.
 func NewAuthority(authority string) (Authority, error) {
+	if authority == "" {
+		return Authority{}, errors.New("authority string may not be empty")
+	}
 	u, p, h, err := parseAuthority(authority)
 	if err != nil {
 		return Authority{}, err
@@ -38,8 +41,8 @@ func NewAuthority(authority string) (Authority, error) {
 }
 
 /*
-	NOTE: Below was almost taken line-for-line from the "url" package (https://github.com/golang/go/blob/master/src/net/url/url.go),
-	minus unencoding.  Unfortunately none of it was exposed in a way I could make use for parsing Authority.
+	NOTE: Below was mostly taken line-for-line from the "url" package (https://github.com/golang/go/blob/master/src/net/url/url.go),
+	minus unencoding and some unused split logic.  Unfortunately none of it was exposed in a way I could make use for parsing Authority.
 
 		Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -90,21 +93,15 @@ func parseAuthority(authority string) (username, password, host string, err erro
 	if !strings.Contains(userinfo, ":") {
 		username = userinfo
 	} else {
-		username, password = split(userinfo, ":", true)
+		username, password = split(userinfo, ":")
 	}
 
 	return
 }
 
-func split(s string, c string, cutc bool) (string, string) {
+func split(s string, c string) (string, string) {
 	i := strings.Index(s, c)
-	if i < 0 {
-		return s, ""
-	}
-	if cutc {
-		return s[:i], s[i+len(c):]
-	}
-	return s[:i], s[i:]
+	return s[:i], s[i+len(c):]
 }
 
 func validUserinfo(s string) bool {
