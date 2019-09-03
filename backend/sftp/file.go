@@ -77,7 +77,6 @@ func (f *File) Touch() error {
 			return err
 		}
 		f.file = file
-		//TODO not sure if this works at all ************************** verify a file is written
 		return f.Close()
 	}
 

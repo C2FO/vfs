@@ -1,8 +1,6 @@
 package sftp
 
 import (
-	"github.com/c2fo/vfs/v5/utils"
-	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"os"
 	"path"
@@ -10,6 +8,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
+	"golang.org/x/crypto/ssh"
+
+	"github.com/c2fo/vfs/v5/utils"
 )
 
 /**********************************

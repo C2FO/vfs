@@ -31,7 +31,7 @@ func (ts *fileSystemTestSuite) TestNewFile() {
 	filePath := "/path/to/file.txt"
 	file, err := ts.sftpfs.NewFile("host.com", filePath)
 	ts.Nil(err, "No errors returned by NewFile(%s)", filePath)
-	ts.NotNil(file, "fs.NewFile(%s) should assign all but first name component to key", filePath)
+	ts.NotNil(file, "sftpfs.NewFile(%s) should assign all but first name component to key", filePath)
 }
 
 func (ts *fileSystemTestSuite) TestNewFile_Error() {
@@ -60,7 +60,7 @@ func (ts *fileSystemTestSuite) TestNewLocation() {
 	locPath := "/path/to/"
 	loc, err := ts.sftpfs.NewLocation("host.com", locPath)
 	ts.NoError(err, "No errors returned by NewLocation(%s)", locPath)
-	ts.NotNil(loc, "fs.NewLocation(%s) should assign all but first name component to key", locPath)
+	ts.NotNil(loc, "sftpfs.NewLocation(%s) should assign all but first name component to key", locPath)
 }
 
 func (ts *fileSystemTestSuite) TestNewLocation_Error() {
@@ -103,9 +103,8 @@ func (ts *fileSystemTestSuite) TestWithOptions() {
 	ts.Equal(ts.sftpfs, fs, "no change for non-sftp.Options")
 
 	// with option
-	fs = ts.sftpfs.WithOptions(Options{
-	})
-	ts.NotNil(fs.options, "fs.options is not nil")
+	fs = ts.sftpfs.WithOptions(Options{})
+	ts.NotNil(fs.options, "sftpfs.options is not nil")
 }
 
 func (ts *fileSystemTestSuite) TestClient() {
