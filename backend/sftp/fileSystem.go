@@ -34,7 +34,7 @@ func (fs *FileSystem) Retry() vfs.Retry {
 // NewFile function returns the SFTP implementation of vfs.File.
 func (fs *FileSystem) NewFile(authority string, filePath string) (vfs.File, error) {
 	if fs == nil {
-		return nil, errors.New("non-nil sftp.fileSystem pointer is required")
+		return nil, errors.New("non-nil sftp.FileSystem pointer is required")
 	}
 	if filePath == "" {
 		return nil, errors.New("non-empty string for path is required")
@@ -58,7 +58,7 @@ func (fs *FileSystem) NewFile(authority string, filePath string) (vfs.File, erro
 // NewLocation function returns the SFTP implementation of vfs.Location.
 func (fs *FileSystem) NewLocation(authority string, locPath string) (vfs.Location, error) {
 	if fs == nil {
-		return nil, errors.New("non-nil sftp.fileSystem pointer is required")
+		return nil, errors.New("non-nil sftp.FileSystem pointer is required")
 	}
 	if err := utils.ValidateAbsoluteLocationPath(locPath); err != nil {
 		return nil, err
@@ -122,7 +122,7 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 // WithClient passes in an sftp client and returns the filesystem (chainable)
 func (fs *FileSystem) WithClient(client interface{}) *FileSystem {
 	switch client.(type) {
-	case *ssh.Client:
+	case Client, *ssh.Client:
 		fs.sftpclient = client.(Client)
 		fs.options = nil
 	}
