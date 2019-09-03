@@ -20,15 +20,19 @@ const systemWideKnownHosts = "/etc/ssh/ssh_known_hosts"
 
 // Options holds sftp-specific options.  Currently only client options are used.
 type Options struct {
-	Password          string `json:"accessKeyId,omitempty"`   // env var VFS_SFTP_PASSWORD
-	KeyFilePath       string `json:"keyFilePath,omitempty"`   // env var VFS_SFTP_KEYFILE
-	KeyPassphrase     string `json:"KeyPassphrase,omitempty"` // env var VFS_SFTP_KEYFILE_PASSPHRASE
-	KnownHostString   string // env var VFS_SFTP_KNOWN_HOST_STRING
-	KnownHostsFile    string // env var VFS_SFTP_KNOWN_HOSTS_FILE
-	KnonwHostCallback ssh.HostKeyCallback
-	Retry             vfs.Retry
-	MaxRetries        int
+	Password           string `json:"accessKeyId,omitempty"`    // env var VFS_SFTP_PASSWORD
+	KeyFilePath        string `json:"keyFilePath,omitempty"`    // env var VFS_SFTP_KEYFILE
+	KeyPassphrase      string `json:"KeyPassphrase,omitempty"`  // env var VFS_SFTP_KEYFILE_PASSPHRASE
+	KnownHostsFile     string `json:"KnownHostsFile,omitempty"` // env var VFS_SFTP_KNOWN_HOSTS_FILE
+	KnownHostsString   string `json:"KnownHostsString,omitempty"`
+	KnownHostsCallback ssh.HostKeyCallback
+	Retry              vfs.Retry
+	MaxRetries         int
 }
+
+// Note that as of 1.12, OPENSSH private key format is not supported when encrypt (with passphrase).
+// See https://github.com/golang/go/issues/18692
+// To force creation of PEM format(instead of OPENSSH format), use ssh-keygen -m PEM
 
 func getClient(authority utils.Authority, opts Options) (*_sftp.Client, error) {
 
@@ -77,11 +81,11 @@ func getHostKeyCallback(opts Options) (ssh.HostKeyCallback, error) {
 	switch {
 
 	// use explicit callback in Options
-	case opts.KnonwHostCallback != nil:
-		return opts.KnonwHostCallback, nil
+	case opts.KnownHostsCallback != nil:
+		return opts.KnownHostsCallback, nil
 
-	case opts.KnownHostString != "":
-		hostKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(opts.KnownHostString))
+	case opts.KnownHostsString != "":
+		hostKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(opts.KnownHostsString))
 		if err != nil {
 			return nil, err
 		}
@@ -95,29 +99,21 @@ func getHostKeyCallback(opts Options) (ssh.HostKeyCallback, error) {
 			return nil, err
 		}
 		if found {
-			knownHostsFiles = append(knownHostsFiles, os.Getenv("VFS_SFTP_KNOWN_HOSTS"))
+			knownHostsFiles = append(knownHostsFiles, opts.KnownHostsFile)
 			break
 		}
-		// use default if env var file wasn't found
+		// use env var if explicit file wasn't found wasn't found
 		fallthrough
-
-	// use env var known_hosts key string, ie, "AAAAB3Nz...cTqGvaDhgtAhw=="
-	case os.Getenv("VFS_SFTP_KNOWN_HOSTS_STRING") != "":
-		hostKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(os.Getenv("VFS_SFTP_KNOWN_HOSTS_STRING")))
-		if err != nil {
-			return nil, err
-		}
-		return ssh.FixedHostKey(hostKey), nil
 
 	// use env var known_hosts file path, ie, /home/bob/.ssh/known_hosts
 	case os.Getenv("VFS_SFTP_KNOWN_HOSTS_FILE") != "":
 		//check first to prevent auto-vivification of file
-		found, err := foundFile(os.Getenv("VFS_SFTP_KNOWN_HOSTS"))
+		found, err := foundFile(os.Getenv("VFS_SFTP_KNOWN_HOSTS_FILE"))
 		if err != nil {
 			return nil, err
 		}
 		if found {
-			knownHostsFiles = append(knownHostsFiles, os.Getenv("VFS_SFTP_KNOWN_HOSTS"))
+			knownHostsFiles = append(knownHostsFiles, os.Getenv("VFS_SFTP_KNOWN_HOSTS_FILE"))
 			break
 		}
 		// use default if env var file wasn't found
@@ -180,32 +176,33 @@ func getAuthMethods(opts Options) ([]ssh.AuthMethod, error) {
 
 	auth := make([]ssh.AuthMethod, 0)
 
+	// set explicitly set password from opts, then from env if any
+	pw := os.Getenv("VFS_SFTP_PASSWORD")
+	if opts.Password != "" {
+		pw = opts.Password
+	}
+	if pw != "" {
+		auth = append(auth, ssh.AuthMethod(ssh.Password(pw)))
+	}
+
 	// setup key-based auth from env, if any
 	keyfile := os.Getenv("VFS_SFTP_KEYFILE")
-	if keyfile != "" {
-		secretKey, err := getKeyFile(keyfile, os.Getenv("VFS_SFTP_KEYFILE_PASSPHRASE"))
-		if err != nil {
-			return []ssh.AuthMethod{}, err
-		}
-		auth = append(auth, ssh.AuthMethod(ssh.PublicKeys(secretKey)))
-	}
-
-	// setup key-based auth from opts, if any
 	if opts.KeyFilePath != "" {
-		secretKey, err := getKeyFile(opts.KeyFilePath, opts.KeyPassphrase)
+		keyfile = opts.KeyFilePath
+	}
+	if keyfile != "" {
+		//gather passphrase, if any
+		passphrase := os.Getenv("VFS_SFTP_KEYFILE_PASSPHRASE")
+		if opts.KeyPassphrase != "" {
+			passphrase = opts.KeyPassphrase
+		}
+
+		//setup keyfile
+		secretKey, err := getKeyFile(keyfile, passphrase)
 		if err != nil {
 			return []ssh.AuthMethod{}, err
 		}
 		auth = append(auth, ssh.AuthMethod(ssh.PublicKeys(secretKey)))
-	}
-
-	// setup password, env password overrides opts password
-	password := opts.Password
-	if pass, found := os.LookupEnv("VFS_SFTP_PASSWORD"); found {
-		password = pass
-	}
-	if password != "" {
-		auth = append(auth, ssh.AuthMethod(ssh.Password(password)))
 	}
 
 	return auth, nil
