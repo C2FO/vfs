@@ -382,7 +382,7 @@ func (o *optionsSuite) TestGetClient() {
 				KnownHostsCallback: ssh.InsecureIgnoreHostKey(),
 			},
 			hasError:   true,
-			errMessage: "dial tcp: lookup badhost: no such host",
+			errMessage: "no such host",
 			message:    "getclient - bad host",
 		},
 		{
@@ -417,7 +417,9 @@ func (o *optionsSuite) TestGetClient() {
 		//apply test
 		_, err := getClient(t.authority, t.options)
 		if t.hasError {
-			o.EqualError(err, t.errMessage, t.message)
+			if o.Error(err, "error found") {
+				o.Contains(err.Error(), t.errMessage, "error matches")
+			}
 		} else {
 			o.NoError(err, t.message)
 		}

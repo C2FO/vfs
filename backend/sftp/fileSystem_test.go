@@ -130,7 +130,9 @@ func (ts *fileSystemTestSuite) TestClient() {
 	//no opts, no authority
 	ts.sftpfs.options = nil
 	_, err = ts.sftpfs.Client(utils.Authority{Host: "badhost"})
-	ts.EqualError(err, "dial tcp: lookup badhost: no such host", "error found")
+	if ts.Error(err, "error found") {
+		ts.Contains(err.Error(), "no such host", "error matches")
+	}
 
 }
 
