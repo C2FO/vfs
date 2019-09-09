@@ -20,12 +20,12 @@ const systemWideKnownHosts = "/etc/ssh/ssh_known_hosts"
 
 // Options holds sftp-specific options.  Currently only client options are used.
 type Options struct {
-	Password           string `json:"accessKeyId,omitempty"`    // env var VFS_SFTP_PASSWORD
-	KeyFilePath        string `json:"keyFilePath,omitempty"`    // env var VFS_SFTP_KEYFILE
-	KeyPassphrase      string `json:"KeyPassphrase,omitempty"`  // env var VFS_SFTP_KEYFILE_PASSPHRASE
-	KnownHostsFile     string `json:"KnownHostsFile,omitempty"` // env var VFS_SFTP_KNOWN_HOSTS_FILE
-	KnownHostsString   string `json:"KnownHostsString,omitempty"`
-	KnownHostsCallback ssh.HostKeyCallback
+	Password           string              `json:"accessKeyId,omitempty"`    // env var VFS_SFTP_PASSWORD
+	KeyFilePath        string              `json:"keyFilePath,omitempty"`    // env var VFS_SFTP_KEYFILE
+	KeyPassphrase      string              `json:"KeyPassphrase,omitempty"`  // env var VFS_SFTP_KEYFILE_PASSPHRASE
+	KnownHostsFile     string              `json:"KnownHostsFile,omitempty"` // env var VFS_SFTP_KNOWN_HOSTS_FILE
+	KnownHostsString   string              `json:"KnownHostsString,omitempty"`
+	KnownHostsCallback ssh.HostKeyCallback //env var VFS_SFTP_INSECURE_KNOWN_HOSTS
 	Retry              vfs.Retry
 	MaxRetries         int
 }
@@ -118,6 +118,10 @@ func getHostKeyCallback(opts Options) (ssh.HostKeyCallback, error) {
 		}
 		// use default if env var file wasn't found
 		fallthrough
+
+	// use env var known_hosts file path, ie, /home/bob/.ssh/known_hosts
+	case os.Getenv("VFS_SFTP_INSECURE_KNOWN_HOSTS") != "":
+		return ssh.InsecureIgnoreHostKey(), nil
 
 	// use user/system-wide known_hosts paths (as defined by OpenSSH https://man.openbsd.org/ssh)
 	default:

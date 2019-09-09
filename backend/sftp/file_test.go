@@ -173,7 +173,7 @@ func (ts *fileTestSuite) Test_openFile() {
 	file.opener = func(c Client, p string, f int) (SFTPFile, error) { return file1, nil }
 	file1.Seek(0, 0) //reset file
 	client.On("MkdirAll", path.Dir(filepath)).Return(nil)
-	f, err = file.openFile(os.O_RDWR|os.O_CREATE)
+	f, err = file.openFile(os.O_RDWR | os.O_CREATE)
 	ts.NoError(err, "no error expected")
 	b, err = ioutil.ReadAll(f)
 	ts.NoError(err, "no error expected")
