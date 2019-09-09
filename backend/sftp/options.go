@@ -186,7 +186,7 @@ func getAuthMethods(opts Options) ([]ssh.AuthMethod, error) {
 		pw = opts.Password
 	}
 	if pw != "" {
-		auth = append(auth, ssh.AuthMethod(ssh.Password(pw)))
+		auth = append(auth, ssh.Password(pw))
 	}
 
 	// setup key-based auth from env, if any
@@ -206,7 +206,7 @@ func getAuthMethods(opts Options) ([]ssh.AuthMethod, error) {
 		if err != nil {
 			return []ssh.AuthMethod{}, err
 		}
-		auth = append(auth, ssh.AuthMethod(ssh.PublicKeys(secretKey)))
+		auth = append(auth, ssh.PublicKeys(secretKey))
 	}
 
 	return auth, nil
