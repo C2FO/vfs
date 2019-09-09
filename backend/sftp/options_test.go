@@ -199,6 +199,15 @@ func (o *optionsSuite) TestGetHostKeyCallback() {
 				KnownHostsFile: "nonexistent.key",
 			},
 			envVars: map[string]string{
+				"VFS_SFTP_INSECURE_KNOWN_HOSTS": "true",
+			},
+			hasError:   false,
+			errMessage: "",
+			message:    "insecure known hosts",
+		},
+		{
+			options: Options{},
+			envVars: map[string]string{
 				"VFS_SFTP_KNOWN_HOSTS_FILE": knwonHosts,
 			},
 			hasError:   false,
@@ -355,7 +364,6 @@ func (o *optionsSuite) TestGetAuthMethods() {
 type getClientTest struct {
 	options    Options
 	authority  utils.Authority
-	envVars    map[string]string
 	hasError   bool
 	errMessage string
 	message    string
