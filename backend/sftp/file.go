@@ -1,13 +1,13 @@
 package sftp
 
 import (
+	"io"
 	"os"
 	"path"
 	"time"
 
 	"github.com/c2fo/vfs/v5"
 	"github.com/c2fo/vfs/v5/utils"
-	"github.com/pkg/sftp"
 )
 
 //File implements vfs.File interface for SFTP fs.
@@ -15,8 +15,12 @@ type File struct {
 	fileSystem *FileSystem
 	Authority  utils.Authority
 	path       string
-	file       *sftp.File
+	sftpfile   SFTPFile
+	opener     fileOpener
 }
+
+// this type allow for injecting a mock fileOpener function
+type fileOpener func(c Client, p string, f int) (SFTPFile, error)
 
 // Info Functions
 
@@ -53,7 +57,7 @@ func (f *File) Exists() (bool, error) {
 		return false, err
 	}
 
-	_, err = client.OpenFile(f.Path(), os.O_RDONLY)
+	_, err = client.Stat(f.Path())
 	if err != nil && err == os.ErrNotExist {
 		return false, nil
 	} else if err != nil {
@@ -72,11 +76,11 @@ func (f *File) Touch() error {
 	}
 
 	if !exists {
-		file, err := f.openFile()
+		file, err := f.openFile(os.O_RDWR | os.O_CREATE)
 		if err != nil {
 			return err
 		}
-		f.file = file
+		f.sftpfile = file
 		return f.Close()
 	}
 
@@ -119,37 +123,38 @@ func (f *File) Location() vfs.Location {
 // returned.
 // If the given location is also sftp AND for the same user and host, the sftp Rename method is used, otherwise
 // we'll do a an io.Copy to the destination file then delete source file.
-func (f *File) MoveToFile(file vfs.File) error {
+func (f *File) MoveToFile(t vfs.File) error {
 	// sftp rename if vfs is sftp and for the same user/host
-	if tf, ok := file.(*File); ok &&
-		f.Authority.User == tf.Authority.User &&
-		f.Authority.Host == tf.Authority.Host {
+	if f.fileSystem.Scheme() == t.Location().FileSystem().Scheme() &&
+		f.Authority.User == t.(*File).Authority.User &&
+		f.Authority.Host == t.(*File).Authority.Host {
 		//ensure destination exists before moving
-		exists, err := tf.Location().Exists()
+		exists, err := t.Location().Exists()
 		if err != nil {
 			return err
 		}
 		if !exists {
+			//it doesn't matter which client we use since they are effectively the same
 			client, err := f.fileSystem.Client(f.Authority)
 			if err != nil {
 				return err
 			}
-			err = client.MkdirAll(tf.Location().Path())
+			err = client.MkdirAll(t.Location().Path())
 			if err != nil {
 				return err
 			}
 		}
-		return f.sftpRename(tf)
+		return f.sftpRename(t.(*File))
 	}
 
 	//otherwise do copy-delete
-	if err := f.CopyToFile(file); err != nil {
+	if err := f.CopyToFile(t); err != nil {
 		return err
 	}
 	return f.Delete()
 }
 
-// MoveToLocation works by creating a newfile on the target location then calling MoveToFile() on it.
+// MoveToLocation works by creating a new file on the target location then calling MoveToFile() on it.
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 
 	newFile, err := location.FileSystem().NewFile(location.Volume(), path.Join(location.Path(), f.Name()))
@@ -214,12 +219,12 @@ func (f *File) Delete() error {
 
 // Close calls the underlying sftp.File Close, if opened, and clears the internal pointer
 func (f *File) Close() error {
-	if f.file != nil {
-		err := f.file.Close()
+	if f.sftpfile != nil {
+		err := f.sftpfile.Close()
 		if err != nil {
 			return err
 		}
-		f.file = nil
+		f.sftpfile = nil
 	}
 	//no op for unopened file
 	return nil
@@ -228,50 +233,31 @@ func (f *File) Close() error {
 // Read calls the underlying sftp.File Read.
 func (f *File) Read(p []byte) (n int, err error) {
 
-	//ensure destination exists before reading (because openFile will auto-vivify the File)
-	exists, err := f.Exists()
+	sftpfile, err := f.openFile(os.O_RDONLY)
 	if err != nil {
 		return 0, err
 	}
-	if !exists {
-		return 0, os.ErrNotExist
-	}
-
-	file, err := f.openFile()
-	if err != nil {
-		return 0, err
-	}
-	return file.Read(p)
+	return sftpfile.Read(p)
 }
 
 // Seek calls the underlying sftp.File Seek.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
-
-	//ensure destination exists before seeking (because openFile() will auto-vivify the File)
-	exists, err := f.Exists()
+	sftpfile, err := f.openFile(os.O_RDWR)
 	if err != nil {
 		return 0, err
 	}
-	if !exists {
-		return 0, os.ErrNotExist
-	}
-
-	file, err := f.openFile()
-	if err != nil {
-		return 0, err
-	}
-	return file.Seek(offset, whence)
+	return sftpfile.Seek(offset, whence)
 }
 
 // Write calls the underlying sftp.File Write.
 func (f *File) Write(data []byte) (res int, err error) {
 
-	file, err := f.openFile()
+	sftpfile, err := f.openFile(os.O_RDWR | os.O_CREATE)
 	if err != nil {
 		return 0, err
 	}
 
-	return file.Write(data)
+	return sftpfile.Write(data)
 }
 
 // URI returns the File's URI as a string.
@@ -287,9 +273,12 @@ func (f *File) String() string {
 /*
 	Private helper functions
 */
-func (f *File) openFile() (*sftp.File, error) {
-	if f.file != nil {
-		return f.file, nil
+
+// openFile wrapper allows us to inject a file opener (for mocking) vs the defaultOpenFile.
+// This solves for the fact that
+func (f *File) openFile(flag int) (SFTPFile, error) {
+	if f.sftpfile != nil {
+		return f.sftpfile, nil
 	}
 
 	client, err := f.fileSystem.Client(f.Authority)
@@ -297,18 +286,33 @@ func (f *File) openFile() (*sftp.File, error) {
 		return nil, err
 	}
 
-	//vfs specifies that all implementations make dir path if it doesn't exist
-	err = client.MkdirAll(path.Dir(f.path))
+	if flag&os.O_CREATE != 0 {
+		//vfs specifies that all implementations make dir path if it doesn't exist
+		err = client.MkdirAll(path.Dir(f.path))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var opener fileOpener
+	if f.opener != nil {
+		opener = f.opener
+	} else {
+		opener = defaultOpenFile
+	}
+
+	file, err := opener(client, f.Path(), flag)
 	if err != nil {
 		return nil, err
 	}
 
-	file, err := client.OpenFile(f.path, os.O_RDWR|os.O_CREATE)
-	if err != nil {
-		return nil, err
-	}
-	f.file = file
+	f.sftpfile = file
 	return file, nil
+}
+
+// defaultOpenFile uses sftp.Client to open a file and returns an sftp.File
+func defaultOpenFile(c Client, p string, f int) (SFTPFile, error) {
+	return c.OpenFile(p, f)
 }
 
 func (f *File) sftpRename(target *File) error {
@@ -320,4 +324,18 @@ func (f *File) sftpRename(target *File) error {
 		return err
 	}
 	return nil
+}
+
+type SFTPFile interface {
+	io.ReadWriteSeeker
+	io.Closer
+	// sftp.File also provides the following which we don't use (but could):
+	//
+	// io.WriterTo
+	// io.ReaderFrom
+	// func (f *File) Chmod(mode os.FileMode) error
+	// func (f *File) Chown(uid, gid int) error
+	// func (f *File) Name() string
+	// func (f *File) Stat() (os.FileInfo, error)
+	// func (f *File) Truncate(size int64) error
 }
