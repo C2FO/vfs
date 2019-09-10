@@ -123,6 +123,9 @@ your info (man-in-the-middle attack).  Handling for this can be accomplished via
 3. Options.KnownHostsCallback which allows you to specify any of the ssh.AuthMethod functions.  Environmental variable
    VFS_SFTP_INSECURE_KNOWN_HOSTS will set this callback function to ssh.InsecureIgnoreHostKey which may be helpful
    for testing but should not be used in production.
+4. Defaults to trying to find and use <homedir>/.ssh/known_hosts.  For unix, system-wide location /etc/ssh/.ssh/known hosts is also checked.
+   SSH doesn't exist natively on Windows and each third-party implementation has a different location for known_hosts. Because
+   of this, no attempt is made to find a system-wide file for Windows.  It's better to specify in KnownHostsFile in that case.
 
 */
 package sftp

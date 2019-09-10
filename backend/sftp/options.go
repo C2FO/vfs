@@ -151,7 +151,7 @@ func findHomeSystemKnownHosts(knownHostsFiles []string) ([]string, error) {
 
 	//check file existence first to prevent auto-vivification of file
 	found, err := foundFile(homeKnonwHostsPath)
-	if err != nil {
+	if err != nil && err != os.ErrNotExist {
 		return nil, err
 	}
 	if found {
@@ -159,11 +159,11 @@ func findHomeSystemKnownHosts(knownHostsFiles []string) ([]string, error) {
 	}
 
 	// add /etc/ssh/.ssh/known_hosts for unix-like systems.  SSH doesn't exist natively on Windows and each
-	// implementation has a different location for known_hosts. Better to specify in
+	// implementation has a different location for known_hosts. Better to specify in KnownHostsFile for Windows
 	if runtime.GOOS != "windows" {
 		//check file existence first to prevent auto-vivification of file
 		found, err := foundFile(systemWideKnownHosts)
-		if err != nil {
+		if err != nil && err != os.ErrNotExist {
 			return nil, err
 		}
 		if found {
