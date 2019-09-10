@@ -8,7 +8,7 @@ Package sftp SFTP VFS implementation.
 
 ### Usage
 
-Rely on github.com/c2fo/vfs/backend
+Rely on github.com/c2fo/vfs/v5/backend
 
 ```go
       import(
@@ -39,7 +39,7 @@ Or call directly:
 ```
 
 sftp can be augmented with some implementation-specific methods. Backend returns
-vfs.Filesystem interface so it would have to be cast as sftp.Filesystem to use
+[vfs.FileSystem](../README.md#type-filesystem) interface so it would have to be cast as [sftp.FileSystem](#type-filesystem) to use
 them.
 
 These methods are chainable: 
@@ -94,20 +94,20 @@ These methods are chainable:
 
 ### Authentication
 
-Authentication, by default, occurs automatically when Client() is called. Since
+Authentication, by default, occurs automatically when [Client()](#func-filesystem-client) is called. Since
 user is part of the URI authority section (Volume), auth is handled slightly
-differently than other vfs backends.
+differently than other vfs [backends](backend.md).
 
 A client is initialized lazily, meaning we only make a connection to the server
 at the last moment so we are free to modify options until then. The
-authenticated session is closed any time WithOption(), WithClient(), or Close()
-occurs. Currently, that means that closing a file belonging to an fs will break
+authenticated session is closed any time [WithOption()](#func-filesystem-withoptions), [WithClient()](#func-filesystem-withclient), 
+or [Close()](#func-file-close) occurs. Currently, that means that closing a file belonging to an fs will break
 the connection of any other open file on the same fs.
 
 
 #### USERNAME
 
-User may only be set in the URI authority section (Volume in vfs parlance).
+User may only be set in the [URI authority](https://tools.ietf.org/html/rfc3986#section-3.2) section (Volume in vfs parlance).
 
      scheme             host
      __/             ___/____  port
@@ -123,14 +123,14 @@ passphrase.
 
 #### PASSWORD/PASSPHRASE
 
-Passwords may be passed via Options.Password or via the environmental variable
-VFS_SFTP_PASSWORD.
+Passwords may be passed via [Options](#type-options).Password or via the environmental variable
+`VFS_SFTP_PASSWORD`.
 
-SSH keys may be passed via Options.KeyFilePath and (optionally)
-Options.KeyPassphrase. They can also be passed via environmental variables
-VFS_SFTP_KEYFILE and VFS_SFTP_KEYFILE_PASSPHRASE, respectively.
+SSH keys may be passed via [Options](#type-options).KeyFilePath and (optionally)
+[Options](#type-options).KeyPassphrase. They can also be passed via environmental variables
+`VFS_SFTP_KEYFILE` and `VFS_SFTP_KEYFILE_PASSPHRASE`, respectively.
 
-_Note that as of Go 1.12, OPENSSH private key format is not supported when encrypted
+_Note that as of Go 1.12, OpenSSH private key format is not supported when encrypted
 (with passphrase). See https://github.com/golang/go/issues/18692 To force
 creation of PEM format(instead of OPENSSH format), use `ssh-keygen -m PEM`_
 
@@ -141,12 +141,12 @@ Known hosts ensures that the server you're connecting to hasn't been somehow
 redirected to another server, collecting your info (man-in-the-middle attack).
 Handling for this can be accomplished via: 
 
-1. Options.KnownHostsString which accepts a string. 
-2. Options.KnownHostsFile or environmental variable VFS_SFTP_KNOWN_HOSTS_FILE which accepts a path to a known_hosts file.
-3. Options.KnownHostsCallback which allows you to specify any of the ssh.AuthMethod
-functions. Environmental variable VFS_SFTP_INSECURE_KNOWN_HOSTS will set this callback function to ssh.InsecureIgnoreHostKey
- which may be helpful for testing but should not be used in production.
- which may be helpful for testing but should not be used in production.
+1. [Options](#type-options).KnownHostsString which accepts a string. 
+2. [Options](#type-options).KnownHostsFile or environmental variable `VFS_SFTP_KNOWN_HOSTS_FILE` which accepts a path to a known_hosts file.
+3. [Options](#type-options).KnownHostsCallback which allows you to specify any of the [ssh.AuthMethod](https://godoc.org/golang.org/x/crypto/ssh#AuthMethod)
+functions. Environmental variable `VFS_SFTP_INSECURE_KNOWN_HOSTS` will set this callback function to 
+[ssh.InsecureIgnoreHostKey](https://godoc.org/golang.org/x/crypto/ssh#InsecureIgnoreHostKey) which may be helpful for 
+testing but should not be used in production.
 
 ## Usage
 
@@ -187,7 +187,7 @@ File implements vfs.File interface for SFTP fs.
 ```go
 func (f *File) Close() error
 ```
-Close calls the underlying sftp.File Close, if opened, and clears the internal
+Close calls the underlying [sftp.File](https://godoc.org/github.com/pkg/sftp#File) Close, if opened, and clears the internal
 pointer
 
 #### func (*File) CopyToFile
@@ -202,7 +202,7 @@ CopyToFile puts the contents of File into the targetFile passed.
 ```go
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error)
 ```
-CopyToLocation creates a copy of *File, using the file's current path as the new
+CopyToLocation creates a copy of [*File](#type-file), using the file's current path as the new
 file's path at the given location.
 
 #### func (*File) Delete
@@ -224,7 +224,7 @@ Exists returns a boolean of whether or not the file exists on the sftp server
 ```go
 func (f *File) LastModified() (*time.Time, error)
 ```
-LastModified returns the LastModified property of sftp file.
+LastModified returns the LastModified property of [sftp.File](https://godoc.org/github.com/pkg/sftp#File).
 
 #### func (*File) Location
 
@@ -241,10 +241,10 @@ sftp://someuser@host.com/here/is/the/
 func (f *File) MoveToFile(t vfs.File) error
 ```
 MoveToFile puts the contents of File into the targetFile passed using
-File.CopyToFile. If the copy succeeds, the source file is deleted. Any errors
+[File.CopyToFile](#func-file-copytofile). If the copy succeeds, the source file is deleted. Any errors
 from the copy or delete are returned. If the given location is also sftp AND for
-the same user and host, the sftp Rename method is used, otherwise we'll do a an
-io.Copy to the destination file then delete source file.
+the same user and host, the [sftp.Rename](https://godoc.org/github.com/pkg/sftp#Client.Rename) method is used, otherwise we'll do a an
+[io.Copy](https://godoc.org/io#Copy) to the destination file then delete source file.
 
 #### func (*File) MoveToLocation
 
@@ -252,7 +252,7 @@ io.Copy to the destination file then delete source file.
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error)
 ```
 MoveToLocation works by creating a new file on the target location then calling
-MoveToFile() on it.
+[MoveToFile()](#func-file-movetofile) on it.
 
 #### func (*File) Name
 
@@ -260,7 +260,7 @@ MoveToFile() on it.
 func (f *File) Name() string
 ```
 Name returns the path portion of the file's path property. IE: "file.txt" of
-"sftp://someuser@host.com/some/path/to/file.txt
+"sftp://someuser@host.com/some/path/to/file.txt"
 
 #### func (*File) Path
 
@@ -275,14 +275,14 @@ Path return the directory portion of the file's path. IE: "path/to" of
 ```go
 func (f *File) Read(p []byte) (n int, err error)
 ```
-Read calls the underlying sftp.File Read.
+Read calls the underlying [sftp.File Read](https://godoc.org/github.com/pkg/sftp#File.Read).
 
 #### func (*File) Seek
 
 ```go
 func (f *File) Seek(offset int64, whence int) (int64, error)
 ```
-Seek calls the underlying sftp.File Seek.
+Seek calls the underlying [sftp.File Seek](https://godoc.org/github.com/pkg/sftp#File.Seek).
 
 #### func (*File) Size
 
@@ -296,14 +296,14 @@ Size returns the size of the remote file.
 ```go
 func (f *File) String() string
 ```
-String implement fmt.Stringer, returning the file's URI as the default string.
+String implement [fmt.Stringer](https://golang.org/pkg/fmt/#Stringer), returning the file's URI as the default string.
 
 #### func (*File) Touch
 
 ```go
 func (f *File) Touch() error
 ```
-Touch creates a zero-length file on the vfs.File if no File exists. Update
+Touch creates a zero-length file on the [vfs.File](../README.md#type-file) if no File exists. Update
 File's last modified timestamp. Returns error if unable to touch File.
 
 #### func (*File) URI
@@ -318,7 +318,7 @@ URI returns the File's URI as a string.
 ```go
 func (f *File) Write(data []byte) (res int, err error)
 ```
-Write calls the underlying sftp.File Write.
+Write calls the underlying [sftp.File Write](https://godoc.org/github.com/pkg/sftp#File.Write).
 
 #### type FileSystem
 
@@ -341,8 +341,8 @@ NewFileSystem initializer for fileSystem struct.
 ```go
 func (fs *FileSystem) Client(authority utils.Authority) (Client, error)
 ```
-Client returns the underlying sftp client, creating it, if necessary See
-Overview for authentication resolution
+Client returns the underlying [sftp.Client](https://godoc.org/github.com/pkg/sftp#Client), creating it, if necessary See
+[Overview](#authentication) for authentication resolution
 
 #### func (*FileSystem) Name
 
@@ -363,7 +363,7 @@ NewFile function returns the SFTP implementation of vfs.File.
 ```go
 func (fs *FileSystem) NewLocation(authority string, locPath string) (vfs.Location, error)
 ```
-NewLocation function returns the SFTP implementation of vfs.Location.
+NewLocation function returns the SFTP implementation of [vfs.Location](../README.md#type-location).
 
 #### func (*FileSystem) Retry
 
@@ -433,7 +433,7 @@ Exists returns true if the remote SFTP file exists.
 ```go
 func (l *Location) FileSystem() vfs.FileSystem
 ```
-FileSystem returns a vfs.fileSystem interface of the location's underlying
+FileSystem returns a [vfs.FileSystem](../README.md#type-filesystem) interface of the location's underlying
 fileSystem.
 
 #### func (*Location) List
@@ -441,7 +441,7 @@ fileSystem.
 ```go
 func (l *Location) List() ([]string, error)
 ```
-List calls SFTP ReadDir to list all files in the location's path. If you have
+List calls [sftp.ReadDir](https://godoc.org/github.com/pkg/sftp#Client.ReadDir) to list all files in the location's path. If you have
 many thousands of files at the given location, this could become quite
 expensive.
 
@@ -450,7 +450,7 @@ expensive.
 ```go
 func (l *Location) ListByPrefix(prefix string) ([]string, error)
 ```
-ListByPrefix calls SFTP ReadDir with the location's path modified relatively by
+ListByPrefix calls [sftp.ReadDir](https://godoc.org/github.com/pkg/sftp#Client.ReadDir) with the location's path modified relatively by
 the prefix arg passed to the function.
 
 #### func (*Location) ListByRegex
@@ -460,14 +460,14 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error)
 ```
 ListByRegex retrieves the filenames of all the files at the location's current
 path, then filters out all those that don't match the given regex. The resource
-considerations of List() apply here as well.
+considerations of [List()](#func-location-list) apply here as well.
 
 #### func (*Location) NewFile
 
 ```go
 func (l *Location) NewFile(filePath string) (vfs.File, error)
 ```
-NewFile uses the properties of the calling location to generate a vfs.File
+NewFile uses the properties of the calling location to generate a [vfs.File](../README.md#type-file)
 (backed by an sftp.File). The filePath argument is expected to be a relative
 path to the location's current path.
 
@@ -476,8 +476,8 @@ path to the location's current path.
 ```go
 func (l *Location) NewLocation(relativePath string) (vfs.Location, error)
 ```
-NewLocation makes a copy of the underlying Location, then modifies its path by
-calling ChangeDir with the relativePath argument, returning the resulting
+NewLocation makes a copy of the underlying [Location](#type-location), then modifies its path by
+calling [ChangeDir](#func-location-changedir) with the relativePath argument, returning the resulting
 location. The only possible errors come from the call to ChangeDir, which, for
 the SFTP implementation doesn't ever result in an error.
 
@@ -508,7 +508,7 @@ URI returns the Location's URI as a string.
 ```go
 func (l *Location) Volume() string
 ```
-Volume returns the Authority the location is contained in.
+Volume returns the [Authority](utils.md#type-authority) the location is contained in.
 
 #### type Options
 
@@ -527,11 +527,12 @@ type Options struct {
 
 Options holds sftp-specific options. Currently only client options are used.
 
-#### type SFTPFile
+#### type ReadWriteSeekCloser
 
 ```go
-type SFTPFile interface {
+type ReadWriteSeekCloser interface {
 	io.ReadWriteSeeker
 	io.Closer
 }
 ```
+ReadWriteSeekCloser is a read write seek closer interface representing capabilities needed from std libs sftp File struct.

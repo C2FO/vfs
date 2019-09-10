@@ -38,7 +38,7 @@ func (ts *fileTestSuite) SetupTest() {
 	}
 }
 
-//this wraps strings.Reader to satisfy SFTPFile interface
+//this wraps strings.Reader to satisfy ReadWriteSeekCloser interface
 type nopWriteCloser struct {
 	io.ReadSeeker
 }
@@ -152,7 +152,7 @@ func (ts *fileTestSuite) Test_openFile() {
 
 	//file not open, open for read
 	file.sftpfile = nil
-	file.opener = func(c Client, p string, f int) (SFTPFile, error) { return file1, nil }
+	file.opener = func(c Client, p string, f int) (ReadWriteSeekCloser, error) { return file1, nil }
 	_, err = file1.Seek(0, 0) //reset file
 	ts.NoError(err, "no error expected")
 	f, err = file.openFile(os.O_RDONLY)
@@ -171,7 +171,7 @@ func (ts *fileTestSuite) Test_openFile() {
 
 	//file not open, open for create/write
 	file.sftpfile = nil
-	file.opener = func(c Client, p string, f int) (SFTPFile, error) { return file1, nil }
+	file.opener = func(c Client, p string, f int) (ReadWriteSeekCloser, error) { return file1, nil }
 	_, err = file1.Seek(0, 0) //reset file
 	ts.NoError(err, "no error expected")
 	client.On("MkdirAll", path.Dir(filepath)).Return(nil)

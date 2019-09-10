@@ -15,12 +15,12 @@ type File struct {
 	fileSystem *FileSystem
 	Authority  utils.Authority
 	path       string
-	sftpfile   SFTPFile
+	sftpfile   ReadWriteSeekCloser
 	opener     fileOpener
 }
 
 // this type allow for injecting a mock fileOpener function
-type fileOpener func(c Client, p string, f int) (SFTPFile, error)
+type fileOpener func(c Client, p string, f int) (ReadWriteSeekCloser, error)
 
 // Info Functions
 
@@ -275,8 +275,7 @@ func (f *File) String() string {
 */
 
 // openFile wrapper allows us to inject a file opener (for mocking) vs the defaultOpenFile.
-// This solves for the fact that
-func (f *File) openFile(flag int) (SFTPFile, error) {
+func (f *File) openFile(flag int) (ReadWriteSeekCloser, error) {
 	if f.sftpfile != nil {
 		return f.sftpfile, nil
 	}
@@ -311,7 +310,7 @@ func (f *File) openFile(flag int) (SFTPFile, error) {
 }
 
 // defaultOpenFile uses sftp.Client to open a file and returns an sftp.File
-func defaultOpenFile(c Client, p string, f int) (SFTPFile, error) {
+func defaultOpenFile(c Client, p string, f int) (ReadWriteSeekCloser, error) {
 	return c.OpenFile(p, f)
 }
 
@@ -326,7 +325,8 @@ func (f *File) sftpRename(target *File) error {
 	return nil
 }
 
-type SFTPFile interface {
+// ReadWriteSeekCloser is a read write seek closer interface representing capabilities needed from std libs sftp File struct.
+type ReadWriteSeekCloser interface {
 	io.ReadWriteSeeker
 	io.Closer
 	// sftp.File also provides the following which we don't use (but could):

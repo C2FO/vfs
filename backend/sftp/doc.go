@@ -3,7 +3,7 @@ Package sftp SFTP VFS implementation.
 
 Usage
 
-Rely on github.com/c2fo/vfs/backend
+Rely on github.com/c2fo/vfs/v5/backend
 
   import(
 	  "github.com/c2fo/vfs/v5/backend"

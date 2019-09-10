@@ -142,7 +142,7 @@ func getHostKeyCallback(opts Options) (ssh.HostKeyCallback, error) {
 		}
 
 		// add /etc/ssh/.ssh/known_hosts for unix-like systems.  SSH doesn't exist natively on Windows and each
-		// implemenation has a different location for known_hosts. Better to specify in
+		// implementation has a different location for known_hosts. Better to specify in
 		if runtime.GOOS != "windows" {
 			//check file existence first to prevent auto-vivification of file
 			found, err := foundFile(systemWideKnownHosts)

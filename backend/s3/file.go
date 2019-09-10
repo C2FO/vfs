@@ -291,11 +291,11 @@ func (f *File) getHeadObject() (*s3.HeadObjectOutput, error) {
 // TouchCopy() call if they are different.
 func (f *File) copyFile(targetFile *File) error {
 	isSameAccount := false
-	hasAclOption := false
+	hasACLOption := false
 
 	opts, hasOptions := f.fileSystem.options.(Options)
 	if hasOptions {
-		hasAclOption = opts.ACL != ""
+		hasACLOption = opts.ACL != ""
 	}
 
 	if hasOptions && targetFile.fileSystem.options != nil {
@@ -309,7 +309,7 @@ func (f *File) copyFile(targetFile *File) error {
 		SetBucket(targetFile.bucket).
 		SetCopySource(path.Join(f.bucket, f.key))
 
-	if hasOptions && hasAclOption {
+	if hasOptions && hasACLOption {
 		copyInput.SetACL(opts.ACL)
 	}
 

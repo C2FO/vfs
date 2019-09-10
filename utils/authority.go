@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Authority represents host, port and userinfo (user/pass) in a URI
 type Authority struct {
 	User, Pass, Host, raw string
 }
