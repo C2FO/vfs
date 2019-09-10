@@ -125,33 +125,10 @@ func getHostKeyCallback(opts Options) (ssh.HostKeyCallback, error) {
 
 	// use user/system-wide known_hosts paths (as defined by OpenSSH https://man.openbsd.org/ssh)
 	default:
-		// add ~/.ssh/known_hosts
-		home, err := homedir.Dir()
+		var err error
+		knownHostsFiles, err = findHomeSystemKnownHosts(knownHostsFiles)
 		if err != nil {
 			return nil, err
-		}
-		homeKnonwHostsPath := utils.EnsureLeadingSlash(path.Join(home, ".ssh/known_hosts"))
-
-		//check file existence first to prevent auto-vivification of file
-		found, err := foundFile(homeKnonwHostsPath)
-		if err != nil {
-			return nil, err
-		}
-		if found {
-			knownHostsFiles = append(knownHostsFiles, homeKnonwHostsPath)
-		}
-
-		// add /etc/ssh/.ssh/known_hosts for unix-like systems.  SSH doesn't exist natively on Windows and each
-		// implementation has a different location for known_hosts. Better to specify in
-		if runtime.GOOS != "windows" {
-			//check file existence first to prevent auto-vivification of file
-			found, err := foundFile(systemWideKnownHosts)
-			if err != nil {
-				return nil, err
-			}
-			if found {
-				knownHostsFiles = append(knownHostsFiles, systemWideKnownHosts)
-			}
 		}
 	}
 
@@ -162,6 +139,38 @@ func getHostKeyCallback(opts Options) (ssh.HostKeyCallback, error) {
 	}
 
 	return cb, nil
+}
+
+func findHomeSystemKnownHosts(knownHostsFiles []string) ([]string, error) {
+	// add ~/.ssh/known_hosts
+	home, err := homedir.Dir()
+	if err != nil {
+		return nil, err
+	}
+	homeKnonwHostsPath := utils.EnsureLeadingSlash(path.Join(home, ".ssh/known_hosts"))
+
+	//check file existence first to prevent auto-vivification of file
+	found, err := foundFile(homeKnonwHostsPath)
+	if err != nil {
+		return nil, err
+	}
+	if found {
+		knownHostsFiles = append(knownHostsFiles, homeKnonwHostsPath)
+	}
+
+	// add /etc/ssh/.ssh/known_hosts for unix-like systems.  SSH doesn't exist natively on Windows and each
+	// implementation has a different location for known_hosts. Better to specify in
+	if runtime.GOOS != "windows" {
+		//check file existence first to prevent auto-vivification of file
+		found, err := foundFile(systemWideKnownHosts)
+		if err != nil {
+			return nil, err
+		}
+		if found {
+			knownHostsFiles = append(knownHostsFiles, systemWideKnownHosts)
+		}
+	}
+	return knownHostsFiles, nil
 }
 
 func foundFile(file string) (bool, error) {
