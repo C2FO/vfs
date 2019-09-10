@@ -906,7 +906,7 @@ func recursiveSFTPRemove(absPath string, client sftp.Client) error {
 	var rErr error
 	for _, child := range children {
 		childName := child.Name()
-		//TODO: what about symlinks to directories? we're not recursing into them, which is think is right
+		//TODO: what about symlinks to directories? we're not recursing into them, which I think is right
 		//      if we need to, we'd do:
 		//          if child.Mode() & ModeSymLink != 0 {
 		// 	          do something

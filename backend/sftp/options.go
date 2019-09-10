@@ -189,7 +189,7 @@ func getAuthMethods(opts Options) ([]ssh.AuthMethod, error) {
 
 	auth := make([]ssh.AuthMethod, 0)
 
-	// set explicitly set password from opts, then from env if any
+	// explicitly set password from opts, then from env if any
 	pw := os.Getenv("VFS_SFTP_PASSWORD")
 	if opts.Password != "" {
 		pw = opts.Password
