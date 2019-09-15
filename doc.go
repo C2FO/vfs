@@ -33,7 +33,7 @@ What we needed/wanted was the following(and more):
   * a uniform way of addressing files regardless of file system.  This is why we use complete URI's in vfssimple
   * fmt.Stringer interface so that the file struct passed to a log message (or other Stringer use) would show the URI
   * mockable file system
-  * pluggability so that third-party implemenations of our interfaces could be used
+  * pluggability so that third-party implementations of our interfaces could be used
 
 Install
 
@@ -58,8 +58,7 @@ You can then use those file systems to initialize locations which you'll be refe
   osTmpFile, err := osLocation.NewFile("anotherFile.txt") // file at /tmp/anotherFile.txt
 
 
-With a number of files and locations between s3 and the local file system you can perform a number of actions without any consideration for the system's api or
-implementation details.
+You can perform a number of actions without any consideration for the underlying system's api or implementation details.
 
   osFileExists, err := osFile.Exists() // true, nil
   s3FileExists, err := s3File.Exists() // false, nil
@@ -92,7 +91,7 @@ Ideas
 
 Things to add:
   * Add Azure storage backend
-  * Provide better List() functionality with more abstracted filering and paging (iterator?) Retrun File structs vs URIs?
+  * Provide better List() functionality with more abstracted filtering and paging (iterator?) Return File structs vs URIs?
   * Add better/any context.Context() support
 
 Contributors

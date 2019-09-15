@@ -86,9 +86,7 @@ referencing frequently, or initialize files directly
     osTmpFile, err := osLocation.NewFile("anotherFile.txt") // file at /tmp/anotherFile.txt
 ```
 
-With a number of files and locations between s3 and the local file system you can
-perform a number of actions without any consideration for the system's api or
-implementation details.
+You can perform a number of actions without any consideration for the system's api or implementation details.
 
 ```go
     osFileExists, err := osFile.Exists() // true, nil
@@ -151,7 +149,7 @@ Feel free to send a pull request if you want to add your backend to the list.
 Things to add:
 
 * Add Azure storage backend
-* Provide better List() functionality with more abstracted filering and paging (iterator?) Retrun File structs vs URIs?
+* Provide better List() functionality with more abstracted filtering and paging (iterator?) Return File structs vs URIs?
 * Add better/any context.Context() support
 
 
@@ -232,13 +230,17 @@ type File interface {
 	//   * In the case of an error, nil is returned for the file.
 	//   * CopyToLocation should use native functions when possible within the same scheme.
 	//   * If the file already exists at the location, the contents will be overwritten with the current file's contents.
+	//   * CopyToLocation will Close both the source and target Files which therefore can't be appended to without first
+	//     calling Seek() to move the cursor to the end of the file.
 	CopyToLocation(location Location) (File, error)
 
 	// CopyToFile will copy the current file to the provided file instance.
 	//
 	//   * In the case of an error, nil is returned for the file.
-	//   * CopyToLocation should use native functions when possible withen the same scheme.
+	//   * CopyToLocation should use native functions when possible within the same scheme.
 	//   * If the file already exists, the contents will be overwritten with the current file's contents.
+	//   * CopyToFile will Close both the source and target Files which therefore can't be appended to without first
+	//     calling Seek() to move the cursor to the end of the file.
 	CopyToFile(file File) error
 
 	// MoveToLocation will move the current file to the provided location.
@@ -249,12 +251,16 @@ type File interface {
 	//   * In the case of an error, nil is returned for the file.
 	//   * When moving within the same Scheme, native move/rename should be used where possible.
 	//   * If the file already exists, the contents will be overwritten with the current file's contents.
+	//   * MoveToLocation will Close both the source and target Files which therefore can't be appended to without first
+	//     calling Seek() to move the cursor to the end of the file.
 	MoveToLocation(location Location) (File, error)
 
 	// MoveToFile will move the current file to the provided file instance.
 	//
 	//   * If the file already exists, the contents will be overwritten with the current file's contents.
 	//   * The current instance of the file will be removed.
+	//   * MoveToFile will Close both the source and target Files which therefore can't be appended to without first
+	//     calling Seek() to move the cursor to the end of the file.
 	MoveToFile(file File) error
 
 	// Delete unlinks the File on the file system.
