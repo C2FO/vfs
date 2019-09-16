@@ -314,7 +314,7 @@ func (o *optionsSuite) TestGetAuthMethods() {
 		},
 		{
 			envVars: map[string]string{
-				"VFS_SFTP_KEYFILE": o.keyFiles.SSHPrivateKeyNoPassphrase, //overridden by explict options value
+				"VFS_SFTP_KEYFILE": o.keyFiles.SSHPrivateKeyNoPassphrase, //overridden by explicit options value
 			},
 			options: Options{
 				KeyFilePath:   o.keyFiles.SSHPrivateKey,
