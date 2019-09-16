@@ -14,14 +14,15 @@ supported backend file system by using full URI's:
 
 Just import vfssimple.
 
+```go
     package main
     
     import(
-        "github.com/c2fo/vfs/vfssimple"
+        "github.com/c2fo/vfs/v5/vfssimple"
     )
-    
+
     ...
-    
+
     func DoSomething() error {
         myLocalDir, err := vfssimple.NewLocation("file:///tmp/")
         if err != nil {
@@ -38,7 +39,7 @@ Just import vfssimple.
             return err
         }
     }
-
+```
 
 ### Authentication and Options
 
@@ -50,12 +51,13 @@ File systems can only use one set of options. If you would like to configure mor
 you can register and map file system options to locations or individual objects. The vfssimple library will automatically try to
 resolve the provided URI in NewFile() or NewLocation() to the registered file system.
 
+```go
     package main
     
     import(
-        "github.com/c2fo/vfs/vfssimple"
-        "github.com/c2fo/vfs/backend"
-        "github.com/c2fo/vfs/backend/s3"
+        "github.com/c2fo/vfs/v5/vfssimple"
+        "github.com/c2fo/vfs/v5/backend"
+        "github.com/c2fo/vfs/v5/backend/s3"
     )
     
     ...
@@ -81,19 +83,21 @@ resolve the provided URI in NewFile() or NewLocation() to the registered file sy
         
         secureFile.CopyToLocation(publicLocation)
     }
+```
 
 ### Retry Option
 
 This option allows you to specify a custom retry method which backend implementations can choose to utilize
 when calling remote file systems. This adds some flexibility in how a retry on file operations should be handled.
 
+```go
     package main
     
     import(
         "time"
         
-        "github.com/c2fo/vfs/backend"
-        "github.com/c2fo/vfs/backend/gs"
+        "github.com/c2fo/vfs/v5/backend"
+        "github.com/c2fo/vfs/v5/backend/gs"
     )
     
     ...
@@ -110,7 +114,7 @@ when calling remote file systems. This adds some flexibility in how a retry on f
             },
         })
     }
-
+```
 
 ## Functions
 

@@ -14,14 +14,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/c2fo/vfs/v5"
 	"github.com/c2fo/vfs/v5/backend/gs"
 	"github.com/c2fo/vfs/v5/backend/mem"
 	_os "github.com/c2fo/vfs/v5/backend/os"
 	"github.com/c2fo/vfs/v5/backend/s3"
+	"github.com/c2fo/vfs/v5/backend/sftp"
 	"github.com/c2fo/vfs/v5/utils"
 	"github.com/c2fo/vfs/v5/vfssimple"
-	"github.com/stretchr/testify/suite"
 )
 
 type vfsTestSuite struct {
@@ -58,6 +60,11 @@ func copyS3Location(loc vfs.Location) vfs.Location {
 	return &cp
 }
 
+func copySFTPLocation(loc vfs.Location) vfs.Location {
+	cp := *loc.(*sftp.Location)
+	return &cp
+}
+
 func copyGSLocation(loc vfs.Location) vfs.Location {
 	cp := *loc.(*gs.Location)
 	return &cp
@@ -74,6 +81,8 @@ func (s *vfsTestSuite) SetupSuite() {
 			s.testLocations[l.FileSystem().Scheme()] = copyOsLocation(l)
 		case "s3":
 			s.testLocations[l.FileSystem().Scheme()] = copyS3Location(l)
+		case "sftp":
+			s.testLocations[l.FileSystem().Scheme()] = copySFTPLocation(l)
 		case "gs":
 			s.testLocations[l.FileSystem().Scheme()] = copyGSLocation(l)
 		case "mem":
@@ -307,7 +316,7 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 	*/
 	exists, err := baseLoc.Exists()
 	s.NoError(err)
-	s.True(exists, "srcLoc location doesn't exist")
+	s.True(exists, "baseLoc location exists check")
 
 	//setup list tests
 	f1, err := srcLoc.NewFile("file1.txt")
@@ -858,6 +867,64 @@ func (s *vfsTestSuite) gsList(baseLoc vfs.Location) {
 	// CLEAN UP
 	s.NoError(f.Delete(), "clean up file.txt")
 	s.NoError(objHandle.Delete(ctx))
+}
+
+func sftpRemoveAll(location *sftp.Location) error {
+
+	// get sftp client from Filesystem
+	client, err := location.FileSystem().(*sftp.FileSystem).Client(location.Authority)
+	if err != nil {
+		return err
+	}
+
+	//recursively remove directory
+	return recursiveSFTPRemove(location.Path(), client)
+}
+
+func recursiveSFTPRemove(absPath string, client sftp.Client) error {
+
+	// we can return early if we can just remove it
+	err := client.Remove(absPath)
+	// if we succeeded or it didn't exist, just return
+	if err == nil || os.IsNotExist(err) {
+		//success
+		return nil
+	}
+
+	// handle error unless it was directory which we'll assume we coudln't delete because it isn't empty
+	if !strings.HasSuffix(absPath, "/") {
+		// not a directory (file's should have already been deleted) so return err
+		return err
+	}
+
+	// Remove child objects in directory
+	children, err := client.ReadDir(absPath)
+	if err != nil {
+		return err
+	}
+
+	var rErr error
+	for _, child := range children {
+		childName := child.Name()
+		//TODO: what about symlinks to directories? we're not recursing into them, which I think is right
+		//      if we need to, we'd do:
+		//          if child.Mode() & ModeSymLink != 0 {
+		// 	          do something
+		// 	        }
+		if child.IsDir() {
+			childName = utils.EnsureTrailingSlash(childName)
+		}
+		err := recursiveSFTPRemove(absPath+childName, client)
+		if err != nil {
+			rErr = err
+		}
+	}
+	if rErr != nil {
+		return rErr
+	}
+
+	// try to remove the object again
+	return client.Remove(absPath)
 }
 
 func TestVFS(t *testing.T) {

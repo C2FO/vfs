@@ -8,31 +8,36 @@ Package gs Google Cloud Storage VFS implementation.
 
 ### Usage
 
-Rely on [github.com/c2fo/vfs/backend](backend.md)
+Rely on [github.com/c2fo/vfs/v5/backend](backend.md)
 
+```go
     import(
-        "github.com/c2fo/vfs/backend"
-        "github.com/c2fo/vfs/backend/gs"
+        "github.com/c2fo/vfs/v5/backend"
+        "github.com/c2fo/vfs/v5/backend/gs"
     )
 
     func UseFs() error {
         fs, err := backend.Backend(gs.Scheme)
         ...
     }
+```
 
 Or call directly:
 
-    import "github.com/c2fo/vfs/backend/gs"
+```go
+    import "github.com/c2fo/vfs/v5/backend/gs"
 
     func DoSomething() {
         fs := gs.NewFileSystem()
         ...
     }
+```
 
 gs can be augmented with the following implementation-specific methods. [Backend](backend.md)
 returns [vfs.FileSystem](../README.md#type-filesystem) interface so it would have to be cast as gs.FileSystem to
 use the following:
 
+```go
     func DoSomething() {
 
         ...
@@ -58,7 +63,7 @@ use the following:
         client, _ := storage.NewClient(ctx, option.WithoutAuthentication())
         fs = fs.WithClient(client)
     }
-
+```
 
 ### Authentication
 
@@ -66,10 +71,10 @@ Authentication, by default, occurs automatically when [Client()](#func-filesyste
 looks for credentials in the following places, preferring the first location
 found:
 
-1. A JSON file whose path is specified by the GOOGLE_APPLICATION_CREDENTIALS environment variable
+1. A JSON file whose path is specified by the `GOOGLE_APPLICATION_CREDENTIALS` environment variable
 1. A JSON file in a location known to the gcloud command-line tool.
-    * On Windows, this is %APPDATA%/gcloud/application_default_credentials.json.
-    * On other systems, $HOME/.config/gcloud/application_default_credentials.json.
+    * On Windows, this is `%APPDATA%/gcloud/application_default_credentials.json`.
+    * On other systems, `$HOME/.config/gcloud/application_default_credentials.json`.
 1. On Google App Engine it uses the appengine.AccessToken function.
 1. On Google Compute Engine and Google App Engine Managed VMs, it fetches credentials from the metadata server.
 
@@ -152,8 +157,6 @@ LastModified returns the 'Updated' property from the GCS attributes.
 func (f *File) Location() vfs.Location
 ```
 Location returns a Location instance for the file's current location.
-
-TODO should this be including trailing slash?
 
 #### func (*File) MoveToFile
 

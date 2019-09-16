@@ -45,6 +45,10 @@ func parseSupportedURI(uri string) (vfs.FileSystem, string, string, error) {
 	}
 	host := u.Host
 	path := u.Path
+	user := u.User
+	if user.String() != "" {
+		host = fmt.Sprintf("%s@%s", user, host)
+	}
 
 	var fs vfs.FileSystem
 	for _, backendScheme := range backend.RegisteredBackends() {

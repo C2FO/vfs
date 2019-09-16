@@ -10,13 +10,14 @@ vfs.FileSystem)
 In this way, a caller of vfs backends can simply load the backend file system
 (and ONLY those needed) and begin using it:
 
+```go
     package main
 
     // import backend and each backend you intend to use
     import(
-        "github.com/c2fo/vfs/backend"
-        "github.com/c2fo/vfs/backend/os"
-        "github.com/c2fo/vfs/backend/s3"
+        "github.com/c2fo/vfs/v5/backend"
+        "github.com/c2fo/vfs/v5/backend/os"
+        "github.com/c2fo/vfs/v5/backend/s3"
     )
 
     func main() {
@@ -39,7 +40,7 @@ In this way, a caller of vfs backends can simply load the backend file system
             panic(err)
         }
     }
-
+```
 
 ### Development
 
@@ -47,12 +48,13 @@ To create your own backend, you must create a package that implements the interf
 [vfs.FileSystem](../README.md#type-filesystem), [vfs.Location](../README.md#type-location), and 
 [vfs.File](../README.md#type-file). Then ensure it registers itself on load:
 
+```go
     package myexoticfilesystem
 
     import(
         ...
-        "github.com/c2fo/vfs"
-        "github.com/c2fo/vfs/backend"
+        "github.com/c2fo/vfs/v5"
+        "github.com/c2fo/vfs/v5/backend"
     )
 
     // IMPLEMENT vfs interfaces
@@ -62,13 +64,15 @@ To create your own backend, you must create a package that implements the interf
     func init() {
         backend.Register("exfs", &MyExoticFilesystem{})
     }
+```
 
 Then do use it in some other package do
 
+```go
     package MyExoticFilesystem
 
     import(
-        "github.com/c2fo/vfs/backend"
+        "github.com/c2fo/vfs/v5/backend"
         "github.com/acme/myexoticfilesystem"
     )
 
@@ -78,6 +82,7 @@ Then do use it in some other package do
         myExoticFs, err = backend.Backend(myexoticfilesystem.Scheme)
         ...
     }
+```
 
 That's it. Simple.
 

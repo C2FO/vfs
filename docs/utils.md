@@ -1,7 +1,11 @@
 # utils
 
 ---
-    import "github.com/c2fo/vfs/utils"
+
+
+```go
+    import "github.com/c2fo/vfs/v5/utils"
+```
 
 #### Error Constants
 
@@ -63,42 +67,77 @@ func RemoveTrailingSlash(path string) string
 RemoveTrailingSlash removes trailing slash, if any
 
 #### func  TouchCopy
-
+ 
 ```go
 func TouchCopy(writer, reader vfs.File) error
 ```
 TouchCopy is a wrapper around [io.Copy](https://godoc.org/io#Copy) which ensures that even empty source files
-(reader) will get written as an empty file. It guarantees a Write() call on the
-target file.
+(reader) will get written as an empty file. It guarantees a Write() call on the target file.
 
-#### func  ValidateAbsFilePath
+#### func  UpdateLastModifiedByMoving
 
 ```go
-func ValidateAbsFilePath(name string) error
+func UpdateLastModifiedByMoving(file vfs.File) error
 ```
-ValidateAbsFilePath ensures that a file path has a leading slash but not a
+UpdateLastModifiedByMoving is used by some backends' Touch() method when a file
+already exists.
+
+#### func  ValidateAbsoluteFilePath
+
+```go
+func ValidateAbsoluteFilePath(name string) error
+```
+ValidateAbsoluteFilePath ensures that a file path has a leading slash but not a
 trailing slash
 
-#### func  ValidateAbsLocationPath
+#### func  ValidateAbsoluteLocationPath
 
 ```go
-func ValidateAbsLocationPath(name string) error
+func ValidateAbsoluteLocationPath(name string) error
 ```
-ValidateAbsLocationPath ensure that a file path has both leading and trailing
-slashes
+ValidateAbsoluteLocationPath ensure that a file path has both leading and
+trailing slashes
 
-#### func  ValidateRelFilePath
+#### func  ValidateRelativeFilePath
 
 ```go
-func ValidateRelFilePath(name string) error
+func ValidateRelativeFilePath(name string) error
 ```
-ValidateRelFilePath ensures that a file path has neither leading nor trailing
-slashes
+ValidateRelativeFilePath ensures that a file path has neither leading nor
+trailing slashes
 
-#### func  ValidateRelLocationPath
+#### func  ValidateRelativeLocationPath
 
 ```go
-func ValidateRelLocationPath(name string) error
+func ValidateRelativeLocationPath(name string) error
 ```
-ValidateRelLocationPath ensure that a file path has no leading slash but has a
-trailing slash
+ValidateRelativeLocationPath ensure that a file path has no leading slash but
+has a trailing slash
+
+#### type Authority
+
+```go
+type Authority struct {
+	User, Pass, Host string
+}
+```
+
+Authority represents host, port and userinfo (user/pass) in a URI
+
+#### func  NewAuthority
+
+```go
+func NewAuthority(authority string) (Authority, error)
+```
+NewAuthority initializes Authority struct by parsing authority string.
+
+#### func (Authority) String
+
+```go
+func (a Authority) String() string
+```
+String() returns a string representation of authority. It does not include
+password per https://tools.ietf.org/html/rfc3986#section-3.2.1:
+
+    Applications should not render as clear text any data after the first colon (":") character found within a userinfo
+    subcomponent unless the data after the colon is the empty string (indicating no password).

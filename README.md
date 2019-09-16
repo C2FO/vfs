@@ -20,6 +20,7 @@ GCS.
 When building our platform, initially we wrote a library that was something to
 the effect of
 
+```go
       if config.DISK == "S3" {
     	  // do some s3 file system operation
       } else if config.DISK == "mock" {
@@ -27,6 +28,7 @@ the effect of
       } else {
           // do some native os.xxx operation
       }
+```
 
 Not only was ugly but because the behaviors of each "file system" were 
 different and we had to constantly alter the file locations and pass a bucket string (even
@@ -47,7 +49,7 @@ file system backends.
 * provide common (and only common) functionality across all file system so that after initialization, we don't care
       what the underlying file system is and can therefore write our code agnostically/portably
 * use [io.*](https://godoc.org/io) interfaces such as [io.Reader](https://godoc.org/io#Reader) and [io.Writer](https://godoc.org/io#Writer) without needing to call a separate function
-* extensibility to easily add other needed file systems like Microsoft Azure Cloud File Storage or SFTP
+* extensibility to easily add other needed file systems like Microsoft Azure Cloud File Storage
 * prefer native atomic functions when possible (ie S3 to S3 moving would use the native move api call rather than
       copy-delete)
 * a uniform way of addressing files regardless of file system.  This is why we use complete URI's in vfssimple
@@ -60,7 +62,7 @@ file system backends.
 
 Go install:
 
-    go get -u github.com/c2fo/vfs
+    go get -u github.com/c2fo/vfs/v5
 
 
 ### Usage
@@ -74,6 +76,7 @@ footprint) or add a third party backend, you'll need to implement your own
 You can then use those file systems to initialize locations which you'll be
 referencing frequently, or initialize files directly
 
+```go
     osFile, err := vfssimple.NewFile("file:///path/to/file.txt")
     s3File, err := vfssimple.NewFile("s3://bucket/prefix/file.txt")
 
@@ -81,11 +84,11 @@ referencing frequently, or initialize files directly
     s3Location, err := vfssimple.NewLocation("s3://bucket/")
 
     osTmpFile, err := osLocation.NewFile("anotherFile.txt") // file at /tmp/anotherFile.txt
+```
 
-With a number of files and locations between s3 and the local file system you can
-perform a number of actions without any consideration for the system's api or
-implementation details.
+You can perform a number of actions without any consideration for the system's api or implementation details.
 
+```go
     osFileExists, err := osFile.Exists() // true, nil
     s3FileExists, err := s3File.Exists() // false, nil
     err = osFile.CopyToFile(s3File) // nil
@@ -98,14 +101,17 @@ implementation details.
     s3FileUri := s3File.URI() // s3://bucket/prefix/file.txt
     s3FileName := s3File.Name() // file.txt
     s3FilePath := s3File.Path() // /prefix/file.txt
+```
 
 File's [io.*](https://godoc.org/io) interfaces may be used directly:
 
+```go
     reader := strings.NewReader("Clear is better than clever")
     gsFile, err := vfssimple.NewFile("gs://somebucket/path/to/file.txt")
 
     byteCount, err := io.Copy(gsFile, reader)
     err := gsFile.Close()
+```
 
 Note: [io.Copy()](https://godoc.org/io#Copy) doesn't strictly define what happens if a reader is empty.  This is complicated because io.Copy
 will first delegate actual copying in the following:
@@ -135,15 +141,15 @@ Feel free to send a pull request if you want to add your backend to the list.
   * [gs backend](docs/gs.md)
   * [s3 backend](docs/s3.md)
   * [in-memory backend](docs/mem.md)
+  * [sftp backend](docs/sftp.md)
 * [utils](docs/utils.md)
 
 ### Ideas
 
 Things to add:
 
-* Add SFTP backend
 * Add Azure storage backend
-* Provide better List() functionality with more abstracted filering and paging (iterator?) Retrun File structs vs URIs?
+* Provide better List() functionality with more abstracted filtering and paging (iterator?) Return File structs vs URIs?
 * Add better/any context.Context() support
 
 
@@ -224,13 +230,17 @@ type File interface {
 	//   * In the case of an error, nil is returned for the file.
 	//   * CopyToLocation should use native functions when possible within the same scheme.
 	//   * If the file already exists at the location, the contents will be overwritten with the current file's contents.
+	//   * CopyToLocation will Close both the source and target Files which therefore can't be appended to without first
+	//     calling Seek() to move the cursor to the end of the file.
 	CopyToLocation(location Location) (File, error)
 
 	// CopyToFile will copy the current file to the provided file instance.
 	//
 	//   * In the case of an error, nil is returned for the file.
-	//   * CopyToLocation should use native functions when possible withen the same scheme.
+	//   * CopyToLocation should use native functions when possible within the same scheme.
 	//   * If the file already exists, the contents will be overwritten with the current file's contents.
+	//   * CopyToFile will Close both the source and target Files which therefore can't be appended to without first
+	//     calling Seek() to move the cursor to the end of the file.
 	CopyToFile(file File) error
 
 	// MoveToLocation will move the current file to the provided location.
@@ -241,12 +251,16 @@ type File interface {
 	//   * In the case of an error, nil is returned for the file.
 	//   * When moving within the same Scheme, native move/rename should be used where possible.
 	//   * If the file already exists, the contents will be overwritten with the current file's contents.
+	//   * MoveToLocation will Close both the source and target Files which therefore can't be appended to without first
+	//     calling Seek() to move the cursor to the end of the file.
 	MoveToLocation(location Location) (File, error)
 
 	// MoveToFile will move the current file to the provided file instance.
 	//
 	//   * If the file already exists, the contents will be overwritten with the current file's contents.
 	//   * The current instance of the file will be removed.
+	//   * MoveToFile will Close both the source and target Files which therefore can't be appended to without first
+	//     calling Seek() to move the cursor to the end of the file.
 	MoveToFile(file File) error
 
 	// Delete unlinks the File on the file system.
@@ -439,7 +453,7 @@ retry operation. The wrapped argument is called by the underlying VFS
 implementation.
 
 Ex:
-
+```go
     var retrier Retry = func(wrapped func() error) error {
       var ret error
       for i := 0; i < 5; i++ {
@@ -447,7 +461,7 @@ Ex:
       }
       return ret
     }
-
+```
 #### func  DefaultRetryer
 
 ```go
