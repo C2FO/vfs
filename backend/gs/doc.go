@@ -11,7 +11,7 @@ Rely on github.com/c2fo/vfs/backend
   )
 
   func UseFs() error {
-      fs, err := backend.Backend(gs.Scheme)
+      fs := backend.Backend(gs.Scheme)
       ...
   }
 

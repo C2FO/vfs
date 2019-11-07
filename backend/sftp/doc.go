@@ -11,7 +11,7 @@ Rely on github.com/c2fo/vfs/v5/backend
   )
 
   func UseFs() error {
-	  fs, err := backend.Backend(sftp.Scheme)
+	  fs := backend.Backend(sftp.Scheme)
 	  ...
   }
 
@@ -40,7 +40,7 @@ These methods are chainable:
   func DoSomething() {
 
 	  // cast if fs was created using backend.Backend().  Not necessary if created directly from sftp.NewFilesystem().
-	  fs, err := backend.Backend(sftp.Scheme)
+	  fs := backend.Backend(sftp.Scheme)
 	  fs = fs.(*sftp.Filesystem)
 
 	  // to pass specific client
