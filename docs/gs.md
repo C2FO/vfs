@@ -17,7 +17,7 @@ Rely on [github.com/c2fo/vfs/v5/backend](backend.md)
     )
 
     func UseFs() error {
-        fs, err := backend.Backend(gs.Scheme)
+        fs := backend.Backend(gs.Scheme)
         ...
     }
 ```
