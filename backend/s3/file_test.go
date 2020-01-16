@@ -330,7 +330,7 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 
 	// test non-scheme MoveToLocation
 	mockLocation := new(mocks.Location)
-	mockLocation.On("NewFile", mock.Anything).Return(&File{}, nil)
+	mockLocation.On("NewFile", mock.Anything).Return(&File{fileSystem: &FileSystem{client: s3Mock1}, bucket: "bucket", key: "/new/hello.txt"}, nil)
 
 	s3apiMock2 := &mocks.S3API{}
 	s3apiMock2.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
@@ -355,7 +355,7 @@ func (ts *fileTestSuite) TestMoveToLocationFail() {
 	// If CopyToLocation fails we need to ensure DeleteObject isn't called.
 	otherFs := new(mocks.FileSystem)
 	location := new(mocks.Location)
-	location.On("NewFile", mock.Anything).Return(&File{fileSystem: &fs}, nil)
+	location.On("NewFile", mock.Anything).Return(&File{fileSystem: &fs, bucket: "bucket", key: "/new/hello.txt"}, nil)
 
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(nil, errors.New("didn't copy, oh noes"))
 	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
