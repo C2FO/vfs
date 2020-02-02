@@ -204,6 +204,88 @@ func (ts *fileTestSuite) TestMoveToFile() {
 	s3apiMock.AssertExpectations(ts.T())
 }
 
+func (ts *fileTestSuite) TestGetCopyObject() {
+	type getCopyObjectTest struct {
+		key, expectedCopySource string
+	}
+	tests := []getCopyObjectTest{
+		{
+			key:                "/path/to/nospace.txt",
+			expectedCopySource: "/path/to/nospace.txt",
+		},
+		{
+			key:                "/path/to/has space.txt",
+			expectedCopySource: "/path/to/has%20space.txt",
+		},
+		{
+			key:                "/path/to/encoded%20space.txt",
+			expectedCopySource: "/path/to/encoded%20space.txt",
+		},
+		{
+			key:                "/path/to/has space/file.txt",
+			expectedCopySource: "/path/to/has%20space/file.txt",
+		},
+		{
+			key:                "/path/to/encoded%20space/file.txt",
+			expectedCopySource: "/path/to/encoded%20space/file.txt",
+		},
+	}
+
+	// ensure spaces are properly encoded (or not)
+	for _, t := range tests {
+
+		sourceFile := &File{
+			fileSystem: &FileSystem{
+				client:  s3apiMock,
+				options: defaultOptions,
+			},
+			bucket: "TestBucket",
+			key:    t.key,
+		}
+
+		targetFile := &File{
+			fileSystem: &FileSystem{
+				client:  s3apiMock,
+				options: defaultOptions,
+			},
+			bucket: "TestBucket",
+			key:    "source.txt",
+		}
+
+		// copy from t.key to /source.txt
+		actual, err := sourceFile.getCopyObjectInput(targetFile)
+		ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
+		ts.Equal("TestBucket"+t.expectedCopySource, *actual.CopySource)
+	}
+
+	// test that different options returns nil
+	// nil means we can't do s3-to-s3 copy so use TouchCopy
+	sourceFile := &File{
+		fileSystem: &FileSystem{
+			client:  s3apiMock,
+			options: defaultOptions,
+		},
+		bucket: "TestBucket",
+		key:    "/path/to/file.txt",
+	}
+
+	targetFile := &File{
+		fileSystem: &FileSystem{
+			client: s3apiMock,
+			options: Options{AccessKeyID: "xyz",
+				ACL: "SomeCannedACL",
+			},
+		},
+		bucket: "TestBucket",
+		key:    "/path/to/otherFile.txt",
+	}
+	actual, err := sourceFile.getCopyObjectInput(targetFile)
+	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
+	ts.Nil(actual, "copyOjbectInput should be nil (can't do s3-to-s3 copyObject)")
+
+	s3apiMock.AssertExpectations(ts.T())
+}
+
 func (ts *fileTestSuite) TestMoveToFile_CopyError() {
 	targetFile := &File{
 		fileSystem: &FileSystem{

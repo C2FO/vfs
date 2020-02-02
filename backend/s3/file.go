@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -311,15 +312,14 @@ func (f *File) getCopyObjectInput(targetFile *File) (*s3.CopyObjectInput, error)
 	fileOptions := f.Location().FileSystem().(*FileSystem).options
 	targetOptions := targetFile.Location().FileSystem().(*FileSystem).options
 
-
 	if fileOptions == nil && targetOptions == nil {
-		// if both opts are nil, we must be using them default credentials
+		// if both opts are nil, we must be using the default credentials
 		isSameAccount = true
 	} else {
 		opts, hasOptions := fileOptions.(Options)
 		targetOpts, hasTargetOptions := targetOptions.(Options)
 		if hasOptions {
-			//use source ACL (even if empty), unless target ACL is set
+			//use source ACL (even if empty), UNLESS target ACL is set
 			ACL = opts.ACL
 			if hasTargetOptions && targetOpts.ACL != "" {
 				ACL = targetOpts.ACL
@@ -335,8 +335,9 @@ func (f *File) getCopyObjectInput(targetFile *File) (*s3.CopyObjectInput, error)
 	// If both files use the same account, copy with native library. Otherwise, copy to disk
 	// first before pushing out to the target file's location.
 	if isSameAccount {
+		key := strings.Replace(f.key, "%", "%25", -1)
 		//parse so we can use url.EscapedPath()in SetCopySource()
-		u, err := url.Parse(path.Join(f.bucket, f.key))
+		u, err := url.Parse(path.Join(f.bucket, key))
 		if err != nil {
 			return nil, err
 		}
