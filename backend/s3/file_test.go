@@ -219,7 +219,7 @@ func (ts *fileTestSuite) TestGetCopyObject() {
 		},
 		{
 			key:                "/path/to/encoded%20space.txt",
-			expectedCopySource: "/path/to/encoded%20space.txt",
+			expectedCopySource: "/path/to/encoded%2520space.txt",
 		},
 		{
 			key:                "/path/to/has space/file.txt",
@@ -227,7 +227,7 @@ func (ts *fileTestSuite) TestGetCopyObject() {
 		},
 		{
 			key:                "/path/to/encoded%20space/file.txt",
-			expectedCopySource: "/path/to/encoded%20space/file.txt",
+			expectedCopySource: "/path/to/encoded%2520space/file.txt",
 		},
 	}
 
