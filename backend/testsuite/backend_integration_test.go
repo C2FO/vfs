@@ -736,6 +736,57 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 		s.NoError(err)
 		err = dstCopy2.Delete()
 		s.NoError(err)
+
+		// ensure that MoveToFile() works for files with spaces
+		type moveSpaceTest struct {
+			Path, Filename string
+		}
+		tests := []moveSpaceTest{
+			{Path: "file/", Filename: "has space.txt"},
+			{Path: "file/", Filename: "has%20encodedSpace.txt"},
+			{Path: "path has/", Filename: "space.txt"},
+			{Path: "path%20has/", Filename: "encodedSpace.txt"},
+		}
+
+		for _, test := range tests {
+			//setup src
+			srcSpaces, err := srcLoc.NewFile(path.Join(test.Path, test.Filename))
+			s.NoError(err)
+			b, err := srcSpaces.Write([]byte("something"))
+			s.NoError(err)
+			s.Equal(9, b, "byte count is correct")
+			err = srcSpaces.Close()
+			s.NoError(err)
+
+			testDestLoc, err := dstLoc.NewLocation(test.Path)
+			s.NoError(err)
+
+			dstSpaces, err := srcSpaces.MoveToLocation(testDestLoc)
+			s.NoError(err)
+			exists, err := dstSpaces.Exists()
+			s.True(exists, "dstSpaces should now exist")
+			exists, err = srcSpaces.Exists()
+			s.False(exists, "srcSpaces should no longer exist")
+			s.True(
+				strings.HasSuffix(dstSpaces.URI(), path.Join(test.Path, test.Filename)),
+				"destination file %s ends with source string for %s", dstSpaces.URI(), path.Join(test.Path, test.Filename),
+			)
+
+			newSrcSpaces, err := dstSpaces.MoveToLocation(srcSpaces.Location())
+			s.NoError(err)
+			exists, err = newSrcSpaces.Exists()
+			s.True(exists, "newSrcSpaces should now exist")
+			exists, err = dstSpaces.Exists()
+			s.False(exists, "dstSpaces should no longer exist")
+			hasSuffix := strings.HasSuffix(newSrcSpaces.URI(), path.Join(test.Path, test.Filename))
+			s.True(hasSuffix, "destination file %s ends with source string for %s", dstSpaces.URI(), path.Join(test.Path, test.Filename))
+
+			err = newSrcSpaces.Delete()
+			s.NoError(err)
+			exists, err = newSrcSpaces.Exists()
+			s.False(exists, "newSrcSpaces should now exist")
+		}
+
 	}
 
 	// Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.

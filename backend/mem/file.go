@@ -149,7 +149,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 
 	length := len(f.contents)
 
-	if num := int64(length) + int64(offset) + int64(whence); num == 0 {
+	if num := int64(length) + offset + int64(whence); num == 0 {
 		return 0, nil
 	}
 	switch whence {

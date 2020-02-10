@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path"
 	"time"
@@ -90,10 +91,24 @@ func (f *File) Location() vfs.Location {
 // CopyToFile puts the contents of File into the targetFile passed. Uses the S3 CopyObject
 // method if the target file is also on S3, otherwise uses io.Copy.
 func (f *File) CopyToFile(file vfs.File) error {
+	//if target is S3
 	if tf, ok := file.(*File); ok {
-		return f.copyFile(tf)
+		input, err := f.getCopyObjectInput(tf)
+		if err != nil {
+			return err
+		}
+		//if input is not nil, use it to natively copy object
+		if input != nil {
+			client, err := f.fileSystem.Client()
+			if err != nil {
+				return err
+			}
+			_, err = client.CopyObject(input)
+			return err
+		}
 	}
 
+	//otherwise use TouchCopy (io.Copy)
 	if err := utils.TouchCopy(file, f); err != nil {
 		return err
 	}
@@ -287,48 +302,58 @@ func (f *File) getHeadObject() (*s3.HeadObjectOutput, error) {
 	return client.HeadObject(headObjectInput)
 }
 
-// Copy from S3-to-S3 when accounts are the same between source and target and fall back to a
-// TouchCopy() call if they are different.
-func (f *File) copyFile(targetFile *File) error {
+// For copy from S3-to-S3 when credentials are the same between source and target, return *s3.CopyObjectInput or error
+func (f *File) getCopyObjectInput(targetFile *File) (*s3.CopyObjectInput, error) {
+	//first we must determine if we're using the same s3 credentials for source and target before doing a native copy
 	isSameAccount := false
-	hasACLOption := false
+	var ACL string
 
-	opts, hasOptions := f.fileSystem.options.(Options)
-	if hasOptions {
-		hasACLOption = opts.ACL != ""
-	}
+	fileOptions := f.Location().FileSystem().(*FileSystem).options
+	targetOptions := targetFile.Location().FileSystem().(*FileSystem).options
 
-	if hasOptions && targetFile.fileSystem.options != nil {
-		isSameAccount = opts.AccessKeyID == targetFile.fileSystem.options.(Options).AccessKeyID
+	if fileOptions == nil && targetOptions == nil {
+		// if both opts are nil, we must be using the default credentials
+		isSameAccount = true
+	} else {
+		opts, hasOptions := fileOptions.(Options)
+		targetOpts, hasTargetOptions := targetOptions.(Options)
+		if hasOptions {
+			//use source ACL (even if empty), UNLESS target ACL is set
+			ACL = opts.ACL
+			if hasTargetOptions && targetOpts.ACL != "" {
+				ACL = targetOpts.ACL
+			}
+			if hasTargetOptions {
+				// since accesskey and session token are mutually exclusive, one will be nil
+				// if both are the same, we're using the same credentials
+				isSameAccount = (opts.AccessKeyID == targetOpts.AccessKeyID) && (opts.SessionToken == targetOpts.SessionToken)
+			}
+		}
 	}
 
 	// If both files use the same account, copy with native library. Otherwise, copy to disk
 	// first before pushing out to the target file's location.
-	copyInput := new(s3.CopyObjectInput).
-		SetKey(targetFile.key).
-		SetBucket(targetFile.bucket).
-		SetCopySource(path.Join(f.bucket, f.key))
-
-	if hasOptions && hasACLOption {
-		copyInput.SetACL(opts.ACL)
-	}
-
 	if isSameAccount {
-		client, err := f.fileSystem.Client()
-		if err != nil {
-			return err
+		//PathEscape ensures we url-encode as required by the API, including double-encoding literals
+		copySourceKey := url.PathEscape(path.Join(f.bucket, f.key))
+
+		copyInput := new(s3.CopyObjectInput).
+			SetServerSideEncryption("AES256").
+			SetACL(ACL).
+			SetKey(targetFile.key).
+			SetBucket(targetFile.bucket).
+			SetCopySource(copySourceKey)
+
+		//validate copyInput
+		if err := copyInput.Validate(); err != nil {
+			return nil, err
 		}
 
-		_, err = client.CopyObject(copyInput)
-
-		return err
+		return copyInput, nil
 	}
 
-	if err := utils.TouchCopy(targetFile, f); err != nil {
-		return err
-	}
-
-	return nil
+	//return nil if credentials aren't the same
+	return nil, nil
 }
 
 func (f *File) checkTempFile() error {
