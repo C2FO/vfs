@@ -211,23 +211,23 @@ func (ts *fileTestSuite) TestGetCopyObject() {
 	tests := []getCopyObjectTest{
 		{
 			key:                "/path/to/nospace.txt",
-			expectedCopySource: "/path/to/nospace.txt",
+			expectedCopySource: "%2Fpath%2Fto%2Fnospace.txt",
 		},
 		{
 			key:                "/path/to/has space.txt",
-			expectedCopySource: "/path/to/has%20space.txt",
+			expectedCopySource: "%2Fpath%2Fto%2Fhas%20space.txt",
 		},
 		{
 			key:                "/path/to/encoded%20space.txt",
-			expectedCopySource: "/path/to/encoded%2520space.txt",
+			expectedCopySource: "%2Fpath%2Fto%2Fencoded%2520space.txt",
 		},
 		{
 			key:                "/path/to/has space/file.txt",
-			expectedCopySource: "/path/to/has%20space/file.txt",
+			expectedCopySource: "%2Fpath%2Fto%2Fhas%20space%2Ffile.txt",
 		},
 		{
 			key:                "/path/to/encoded%20space/file.txt",
-			expectedCopySource: "/path/to/encoded%2520space/file.txt",
+			expectedCopySource: "%2Fpath%2Fto%2Fencoded%2520space%2Ffile.txt",
 		},
 	}
 
