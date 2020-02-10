@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -335,20 +334,22 @@ func (f *File) getCopyObjectInput(targetFile *File) (*s3.CopyObjectInput, error)
 	// If both files use the same account, copy with native library. Otherwise, copy to disk
 	// first before pushing out to the target file's location.
 	if isSameAccount {
-		key := strings.Replace(f.key, "%", "%25", -1)
-		//parse so we can use url.EscapedPath()in SetCopySource()
-		u, err := url.Parse(path.Join(f.bucket, key))
-		if err != nil {
-			return nil, err
-		}
+		//PathEscape ensures we url-encode as required by the API, including double-encoding literals
+		copySourceKey := url.PathEscape(path.Join(f.bucket, f.key))
+
 		copyInput := new(s3.CopyObjectInput).
 			SetServerSideEncryption("AES256").
 			SetACL(ACL).
 			SetKey(targetFile.key).
 			SetBucket(targetFile.bucket).
-			SetCopySource(u.EscapedPath())
+			SetCopySource(copySourceKey)
 
-		return copyInput, copyInput.Validate()
+		//validate copyInput
+		if err := copyInput.Validate(); err != nil {
+			return nil, err
+		}
+
+		return copyInput, nil
 	}
 
 	//return nil if credentials aren't the same
