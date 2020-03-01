@@ -2,14 +2,12 @@ package os
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"os"
 	"path"
 	"testing"
-	"time"
-
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v5"
 	"github.com/c2fo/vfs/v5/mocks"
@@ -93,7 +91,6 @@ func (s *osFileTest) TestTouch() {
 	//capture last_modified
 	firstModTime, err := testfile.LastModified()
 	s.NoError(err)
-	time.Sleep(500 * time.Millisecond)
 
 	//touch again
 	err = testfile.Touch()
@@ -108,9 +105,9 @@ func (s *osFileTest) TestTouch() {
 	nextModTime, err := testfile.LastModified()
 	s.NoError(err)
 
-	fmt.Println(firstModTime.String())
-	fmt.Println(nextModTime.String())
-	s.True(firstModTime.Before(*nextModTime), "Last Modified was updated")
+	fmt.Println(firstModTime.UnixNano())
+	fmt.Println(nextModTime.UnixNano())
+	s.True(firstModTime.UnixNano() < nextModTime.UnixNano() , "Last Modified was updated")
 }
 
 func (s *osFileTest) TestOpenFile() {
