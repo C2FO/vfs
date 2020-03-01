@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/c2fo/vfs/v5"
 	"github.com/c2fo/vfs/v5/mocks"
@@ -91,6 +92,8 @@ func (s *osFileTest) TestTouch() {
 	//capture last_modified
 	firstModTime, err := testfile.LastModified()
 	s.NoError(err)
+	//wait one second
+	time.Sleep(1 * time.Second)
 
 	//touch again
 	err = testfile.Touch()
@@ -105,9 +108,7 @@ func (s *osFileTest) TestTouch() {
 	nextModTime, err := testfile.LastModified()
 	s.NoError(err)
 
-	fmt.Println(firstModTime.UnixNano())
-	fmt.Println(nextModTime.UnixNano())
-	s.True(firstModTime.UnixNano() < nextModTime.UnixNano() , "Last Modified was updated")
+	s.True(firstModTime.Before(*nextModTime), "Last Modified was updated")
 }
 
 func (s *osFileTest) TestOpenFile() {
