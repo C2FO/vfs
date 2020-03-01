@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -92,6 +93,7 @@ func (s *osFileTest) TestTouch() {
 	//capture last_modified
 	firstModTime, err := testfile.LastModified()
 	s.NoError(err)
+	time.Sleep(500 * time.Millisecond)
 
 	//touch again
 	err = testfile.Touch()
@@ -105,6 +107,9 @@ func (s *osFileTest) TestTouch() {
 	//LastModified should be later than previous LastModified
 	nextModTime, err := testfile.LastModified()
 	s.NoError(err)
+
+	fmt.Println(firstModTime.String())
+	fmt.Println(nextModTime.String())
 	s.True(firstModTime.Before(*nextModTime), "Last Modified was updated")
 }
 
