@@ -848,7 +848,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 	_, err = srcFile.LastModified()
 	s.Error(err, "expected error because file does not exist")
 
-	seeked, err := srcFile.Seek(1, 2)
+	seeked, err := srcFile.Seek(-1, 2)
 	s.Error(err, "expected error because file does not exist")
 	s.Equal(int64(0x0), seeked)
 

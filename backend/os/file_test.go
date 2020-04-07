@@ -1,6 +1,7 @@
 package os
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -106,6 +107,7 @@ func (s *osFileTest) TestTouch() {
 	nextModTime, err := testfile.LastModified()
 	s.NoError(err)
 	s.True(firstModTime.Before(*nextModTime), "Last Modified was updated")
+	s.NoError(testfile.Close())
 }
 
 func (s *osFileTest) TestOpenFile() {
@@ -130,15 +132,35 @@ func (s *osFileTest) TestRead() {
 	s.NoError(err)
 	b, err := f.Write([]byte("blah"))
 	s.NoError(err)
-	s.Equal(int(4), b)
+	s.Equal(4, b)
 	s.NoError(f.Close())
 
 	//read from file
 	data = make([]byte, 4)
 	b, err = f.Read(data)
 	s.NoError(err)
-	s.Equal(int(4), b)
+	s.Equal(4, b)
 	s.Equal("blah", string(data))
+	s.NoError(f.Close())
+
+	//setup file for err out of opening
+	f, err = s.tmploc.NewFile("test_files/readFileFail.txt")
+	s.NoError(err)
+	f.(*File).useTempFile = true
+	f.(*File).fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("Bad Opener") }
+	data = make([]byte, 4)
+	b, err = f.Read(data)
+	s.Error(err)
+
+	f.(*File).fileOpener = nil
+	b, err = f.Write([]byte("blah"))
+	s.NoError(err)
+	s.Equal(4, b)
+	s.NoError(f.Close())
+	f.(*File).fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("Bad Opener") }
+	data = make([]byte, 4)
+	b, err = f.Read(data)
+	s.Error(err)
 }
 
 func (s *osFileTest) TestSeek() {
@@ -149,6 +171,15 @@ func (s *osFileTest) TestSeek() {
 	_, rerr := s.testFile.Read(data)
 	s.NoError(rerr, "read error not expected")
 	s.Equal(expectedText, string(data))
+	s.NoError(s.testFile.Close())
+
+	//setup file for err out of opening
+	f, err := s.tmploc.NewFile("test_files/seekFileFail.txt")
+	s.NoError(err)
+	f.(*File).useTempFile = true
+	f.(*File).fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("Bad Opener") }
+	_, err = f.Seek(0, 4)
+	s.Error(err)
 }
 
 func (s *osFileTest) TestCopyToLocation() {
@@ -350,7 +381,6 @@ func (s *osFileTest) TestMoveToFile() {
 	s.NoError(rerr, "read error not expected")
 	cErr := file2.Close()
 	s.NoError(cErr, "close error not expected")
-
 	s.Equal(text, string(data))
 
 	// test non-scheme MoveToFile
@@ -404,6 +434,133 @@ func (s *osFileTest) TestWrite() {
 	found2, eErr2 := file.Exists()
 	s.NoError(eErr2, "exists error not expected")
 	s.False(found2)
+
+	//setup file for err out of opening
+	f, err := s.tmploc.NewFile("test_files/writeFileFail.txt")
+	s.NoError(err)
+	f.(*File).useTempFile = true
+	f.(*File).fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("Bad Opener") }
+	data = make([]byte, 4)
+	_, err = f.Write(data)
+	s.Error(err)
+}
+
+func (s *osFileTest) TestCursor() {
+	file, err := s.tmploc.NewFile("test_files/originalFile.txt")
+	s.NoError(err)
+
+	expectedText := "mary had \na little lamb\n"
+	write, werr := file.Write([]byte(expectedText))
+	s.NoError(werr, "write error not expected")
+	s.Equal(24, write)
+	s.NoError(file.Close())
+
+	_, serr := file.Seek(5, 0) // cursor 5 - opens fd to orig file
+	s.Equal(int64(5), file.(*File).cursorPos)
+	s.NoError(serr)
+
+	data := make([]byte, 3)
+	sz, rerr := file.Read(data) // cursor 8 - orig file - data: "had"
+	s.NoError(rerr)
+	s.Equal(int64(8), file.(*File).cursorPos)
+	s.Equal("had", string(data)) // orig file contents = "had"
+
+	negsz := int64(-sz)
+	_, serr2 := file.Seek(negsz, 1) // cursor 5 - orig file
+	s.Equal(int64(5), file.(*File).cursorPos)
+	s.NoError(serr2)
+
+	sz, werr = file.Write([]byte("has")) // cursor 8 - tempfile copy of orig - write on tempfile has occurred
+	s.NoError(werr)
+	s.Equal(int64(8), file.(*File).cursorPos)
+
+	_, serr = file.Seek(0, 0) // cursor 0 - in temp file
+	s.Equal(int64(0), file.(*File).cursorPos)
+	s.NoError(serr)
+
+	data = make([]byte, 3)
+	sz, rerr = file.Read(data)
+	s.NoError(rerr)
+	s.Equal(int64(3), file.(*File).cursorPos)
+	s.Equal("has", string(data)) // tempFile contents = "has"
+
+	s.NoError(file.Close()) // moves tempfile containing "has" over original file
+
+	final := make([]byte, 3)
+	rd, err := file.Read(final)
+	s.NoError(err)
+	s.Equal(3, rd)
+	s.Equal("has", string(final))
+	s.NoError(file.Close())
+
+	// if a file exists and we overwrite with a smaller # of text, then it isn't completely overwritten
+	//	//somefile.txt contains "the quick brown"
+	file, err = s.tmploc.NewFile("test_files/someFile.txt")
+	s.NoError(err)
+
+	expectedText = "the quick brown"
+	write, werr = file.Write([]byte(expectedText))
+	s.NoError(werr, "write error not expected")
+	s.Equal(15, write)
+
+	s.NoError(file.Close())
+
+	overwrite, err := file.Write([]byte("hello")) // cursor 5 of tempfile
+	s.NoError(err)
+	s.Equal(int64(5), file.(*File).cursorPos)
+	s.Equal(5, overwrite)
+
+	data = make([]byte, 5)
+	_, serr = file.Seek(0, 0) // cursor 0 of tempfile
+	s.NoError(serr)
+
+	_, rerr = file.Read(data) // cursor 5 of tempfile - data: "hello"
+	s.NoError(rerr)
+	s.Equal("hello", string(data))
+
+	data = make([]byte, 3)
+	sought, serr := file.Seek(-3, 2) // cursor 3 from end of tempfile
+	s.NoError(serr)
+	s.Equal(int64(2), sought) // seek returns position relative to beginning of file
+
+	rd, rerr = file.Read(data) // cursor 0 from end of tempfile - data: "llo"
+	s.NoError(rerr)
+	s.Equal(3, rd)
+	s.Equal("llo", string(data))
+	s.Equal(int64(5), file.(*File).cursorPos)
+
+	_, serr = file.Seek(0, 0)
+	s.NoError(serr)
+	final = make([]byte, 5)
+	rd, err = file.Read(final)
+	s.NoError(err)
+	s.Equal(5, rd)
+	s.Equal("hello", string(final))
+	s.NoError(file.Close()) // moves tempfile containing "hello" over somefile.txt
+}
+
+func (s *osFileTest) TestCursorErrs() {
+	noFile, err := s.tmploc.NewFile("test_files/nonet.txt")
+	s.NoError(err)
+	data := make([]byte, 10)
+	_, err = noFile.Read(data)
+	s.Error(err)
+	s.NoError(noFile.Close())
+
+	_, err = noFile.Seek(10, 10)
+	s.Error(err)
+
+	_, err = noFile.Seek(-10, 2)
+	s.Error(err)
+	s.NoError(noFile.Close())
+
+	noFile.(*File).fileOpener = nil
+	noFile.(*File).useTempFile = false
+	b, err := noFile.Write([]byte("blah"))
+	s.NoError(err)
+	s.Equal(4, b)
+	noFile.(*File).fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("Bad Opener") }
+	s.Error(noFile.Close())
 }
 
 func (s *osFileTest) TestLastModified() {
