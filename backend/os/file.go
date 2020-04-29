@@ -1,8 +1,8 @@
 package os
 
 import (
-	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -12,11 +12,17 @@ import (
 	"github.com/c2fo/vfs/v5/utils"
 )
 
+type opener func(filePath string) (*os.File, error)
+
 //File implements vfs.File interface for os fs.
 type File struct {
-	file     *os.File
-	name     string
-	location vfs.Location
+	file        *os.File
+	name        string
+	location    vfs.Location
+	cursorPos   int64
+	tempFile    *os.File
+	useTempFile bool
+	fileOpener  opener
 }
 
 // Delete unlinks the file returning any error or nil.
@@ -61,6 +67,28 @@ func (f *File) Size() (uint64, error) {
 
 // Close implements the io.Closer interface, closing the underlying *os.File. its an error, if any.
 func (f *File) Close() error {
+	// check if temp file
+	// close temp file
+	// os.Rename() (replace) temp file to file
+	f.useTempFile = false
+	f.cursorPos = 0
+	if f.tempFile != nil {
+		err := f.tempFile.Close()
+		if err != nil {
+			return err
+		}
+
+		// get original file, open it if it has not been opened
+		finalFile, err := f.getInternalFile()
+		if err != nil {
+			return err
+		}
+		err = os.Rename(f.tempFile.Name(), finalFile.Name())
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		f.tempFile = nil
+	}
 	if f.file == nil {
 		// Do nothing on files that were never referenced
 		return nil
@@ -75,37 +103,46 @@ func (f *File) Close() error {
 
 // Read implements the io.Reader interface.  It returns the bytes read and an error, if any.
 func (f *File) Read(p []byte) (int, error) {
-	if exists, err := f.Exists(); err != nil {
-		return 0, err
-	} else if !exists {
-		return 0, fmt.Errorf("failed to read. File does not exist at %s", f)
-	}
 
-	file, err := f.openFile()
+	// if we have not written to this file, ensure the original file exists
+	if !f.useTempFile {
+		if exists, err := f.Exists(); err != nil {
+			return 0, err
+		} else if !exists {
+			return 0, fmt.Errorf("failed to read. File does not exist at %s", f)
+		}
+	}
+	// get the file we need, either tempFile or original file
+	useFile, err := f.getInternalFile()
 	if err != nil {
 		return 0, err
 	}
 
-	return file.Read(p)
+	read, err := useFile.Read(p)
+	if err != nil {
+		return read, err
+	}
+
+	f.cursorPos += int64(read)
+
+	return read, nil
 }
 
-//Seek implements the io.Seeker interface.  It accepts an offset and "whench" where 0 means relative to the origin of
+//Seek implements the io.Seeker interface.  It accepts an offset and "whence" where 0 means relative to the origin of
 // the file, 1 means relative to the current offset, and 2 means relative to the end.  It returns the new offset and
 // an error, if any.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
-
-	if exists, err := f.Exists(); !exists {
-		if err != nil {
-			return 0, err
-		}
-		return 0, errors.New("file does not exist")
-	}
-	file, err := f.openFile()
+	useFile, err := f.getInternalFile()
 	if err != nil {
 		return 0, err
 	}
 
-	return file.Seek(offset, whence)
+	f.cursorPos, err = useFile.Seek(offset, whence)
+	if err != nil {
+		return 0, err
+	}
+
+	return f.cursorPos, err
 }
 
 // Exists true if the file exists on the file system, otherwise false, and an error, if any.
@@ -125,11 +162,20 @@ func (f *File) Exists() (bool, error) {
 
 //Write implements the io.Writer interface.  It accepts a slice of bytes and returns the number of bytes written and an error, if any.
 func (f *File) Write(p []byte) (n int, err error) {
-	file, err := f.openFile()
+	f.useTempFile = true
+
+	useFile, err := f.getInternalFile()
 	if err != nil {
 		return 0, err
 	}
-	return file.Write(p)
+	write, err := useFile.Write(p)
+	if err != nil {
+		return 0, err
+	}
+	offset := int64(write)
+	f.cursorPos += offset
+
+	return write, err
 }
 
 // Location returns the underlying os.Location.
@@ -254,14 +300,30 @@ func (f *File) openFile() (*os.File, error) {
 		return f.file, nil
 	}
 
+	// replace default file opener, is set in struct
+	openFunc := openOSFile
+	if f.fileOpener != nil {
+		openFunc = f.fileOpener
+	}
+
+	file, err := openFunc(f.Path())
+	if err != nil {
+		return nil, err
+	}
+	f.file = file
+
+	return file, nil
+}
+
+func openOSFile(filePath string) (*os.File, error) {
+
 	// Ensure the path exists before opening the file, NoOp if dir already exists.
 	var fileMode os.FileMode = 0666
-	if err := os.MkdirAll(f.Location().Path(), os.ModeDir|0777); err != nil {
+	if err := os.MkdirAll(path.Dir(filePath), os.ModeDir|0777); err != nil {
 		return nil, err
 	}
 
-	file, err := os.OpenFile(f.Path(), os.O_RDWR|os.O_CREATE, fileMode)
-	f.file = file
+	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, fileMode)
 	return file, err
 }
 
@@ -274,4 +336,66 @@ func ensureDir(location vfs.Location) error {
 		}
 	}
 	return nil
+}
+
+// If cursor is not (0,0) will copy original file to a temp file,
+//opening its file descriptor to the current cursor position.
+//If cursor is (0,0), just begin writing to new temp file.
+//No need to copy original first.
+func (f *File) getInternalFile() (*os.File, error) {
+	// this is the use case of vfs.file
+	if f.useTempFile == false {
+		if f.file == nil {
+
+			// replace default file opener, is set in struct
+			openFunc := openOSFile
+			if f.fileOpener != nil {
+				openFunc = f.fileOpener
+			}
+
+			finalFile, err := openFunc(f.Path())
+			if err != nil {
+				return nil, err
+			}
+			f.file = finalFile
+		}
+		return f.file, nil
+	}
+	// this is the use case of vfs.tempFile
+	if f.tempFile == nil {
+		localTempFile, err := f.copyToLocalTempReader()
+		if err != nil {
+			return nil, err
+		}
+		f.tempFile = localTempFile
+	}
+
+	return f.tempFile, nil
+}
+
+func (f *File) copyToLocalTempReader() (*os.File, error) {
+	tmpFile, err := ioutil.TempFile("", fmt.Sprintf("%s.%d", f.Name(), time.Now().UnixNano()))
+	if err != nil {
+		return nil, err
+	}
+
+	openFunc := openOSFile
+	if f.fileOpener != nil {
+		openFunc = f.fileOpener
+	}
+
+	if _, err = openFunc(f.Path()); err != nil {
+		return nil, err
+	}
+	// todo: editing in place logic/appending logic (see issue #42)
+	//if _, err := io.Copy(tmpFile, f.file); err != nil {
+	//	return nil, err
+	//}
+	//
+	//// Return cursor to the beginning of the new temp file
+	//if _, err := tmpFile.Seek(f.cursorPos, 0); err != nil {
+	//	return nil, err
+	//}
+
+	return tmpFile, nil
 }

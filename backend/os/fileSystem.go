@@ -15,7 +15,7 @@ const name = "os"
 // FileSystem implements vfs.Filesystem for the OS file system.
 type FileSystem struct{}
 
-// Retry will return a retrier provided via options, or a no-op if none is provided.
+// Retry will return a retriever provided via options, or a no-op if none is provided.
 func (fs *FileSystem) Retry() vfs.Retry {
 	return vfs.DefaultRetryer()
 }
