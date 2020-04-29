@@ -387,7 +387,7 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 	if _, err = openFunc(f.Path()); err != nil {
 		return nil, err
 	}
-	// todo: editing in place logic/appending logic
+	// todo: editing in place logic/appending logic (see issue #42)
 	//if _, err := io.Copy(tmpFile, f.file); err != nil {
 	//	return nil, err
 	//}
