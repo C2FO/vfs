@@ -76,7 +76,7 @@ func (f *File) Touch() error {
 	}
 
 	if !exists {
-		file, err := f.openFile(os.O_RDWR | os.O_CREATE)
+		file, err := f.openFile(os.O_WRONLY | os.O_CREATE)
 		if err != nil {
 			return err
 		}
@@ -252,7 +252,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 // Write calls the underlying sftp.File Write.
 func (f *File) Write(data []byte) (res int, err error) {
 
-	sftpfile, err := f.openFile(os.O_RDWR | os.O_CREATE)
+	sftpfile, err := f.openFile(os.O_WRONLY | os.O_CREATE)
 	if err != nil {
 		return 0, err
 	}
