@@ -113,10 +113,10 @@ User may only be set in the [URI authority](https://tools.ietf.org/html/rfc3986#
      __/             ___/____  port
     /  \            /        \ /\
     sftp://someuser@server.com:22/path/to/file.txt
-    	   \____________________/ \______________/
-    	   \______/       \               \
-    		  /     authority section    path
-    	 username       (Volume)
+           \____________________/ \______________/
+           \______/       \               \
+               /     authority section    path
+         username       (Volume)
 
 sftp vfs backend accepts either a password or an ssh key, with or without a
 passphrase.
@@ -130,7 +130,7 @@ SSH keys may be passed via [Options](#type-options).KeyFilePath and (optionally)
 [Options](#type-options).KeyPassphrase. They can also be passed via environmental variables
 `VFS_SFTP_KEYFILE` and `VFS_SFTP_KEYFILE_PASSPHRASE`, respectively.
 
-_Note that as of Go 1.12, OpenSSH private key format is not supported when encrypted
+Note that as of Go 1.12, OpenSSH private key format is not supported when encrypted
 (with passphrase). See https://github.com/golang/go/issues/18692 To force
 creation of PEM format(instead of OPENSSH format), use `ssh-keygen -m PEM`_
 
