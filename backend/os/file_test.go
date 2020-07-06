@@ -625,6 +625,21 @@ func (s *osFileTest) TestStringer() {
 	s.Equal(fmt.Sprintf("file://%s", path.Join(s.tmploc.Path(), "some/file/test.txt")), file.String())
 }
 
+func (s *osFileTest) TestLocationRightAfterChangeDir() {
+	file, err := s.tmploc.NewFile("chdTest.txt")
+	s.NoError(err)
+	chDir := "someDir/"
+
+	loc := file.Location()
+	s.NotContains(loc.Path(), "someDir/", "location should not contain 'someDir/'")
+
+	loc.ChangeDir(chDir)
+	s.Contains(loc.Path(), "someDir/", "location now should contain 'someDir/'")
+
+	// file location shouldn't be affected by ChangeDir() on Location
+	s.NotContains(file.Location().Path(), "someDir/", "file location should NOT contain 'someDir/'")
+}
+
 func TestOSFile(t *testing.T) {
 	suite.Run(t, new(osFileTest))
 	_ = os.Remove("test_files/new.txt")

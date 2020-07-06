@@ -26,9 +26,7 @@ func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	fileName := path.Base(name)
-	location := Location{fileSystem: &FileSystem{}, name: utils.EnsureTrailingSlash(path.Dir(name))}
-	return &File{name: fileName, location: &location}, nil
+	return &File{name: name, filesystem: fs}, nil
 }
 
 // NewLocation function returns the os implementation of vfs.Location.

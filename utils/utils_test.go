@@ -1,19 +1,18 @@
 package utils_test
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path"
 	"testing"
 
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
+
 	_os "github.com/c2fo/vfs/v5/backend/os"
 	"github.com/c2fo/vfs/v5/mocks"
 	"github.com/c2fo/vfs/v5/utils"
-
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/suite"
 )
 
 /**********************************
@@ -494,7 +493,6 @@ func (s *utilsTest) TestTouchCopy() {
 	s.Equal(int64(0), byteCount, "should be no content")
 
 	// writer file should not exist
-	fmt.Printf("%s\n", writer.Path())
 	_, err = os.Stat(writer.Path())
 	s.Error(err, "should have failed stat")
 	s.True(os.IsNotExist(err), "should be true: not exists")
