@@ -2,7 +2,6 @@ package s3
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -455,7 +454,7 @@ func waitUntilFileExists(file vfs.File, retries int) error {
 		//check for existing file
 		found, err := file.Exists()
 		if err != nil {
-			return errors.New("unable to check for file on S3")
+			return fmt.Errorf("unable to perform S3 exists on file %s: %s", file, err.Error())
 		}
 
 		if found {
