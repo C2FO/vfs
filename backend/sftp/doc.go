@@ -92,14 +92,14 @@ USERNAME
 
 User may only be set in the URI authority section (Volume in vfs parlance).
 
-	 scheme             host
-	 __/             ___/____  port
-	/  \            /        \ /\
-	sftp://someuser@server.com:22/path/to/file.txt
-		   \____________________/ \______________/
-		   \______/       \               \
-			  /     authority section    path
-		 username       (Volume)
+     scheme             host
+     __/             ___/____  port
+    /  \            /        \ /\
+    sftp://someuser@server.com:22/path/to/file.txt
+           \____________________/ \______________/
+           \______/       \               \
+               /     authority section    path
+         username       (Volume)
 
 sftp vfs backend accepts either a password or an ssh key, with or without a passphrase.
 

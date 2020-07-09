@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.5.4] - 2020-07-06
+### Fixed
+- fixes #21 - OS file.Location().ChangeDir(something/) should not affect location
+- fixes #44 - make S3 waitUntilFileExists Exists error more descriptive of root error
+- fixes #45 - fix ASCII diagram alignment for SFTP doc
+### Added
+- Improved test coverage for os.FileSystem
+
 ## [5.5.3] - 2020-05-11
 ### Fixed
 - Addresses an issue where writes/touch calls on the vfs.File backend did not work properly on AWS-hosted SFTP environments. (See https://github.com/pkg/sftp/pull/310/files)

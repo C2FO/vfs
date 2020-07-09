@@ -18,7 +18,7 @@ type opener func(filePath string) (*os.File, error)
 type File struct {
 	file        *os.File
 	name        string
-	location    vfs.Location
+	filesystem  *FileSystem
 	cursorPos   int64
 	tempFile    *os.File
 	useTempFile bool
@@ -47,7 +47,7 @@ func (f *File) LastModified() (*time.Time, error) {
 
 // Name returns the full name of the File relative to Location.Name().
 func (f *File) Name() string {
-	return f.name
+	return path.Base(f.name)
 }
 
 // Path returns the the path of the File relative to Location.Name().
@@ -180,7 +180,10 @@ func (f *File) Write(p []byte) (n int, err error) {
 
 // Location returns the underlying os.Location.
 func (f *File) Location() vfs.Location {
-	return f.location
+	return &Location{
+		fileSystem: f.filesystem,
+		name:       utils.EnsureTrailingSlash(path.Dir(f.name)),
+	}
 }
 
 // MoveToFile move a file. It accepts a target vfs.File and returns an error, if any.
