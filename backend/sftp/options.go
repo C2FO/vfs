@@ -20,11 +20,11 @@ const systemWideKnownHosts = "/etc/ssh/ssh_known_hosts"
 
 // Options holds sftp-specific options.  Currently only client options are used.
 type Options struct {
-	Password           string              `json:"accessKeyId,omitempty"`    // env var VFS_SFTP_PASSWORD
+	Password           string              `json:"password,omitempty"`       // env var VFS_SFTP_PASSWORD
 	KeyFilePath        string              `json:"keyFilePath,omitempty"`    // env var VFS_SFTP_KEYFILE
-	KeyPassphrase      string              `json:"KeyPassphrase,omitempty"`  // env var VFS_SFTP_KEYFILE_PASSPHRASE
-	KnownHostsFile     string              `json:"KnownHostsFile,omitempty"` // env var VFS_SFTP_KNOWN_HOSTS_FILE
-	KnownHostsString   string              `json:"KnownHostsString,omitempty"`
+	KeyPassphrase      string              `json:"keyPassphrase,omitempty"`  // env var VFS_SFTP_KEYFILE_PASSPHRASE
+	KnownHostsFile     string              `json:"knownHostsFile,omitempty"` // env var VFS_SFTP_KNOWN_HOSTS_FILE
+	KnownHostsString   string              `json:"knownHostsString,omitempty"`
 	KnownHostsCallback ssh.HostKeyCallback //env var VFS_SFTP_INSECURE_KNOWN_HOSTS
 	Retry              vfs.Retry
 	MaxRetries         int
@@ -67,12 +67,7 @@ func getClient(authority utils.Authority, opts Options) (*_sftp.Client, error) {
 		return nil, err
 	}
 
-	client, err := _sftp.NewClient(sshClient)
-	if err != nil {
-		return nil, err
-	}
-
-	return client, nil
+	return _sftp.NewClient(sshClient)
 }
 
 // getHostKeyCallback gets host key callback for all known_hosts files
@@ -133,12 +128,7 @@ func getHostKeyCallback(opts Options) (ssh.HostKeyCallback, error) {
 	}
 
 	// get host key callback for all known_hosts files
-	cb, err := knownhosts.New(knownHostsFiles...)
-	if err != nil {
-		return nil, err
-	}
-
-	return cb, nil
+	return knownhosts.New(knownHostsFiles...)
 }
 
 func findHomeSystemKnownHosts(knownHostsFiles []string) ([]string, error) {

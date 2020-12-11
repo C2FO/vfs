@@ -515,11 +515,11 @@ Volume returns the [Authority](utils.md#type-authority) the location is containe
 
 ```go
 type Options struct {
-	Password           string              `json:"accessKeyId,omitempty"`    // env var VFS_SFTP_PASSWORD
+	Password           string              `json:"password,omitempty"`       // env var VFS_SFTP_PASSWORD
 	KeyFilePath        string              `json:"keyFilePath,omitempty"`    // env var VFS_SFTP_KEYFILE
-	KeyPassphrase      string              `json:"KeyPassphrase,omitempty"`  // env var VFS_SFTP_KEYFILE_PASSPHRASE
-	KnownHostsFile     string              `json:"KnownHostsFile,omitempty"` // env var VFS_SFTP_KNOWN_HOSTS_FILE
-	KnownHostsString   string              `json:"KnownHostsString,omitempty"`
+	KeyPassphrase      string              `json:"keyPassphrase,omitempty"`  // env var VFS_SFTP_KEYFILE_PASSPHRASE
+	KnownHostsFile     string              `json:"knownHostsFile,omitempty"` // env var VFS_SFTP_KNOWN_HOSTS_FILE
+	KnownHostsString   string              `json:"knownHostsString,omitempty"`
 	KnownHostsCallback ssh.HostKeyCallback //env var VFS_SFTP_INSECURE_KNOWN_HOSTS
 	Retry              vfs.Retry
 	MaxRetries         int

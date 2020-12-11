@@ -1,6 +1,7 @@
 package sftp
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path"
@@ -424,6 +425,26 @@ func (o *optionsSuite) TestGetClient() {
 			o.NoError(err, t.message)
 		}
 	}
+}
+
+func (o *optionsSuite) TestMarshalOptions() {
+	// address bug #49 where json struct tag was misnamed
+	pw := "secret1234"
+	kh := "/path/to/known_hosts"
+
+	opts := map[string]interface{}{
+		"password":    pw,
+		"keyFilePath": kh,
+	}
+
+	raw, err := json.Marshal(opts)
+	o.Nil(err)
+	optStruct := &Options{}
+	err = json.Unmarshal(raw, optStruct)
+	o.Nil(err)
+
+	o.Equal(kh, optStruct.KeyFilePath, "KeyFilePath check")
+	o.Equal(pw, optStruct.Password, "Password check")
 }
 
 func TestUtils(t *testing.T) {
