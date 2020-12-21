@@ -764,8 +764,10 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 			dstSpaces, err := srcSpaces.MoveToLocation(testDestLoc)
 			s.NoError(err)
 			exists, err := dstSpaces.Exists()
+			s.NoError(err)
 			s.True(exists, "dstSpaces should now exist")
 			exists, err = srcSpaces.Exists()
+			s.NoError(err)
 			s.False(exists, "srcSpaces should no longer exist")
 			s.True(
 				strings.HasSuffix(dstSpaces.URI(), path.Join(test.Path, test.Filename)),
@@ -775,8 +777,10 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 			newSrcSpaces, err := dstSpaces.MoveToLocation(srcSpaces.Location())
 			s.NoError(err)
 			exists, err = newSrcSpaces.Exists()
+			s.NoError(err)
 			s.True(exists, "newSrcSpaces should now exist")
 			exists, err = dstSpaces.Exists()
+			s.NoError(err)
 			s.False(exists, "dstSpaces should no longer exist")
 			hasSuffix := strings.HasSuffix(newSrcSpaces.URI(), path.Join(test.Path, test.Filename))
 			s.True(hasSuffix, "destination file %s ends with source string for %s", dstSpaces.URI(), path.Join(test.Path, test.Filename))
@@ -784,6 +788,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 			err = newSrcSpaces.Delete()
 			s.NoError(err)
 			exists, err = newSrcSpaces.Exists()
+			s.NoError(err)
 			s.False(exists, "newSrcSpaces should now exist")
 		}
 

@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- fixed failing test due to CI asking for mod tidy.
+- Fixed ineffassign failures keeping vfs from achieving 100% in goreportcard.
+
+### Security
+- Upgraded dependencies.  Required regen of S3 API mock due to a couple new methods.
+  SSH returns a different error text since Go 1.14 (only affects 1 test).
 
 ## [5.5.5] - 2020-12-11
 ### Fixed
