@@ -102,7 +102,7 @@ func (o *optionsSuite) TestGetKeyFile() {
 			passphrase: o.keyFiles.passphrase,
 			hasError:   false,
 			errMessage: "",
-			message:    "key should parse with passphrasde",
+			message:    "key should parse with passphrase",
 		},
 		{
 			keyfile:    o.keyFiles.SSHPrivateKeyNoPassphrase,
@@ -122,15 +122,18 @@ func (o *optionsSuite) TestGetKeyFile() {
 			keyfile:    o.keyFiles.SSHPrivateKey,
 			passphrase: "",
 			hasError:   true,
-			errMessage: "ssh: cannot decode encrypted private keys",
-			message:    "missing passphrase",
+			errMessage: "ssh: this private key is passphrase protected",
+			// error message changed from "ssh: cannot decode encrypted private keys" to
+			// "ssh: this private key is passphrase protected"
+			// in https://github.com/golang/crypto/commit/0a08dada0ff98d02f3864a23ae8d27cb8fba5303
+			message: "missing passphrase",
 		},
 		{
 			keyfile:    o.keyFiles.SSHPrivateKey,
 			passphrase: "badpass",
 			hasError:   true,
 			errMessage: "x509: decryption password incorrect",
-			message:    "missing passphrase",
+			message:    "bad passphrase",
 		},
 	}
 
@@ -286,13 +289,26 @@ func (o *optionsSuite) TestGetAuthMethods() {
 		},
 		{
 			envVars: map[string]string{
-				"VFS_SFTP_KEYFILE":            o.keyFiles.SSHPrivateKeyNoPassphrase,
+				"VFS_SFTP_KEYFILE":            o.keyFiles.SSHPrivateKey,
 				"VFS_SFTP_KEYFILE_PASSPHRASE": o.keyFiles.passphrase,
 			},
 			returnCount: 1,
 			hasError:    false,
 			errMessage:  "",
 			message:     "env var keyfile - with passphrase",
+		},
+		{
+			// behavior was fixed in https://github.com/golang/crypto/commit/0a08dada0ff98d02f3864a23ae8d27cb8fba5303
+			// such that sending a passphrase with an unencrypted keyfile now throws error.  This test added
+			// to reflect this case.  Test above was altered to reflect what it was testing (env var passphrase).
+			envVars: map[string]string{
+				"VFS_SFTP_KEYFILE":            o.keyFiles.SSHPrivateKeyNoPassphrase,
+				"VFS_SFTP_KEYFILE_PASSPHRASE": o.keyFiles.passphrase,
+			},
+			returnCount: 1,
+			hasError:    true,
+			errMessage:  "ssh: not an encrypted key",
+			message:     "unencrypted keyfile - with passphrase",
 		},
 		{
 			options: Options{

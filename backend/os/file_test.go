@@ -151,6 +151,7 @@ func (s *osFileTest) TestRead() {
 	data = make([]byte, 4)
 	b, err = f.Read(data)
 	s.Error(err)
+	s.Equal(0, b)
 
 	f.(*File).fileOpener = nil
 	b, err = f.Write([]byte("blah"))
@@ -161,6 +162,7 @@ func (s *osFileTest) TestRead() {
 	data = make([]byte, 4)
 	b, err = f.Read(data)
 	s.Error(err)
+	s.Equal(0, b)
 }
 
 func (s *osFileTest) TestSeek() {
@@ -473,6 +475,7 @@ func (s *osFileTest) TestCursor() {
 	sz, werr = file.Write([]byte("has")) // cursor 8 - tempfile copy of orig - write on tempfile has occurred
 	s.NoError(werr)
 	s.Equal(int64(8), file.(*File).cursorPos)
+	s.Equal(3, sz)
 
 	_, serr = file.Seek(0, 0) // cursor 0 - in temp file
 	s.Equal(int64(0), file.(*File).cursorPos)
@@ -483,6 +486,7 @@ func (s *osFileTest) TestCursor() {
 	s.NoError(rerr)
 	s.Equal(int64(3), file.(*File).cursorPos)
 	s.Equal("has", string(data)) // tempFile contents = "has"
+	s.Equal(3, sz)
 
 	s.NoError(file.Close()) // moves tempfile containing "has" over original file
 
