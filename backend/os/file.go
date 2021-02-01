@@ -208,7 +208,7 @@ func safeOsRename(srcName, dstName string) error {
 	err := os.Rename(srcName, dstName)
 	if err != nil {
 		e, ok := err.(*os.LinkError)
-		if ok || e.Err.Error() == osCrossDeviceLinkError {
+		if ok && e.Err.Error() == osCrossDeviceLinkError {
 			// do cross-device renaming
 			if err := osCopy(srcName, dstName); err != nil {
 				return err
