@@ -241,10 +241,6 @@ func osCopy(srcName, dstName string) error {
 	// copy os files. Note that os.Create always does a "touch" (creates an empty file before writing data) so no need to
 	// do a TouchCopy like we do with other filesystems.
 	_, err = io.Copy(dstWriter, srcReader)
-	if err != nil {
-		return err
-	}
-
 	return err
 }
 
