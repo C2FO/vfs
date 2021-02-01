@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - fixed failing test due to CI asking for mod tidy.
 - Fixed ineffassign failures keeping vfs from achieving 100% in goreportcard.
+- fixed #48 bug where 'invalid cross-device link' error occurs when renaming os files that are found on different devices/volumes including temp dirs.
 
 ### Security
 - Upgraded dependencies.  Required regen of S3 API mock due to a couple new methods.
@@ -43,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.4.0] - 2019-08-24
 ### Added
-- Added fallback to TouchCopy for S3/GCS implementations for CopyTo and MoveTo operations between files and locations which use different authentication and region configurations. When possible, the directoy copy/move operations will be used by the underlying clients.
+- Added fallback to TouchCopy for S3/GCS implementations for CopyTo and MoveTo operations between files and locations which use different authentication and region configurations. When possible, the directory copy/move operations will be used by the underlying clients.
 
 ## [5.3.0] - 2019-08-24
 ### Added

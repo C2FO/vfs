@@ -328,11 +328,11 @@ func (s *osFileTest) TestMoveToLocation() {
 	mockLocation.On("Volume").Return("")
 	mockLocation.On("Path").Return("/some/path/to/")
 	mockLocation.On("Close").Return(nil)
-	mockLocation.On("NewFile", mock.Anything).Return(&File{}, nil)
 	mockFile := new(mocks.File)
 	mockFile.On("Location").Return(mockLocation, nil)
 	mockFile.On("Name").Return("/some/path/to/move.txt")
 	mockFile.On("Location ").Return(mockLocation, nil)
+	mockLocation.On("NewFile", mock.Anything).Return(mockFile, nil)
 	mockfs.On("NewLocation", mock.Anything, mock.Anything).Return(mockLocation)
 
 	_, err = movedFile.MoveToLocation(mockLocation)
@@ -637,7 +637,8 @@ func (s *osFileTest) TestLocationRightAfterChangeDir() {
 	loc := file.Location()
 	s.NotContains(loc.Path(), "someDir/", "location should not contain 'someDir/'")
 
-	loc.ChangeDir(chDir)
+	err = loc.ChangeDir(chDir)
+	s.NoError(err)
 	s.Contains(loc.Path(), "someDir/", "location now should contain 'someDir/'")
 
 	// file location shouldn't be affected by ChangeDir() on Location
