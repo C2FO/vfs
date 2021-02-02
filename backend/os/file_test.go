@@ -328,15 +328,82 @@ func (s *osFileTest) TestMoveToLocation() {
 	mockLocation.On("Volume").Return("")
 	mockLocation.On("Path").Return("/some/path/to/")
 	mockLocation.On("Close").Return(nil)
-	mockLocation.On("NewFile", mock.Anything).Return(&File{}, nil)
 	mockFile := new(mocks.File)
 	mockFile.On("Location").Return(mockLocation, nil)
 	mockFile.On("Name").Return("/some/path/to/move.txt")
 	mockFile.On("Location ").Return(mockLocation, nil)
+	mockLocation.On("NewFile", mock.Anything).Return(mockFile, nil)
 	mockfs.On("NewLocation", mock.Anything, mock.Anything).Return(mockLocation)
 
 	_, err = movedFile.MoveToLocation(mockLocation)
 	s.NoError(err)
+}
+
+func (s *osFileTest) TestSafeOsRename() {
+	dir, err := ioutil.TempDir(path.Join(s.tmploc.Path(), "test_files"), "example")
+	s.NoError(err)
+	defer func() {
+		err := os.RemoveAll(dir)
+		s.NoError(err, "remove all error not expected")
+	}()
+
+	// TODO: I haven't figured out a way to test safeOsRename since setting up the scenario is
+	//     very os-dependent so here I will actually only ensure non-"invalid cross-device link"
+	//     errors are handled correctly and that normal renames work.
+
+	// test that normal rename works
+	testfile := path.Join(dir, "original.txt")
+	file1, err := s.fileSystem.NewFile("", testfile)
+	s.NoError(err)
+	var testBytes = []byte("test me")
+	_, err = file1.Write(testBytes)
+	s.NoError(err)
+	s.NoError(file1.Close())
+
+	newFile := path.Join(dir, "new.txt")
+	s.NoError(safeOsRename(testfile, newFile))
+
+	exists, err := file1.Exists()
+	s.NoError(err)
+	s.False(exists)
+	file2, err := s.fileSystem.NewFile("", newFile)
+	s.NoError(err)
+	exists, err = file2.Exists()
+	s.NoError(err)
+	s.True(exists)
+
+	// test that a rename failure (non-"invalid cross-device link" error) is returned properly
+	badfile := path.Join(dir, "this_should_not_exist.txt")
+
+	err = safeOsRename(badfile, newFile)
+	s.Error(err)
+	s.NotEqual(err.Error(), osCrossDeviceLinkError)
+
+}
+
+func (s *osFileTest) TestOsCopy() {
+	dir, err := ioutil.TempDir(path.Join(s.tmploc.Path(), "test_files"), "example")
+	s.NoError(err)
+	defer func() {
+		err := os.RemoveAll(dir)
+		s.NoError(err, "remove all error not expected")
+	}()
+
+	file1, err := s.fileSystem.NewFile("", path.Join(dir, "original.txt"))
+	s.NoError(err)
+	var testBytes = []byte("test me")
+	_, err = file1.Write(testBytes)
+	s.NoError(err)
+	s.NoError(file1.Close())
+
+	file2, err := s.fileSystem.NewFile("", path.Join(dir, "move.txt"))
+	s.NoError(err)
+
+	s.NoError(osCopy(path.Join(file1.Location().Volume(), file1.Path()), path.Join(file2.Location().Volume(), file2.Path())), "test osCopy")
+
+	b, err := ioutil.ReadAll(file2)
+	s.NoError(err)
+	s.Equal(testBytes, b, "contents match")
 }
 
 func (s *osFileTest) TestMoveToFile() {
@@ -637,7 +704,8 @@ func (s *osFileTest) TestLocationRightAfterChangeDir() {
 	loc := file.Location()
 	s.NotContains(loc.Path(), "someDir/", "location should not contain 'someDir/'")
 
-	loc.ChangeDir(chDir)
+	err = loc.ChangeDir(chDir)
+	s.NoError(err)
 	s.Contains(loc.Path(), "someDir/", "location now should contain 'someDir/'")
 
 	// file location shouldn't be affected by ChangeDir() on Location

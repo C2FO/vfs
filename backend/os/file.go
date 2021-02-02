@@ -2,6 +2,7 @@ package os
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -11,6 +12,8 @@ import (
 	"github.com/c2fo/vfs/v5"
 	"github.com/c2fo/vfs/v5/utils"
 )
+
+const osCrossDeviceLinkError = "invalid cross-device link"
 
 type opener func(filePath string) (*os.File, error)
 
@@ -67,23 +70,24 @@ func (f *File) Size() (uint64, error) {
 
 // Close implements the io.Closer interface, closing the underlying *os.File. its an error, if any.
 func (f *File) Close() error {
-	// check if temp file
-	// close temp file
-	// os.Rename() (replace) temp file to file
 	f.useTempFile = false
 	f.cursorPos = 0
+
+	// check if temp file
 	if f.tempFile != nil {
+		// close temp (os) file
 		err := f.tempFile.Close()
 		if err != nil {
 			return err
 		}
 
-		// get original file, open it if it has not been opened
+		// get original (os) file, open it if it has not been opened
 		finalFile, err := f.getInternalFile()
 		if err != nil {
 			return err
 		}
-		err = os.Rename(f.tempFile.Name(), finalFile.Name())
+		// rename temp file to actual file
+		err = safeOsRename(f.tempFile.Name(), finalFile.Name())
 		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
@@ -190,48 +194,74 @@ func (f *File) Location() vfs.Location {
 func (f *File) MoveToFile(file vfs.File) error {
 	// handle native os move/rename
 	if file.Location().FileSystem().Scheme() == Scheme {
-		err := os.Rename(f.Path(), file.Path())
-		if err != nil {
-			return err
-		}
-	} else {
-		// do copy/delete move for non-native os moves
-		_, err := f.copyWithName(file.Name(), file.Location())
-		if err != nil {
-			return err
-		}
+		return safeOsRename(f.Path(), file.Path())
+	}
 
-		err = f.Delete()
-		if err != nil {
-			return err
+	// do copy/delete move for non-native os moves
+	_, err := f.copyWithName(file.Name(), file.Location())
+	return err
+}
+
+// safeOsRename will attempt to do an os.Rename. If error is "invalid cross-device link" (where one OS file is on a
+// different device/volume than the other), then fall back to doing a copy-delete.
+func safeOsRename(srcName, dstName string) error {
+	err := os.Rename(srcName, dstName)
+	if err != nil {
+		e, ok := err.(*os.LinkError)
+		if ok && e.Err.Error() == osCrossDeviceLinkError {
+			// do cross-device renaming
+			if err := osCopy(srcName, dstName); err != nil {
+				return err
+			}
+			// delete original file
+			return os.Remove(srcName)
 		}
+		// return non-CrossDeviceLink error
+		return err
 	}
 	return nil
 }
 
+// osCopy just io.Copy's the os files
+func osCopy(srcName, dstName string) error {
+	// setup os reader
+	srcReader, err := os.Open(srcName)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = srcReader.Close() }()
+
+	// setup os writer
+	dstWriter, err := os.Create(dstName)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = dstWriter.Close() }()
+
+	// copy os files. Note that os.Create always does a "touch" (creates an empty file before writing data) so no need to
+	// do a TouchCopy like we do with other filesystems.
+	_, err = io.Copy(dstWriter, srcReader)
+	return err
+}
+
 // MoveToLocation moves a file to a new Location. It accepts a target vfs.Location and returns a vfs.File and an error, if any.
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
-	// handle native os move/rename
 	if location.FileSystem().Scheme() == Scheme {
 		if err := ensureDir(location); err != nil {
 			return nil, err
 		}
-		err := os.Rename(f.Path(), path.Join(location.Path(), f.Name()))
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		// do copy/delete move for non-native os moves
-		_, err := f.copyWithName(f.Name(), location)
-		if err != nil {
-			return f, err
-		}
-
-		delErr := f.Delete()
-		if delErr != nil {
-			return f, delErr
-		}
 	}
+
+	// do a MoveToFile call (delegating native rename vs copy/delete logic)
+	file, err := location.NewFile(f.Name())
+	if err != nil {
+		return nil, err
+	}
+	err = f.MoveToFile(file)
+	if err != nil {
+		return nil, err
+	}
+
 	//return vfs.File for newly moved file
 	return location.NewFile(f.Name())
 }
