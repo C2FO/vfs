@@ -182,9 +182,12 @@ func (f *File) Delete() error {
 func (f *File) Close() error {
 
 	if f.tempFile != nil {
-		defer func() { _ = f.tempFile.Close() }()
+		err := f.tempFile.Close()
+		if err != nil {
+			return err
+		}
 
-		err := os.Remove(f.tempFile.Name())
+		err = os.Remove(f.tempFile.Name())
 		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
