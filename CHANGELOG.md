@@ -4,11 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [5.5.6]
 ### Fixed
 - fixed failing test due to CI asking for mod tidy.
-- Fixed ineffassign failures keeping vfs from achieving 100% in goreportcard.
+- fixed ineffectual assignment failures keeping vfs from achieving 100% in goreportcard.
 - fixed #48 bug where 'invalid cross-device link' error occurs when renaming os files that are found on different devices/volumes including temp dirs.
+- fixed #53 bug where s3 file tests were failing due to a deferred removal of a temp file.
 
 ### Security
 - Upgraded dependencies.  Required regen of S3 API mock due to a couple new methods.
