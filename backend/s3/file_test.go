@@ -551,6 +551,35 @@ func (ts *fileTestSuite) TestNewFile() {
 	ts.Equal(key, file.Path())
 }
 
+func (ts *fileTestSuite) TestCloseWithoutWrite() {
+	fs := &FileSystem{}
+	file,err := fs.NewFile("mybucket", "/some/file/test.txt")
+	ts.NoError(err)
+	file.Close()
+	ts.NoError(err, "file closed without error")
+}
+
+func (ts *fileTestSuite) TestCloseWithWrite() {
+	s3Mock2 := &mocks.S3API{}
+	s3Mock2.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, awserr.New(s3.ErrCodeNoSuchKey, "", nil)).Once()
+	s3Mock2.On("PutObjectRequest", mock.AnythingOfType("*s3.PutObjectInput")).Return(&request.Request{HTTPRequest: &http.Request{Header: make(map[string][]string), URL: &url.URL{}}}, &s3.PutObjectOutput{})
+	s3Mock2.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, awserr.New(s3.ErrCodeNoSuchKey, "key doesn't exist", nil))
+	file := &File{
+		fileSystem: &FileSystem{
+			client:  s3Mock2,
+			options: defaultOptions,
+		},
+		bucket: "newBucket",
+		key:    "/new/file/path/hello.txt",
+	}
+	contents := []byte("Hello world!")
+	_, err := file.Write(contents)
+	ts.NoError(err, "Error should be nil when calling Write")
+	err = file.Close()
+	ts.Error(err,"file doesn't exists , retired 5 times ")
+
+}
+
 func TestFile(t *testing.T) {
 	suite.Run(t, new(fileTestSuite))
 }

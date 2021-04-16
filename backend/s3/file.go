@@ -209,11 +209,12 @@ func (f *File) Close() error {
 		if err != nil {
 			return err
 		}
+		return waitUntilFileExists(f, 5)
 	}
 
 	f.writeBuffer = nil
 
-	return waitUntilFileExists(f, 5)
+	return nil
 }
 
 // Read implements the standard for io.Reader. For this to work with an s3 file, a temporary local copy of
