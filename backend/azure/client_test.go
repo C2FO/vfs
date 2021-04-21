@@ -1,3 +1,4 @@
+//+build vfsintegration
 package azure
 
 import (
