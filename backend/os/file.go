@@ -198,8 +198,10 @@ func (f *File) MoveToFile(file vfs.File) error {
 	}
 
 	// do copy/delete move for non-native os moves
-	_, err := f.copyWithName(file.Name(), file.Location())
-	return err
+	if _, err := f.copyWithName(file.Name(), file.Location()); err != nil {
+		return err
+	}
+	return f.Delete()
 }
 
 // safeOsRename will attempt to do an os.Rename. If error is "invalid cross-device link" (where one OS file is on a

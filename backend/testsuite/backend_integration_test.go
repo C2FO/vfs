@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/backend/azure"
 	"github.com/c2fo/vfs/v5/backend/gs"
 	"github.com/c2fo/vfs/v5/backend/mem"
 	_os "github.com/c2fo/vfs/v5/backend/os"
@@ -70,6 +71,19 @@ func copyGSLocation(loc vfs.Location) vfs.Location {
 	return &cp
 }
 
+func copyAzureLocation(loc vfs.Location) vfs.Location {
+	cp := *loc.(*azure.Location)
+	return &cp
+}
+
+func buildExpectedURI(fs vfs.FileSystem, volume, path string) string {
+	if fs.Name() == "azure" {
+		azFs := fs.(*azure.FileSystem)
+		return fmt.Sprintf("%s://%s/%s%s", fs.Scheme(), azFs.Host(), volume, path)
+	}
+	return fmt.Sprintf("%s://%s%s", fs.Scheme(), volume, path)
+}
+
 func (s *vfsTestSuite) SetupSuite() {
 	locs := os.Getenv("VFS_INTEGRATION_LOCATIONS")
 	s.testLocations = make(map[string]vfs.Location)
@@ -87,6 +101,8 @@ func (s *vfsTestSuite) SetupSuite() {
 			s.testLocations[l.FileSystem().Scheme()] = copyGSLocation(l)
 		case "mem":
 			s.testLocations[l.FileSystem().Scheme()] = copyMemLocation(l)
+		case "https":
+			s.testLocations[l.FileSystem().Scheme()] = copyAzureLocation(l)
 		default:
 			panic(fmt.Sprintf("unknown scheme: %s", l.FileSystem().Scheme()))
 		}
@@ -135,10 +151,10 @@ func (s *vfsTestSuite) FileSystem(baseLoc vfs.Location) {
 		file, err := fs.NewFile(baseLoc.Volume(), name)
 		if validates {
 			s.NoError(err, "there should be no error")
-			expected := fmt.Sprintf("%s://%s%s", fs.Scheme(), baseLoc.Volume(), path.Clean(name))
+			expected := buildExpectedURI(fs, baseLoc.Volume(), path.Clean(name))
 			s.Equal(expected, file.URI(), "uri's should match")
 		} else {
-			s.Error(err, "should have validation error for scheme and name: %s : %s", fs.Scheme(), name)
+			s.Error(err, "should have validation error for scheme[%s] and name[%s]", fs.Scheme(), name)
 		}
 	}
 
@@ -163,11 +179,11 @@ func (s *vfsTestSuite) FileSystem(baseLoc vfs.Location) {
 		loc, err := fs.NewLocation(baseLoc.Volume(), name)
 		if validates {
 			s.NoError(err, "there should be no error")
-			expected := fmt.Sprintf("%s://%s%s", fs.Scheme(), baseLoc.Volume(), utils.EnsureTrailingSlash(path.Clean(name)))
+			expected := buildExpectedURI(fs, baseLoc.Volume(), utils.EnsureTrailingSlash(path.Clean(name)))
 			s.Equal(expected, loc.URI(), "uri's should match")
 
 		} else {
-			s.Error(err, "should have validation error for scheme and name: %s : %s", fs.Scheme(), name)
+			s.Error(err, "should have validation error for scheme[%s] and name[%s]", fs.Scheme(), name)
 		}
 	}
 }
@@ -215,7 +231,7 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 		loc, err := srcLoc.NewLocation(name)
 		if validates {
 			s.NoError(err, "there should be no error")
-			expected := fmt.Sprintf("%s://%s%s", srcLoc.FileSystem().Scheme(), baseLoc.Volume(), utils.EnsureTrailingSlash(path.Clean(path.Join(srcLoc.Path(), name))))
+			expected := buildExpectedURI(srcLoc.FileSystem(), baseLoc.Volume(), utils.EnsureTrailingSlash(path.Clean(path.Join(srcLoc.Path(), name))))
 			s.Equal(expected, loc.URI(), "uri's should match")
 
 		} else {
@@ -247,7 +263,7 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 		file, err := srcLoc.NewFile(name)
 		if validates {
 			s.NoError(err, "there should be no error")
-			expected := fmt.Sprintf("%s://%s%s", srcLoc.FileSystem().Scheme(), srcLoc.Volume(), path.Clean(path.Join(srcLoc.Path(), name)))
+			expected := buildExpectedURI(srcLoc.FileSystem(), srcLoc.Volume(), path.Clean(path.Join(srcLoc.Path(), name)))
 			s.Equal(expected, file.URI(), "uri's should match")
 		} else {
 			s.Error(err, "should have validation error for scheme and name: %s : +%s+", srcLoc.FileSystem().Scheme(), name)
@@ -283,7 +299,7 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 	//
 	// URI's for locations must always end with a separator character.
 	s.True(strings.HasSuffix(cdTestLoc.URI(), "locTestSrc/chdirTest/l1dir1/l2dir2/"), "should end with dot dirs resolved")
-	prefix := fmt.Sprintf("%s://%s%s", cdTestLoc.FileSystem().Scheme(), cdTestLoc.Volume(), "/")
+	prefix := fmt.Sprintf("%s://", cdTestLoc.FileSystem().Scheme())
 	s.True(strings.HasPrefix(cdTestLoc.URI(), prefix), "should start with schema and abs slash")
 
 	/* Exists returns boolean if the location exists on the file system. Returns an error if any.
