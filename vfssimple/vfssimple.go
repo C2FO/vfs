@@ -2,6 +2,7 @@ package vfssimple
 
 import (
 	"fmt"
+	"github.com/c2fo/vfs/v5/backend/azure"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -52,6 +53,11 @@ func parseSupportedURI(uri string) (vfs.FileSystem, string, string, error) { //n
 
 	var fs vfs.FileSystem
 	for _, backendScheme := range backend.RegisteredBackends() {
+		// Azure
+		if u.Scheme == "https" {
+			host, path, err = azure.ParsePath(u.Path)
+		}
+
 		// Object-level backend
 		if strings.HasPrefix(uri, backendScheme) {
 			fs = backend.Backend(backendScheme)
