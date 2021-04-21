@@ -211,13 +211,9 @@ func (f *File) Close() error {
 		}
 
 		f.writeBuffer = nil
-		err = waitUntilFileExists(f, 5)
-		if err != nil {
-			return err
-		}
-	}
+		return waitUntilFileExists(f, 5)
 
-	f.writeBuffer = nil
+	}
 	return nil
 }
 
