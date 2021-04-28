@@ -54,7 +54,7 @@ func parseSupportedURI(uri string) (vfs.FileSystem, string, string, error) { //n
 	var fs vfs.FileSystem
 	for _, backendScheme := range backend.RegisteredBackends() {
 		// Azure
-		if u.Scheme == "https" {
+		if azure.IsValidURI(u) {
 			host, path, err = azure.ParsePath(u.Path)
 		}
 
