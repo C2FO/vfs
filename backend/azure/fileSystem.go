@@ -3,8 +3,10 @@ package azure
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path"
+	"regexp"
 	"strings"
 
 	"github.com/c2fo/vfs/v5"
@@ -135,4 +137,14 @@ func ParsePath(p string) (string, string, error) {
 	}
 	l := strings.Split(p, string(os.PathSeparator))
 	return l[1], utils.EnsureTrailingSlash(utils.EnsureLeadingSlash(path.Join(l[2:]...))), nil
+}
+
+// IsValidURI us a utility function used by vfssimple to determine if the given URI is a valid Azure URI
+func IsValidURI(u *url.URL) bool {
+	r, _ := regexp.Compile(".*\\.blob\\.core\\.windows\\.net")
+
+	if u.Scheme == Scheme && r.MatchString(u.Host) {
+		return true
+	}
+	return false
 }

@@ -187,6 +187,24 @@ func (suite *FileSystemTestSuite) TestParsePath() {
 	suite.Equal("", path, "we got an error so path should be empty")
 }
 
+func (suite *FileSystemTestSuite) TestIsValidURI() {
+	uri := "https://my-account.blob.core.windows.net/my_container/foo/bar/baz/"
+	u, _ := url.Parse(uri)
+	suite.True(IsValidURI(u), "the uri should be recognized as an Azure uri")
+
+	uri = "foo://my-account.blob.core.windows.net/my_container/foo/bar/baz/"
+	u, _ = url.Parse(uri)
+	suite.False(IsValidURI(u), "the uri has an invalid scheme so it is not an Azure uri")
+
+	uri = "https://yadda.yadda.yadda/my_container/foo/bar/baz/"
+	u, _ = url.Parse(uri)
+	suite.False(IsValidURI(u), "the host does not match .*.blob.core.windows.net so it is not an Azure uri")
+
+	uri = "foo://yadda.yadda.yadda/my_container/foo/bar/baz/"
+	u, _ = url.Parse(uri)
+	suite.False(IsValidURI(u), "nothing ab out this uri is right...")
+}
+
 func TestAzureFileSystem(t *testing.T) {
 	suite.Run(t, new(FileSystemTestSuite))
 }
