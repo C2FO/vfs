@@ -41,6 +41,10 @@ func (l *Location) List() ([]string, error) {
 		ret = append(ret, path.Base(item))
 	}
 
+	if len(ret) == 0 {
+		return []string{}, nil
+	}
+
 	return ret, nil
 }
 
@@ -52,22 +56,14 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 			return nil, err
 		}
 
-		listing, err := listLoc.List()
-		if err != nil {
-			return nil, err
-		}
-
-		var filtered []string
-		for _, item := range listing {
-			if strings.HasPrefix(item, path.Base(prefix)) {
-				filtered = append(filtered, path.Base(item))
-			}
-		}
-
-		return filtered, nil
+		return listLocationByPrefix(listLoc.(*Location), path.Base(prefix))
 	}
 
-	listing, err := l.List()
+	return listLocationByPrefix(l, prefix)
+}
+
+func listLocationByPrefix(location *Location, prefix string) ([]string, error) {
+	listing, err := location.List()
 	if err != nil {
 		return nil, err
 	}
@@ -77,6 +73,10 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 		if strings.HasPrefix(item, prefix) {
 			filtered = append(filtered, path.Base(item))
 		}
+	}
+
+	if len(filtered) == 0 {
+		return []string{}, nil
 	}
 
 	return filtered, nil
@@ -94,6 +94,10 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 		if regex.MatchString(item) {
 			filtered = append(filtered, path.Base(item))
 		}
+	}
+
+	if len(filtered) == 0 {
+		return []string{}, nil
 	}
 
 	return filtered, nil
