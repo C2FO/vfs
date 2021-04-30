@@ -335,7 +335,7 @@ func (lt *locationTestSuite) TestDeleteFile() {
 	err = loc.DeleteFile("filename.txt")
 	lt.NoError(err, "Successful delete should not return an error.")
 
-	//error deleteing
+	// error deleting
 	lt.client.On("Remove", "/old/filename.txt").Return(os.ErrNotExist).Once()
 	err = loc.DeleteFile("filename.txt")
 	lt.Error(err, "failed delete")

@@ -14,7 +14,6 @@ import (
 //Location implements the vfs.Location interface specific to in-memory FileSystem.
 type Location struct {
 	exists     bool
-	firstTime  bool
 	name       string //the path that this location exists on
 	fileSystem *FileSystem
 	volume     string

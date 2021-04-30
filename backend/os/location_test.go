@@ -47,7 +47,6 @@ func (s *osLocationTest) SetupTest() {
 }
 
 func (s *osLocationTest) TestList() {
-
 	expected := []string{"empty.txt", "prefix-file.txt", "test.txt"}
 	actual, _ := s.testFile.Location().List()
 	s.Equal(expected, actual)
@@ -167,7 +166,6 @@ func (s *osLocationTest) TestDeleteFile() {
 	exists, err = file.Exists()
 	s.NoError(err, "Shouldn't throw error testing for exists after delete.")
 	s.False(exists, "Exists should return false after deleting the file.")
-
 }
 
 func TestOSLocation(t *testing.T) {

@@ -1,12 +1,12 @@
 package os
 
 import (
-	"github.com/c2fo/vfs/v5/utils"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/utils"
 )
 
 /**********************************

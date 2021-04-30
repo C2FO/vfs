@@ -3,7 +3,6 @@ package sftp
 import (
 	"bytes"
 	"errors"
-	"github.com/pkg/sftp"
 	"io"
 	"io/ioutil"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/sftp"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 

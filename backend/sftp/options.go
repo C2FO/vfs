@@ -176,7 +176,6 @@ func foundFile(file string) (bool, error) {
 }
 
 func getAuthMethods(opts Options) ([]ssh.AuthMethod, error) {
-
 	auth := make([]ssh.AuthMethod, 0)
 
 	// explicitly set password from opts, then from env if any

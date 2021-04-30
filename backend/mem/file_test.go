@@ -9,10 +9,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/c2fo/vfs/v5"
 	"github.com/c2fo/vfs/v5/backend"
 	_os "github.com/c2fo/vfs/v5/backend/os"
-	"github.com/stretchr/testify/suite"
 )
 
 /**********************************
@@ -201,7 +202,7 @@ func (s *memFileTest) TestSeek2() {
 
 	num, err := newFile.Read(testByte)
 	s.NoError(err, "unexpected read error")
-	s.True("H" == string(testByte))
+	s.True(string(testByte) == "H")
 	s.Equal(1, num)
 
 	_, err = newFile.Seek(-2, 1)

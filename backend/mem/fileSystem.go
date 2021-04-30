@@ -125,7 +125,8 @@ func (o objMap) getKeys() []string {
 	return keyList
 }
 
-//fileHere returns a list of file pointers found at the absolute location path provided.  If none are there, returns an empty slice
+//fileHere returns a list of file pointers found at the absolute location path provided.
+//If none are there, returns an empty slice
 func (o objMap) filesHere(absLocPath string) []*memFile {
 
 	paths := o.getKeys()
@@ -143,7 +144,8 @@ func (o objMap) filesHere(absLocPath string) []*memFile {
 	return fileList
 }
 
-//fileNamesHere returns a list of base names of files found at the absolute location path provided.  If none are there, returns an empty slice
+//fileNamesHere returns a list of base names of files found at the absolute location path provided.
+//If none are there, returns an empty slice
 func (o objMap) fileNamesHere(absLocPath string) []string {
 
 	paths := o.getKeys()

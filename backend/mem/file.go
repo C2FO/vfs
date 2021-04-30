@@ -65,7 +65,6 @@ func seekError() error {
 
 //Close imitates io.Closer by resetting the cursor and setting a boolean
 func (f *File) Close() error {
-
 	if f == nil {
 		return nilReference()
 	}
@@ -74,7 +73,6 @@ func (f *File) Close() error {
 		bufferContents := f.memFile.writeBuffer.Bytes()
 		for i := range bufferContents {
 			f.memFile.contents = append(f.memFile.contents, bufferContents[i])
-
 		}
 		f.memFile.lastModified = time.Now()
 		f.memFile.writeBuffer = new(bytes.Buffer)
@@ -88,7 +86,6 @@ func (f *File) Close() error {
 
 //Read implements the io.Reader interface.  Returns number of bytes read and potential errors
 func (f *File) Read(p []byte) (n int, err error) {
-
 	if exists, err := f.Exists(); !exists {
 		if err != nil {
 			return 0, err
@@ -97,7 +94,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 	}
 	//if file exists:
 	offset := f.cursor
-	if f.isOpen == false {
+	if !f.isOpen {
 		f.isOpen = true
 	}
 
@@ -139,7 +136,6 @@ func (f *File) Read(p []byte) (n int, err error) {
 
 //Seek implements the io.Seeker interface.  Returns the current position of the cursor and errors if any
 func (f *File) Seek(offset int64, whence int) (int64, error) {
-
 	if exists, err := f.Exists(); !exists {
 		if err != nil {
 			return 0, err
@@ -206,7 +202,6 @@ func (f *File) String() string {
 //Exists returns whether or not a file exists.  Creating a file does not
 //guarantee its existence, but creating one and writing to it does
 func (f *File) Exists() (bool, error) {
-
 	if f != nil {
 		//does it exist on the map?
 		vol := f.Location().Volume()
@@ -242,7 +237,6 @@ func (f *File) Location() vfs.Location {
 //a newFile is made, takes the contents of the current file, and ends up at
 //the given location
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
-
 	if ok, err := f.Exists(); !ok {
 		if err != nil {
 			return nil, err
@@ -292,7 +286,6 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 //use its previous path to call it using the fsMap.  Additionally,
 //after this is called, f's cursor will reset as if it had been closed.
 func (f *File) CopyToFile(target vfs.File) error {
-
 	if f == nil || target == nil {
 		return nilReference()
 	}
@@ -335,7 +328,6 @@ func (f *File) CopyToFile(target vfs.File) error {
 //MoveToLocation moves the receiver file to the passed in location. It does so by
 //creating a copy of 'f' in "location".  'f' is subsequently  deleted
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
-
 	if f == nil || location == nil {
 		return nil, nilReference()
 	}
@@ -424,7 +416,6 @@ func (f *File) MoveToFile(file vfs.File) error {
 //Delete removes the file from the FileSystem. Sets it path in the fsMap to nil,
 //and also nils the file's members
 func (f *File) Delete() error {
-
 	if f == nil {
 		return nilReference()
 	}
@@ -458,7 +449,6 @@ func (f *File) Delete() error {
 }
 
 func newMemFile(file *File, location vfs.Location) *memFile {
-
 	return &memFile{
 		sync.Mutex{},
 		new(bytes.Buffer),

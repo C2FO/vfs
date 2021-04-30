@@ -85,7 +85,6 @@ func initCredentialProviderChain(opt Options) ([]credentials.Provider, error) {
 			SessionToken:    opt.SessionToken,
 		}
 		p = append(p, &credentials.StaticProvider{Value: v})
-
 	}
 
 	// A EnvProvider retrieves credentials from the environment variables of the

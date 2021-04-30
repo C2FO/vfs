@@ -272,7 +272,8 @@ func (f *File) CopyToFile(file vfs.File) error {
 	return err
 }
 
-// CopyToLocation copies existing File to new Location with the same name.  It accepts a vfs.Location and returns a vfs.File and error, if any.
+// CopyToLocation copies existing File to new Location with the same name.
+// It accepts a vfs.Location and returns a vfs.File and error, if any.
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 	return f.copyWithName(f.Name(), location)
 }
@@ -377,9 +378,8 @@ func ensureDir(location vfs.Location) error {
 //No need to copy original first.
 func (f *File) getInternalFile() (*os.File, error) {
 	// this is the use case of vfs.file
-	if f.useTempFile == false {
+	if !f.useTempFile {
 		if f.file == nil {
-
 			// replace default file opener, is set in struct
 			openFunc := openOSFile
 			if f.fileOpener != nil {

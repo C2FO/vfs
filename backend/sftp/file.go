@@ -26,7 +26,6 @@ type fileOpener func(c Client, p string, f int) (ReadWriteSeekCloser, error)
 
 // LastModified returns the LastModified property of sftp file.
 func (f *File) LastModified() (*time.Time, error) {
-
 	client, err := f.fileSystem.Client(f.Authority)
 	if err != nil {
 		return nil, err
@@ -51,7 +50,6 @@ func (f *File) Path() string {
 
 // Exists returns a boolean of whether or not the file exists on the sftp server
 func (f *File) Exists() (bool, error) {
-
 	client, err := f.fileSystem.Client(f.Authority)
 	if err != nil {
 		return false, err
@@ -94,7 +92,6 @@ func (f *File) Touch() error {
 
 // Size returns the size of the remote file.
 func (f *File) Size() (uint64, error) {
-
 	client, err := f.fileSystem.Client(f.Authority)
 	if err != nil {
 		return 0, err

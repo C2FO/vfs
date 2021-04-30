@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+
 	"github.com/c2fo/vfs/v5"
 	"github.com/c2fo/vfs/v5/backend"
 	"github.com/c2fo/vfs/v5/utils"
@@ -99,7 +100,6 @@ func (fs *FileSystem) Client() (s3iface.S3API, error) {
 
 // WithOptions sets options for client and returns the file system (chainable)
 func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
-
 	// only set options if vfs.Options is s3.Options
 	if opts, ok := opts.(Options); ok {
 		fs.options = opts

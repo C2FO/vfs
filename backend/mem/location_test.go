@@ -5,8 +5,9 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/c2fo/vfs/v5"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/c2fo/vfs/v5"
 )
 
 /**********************************
