@@ -1,6 +1,7 @@
 package sftp
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -131,7 +132,7 @@ func (ts *fileSystemTestSuite) TestClient() {
 	ts.sftpfs.options = nil
 	_, err = ts.sftpfs.Client(utils.Authority{Host: "badhost"})
 	if ts.Error(err, "error found") {
-		ts.Contains(err.Error(), "no such host", "error matches")
+		ts.Regexp(regexp.MustCompile("(?:no such host|Temporary failure in name resolution)"), err.Error(), "no such host", "error matches")
 	}
 
 }
