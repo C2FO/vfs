@@ -143,7 +143,8 @@ func (ts *fileTestSuite) TestNotExists() {
 		ts.Fail("Shouldn't fail creating new file.")
 	}
 
-	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, awserr.New(s3.ErrCodeNoSuchKey, "key doesn't exist", nil))
+	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).
+		Return(&s3.HeadObjectOutput{}, awserr.New(s3.ErrCodeNoSuchKey, "key doesn't exist", nil))
 
 	exists, err := file.Exists()
 	ts.False(exists, "Should return false for exists based on setup")
@@ -230,7 +231,6 @@ func (ts *fileTestSuite) TestGetCopyObject() {
 
 	// ensure spaces are properly encoded (or not)
 	for _, t := range tests {
-
 		sourceFile := &File{
 			fileSystem: &FileSystem{
 				client:  s3apiMock,
@@ -356,9 +356,12 @@ func (ts *fileTestSuite) TestTouch() {
 
 	// test non-existent length
 	s3Mock2 := &mocks.S3API{}
-	s3Mock2.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, awserr.New(s3.ErrCodeNoSuchKey, "", nil)).Once()
-	s3Mock2.On("PutObjectRequest", mock.AnythingOfType("*s3.PutObjectInput")).Return(&request.Request{HTTPRequest: &http.Request{Header: make(map[string][]string), URL: &url.URL{}}}, &s3.PutObjectOutput{})
-	s3Mock2.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
+	s3Mock2.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).
+		Return(&s3.HeadObjectOutput{}, awserr.New(s3.ErrCodeNoSuchKey, "", nil)).Once()
+	s3Mock2.On("PutObjectRequest", mock.AnythingOfType("*s3.PutObjectInput")).
+		Return(&request.Request{HTTPRequest: &http.Request{Header: make(map[string][]string), URL: &url.URL{}}}, &s3.PutObjectOutput{})
+	s3Mock2.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).
+		Return(&s3.HeadObjectOutput{}, nil)
 	file2 := &File{
 		fileSystem: &FileSystem{
 			client:  s3Mock2,
@@ -408,7 +411,8 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 
 	// test non-scheme MoveToLocation
 	mockLocation := new(mocks.Location)
-	mockLocation.On("NewFile", mock.Anything).Return(&File{fileSystem: &FileSystem{client: s3Mock1}, bucket: "bucket", key: "/new/hello.txt"}, nil)
+	mockLocation.On("NewFile", mock.Anything).
+		Return(&File{fileSystem: &FileSystem{client: s3Mock1}, bucket: "bucket", key: "/new/hello.txt"}, nil)
 
 	s3apiMock2 := &mocks.S3API{}
 	s3apiMock2.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
@@ -470,7 +474,7 @@ func (ts *fileTestSuite) TestLastModified() {
 }
 
 func (ts *fileTestSuite) TestLastModifiedFail() {
-	//setup error on HEAD
+	// setup error on HEAD
 	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(nil,
 		errors.New("boom"))
 	m, e := testFile.LastModified()
@@ -545,17 +549,20 @@ func (ts *fileTestSuite) TestNewFile() {
 
 func (ts *fileTestSuite) TestCloseWithoutWrite() {
 	fs := &FileSystem{}
-	file,err := fs.NewFile("mybucket", "/some/file/test.txt")
+	file, err := fs.NewFile("mybucket", "/some/file/test.txt")
 	ts.NoError(err)
-	file.Close()
+	ts.NoError(file.Close())
 	ts.NoError(err, "file closed without error")
 }
 
 func (ts *fileTestSuite) TestCloseWithWrite() {
 	s3Mock2 := &mocks.S3API{}
-	s3Mock2.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, awserr.New(s3.ErrCodeNoSuchKey, "", nil)).Once()
-	s3Mock2.On("PutObjectRequest", mock.AnythingOfType("*s3.PutObjectInput")).Return(&request.Request{HTTPRequest: &http.Request{Header: make(map[string][]string), URL: &url.URL{}}}, &s3.PutObjectOutput{})
-	s3Mock2.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, awserr.New(s3.ErrCodeNoSuchKey, "key doesn't exist", nil))
+	s3Mock2.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).
+		Return(&s3.HeadObjectOutput{}, awserr.New(s3.ErrCodeNoSuchKey, "", nil)).Once()
+	s3Mock2.On("PutObjectRequest", mock.AnythingOfType("*s3.PutObjectInput")).
+		Return(&request.Request{HTTPRequest: &http.Request{Header: make(map[string][]string), URL: &url.URL{}}}, &s3.PutObjectOutput{})
+	s3Mock2.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).
+		Return(&s3.HeadObjectOutput{}, awserr.New(s3.ErrCodeNoSuchKey, "key doesn't exist", nil))
 	file := &File{
 		fileSystem: &FileSystem{
 			client:  s3Mock2,
@@ -568,7 +575,7 @@ func (ts *fileTestSuite) TestCloseWithWrite() {
 	_, err := file.Write(contents)
 	ts.NoError(err, "Error should be nil when calling Write")
 	err = file.Close()
-	ts.Error(err,"file doesn't exists , retired 5 times ")
+	ts.Error(err, "file doesn't exists , retired 5 times ")
 
 }
 

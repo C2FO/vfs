@@ -1,8 +1,10 @@
 package gs
 
 import (
-	"cloud.google.com/go/storage"
 	"context"
+
+	"cloud.google.com/go/storage"
+
 	"github.com/c2fo/vfs/v5"
 )
 

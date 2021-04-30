@@ -12,7 +12,7 @@ type Authority struct {
 	User, Pass, Host, raw string
 }
 
-//String() returns a string representation of authority.  It does not include password per
+// String() returns a string representation of authority.  It does not include password per
 // https://tools.ietf.org/html/rfc3986#section-3.2.1:
 //   Applications should not render as clear text any data after the first colon (":") character found within a userinfo
 //   subcomponent unless the data after the colon is the empty string (indicating no password).
@@ -100,20 +100,20 @@ func parseAuthority(authority string) (username, password, host string, err erro
 	return
 }
 
-func split(s string, c string) (string, string) {
+func split(s, c string) (string, string) { // nolint:gocritic // unnamedResult
 	i := strings.Index(s, c)
 	return s[:i], s[i+len(c):]
 }
 
 func validUserinfo(s string) bool {
 	for _, r := range s {
-		if 'A' <= r && r <= 'Z' {
+		if r >= 'A' && r <= 'Z' {
 			continue
 		}
-		if 'a' <= r && r <= 'z' {
+		if r >= 'a' && r <= 'z' {
 			continue
 		}
-		if '0' <= r && r <= '9' {
+		if r >= '0' && r <= '9' {
 			continue
 		}
 		switch r {

@@ -67,7 +67,7 @@ func (s *osFileTest) TestExists() {
 
 func (s *osFileTest) TestTouch() {
 
-	//set up testfile
+	// set up testfile
 	testfile, err := s.tmploc.NewFile("test_files/foo.txt")
 	s.NoError(err)
 
@@ -76,7 +76,7 @@ func (s *osFileTest) TestTouch() {
 	s.NoError(err)
 	s.False(exists)
 
-	//touch file
+	// touch file
 	err = testfile.Touch()
 	s.NoError(err)
 
@@ -90,11 +90,11 @@ func (s *osFileTest) TestTouch() {
 	s.NoError(err)
 	s.Equal(size, uint64(0), "size should be zero")
 
-	//capture last_modified
+	// capture last_modified
 	firstModTime, err := testfile.LastModified()
 	s.NoError(err)
 
-	//touch again
+	// touch again
 	err = testfile.Touch()
 	s.NoError(err)
 
@@ -103,7 +103,7 @@ func (s *osFileTest) TestTouch() {
 	s.NoError(err)
 	s.Equal(size, uint64(0), "size should be zero")
 
-	//LastModified should be later than previous LastModified
+	// LastModified should be later than previous LastModified
 	nextModTime, err := testfile.LastModified()
 	s.NoError(err)
 	s.True(firstModTime.Before(*nextModTime), "Last Modified was updated")
@@ -120,14 +120,14 @@ func (s *osFileTest) TestOpenFile() {
 }
 
 func (s *osFileTest) TestRead() {
-	//fail on nonexistent file
+	// fail on nonexistent file
 	noFile, err := s.tmploc.NewFile("test_files/nonexistent.txt")
 	s.NoError(err)
 	data := make([]byte, 0)
 	_, err = noFile.Read(data)
 	s.Error(err, "error trying to read nonexistent file")
 
-	//setup file for reading
+	// setup file for reading
 	f, err := s.tmploc.NewFile("test_files/readFile.txt")
 	s.NoError(err)
 	b, err := f.Write([]byte("blah"))
@@ -135,7 +135,7 @@ func (s *osFileTest) TestRead() {
 	s.Equal(4, b)
 	s.NoError(f.Close())
 
-	//read from file
+	// read from file
 	data = make([]byte, 4)
 	b, err = f.Read(data)
 	s.NoError(err)
@@ -143,11 +143,11 @@ func (s *osFileTest) TestRead() {
 	s.Equal("blah", string(data))
 	s.NoError(f.Close())
 
-	//setup file for err out of opening
+	// setup file for err out of opening
 	f, err = s.tmploc.NewFile("test_files/readFileFail.txt")
 	s.NoError(err)
 	f.(*File).useTempFile = true
-	f.(*File).fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("Bad Opener") }
+	f.(*File).fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("bad opener") }
 	data = make([]byte, 4)
 	b, err = f.Read(data)
 	s.Error(err)
@@ -158,7 +158,7 @@ func (s *osFileTest) TestRead() {
 	s.NoError(err)
 	s.Equal(4, b)
 	s.NoError(f.Close())
-	f.(*File).fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("Bad Opener") }
+	f.(*File).fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("bad opener") }
 	data = make([]byte, 4)
 	b, err = f.Read(data)
 	s.Error(err)
@@ -175,11 +175,11 @@ func (s *osFileTest) TestSeek() {
 	s.Equal(expectedText, string(data))
 	s.NoError(s.testFile.Close())
 
-	//setup file for err out of opening
+	// setup file for err out of opening
 	f, err := s.tmploc.NewFile("test_files/seekFileFail.txt")
 	s.NoError(err)
 	f.(*File).useTempFile = true
-	f.(*File).fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("Bad Opener") }
+	f.(*File).fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("bad opener") }
 	_, err = f.Seek(0, 4)
 	s.Error(err)
 }
@@ -299,16 +299,16 @@ func (s *osFileTest) TestMoveToLocation() {
 	s.NoError(eerr, "exists error not expected")
 	s.True(found)
 
-	//setup location
+	// setup location
 	location := Location{dir, s.fileSystem}
 
-	//move the file to new location
+	// move the file to new location
 	movedFile, err := file.MoveToLocation(&location)
 	s.NoError(err)
 
 	s.Equal(location.Path(), movedFile.Location().Path(), "ensure file location changed")
 
-	//ensure the original file no longer exists
+	// ensure the original file no longer exists
 	origFile, _ := s.fileSystem.NewFile(file.Location().Volume(), origFileName)
 	origFound, eerr := origFile.Exists()
 	s.NoError(eerr, "exists error not expected")
@@ -378,7 +378,6 @@ func (s *osFileTest) TestSafeOsRename() {
 	err = safeOsRename(badfile, newFile)
 	s.Error(err)
 	s.NotEqual(err.Error(), osCrossDeviceLinkError)
-
 }
 
 func (s *osFileTest) TestOsCopy() {
@@ -504,11 +503,11 @@ func (s *osFileTest) TestWrite() {
 	s.NoError(eErr2, "exists error not expected")
 	s.False(found2)
 
-	//setup file for err out of opening
+	// setup file for err out of opening
 	f, err := s.tmploc.NewFile("test_files/writeFileFail.txt")
 	s.NoError(err)
 	f.(*File).useTempFile = true
-	f.(*File).fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("Bad Opener") }
+	f.(*File).fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("bad opener") }
 	data = make([]byte, 4)
 	_, err = f.Write(data)
 	s.Error(err)
@@ -630,7 +629,7 @@ func (s *osFileTest) TestCursorErrs() {
 	b, err := noFile.Write([]byte("blah"))
 	s.NoError(err)
 	s.Equal(4, b)
-	noFile.(*File).fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("Bad Opener") }
+	noFile.(*File).fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("bad opener") }
 	s.Error(noFile.Close())
 }
 

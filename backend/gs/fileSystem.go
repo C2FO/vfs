@@ -12,7 +12,7 @@ import (
 	"github.com/c2fo/vfs/v5/utils"
 )
 
-//Scheme defines the file system type.
+// Scheme defines the file system type.
 const Scheme = "gs"
 const name = "Google Cloud Storage"
 
@@ -32,7 +32,7 @@ func (fs *FileSystem) Retry() vfs.Retry {
 }
 
 // NewFile function returns the gcs implementation of vfs.File.
-func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
+func (fs *FileSystem) NewFile(volume, name string) (vfs.File, error) {
 	if fs == nil {
 		return nil, errors.New("non-nil gs.FileSystem pointer is required")
 	}
@@ -50,7 +50,7 @@ func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
 }
 
 // NewLocation function returns the GCS implementation of vfs.Location.
-func (fs *FileSystem) NewLocation(volume string, name string) (loc vfs.Location, err error) {
+func (fs *FileSystem) NewLocation(volume, name string) (loc vfs.Location, err error) {
 	if fs == nil {
 		return nil, errors.New("non-nil gs.FileSystem pointer is required")
 	}
@@ -95,7 +95,7 @@ func (fs *FileSystem) Client() (*storage.Client, error) {
 // WithOptions sets options for client and returns the file system (chainable)
 func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 	fs.options = opts
-	//we set client to nil to ensure that a new client is created using the new context when Client() is called
+	// we set client to nil to ensure that a new client is created using the new context when Client() is called
 	fs.client = nil
 	return fs
 }
@@ -103,7 +103,7 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 // WithContext passes in user context and returns the file system (chainable)
 func (fs *FileSystem) WithContext(ctx context.Context) *FileSystem {
 	fs.ctx = ctx
-	//we set client to nil to ensure that a new client is created using the new context when Client() is called
+	// we set client to nil to ensure that a new client is created using the new context when Client() is called
 	fs.client = nil
 	return fs
 }
@@ -122,6 +122,6 @@ func NewFileSystem() *FileSystem {
 }
 
 func init() {
-	//registers a default Filesystem
+	// registers a default Filesystem
 	backend.Register(Scheme, NewFileSystem())
 }

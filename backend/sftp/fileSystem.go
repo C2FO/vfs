@@ -32,7 +32,7 @@ func (fs *FileSystem) Retry() vfs.Retry {
 }
 
 // NewFile function returns the SFTP implementation of vfs.File.
-func (fs *FileSystem) NewFile(authority string, filePath string) (vfs.File, error) {
+func (fs *FileSystem) NewFile(authority, filePath string) (vfs.File, error) {
 	if fs == nil {
 		return nil, errors.New("non-nil sftp.FileSystem pointer is required")
 	}
@@ -56,7 +56,7 @@ func (fs *FileSystem) NewFile(authority string, filePath string) (vfs.File, erro
 }
 
 // NewLocation function returns the SFTP implementation of vfs.Location.
-func (fs *FileSystem) NewLocation(authority string, locPath string) (vfs.Location, error) {
+func (fs *FileSystem) NewLocation(authority, locPath string) (vfs.Location, error) {
 	if fs == nil {
 		return nil, errors.New("non-nil sftp.FileSystem pointer is required")
 	}
@@ -113,7 +113,7 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 	// only set options if vfs.Options is sftp.Options
 	if opts, ok := opts.(Options); ok {
 		fs.options = opts
-		//we set client to nil to ensure that a new client is created using the new context when Client() is called
+		// we set client to nil to ensure that a new client is created using the new context when Client() is called
 		fs.sftpclient = nil
 	}
 	return fs
@@ -135,7 +135,7 @@ func NewFileSystem() *FileSystem {
 }
 
 func init() {
-	//registers a default Filesystem
+	// registers a default Filesystem
 	backend.Register(Scheme, NewFileSystem())
 }
 

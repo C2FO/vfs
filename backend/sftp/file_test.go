@@ -3,7 +3,6 @@ package sftp
 import (
 	"bytes"
 	"errors"
-	"github.com/pkg/sftp"
 	"io"
 	"io/ioutil"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/sftp"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
@@ -38,7 +38,7 @@ func (ts *fileTestSuite) SetupTest() {
 	}
 }
 
-//this wraps strings.Reader to satisfy ReadWriteSeekCloser interface
+// this wraps strings.Reader to satisfy ReadWriteSeekCloser interface
 type nopWriteCloser struct {
 	io.ReadSeeker
 }
@@ -150,10 +150,10 @@ func (ts *fileTestSuite) Test_openFile() {
 	ts.NoError(err, "no error expected")
 	ts.Equal(string(b), "file 1", "mock returned")
 
-	//file not open, open for read
+	// file not open, open for read
 	file.sftpfile = nil
 	file.opener = func(c Client, p string, f int) (ReadWriteSeekCloser, error) { return file1, nil }
-	_, err = file1.Seek(0, 0) //reset file
+	_, err = file1.Seek(0, 0) // reset file
 	ts.NoError(err, "no error expected")
 	f, err = file.openFile(os.O_RDONLY)
 	ts.NoError(err, "no error expected")
@@ -161,7 +161,7 @@ func (ts *fileTestSuite) Test_openFile() {
 	ts.NoError(err, "no error expected")
 	ts.Equal(string(b), "file 1", "mock returned")
 
-	//file not open, user default opener
+	// file not open, user default opener
 	file.sftpfile = nil
 	file.opener = nil
 	client.On("OpenFile", filepath, os.O_RDONLY).Return(&sftp.File{}, nil)
@@ -169,10 +169,10 @@ func (ts *fileTestSuite) Test_openFile() {
 	ts.NoError(err, "no error expected")
 	ts.IsType(&sftp.File{}, f, "type check")
 
-	//file not open, open for create/write
+	// file not open, open for create/write
 	file.sftpfile = nil
 	file.opener = func(c Client, p string, f int) (ReadWriteSeekCloser, error) { return file1, nil }
-	_, err = file1.Seek(0, 0) //reset file
+	_, err = file1.Seek(0, 0) // reset file
 	ts.NoError(err, "no error expected")
 	client.On("MkdirAll", path.Dir(filepath)).Return(nil)
 	f, err = file.openFile(os.O_RDWR | os.O_CREATE)

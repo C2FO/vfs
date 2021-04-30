@@ -20,7 +20,7 @@ const (
 	doesNotExistError = "storage: object doesn't exist"
 )
 
-//File implements vfs.File interface for GS fs.
+// File implements vfs.File interface for GS fs.
 type File struct {
 	fileSystem  *FileSystem
 	bucket      string
@@ -51,11 +51,11 @@ func (f *File) Close() error {
 		}
 
 		ctx, cancel := context.WithCancel(f.fileSystem.ctx)
-		defer func() { cancel() }()
+		defer cancel()
 		w := handle.NewWriter(ctx)
 		defer w.Close()
 		if _, err := io.Copy(w, f.writeBuffer); err != nil {
-			//cancel context (replaces CloseWithError)
+			// cancel context (replaces CloseWithError)
 			return err
 		}
 	}
@@ -86,14 +86,14 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 // write. Calling Close() will write the contents back to GCS.
 func (f *File) Write(data []byte) (n int, err error) {
 	if f.writeBuffer == nil {
-		//note, initializing with 'data' and returning len(data), nil
-		//causes issues with some Write usages, notably csv.Writer
-		//so we simply initialize with no bytes and call the buffer Write after
+		// note, initializing with 'data' and returning len(data), nil
+		// causes issues with some Write usages, notably csv.Writer
+		// so we simply initialize with no bytes and call the buffer Write after
 		//
-		//f.writeBuffer = bytes.NewBuffer(data)
-		//return len(data), nil
+		// f.writeBuffer = bytes.NewBuffer(data)
+		// return len(data), nil
 		//
-		//so now we do:
+		// so now we do:
 
 		f.writeBuffer = bytes.NewBuffer([]byte{})
 
@@ -101,7 +101,7 @@ func (f *File) Write(data []byte) (n int, err error) {
 	return f.writeBuffer.Write(data)
 }
 
-//String returns the file URI string.
+// String returns the file URI string.
 func (f *File) String() string {
 	return f.URI()
 }
@@ -157,11 +157,11 @@ func (f *File) CopyToFile(file vfs.File) error {
 	if err := utils.TouchCopy(file, f); err != nil {
 		return err
 	}
-	//Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
+	// Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
 	if cerr := file.Close(); cerr != nil {
 		return cerr
 	}
-	//Close file (f) reader
+	// Close file (f) reader
 	return f.Close()
 }
 
@@ -207,7 +207,7 @@ func (f *File) Delete() error {
 // Returns error if unable to touch File.
 func (f *File) Touch() error {
 
-	//check if file exists
+	// check if file exists
 	exists, err := f.Exists()
 	if err != nil {
 		return err
@@ -241,7 +241,7 @@ func (f *File) Touch() error {
 
 func (f *File) updateLastModifiedByAttrUpdate() error {
 
-	//save original metadata (in case it was set already)
+	// save original metadata (in case it was set already)
 	objAttrs, err := f.getObjectAttrs()
 	if err != nil {
 		return err
@@ -258,14 +258,14 @@ func (f *File) updateLastModifiedByAttrUpdate() error {
 	}
 
 	cctx, cancel := context.WithCancel(f.fileSystem.ctx)
-	defer func() { cancel() }()
+	defer cancel()
 
 	_, err = obj.Update(cctx, updateAttrs)
 	if err != nil {
 		return err
 	}
 
-	//now switch metadata back to original values
+	// now switch metadata back to original values
 	updateAttrs.Metadata = oldMetaData
 	_, err = obj.Update(cctx, updateAttrs)
 	if err != nil {
@@ -281,7 +281,7 @@ func (f *File) isBucketVersioningEnabled() (bool, error) {
 		return false, err
 	}
 	cctx, cancel := context.WithCancel(f.fileSystem.ctx)
-	defer func() { cancel() }()
+	defer cancel()
 	attrs, err := client.Bucket(f.bucket).Attrs(cctx)
 	if err != nil {
 		return false, err
@@ -296,9 +296,9 @@ func (f *File) createEmptyFile() error {
 		return err
 	}
 
-	//write zero length file.
+	// write zero length file.
 	ctx, cancel := context.WithCancel(f.fileSystem.ctx)
-	defer func() { cancel() }()
+	defer cancel()
 
 	w := handle.NewWriter(ctx)
 	defer func() { _ = w.Close() }()
@@ -409,7 +409,7 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 		return nil, err
 	}
 
-	//initialize temp ReadCloser
+	// initialize temp ReadCloser
 	return tmpFile, nil
 }
 

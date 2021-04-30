@@ -47,7 +47,6 @@ func (s *osLocationTest) SetupTest() {
 }
 
 func (s *osLocationTest) TestList() {
-
 	expected := []string{"empty.txt", "prefix-file.txt", "test.txt"}
 	actual, _ := s.testFile.Location().List()
 	s.Equal(expected, actual)
@@ -69,7 +68,7 @@ func (s *osLocationTest) TestList_NonExistentDirectory() {
 	s.Nil(err, "error isn't expected")
 	s.Equal(0, len(prefixContents), "ListByPrefix should return empty slice for non-existent directory")
 
-	regex, _ := regexp.Compile("[-]+")
+	regex := regexp.MustCompile("-+")
 	regexContents, err := location.ListByRegex(regex)
 	s.Nil(err, "error isn't expected")
 	s.Equal(0, len(regexContents), "ListByRegex should return empty slice for non-existent directory")
@@ -83,7 +82,7 @@ func (s *osLocationTest) TestListByPrefix() {
 
 func (s *osLocationTest) TestListByRegex() {
 	expected := []string{"prefix-file.txt"}
-	regex, _ := regexp.Compile("[-]+")
+	regex := regexp.MustCompile("-+")
 	actual, _ := s.testFile.Location().ListByRegex(regex)
 	s.Equal(expected, actual)
 }
@@ -167,7 +166,6 @@ func (s *osLocationTest) TestDeleteFile() {
 	exists, err = file.Exists()
 	s.NoError(err, "Shouldn't throw error testing for exists after delete.")
 	s.False(exists, "Exists should return false after deleting the file.")
-
 }
 
 func TestOSLocation(t *testing.T) {

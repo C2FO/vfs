@@ -46,7 +46,7 @@ func (ts *fileSystemTestSuite) TestNewFile_Error() {
 	_, err := nils3fs.NewFile("", "/path/to/file.txt")
 	ts.EqualError(err, "non-nil s3.FileSystem pointer is required", "errors returned by NewFile")
 
-	//test validation error
+	// test validation error
 	file, err := s3fs.NewFile("bucketName", "relative/path/to/file.txt")
 	ts.EqualError(err, utils.ErrBadAbsFilePath, "errors returned by NewFile")
 	ts.Nil(file, "NewFile shouldn't return a file")
@@ -70,7 +70,7 @@ func (ts *fileSystemTestSuite) TestNewLocation_Error() {
 	_, err := nils3fs.NewLocation("", "/path/to/")
 	ts.EqualError(err, "non-nil s3.FileSystem pointer is required", "errors returned by NewLocation")
 
-	//test validation error
+	// test validation error
 	file, err := s3fs.NewLocation("bucketName", "relative/path/to/")
 	ts.EqualError(err, utils.ErrBadAbsLocationPath, "errors returned by NewLocation")
 	ts.Nil(file, "NewFile shouldn't return a file")
@@ -86,7 +86,7 @@ func (ts *fileSystemTestSuite) TestName_Error() {
 }
 
 func (ts *fileSystemTestSuite) TestWithOptions() {
-	//ignore non-s3.Options
+	// ignore non-s3.Options
 	fs := s3fs.WithOptions("just a string")
 	ts.Equal(s3fs, fs, "no change for non-s3.Options")
 
@@ -98,7 +98,7 @@ func (ts *fileSystemTestSuite) TestWithOptions() {
 }
 
 func (ts *fileSystemTestSuite) TestClient() {
-	//client already set
+	// client already set
 	client, err := s3fs.Client()
 	ts.NoError(err, "no error")
 	ts.Equal(s3fs.client, client, "client was already set")

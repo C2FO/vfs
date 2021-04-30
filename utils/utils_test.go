@@ -424,7 +424,7 @@ func (s *utilsTest) TestValidateRelLocationPath() {
 
 func (s *utilsTest) TestGetURI() {
 
-	//set up mocks
+	// set up mocks
 	mockFs1 := new(mocks.FileSystem)
 	mockFs1.On("Scheme", mock.Anything).Return("file")
 
@@ -449,11 +449,11 @@ func (s *utilsTest) TestGetURI() {
 	mockFile2.On("Path").Return("/this/path/to/file.txt")
 	mockFile2.On("Location").Return(mockLoc2)
 
-	//GetFileURI
+	// GetFileURI
 	s.Equal("file:///some/path/to/file.txt", utils.GetFileURI(mockFile1), "os file uri matches ")
 	s.Equal("s3://mybucket/this/path/to/file.txt", utils.GetFileURI(mockFile2), "s3 file uri matches ")
 
-	//GetLocationURI
+	// GetLocationURI
 	s.Equal("file:///some/path/to/", utils.GetLocationURI(mockLoc1), "os location uri matches ")
 	s.Equal("s3://mybucket/this/path/to/", utils.GetLocationURI(mockLoc2), "s3 location uri matches ")
 }
@@ -497,8 +497,8 @@ func (s *utilsTest) TestTouchCopy() {
 	s.Error(err, "should have failed stat")
 	s.True(os.IsNotExist(err), "should be true: not exists")
 
-	//now with TouchCopy
-	_, err = reader.Seek(0, 0) //reset reader
+	// now with TouchCopy
+	_, err = reader.Seek(0, 0) // reset reader
 	s.NoError(err, "unexpected error resetting vfs.File reader")
 	err = utils.TouchCopy(writer, reader)
 	s.NoError(err, "unexpected error running TouchCopy()")
@@ -516,7 +516,7 @@ func (s *utilsTest) TestTouchCopy() {
 		s.Equal(int64(0), fi.Size(), "file should be zero length")
 	}
 
-	//TouchCopy on file that actually has data
+	// TouchCopy on file that actually has data
 	_, err = reader.Write([]byte("blah"))
 	s.NoError(err)
 	_ = reader.Close()
@@ -528,7 +528,7 @@ func (s *utilsTest) TestTouchCopy() {
 	s.NoError(err, "file should exist, so no error")
 	s.NotEqual(fi, 0, "file should have a non-zero byte size")
 
-	//TouchCopy should fail on a reader.Size() error
+	// TouchCopy should fail on a reader.Size() error
 	nonexistantFile := path.Join(writer.Path(), "nonexistent.file")
 	noFile, err := osfs.NewFile("", nonexistantFile)
 	s.NoError(err, "unexpected error creating vfs.File reader for non-existent file")
