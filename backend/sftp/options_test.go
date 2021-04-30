@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -379,11 +380,11 @@ func (o *optionsSuite) TestGetAuthMethods() {
 }
 
 type getClientTest struct {
-	options    Options
-	authority  utils.Authority
-	hasError   bool
-	errMessage string
-	message    string
+	options   Options
+	authority utils.Authority
+	hasError  bool
+	errRegex  string
+	message   string
 }
 
 func (o *optionsSuite) TestGetClient() {
@@ -398,9 +399,9 @@ func (o *optionsSuite) TestGetClient() {
 				Password:           "somepassword",
 				KnownHostsCallback: ssh.InsecureIgnoreHostKey(),
 			},
-			hasError:   true,
-			errMessage: "no such host",
-			message:    "getclient - bad host",
+			hasError: true,
+			errRegex: "(?:no such host|Temporary failure in name resolution)",
+			message:  "getclient - bad host",
 		},
 		{
 			authority: utils.Authority{
@@ -411,9 +412,9 @@ func (o *optionsSuite) TestGetClient() {
 				KeyFilePath:        "nonexistent.key",
 				KnownHostsCallback: ssh.InsecureIgnoreHostKey(),
 			},
-			hasError:   true,
-			errMessage: "open nonexistent.key: no such file or directory",
-			message:    "getclient - bad auth key",
+			hasError: true,
+			errRegex: "open nonexistent.key: no such file or directory",
+			message:  "getclient - bad auth key",
 		},
 		{
 			authority: utils.Authority{
@@ -424,9 +425,9 @@ func (o *optionsSuite) TestGetClient() {
 				Password:         "somepassword",
 				KnownHostsString: "badstring",
 			},
-			hasError:   true,
-			errMessage: "ssh: no key found",
-			message:    "getclient - bad known hosts",
+			hasError: true,
+			errRegex: "ssh: no key found",
+			message:  "getclient - bad known hosts",
 		},
 	} // #nosec - InsecureIgnoreHostKey only used for testing
 
@@ -435,7 +436,8 @@ func (o *optionsSuite) TestGetClient() {
 		_, err := getClient(t.authority, t.options)
 		if t.hasError {
 			if o.Error(err, "error found") {
-				o.Contains(err.Error(), t.errMessage, "error matches")
+				re := regexp.MustCompile(t.errRegex)
+				o.Regexp(re, err.Error(), "error matches")
 			}
 		} else {
 			o.NoError(err, t.message)
