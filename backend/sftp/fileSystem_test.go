@@ -40,7 +40,7 @@ func (ts *fileSystemTestSuite) TestNewFile_Error() {
 	_, err := nilsftpfs.NewFile("host.com", "/path/to/file.txt")
 	ts.EqualError(err, "non-nil sftp.FileSystem pointer is required", "errors returned by NewFile")
 
-	//test validation error
+	// test validation error
 	file, err := ts.sftpfs.NewFile("host.com", "relative/path/to/file.txt")
 	ts.EqualError(err, utils.ErrBadAbsFilePath, "errors returned by NewFile")
 	ts.Nil(file, "NewFile shouldn't return a file")
@@ -69,7 +69,7 @@ func (ts *fileSystemTestSuite) TestNewLocation_Error() {
 	_, err := nilsftpfs.NewLocation("somehost.com", "/path/to/")
 	ts.EqualError(err, "non-nil sftp.FileSystem pointer is required", "errors returned by NewLocation")
 
-	//test validation error
+	// test validation error
 	file, err := ts.sftpfs.NewLocation("host.com", "relative/path/to/")
 	ts.EqualError(err, utils.ErrBadAbsLocationPath, "errors returned by NewLocation")
 	ts.Nil(file, "NewFile shouldn't return a file")
@@ -98,7 +98,7 @@ func (ts *fileSystemTestSuite) TestRetry() {
 }
 
 func (ts *fileSystemTestSuite) TestWithOptions() {
-	//ignore non-sftp.Options
+	// ignore non-sftp.Options
 	fs := ts.sftpfs.WithOptions("just a string")
 	ts.Equal(ts.sftpfs, fs, "no change for non-sftp.Options")
 
@@ -108,12 +108,12 @@ func (ts *fileSystemTestSuite) TestWithOptions() {
 }
 
 func (ts *fileSystemTestSuite) TestClient() {
-	//client already set
+	// client already set
 	client, err := ts.sftpfs.Client(utils.Authority{})
 	ts.NoError(err, "no error")
 	ts.Equal(ts.sftpfs.sftpclient, client, "client was already set")
 
-	//cached client
+	// cached client
 	ts.sftpfs.sftpclient = &mocks.Client{}
 	client, err = ts.sftpfs.getClient(utils.Authority{}, Options{})
 	ts.NoError(err)
@@ -127,7 +127,7 @@ func (ts *fileSystemTestSuite) TestClient() {
 	ts.Error(err, "error found")
 	ts.Equal("unable to create client, vfs.Options must be an sftp.Options", err.Error(), "client was already set")
 
-	//no opts, no authority
+	// no opts, no authority
 	ts.sftpfs.options = nil
 	_, err = ts.sftpfs.Client(utils.Authority{Host: "badhost"})
 	if ts.Error(err, "error found") {

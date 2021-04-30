@@ -10,7 +10,7 @@ import (
 	"github.com/c2fo/vfs/v5/utils"
 )
 
-//File implements vfs.File interface for SFTP fs.
+// File implements vfs.File interface for SFTP fs.
 type File struct {
 	fileSystem *FileSystem
 	Authority  utils.Authority
@@ -125,13 +125,13 @@ func (f *File) MoveToFile(t vfs.File) error {
 	if f.fileSystem.Scheme() == t.Location().FileSystem().Scheme() &&
 		f.Authority.User == t.(*File).Authority.User &&
 		f.Authority.Host == t.(*File).Authority.Host {
-		//ensure destination exists before moving
+		// ensure destination exists before moving
 		exists, err := t.Location().Exists()
 		if err != nil {
 			return err
 		}
 		if !exists {
-			//it doesn't matter which client we use since they are effectively the same
+			// it doesn't matter which client we use since they are effectively the same
 			client, err := f.fileSystem.Client(f.Authority)
 			if err != nil {
 				return err
@@ -144,7 +144,7 @@ func (f *File) MoveToFile(t vfs.File) error {
 		return f.sftpRename(t.(*File))
 	}
 
-	//otherwise do copy-delete
+	// otherwise do copy-delete
 	if err := f.CopyToFile(t); err != nil {
 		return err
 	}
@@ -172,11 +172,11 @@ func (f *File) CopyToFile(file vfs.File) error {
 	if err := utils.TouchCopy(file, f); err != nil {
 		return err
 	}
-	//Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
+	// Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
 	if cerr := file.Close(); cerr != nil {
 		return cerr
 	}
-	//Close file (f) reader
+	// Close file (f) reader
 	return f.Close()
 }
 
@@ -192,11 +192,11 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 	if err := utils.TouchCopy(newFile, f); err != nil {
 		return nil, err
 	}
-	//Close target file to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
+	// Close target file to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
 	if cerr := newFile.Close(); cerr != nil {
 		return nil, cerr
 	}
-	//Close file (f) reader
+	// Close file (f) reader
 	if cerr := f.Close(); cerr != nil {
 		return nil, cerr
 	}
@@ -223,7 +223,7 @@ func (f *File) Close() error {
 		}
 		f.sftpfile = nil
 	}
-	//no op for unopened file
+	// no op for unopened file
 	return nil
 }
 
@@ -283,7 +283,7 @@ func (f *File) openFile(flag int) (ReadWriteSeekCloser, error) {
 	}
 
 	if flag&os.O_CREATE != 0 {
-		//vfs specifies that all implementations make dir path if it doesn't exist
+		// vfs specifies that all implementations make dir path if it doesn't exist
 		err = client.MkdirAll(path.Dir(f.path))
 		if err != nil {
 			return nil, err

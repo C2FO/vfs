@@ -474,7 +474,7 @@ func (ts *fileTestSuite) TestLastModified() {
 }
 
 func (ts *fileTestSuite) TestLastModifiedFail() {
-	//setup error on HEAD
+	// setup error on HEAD
 	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(nil,
 		errors.New("boom"))
 	m, e := testFile.LastModified()
@@ -551,7 +551,7 @@ func (ts *fileTestSuite) TestCloseWithoutWrite() {
 	fs := &FileSystem{}
 	file, err := fs.NewFile("mybucket", "/some/file/test.txt")
 	ts.NoError(err)
-	file.Close()
+	ts.NoError(file.Close())
 	ts.NoError(err, "file closed without error")
 }
 

@@ -19,7 +19,7 @@ import (
 	"github.com/c2fo/vfs/v5/utils"
 )
 
-//File implements vfs.File interface for S3 fs.
+// File implements vfs.File interface for S3 fs.
 type File struct {
 	fileSystem  *FileSystem
 	bucket      string
@@ -90,13 +90,13 @@ func (f *File) Location() vfs.Location {
 // CopyToFile puts the contents of File into the targetFile passed. Uses the S3 CopyObject
 // method if the target file is also on S3, otherwise uses io.Copy.
 func (f *File) CopyToFile(file vfs.File) error {
-	//if target is S3
+	// if target is S3
 	if tf, ok := file.(*File); ok {
 		input, err := f.getCopyObjectInput(tf)
 		if err != nil {
 			return err
 		}
-		//if input is not nil, use it to natively copy object
+		// if input is not nil, use it to natively copy object
 		if input != nil {
 			client, err := f.fileSystem.Client()
 			if err != nil {
@@ -107,15 +107,15 @@ func (f *File) CopyToFile(file vfs.File) error {
 		}
 	}
 
-	//otherwise use TouchCopy (io.Copy)
+	// otherwise use TouchCopy (io.Copy)
 	if err := utils.TouchCopy(file, f); err != nil {
 		return err
 	}
-	//Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
+	// Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
 	if cerr := file.Close(); cerr != nil {
 		return cerr
 	}
-	//Close file (f) reader
+	// Close file (f) reader
 	return f.Close()
 }
 
@@ -239,14 +239,14 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 // it is appropriate to call PutObject, or initiate a multi-part upload.
 func (f *File) Write(data []byte) (res int, err error) {
 	if f.writeBuffer == nil {
-		//note, initializing with 'data' and returning len(data), nil
-		//causes issues with some Write usages, notably csv.Writer
-		//so we simply initialize with no bytes and call the buffer Write after
+		// note, initializing with 'data' and returning len(data), nil
+		// causes issues with some Write usages, notably csv.Writer
+		// so we simply initialize with no bytes and call the buffer Write after
 		//
-		//f.writeBuffer = bytes.NewBuffer(data)
-		//return len(data), nil
+		// f.writeBuffer = bytes.NewBuffer(data)
+		// return len(data), nil
 		//
-		//so now we do:
+		// so now we do:
 
 		f.writeBuffer = bytes.NewBuffer([]byte{})
 	}
@@ -256,7 +256,7 @@ func (f *File) Write(data []byte) (res int, err error) {
 // Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
 // Returns error if unable to touch File.
 func (f *File) Touch() error {
-	//check if file exists
+	// check if file exists
 	exists, err := f.Exists()
 	if err != nil {
 		return err
@@ -304,7 +304,7 @@ func (f *File) getHeadObject() (*s3.HeadObjectOutput, error) {
 
 // For copy from S3-to-S3 when credentials are the same between source and target, return *s3.CopyObjectInput or error
 func (f *File) getCopyObjectInput(targetFile *File) (*s3.CopyObjectInput, error) {
-	//first we must determine if we're using the same s3 credentials for source and target before doing a native copy
+	// first we must determine if we're using the same s3 credentials for source and target before doing a native copy
 	isSameAccount := false
 	var ACL string
 
@@ -318,7 +318,7 @@ func (f *File) getCopyObjectInput(targetFile *File) (*s3.CopyObjectInput, error)
 		opts, hasOptions := fileOptions.(Options)
 		targetOpts, hasTargetOptions := targetOptions.(Options)
 		if hasOptions {
-			//use source ACL (even if empty), UNLESS target ACL is set
+			// use source ACL (even if empty), UNLESS target ACL is set
 			ACL = opts.ACL
 			if hasTargetOptions && targetOpts.ACL != "" {
 				ACL = targetOpts.ACL
@@ -334,7 +334,7 @@ func (f *File) getCopyObjectInput(targetFile *File) (*s3.CopyObjectInput, error)
 	// If both files use the same account, copy with native library. Otherwise, copy to disk
 	// first before pushing out to the target file's location.
 	if isSameAccount {
-		//PathEscape ensures we url-encode as required by the API, including double-encoding literals
+		// PathEscape ensures we url-encode as required by the API, including double-encoding literals
 		copySourceKey := url.PathEscape(path.Join(f.bucket, f.key))
 
 		copyInput := new(s3.CopyObjectInput).
@@ -344,7 +344,7 @@ func (f *File) getCopyObjectInput(targetFile *File) (*s3.CopyObjectInput, error)
 			SetBucket(targetFile.bucket).
 			SetCopySource(copySourceKey)
 
-		//validate copyInput
+		// validate copyInput
 		if err := copyInput.Validate(); err != nil {
 			return nil, err
 		}
@@ -352,7 +352,7 @@ func (f *File) getCopyObjectInput(targetFile *File) (*s3.CopyObjectInput, error)
 		return copyInput, nil
 	}
 
-	//return nil if credentials aren't the same
+	// return nil if credentials aren't the same
 	return nil, nil
 }
 
@@ -388,7 +388,7 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 		return nil, err
 	}
 
-	//initialize temp ReadCloser
+	// initialize temp ReadCloser
 	return tmpFile, nil
 }
 
@@ -431,7 +431,7 @@ func uploadInput(f *File) *s3manager.UploadInput {
 	return input
 }
 
-//WaitUntilFileExists attempts to ensure that a recently written file is available before moving on.  This is helpful for
+// WaitUntilFileExists attempts to ensure that a recently written file is available before moving on.  This is helpful for
 // attempting to overcome race conditions withe S3's "eventual consistency".
 // WaitUntilFileExists accepts vfs.File and an int representing the number of times to retry(once a second).
 // error is returned if the file is still not available after the specified retries.
@@ -452,7 +452,7 @@ func waitUntilFileExists(file vfs.File, retries int) error {
 			return fmt.Errorf("failed to find file %s after %d retries", file, retries)
 		}
 
-		//check for existing file
+		// check for existing file
 		found, err := file.Exists()
 		if err != nil {
 			return fmt.Errorf("unable to perform S3 exists on file %s: %s", file, err.Error())

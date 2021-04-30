@@ -106,10 +106,8 @@ func TouchCopy(writer, reader vfs.File) error {
 		if err != nil {
 			return err
 		}
-	} else {
-		if _, err := io.Copy(writer, reader); err != nil {
-			return err
-		}
+	} else if _, err := io.Copy(writer, reader); err != nil {
+		return err
 	}
 	return nil
 }

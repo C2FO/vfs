@@ -31,8 +31,8 @@ func (l *Location) List() ([]string, error) {
 	return l.ListByPrefix("")
 }
 
-//ListByPrefix returns a slice of file base names and any error, if any
-//List functions return only file basenames
+// ListByPrefix returns a slice of file base names and any error, if any
+// List functions return only file basenames
 func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error) {
 	prefix := utils.RemoveLeadingSlash(path.Join(l.prefix, filenamePrefix))
 	if filenamePrefix == "" {
@@ -60,7 +60,7 @@ func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error) {
 			}
 			return nil, err
 		}
-		//only include objects, not "directories"
+		// only include objects, not "directories"
 		if objAttrs.Prefix == "" && objAttrs.Name != d && !strings.HasSuffix(objAttrs.Name, "/") {
 			fn := strings.TrimPrefix(objAttrs.Name, utils.EnsureTrailingSlash(d))
 			fileNames = append(fileNames, fn)
@@ -114,7 +114,7 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 		return nil, errors.New("non-nil gs.Location pointer is required")
 	}
 
-	//make a copy of the original location first, then ChangeDir, leaving the original location as-is
+	// make a copy of the original location first, then ChangeDir, leaving the original location as-is
 	newLocation := &Location{}
 	*newLocation = *l
 	err := newLocation.ChangeDir(relativePath)

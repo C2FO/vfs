@@ -31,24 +31,24 @@ type Options struct {
 // getClient setup S3 client
 func getClient(opt Options) (s3iface.S3API, error) {
 
-	//setup default config
+	// setup default config
 	awsConfig := defaults.Config()
 
-	//setup region using opt or env
+	// setup region using opt or env
 	if opt.Region != "" {
 		awsConfig.WithRegion(opt.Region)
 	} else if val, ok := os.LookupEnv("AWS_DEFAULT_REGION"); ok {
 		awsConfig.WithRegion(val)
 	}
 
-	//use specific endpoint, otherwise, will use aws "default endpoint resolver" based on region
+	// use specific endpoint, otherwise, will use aws "default endpoint resolver" based on region
 	awsConfig.WithEndpoint(opt.Endpoint)
 
 	if opt.Retry != nil {
 		awsConfig.Retryer = opt.Retry
 	}
 
-	//set up credential provider chain
+	// set up credential provider chain
 	credentialProviders, err := initCredentialProviderChain(opt)
 	if err != nil {
 		return nil, err
@@ -67,11 +67,11 @@ func getClient(opt Options) (s3iface.S3API, error) {
 		return nil, err
 	}
 
-	//return client instance
+	// return client instance
 	return s3.New(s), nil
 }
 
-//initCredentialProviderChain returns an array of credential providers that will be used, in order, to attempt authentication
+// initCredentialProviderChain returns an array of credential providers that will be used, in order, to attempt authentication
 func initCredentialProviderChain(opt Options) ([]credentials.Provider, error) {
 	p := make([]credentials.Provider, 0)
 
@@ -95,7 +95,7 @@ func initCredentialProviderChain(opt Options) ([]credentials.Provider, error) {
 	// * Access Key ID:     AWS_ACCESS_KEY_ID or AWS_ACCESS_KEY
 	//
 	// * Secret Access Key: AWS_SECRET_ACCESS_KEY or AWS_SECRET_KEY
-	p = append(p, &credentials.EnvProvider{})
+	p = append(p, &credentials.EnvProvider{}) // nolint:gocritic // appendCombine
 
 	// Path to the shared credentials file.
 	//

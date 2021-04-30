@@ -9,7 +9,7 @@ import (
 
 	"github.com/c2fo/vfs/v5"
 	"github.com/c2fo/vfs/v5/backend"
-	_ "github.com/c2fo/vfs/v5/backend/all" //register all backends
+	_ "github.com/c2fo/vfs/v5/backend/all" // register all backends
 )
 
 // NewLocation is a convenience function that allows for instantiating a location based on a uri string. Any
@@ -36,7 +36,7 @@ func NewFile(uri string) (vfs.File, error) {
 	return fs.NewFile(host, path)
 }
 
-func parseSupportedURI(uri string) (vfs.FileSystem, string, string, error) {
+func parseSupportedURI(uri string) (vfs.FileSystem, string, string, error) { //nolint:gocritic // unnamedResult
 	var err error
 	var u *url.URL
 	u, err = url.Parse(uri)
@@ -89,8 +89,8 @@ func parseSupportedURI(uri string) (vfs.FileSystem, string, string, error) {
 //   root: s3://bucket/root/   <== Registered URI for file system.
 //
 //   This would return true because the target url is within the root.
-func isInPath(url *url.URL, volume, root string) bool {
-	path := url.Path
+func isInPath(u *url.URL, volume, root string) bool {
+	path := u.Path
 	paths := strings.Split(path, string(os.PathSeparator))
 	for i := range paths {
 		path := fmt.Sprintf("%s%s/", volume, filepath.Join(paths[0:i]...))

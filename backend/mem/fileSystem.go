@@ -9,7 +9,7 @@ import (
 	"github.com/c2fo/vfs/v5/utils"
 )
 
-//Scheme defines the FileSystem type's underlying implementation.
+// Scheme defines the FileSystem type's underlying implementation.
 const Scheme = "mem"
 const name = "In-Memory Filesystem"
 
@@ -30,15 +30,15 @@ func (fs *FileSystem) Retry() vfs.Retry {
 	return vfs.DefaultRetryer()
 }
 
-//NewFile function returns the in-memory implementation of vfs.File.
-//Since this is inside FileSystem, we assume that the caller knows that the CWD is the root.
-//If a non-absolute path is given, an error is thrown. Additionally, a file does not
-//technically exist until a call to "Touch()" is made on it. The "Touch" call links the
-//file with FileSystem's map and brings it into existence.
-//If a file is written to before a touch call, Write() will take care of that call.  This is
-//true for other functions as well and existence only poses a problem in the context of deletion
-//or copying FROM a non-existent file.
-func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, error) {
+// NewFile function returns the in-memory implementation of vfs.File.
+// Since this is inside FileSystem, we assume that the caller knows that the CWD is the root.
+// If a non-absolute path is given, an error is thrown. Additionally, a file does not
+// technically exist until a call to "Touch()" is made on it. The "Touch" call links the
+// file with FileSystem's map and brings it into existence.
+// If a file is written to before a touch call, Write() will take care of that call.  This is
+// true for other functions as well and existence only poses a problem in the context of deletion
+// or copying FROM a non-existent file.
+func (fs *FileSystem) NewFile(volume, absFilePath string) (vfs.File, error) {
 
 	err := utils.ValidateAbsoluteFilePath(absFilePath)
 	if err != nil {
@@ -61,7 +61,7 @@ func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, erro
 			}
 		}
 	}
-	//validateAbsFile path will throw an error if there was a trailing slash, hence not calling path.Clean()
+	// validateAbsFile path will throw an error if there was a trailing slash, hence not calling path.Clean()
 	file := &File{
 		name: path.Base(absFilePath),
 	}
@@ -71,10 +71,10 @@ func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, erro
 	return file, nil
 }
 
-//NewLocation function returns the in-memory implementation of vfs.Location.
-//A location always exists. If a file is created on a location that has not yet
-//been made in the fsMap, then the location will be created with the file
-func (fs *FileSystem) NewLocation(volume string, absLocPath string) (vfs.Location, error) {
+// NewLocation function returns the in-memory implementation of vfs.Location.
+// A location always exists. If a file is created on a location that has not yet
+// been made in the fsMap, then the location will be created with the file
+func (fs *FileSystem) NewLocation(volume, absLocPath string) (vfs.Location, error) {
 
 	err := utils.ValidateAbsoluteLocationPath(absLocPath)
 	if err != nil {
@@ -100,7 +100,7 @@ func (fs *FileSystem) Scheme() string {
 	return Scheme
 }
 
-//NewFileSystem is used to initialize the file system struct for an in-memory FileSystem.
+// NewFileSystem is used to initialize the file system struct for an in-memory FileSystem.
 func NewFileSystem() *FileSystem {
 
 	return &FileSystem{
@@ -111,12 +111,12 @@ func NewFileSystem() *FileSystem {
 }
 
 func init() {
-	//Even though the map is being made here, a call to
+	// Even though the map is being made here, a call to
 	backend.Register(Scheme, NewFileSystem())
 
 }
 
-//getKeys is used to get a list of absolute paths on a specified volume. These paths are a mixture of files and locations
+// getKeys is used to get a list of absolute paths on a specified volume. These paths are a mixture of files and locations
 func (o objMap) getKeys() []string {
 	keyList := make([]string, 0)
 	for i := range o {
@@ -125,16 +125,16 @@ func (o objMap) getKeys() []string {
 	return keyList
 }
 
-//fileHere returns a list of file pointers found at the absolute location path provided.
-//If none are there, returns an empty slice
+// fileHere returns a list of file pointers found at the absolute location path provided.
+// If none are there, returns an empty slice
 func (o objMap) filesHere(absLocPath string) []*memFile {
 
 	paths := o.getKeys()
 	fileList := make([]*memFile, 0)
 	for i := range paths {
 
-		object := o[paths[i]]                         //retrieve the object
-		if ok := object != nil && object.isFile; ok { //if the object is a file, cast its interface, i, to a file and append to the slice
+		object := o[paths[i]]                         // retrieve the object
+		if ok := object != nil && object.isFile; ok { // if the object is a file, cast its interface, i, to a file and append to the slice
 			file := object.i.(*memFile)
 			if file.location.Path() == absLocPath {
 				fileList = append(fileList, file)
@@ -144,16 +144,16 @@ func (o objMap) filesHere(absLocPath string) []*memFile {
 	return fileList
 }
 
-//fileNamesHere returns a list of base names of files found at the absolute location path provided.
-//If none are there, returns an empty slice
+// fileNamesHere returns a list of base names of files found at the absolute location path provided.
+// If none are there, returns an empty slice
 func (o objMap) fileNamesHere(absLocPath string) []string {
 
 	paths := o.getKeys()
 	fileList := make([]string, 0)
 	for i := range paths {
 
-		object := o[paths[i]]               //retrieve the object
-		if object != nil && object.isFile { //if the object is a file, cast its interface, i, to a file and append the name to the slice
+		object := o[paths[i]]               // retrieve the object
+		if object != nil && object.isFile { // if the object is a file, cast its interface, i, to a file and append the name to the slice
 			file := object.i.(*memFile)
 			if utils.EnsureTrailingSlash(file.location.Path()) == absLocPath {
 				fileList = append(fileList, file.name)

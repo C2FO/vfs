@@ -13,7 +13,7 @@ import (
 	"github.com/c2fo/vfs/v5/utils"
 )
 
-//Location implements the vfs.Location interface specific to sftp fs.
+// Location implements the vfs.Location interface specific to sftp fs.
 type Location struct {
 	fileSystem *FileSystem
 	path       string
@@ -56,10 +56,10 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 	}
 
 	fullpath := path.Join(l.Path(), prefix)
-	//check if last char is not /, aka is not a dir, get base of path
+	// check if last char is not /, aka is not a dir, get base of path
 	baseprefix := ""
 	r, _ := utf8.DecodeLastRuneInString(fullpath)
-	if r != rune('/') {
+	if r != '/' {
 		baseprefix = path.Base(fullpath)
 	}
 	fullpath = utils.EnsureTrailingSlash(path.Dir(fullpath))
@@ -141,7 +141,7 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 		return nil, errors.New("non-nil sftp.Location pointer receiver is required")
 	}
 
-	//make a copy of the original location first, then ChangeDir, leaving the original location as-is
+	// make a copy of the original location first, then ChangeDir, leaving the original location as-is
 	newLocation := &Location{}
 	*newLocation = *l
 	err := newLocation.ChangeDir(relativePath)

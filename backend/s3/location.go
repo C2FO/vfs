@@ -13,7 +13,7 @@ import (
 	"github.com/c2fo/vfs/v5/utils"
 )
 
-//Location implements the vfs.Location interface specific to S3 fs.
+// Location implements the vfs.Location interface specific to S3 fs.
 type Location struct {
 	fileSystem *FileSystem
 	prefix     string
@@ -93,7 +93,7 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 		return nil, errors.New("non-nil s3.Location pointer is required")
 	}
 
-	//make a copy of the original location first, then ChangeDir, leaving the original location as-is
+	// make a copy of the original location first, then ChangeDir, leaving the original location as-is
 	newLocation := &Location{}
 	*newLocation = *l
 	err := newLocation.ChangeDir(relativePath)

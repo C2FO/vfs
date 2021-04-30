@@ -160,7 +160,7 @@ func (o *optionsSuite) TestGetHostKeyCallback() {
 	knwonHosts := filepath.Join(o.tmpdir, "known_hosts")
 	f, err := os.Create(knwonHosts)
 	o.NoError(err, "create file for getHostKeyCallback test")
-	_, err = f.Write([]byte("127.0.0.1 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBMkEmvHLSa43yoLA8QBqTfwgXgNCfd0DKs20NlBVbMoo21+Bs0fUpemyy6U0nnGHiOJVhiL7lNG/lB1fF1ymouM=")) //nolint
+	_, err = f.Write([]byte("127.0.0.1 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBMkEmvHLSa43yoLA8QBqTfwgXgNCfd0DKs20NlBVbMoo21+Bs0fUpemyy6U0nnGHiOJVhiL7lNG/lB1fF1ymouM=")) //nolint:lll // long line
 	o.NoError(err, "writing to file for getHostKeyCallback test")
 	o.NoError(f.Close(), "closing file for getHostKeyCallback test")
 	defer func() { o.NoError(os.Remove(knwonHosts), "clean up file for getHostKeyCallback test") }()
@@ -176,7 +176,7 @@ func (o *optionsSuite) TestGetHostKeyCallback() {
 		},
 		{
 			options: Options{
-				KnownHostsString: "127.0.0.1 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBMkEmvHLSa43yoLA8QBqTfwgXgNCfd0DKs20NlBVbMoo21+Bs0fUpemyy6U0nnGHiOJVhiL7lNG/lB1fF1ymouM=", //nolint
+				KnownHostsString: "127.0.0.1 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBMkEmvHLSa43yoLA8QBqTfwgXgNCfd0DKs20NlBVbMoo21+Bs0fUpemyy6U0nnGHiOJVhiL7lNG/lB1fF1ymouM=", //nolint:lll // long line
 			},
 			hasError:   false,
 			errMessage: "",
@@ -223,17 +223,17 @@ func (o *optionsSuite) TestGetHostKeyCallback() {
 			errMessage: "",
 			message:    "default fallthrough KnownHostsFile",
 		},
-	}
+	} // #nosec - InsecureIgnoreHostKey only used for testing
 
-	for _, t := range tests {
-		//setup env vars, if any
+	for _, t := range tests { // nolint:gocritic // rangeValCopy
+		// setup env vars, if any
 		tmpMap := make(map[string]string)
 		for k, v := range t.envVars {
 			tmpMap[k] = os.Getenv(k)
 			o.NoError(os.Setenv(k, v))
 		}
 
-		//apply test
+		// apply test
 		_, err := getHostKeyCallback(t.options)
 		if t.hasError {
 			o.EqualError(err, t.errMessage, t.message)
@@ -241,7 +241,7 @@ func (o *optionsSuite) TestGetHostKeyCallback() {
 			o.NoError(err, t.message)
 		}
 
-		//return env vars to original value
+		// return env vars to original value
 		for k, v := range tmpMap {
 			o.NoError(os.Setenv(k, v))
 		}
@@ -331,7 +331,7 @@ func (o *optionsSuite) TestGetAuthMethods() {
 		},
 		{
 			envVars: map[string]string{
-				"VFS_SFTP_KEYFILE": o.keyFiles.SSHPrivateKeyNoPassphrase, //overridden by explicit options value
+				"VFS_SFTP_KEYFILE": o.keyFiles.SSHPrivateKeyNoPassphrase, // overridden by explicit options value
 			},
 			options: Options{
 				KeyFilePath:   o.keyFiles.SSHPrivateKey,
@@ -354,15 +354,15 @@ func (o *optionsSuite) TestGetAuthMethods() {
 		},
 	}
 
-	for _, t := range tests {
-		//setup env vars, if any
+	for _, t := range tests { // nolint:gocritic // rangeValCopy
+		// setup env vars, if any
 		tmpMap := make(map[string]string)
 		for k, v := range t.envVars {
 			tmpMap[k] = os.Getenv(k)
 			o.NoError(os.Setenv(k, v))
 		}
 
-		//apply test
+		// apply test
 		auth, err := getAuthMethods(t.options)
 		if t.hasError {
 			o.EqualError(err, t.errMessage, t.message)
@@ -371,7 +371,7 @@ func (o *optionsSuite) TestGetAuthMethods() {
 			o.Equal(t.returnCount, len(auth), "auth count")
 		}
 
-		//return env vars to original value
+		// return env vars to original value
 		for k, v := range tmpMap {
 			o.NoError(os.Setenv(k, v))
 		}
@@ -428,10 +428,10 @@ func (o *optionsSuite) TestGetClient() {
 			errMessage: "ssh: no key found",
 			message:    "getclient - bad known hosts",
 		},
-	}
+	} // #nosec - InsecureIgnoreHostKey only used for testing
 
-	for _, t := range tests {
-		//apply test
+	for _, t := range tests { // nolint:gocritic // rangeValCopy
+		// apply test
 		_, err := getClient(t.authority, t.options)
 		if t.hasError {
 			if o.Error(err, "error found") {
@@ -478,7 +478,7 @@ type keyFiles struct {
 func setupKeyFiles(tmpdir string) (*keyFiles, error) {
 	kf := &keyFiles{}
 
-	//setup ssh dir
+	// setup ssh dir
 	dir := path.Join(tmpdir, "ssh_keys")
 	err := os.Mkdir(dir, 0700)
 	if err != nil {
@@ -514,8 +514,8 @@ func setupKeyFiles(tmpdir string) (*keyFiles, error) {
 	return kf, nil
 }
 
-func writeFileString(filepath, contents string) error {
-	f, err := os.Create(filepath)
+func writeFileString(p, contents string) error {
+	f, err := os.Create(p)
 	if err != nil {
 		return err
 	}
@@ -583,9 +583,9 @@ vskW5YS7bVTTe2OHCPli7XR6I0WP12Sv0ZZ64/M1RV4iAm5n1kYFblw8WxFN5zsq
 nPpJqAUwIk+SW+xvvxvGbmlyl6e2g5M2XT4yx92i0sQM+A+/iooY4AIHDaoDrFrD
 yIZ4J2jEYLdN9DFcfc3ADgzoRQUOQC8IdLcy9R3NmZKJV5YGS1y/UXGiItVpTYnn
 KvjLb0PDvkxrs21ffmWdD7pHQQNnfGSQNQT2xLCjfLh0bS2NDK5uEPZLHMEw1z1S
------END RSA PRIVATE KEY-----`
+-----END RSA PRIVATE KEY-----` // #nosec - these are generated specifically for testing
 
-const keyWithPassphrasePubkey = `ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDDNP1Ox5CSGHGt7kxNTcMUEGXypeWyNLcpJ6PTpbrLCWAG66gvmLzuOqCJgTR3oPP9XeO57MyRdjqRxsvQwLTK2wTj5cZoFtbtnNReqd9c90Ei2UFxqrHSfkimuWIzvELNh80kjVCgFLNhU1xen8BtN5FYMX+RVJGXCAuqf34ACUsj+PZPliGpSWUEtdO0UTB0dYPCG+zWVexZAyGTlvE7r0DQa9rYR/4OSdNbJvsvtSeaEwnhgJR4tLx3w6/rUONJxbJEmZ5ggMSxqSyTNhuPvSzrqSgntOqRltHDGgJv6oVflsN1grSzNPGXOa842wCZmqxii1IX8baX4/RYWNkyIY1fjPZFunLxtiwr9o02rN4rwSG1CIg6SChrD4LQFdtoRq2sXQvoEvqU+1DogllYKXQDeTi2E93MZ7boKWpAg4W/8rjRzCq49NPV2dHYDRn5hVbytCm+J/iAWg76rRUI98kFrSxx3oKF1HZrtYkSBVI3SqPFuf235C5d+gxR4HqrZbMqPVrsqSR8WecHYRqpJbF4QJDXYf/R8oSfkO8LqPuZiynlQBDczLCoLPkPEa0WSaTbPHYgF/rZwowR0uggSeIRqcdqNjG6yBHRoLZBrax5sIz2M3bOb7/uSZzMgrqe9HZ5+WrvgqRVHCj3NuHcqbjegZ0bfdQPMbPyZw882w==` //nolint
+const keyWithPassphrasePubkey = `ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDDNP1Ox5CSGHGt7kxNTcMUEGXypeWyNLcpJ6PTpbrLCWAG66gvmLzuOqCJgTR3oPP9XeO57MyRdjqRxsvQwLTK2wTj5cZoFtbtnNReqd9c90Ei2UFxqrHSfkimuWIzvELNh80kjVCgFLNhU1xen8BtN5FYMX+RVJGXCAuqf34ACUsj+PZPliGpSWUEtdO0UTB0dYPCG+zWVexZAyGTlvE7r0DQa9rYR/4OSdNbJvsvtSeaEwnhgJR4tLx3w6/rUONJxbJEmZ5ggMSxqSyTNhuPvSzrqSgntOqRltHDGgJv6oVflsN1grSzNPGXOa842wCZmqxii1IX8baX4/RYWNkyIY1fjPZFunLxtiwr9o02rN4rwSG1CIg6SChrD4LQFdtoRq2sXQvoEvqU+1DogllYKXQDeTi2E93MZ7boKWpAg4W/8rjRzCq49NPV2dHYDRn5hVbytCm+J/iAWg76rRUI98kFrSxx3oKF1HZrtYkSBVI3SqPFuf235C5d+gxR4HqrZbMqPVrsqSR8WecHYRqpJbF4QJDXYf/R8oSfkO8LqPuZiynlQBDczLCoLPkPEa0WSaTbPHYgF/rZwowR0uggSeIRqcdqNjG6yBHRoLZBrax5sIz2M3bOb7/uSZzMgrqe9HZ5+WrvgqRVHCj3NuHcqbjegZ0bfdQPMbPyZw882w==` // nolint:gosec,lll // these are generated specifically for testing
 
 const keyWithoutPassphgrase = `-----BEGIN RSA PRIVATE KEY-----
 MIIJKgIBAAKCAgEA0RBqN4TZFsVTozJpfJZvG4yKcKhvnWiGfP4Dvk/UcUya0NuN
@@ -637,6 +637,6 @@ uQVn7xxPzvM2CuUXWN8Kl3HCmkx1lnHxQbBUoynd9LCeVgw6Nl50QAjeMJgKh/c+
 vqjW2lqen/rHe68l/x4fWrpP3X+C8gtlHys4FtE1IVlAIorhAGgHTddxqq/YA0fy
 kN/MZe2ffwIEfnV+tzpVo/EIxOmiL8qOqe/ulXx/E7bDtTST+bBenfu1Zj01u7J/
 +nMg5AAaDs3iPpgQGJDGeJP1s1ib2SVVcasdlhzVhESAeaFKE5i6AZg4RN3xNw==
------END RSA PRIVATE KEY-----`
+-----END RSA PRIVATE KEY-----` // #nosec - these are generated specifically for testing
 
-const keyWithoutPassphrasePubkey = `ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDREGo3hNkWxVOjMml8lm8bjIpwqG+daIZ8/gO+T9RxTJrQ243WoA9qn9hl9zabTa6QMXFiIYY+RIut+MQO4+kLIgAPxGFedbKi/aZdLvTiKX5MJGrKvnz1V0I/b85+TpacCn0rdkYAa0b1zJy9DVwFF54KQ4r5KmO/o1Flz69aY9PV6Kf7Gnj7JardgQjxGx7n01PlQgAh7AWLImhR5RfJw7r1q2ecuVkg3qoe4aKn3KEXafP6YWYepfKSRKtJ23NIAFgzKVs/Ub/uG2/DilJeZQe9tlREB22us2X+5bM7jw/oy1tcIG9/L9SNMaVRVhP7gZPKWtqiXmj8mvjOP09LxYHu9PoYIC0MN6hCnxrGbD+Z+dPYpk4NiDThauSdKp6dOTH3ZRMhgshQIONLLTv2q+FACRKjBVSUNeqKyksFv0vcZuU0HBTjAbTRbzdx6A9Cle71E4nACw4qDA6nL9p3YYHq2oqCNMH4kq93y6IEO4kKIpQlM1xtTL9OMSkIhC2qT9QLU1vUeIDxWg0b0ikXrFCpk3wJqB/H4kIUOYWyTzmEAz4rLFR+IuvGfPE7fUEJiwcl/EMAbkr3FsEODcbf0+RAkA0r9WKAqmWKRHXozg1JwEbRMHOMFiCrKuTxm6n66vHoZykRJPUeVyyW0R9RXByzqqjZijE8i82X/JRq6Q==` //nolint
+const keyWithoutPassphrasePubkey = `ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDREGo3hNkWxVOjMml8lm8bjIpwqG+daIZ8/gO+T9RxTJrQ243WoA9qn9hl9zabTa6QMXFiIYY+RIut+MQO4+kLIgAPxGFedbKi/aZdLvTiKX5MJGrKvnz1V0I/b85+TpacCn0rdkYAa0b1zJy9DVwFF54KQ4r5KmO/o1Flz69aY9PV6Kf7Gnj7JardgQjxGx7n01PlQgAh7AWLImhR5RfJw7r1q2ecuVkg3qoe4aKn3KEXafP6YWYepfKSRKtJ23NIAFgzKVs/Ub/uG2/DilJeZQe9tlREB22us2X+5bM7jw/oy1tcIG9/L9SNMaVRVhP7gZPKWtqiXmj8mvjOP09LxYHu9PoYIC0MN6hCnxrGbD+Z+dPYpk4NiDThauSdKp6dOTH3ZRMhgshQIONLLTv2q+FACRKjBVSUNeqKyksFv0vcZuU0HBTjAbTRbzdx6A9Cle71E4nACw4qDA6nL9p3YYHq2oqCNMH4kq93y6IEO4kKIpQlM1xtTL9OMSkIhC2qT9QLU1vUeIDxWg0b0ikXrFCpk3wJqB/H4kIUOYWyTzmEAz4rLFR+IuvGfPE7fUEJiwcl/EMAbkr3FsEODcbf0+RAkA0r9WKAqmWKRHXozg1JwEbRMHOMFiCrKuTxm6n66vHoZykRJPUeVyyW0R9RXByzqqjZijE8i82X/JRq6Q==` // nolint:gosec,lll // these are generated specifically for testing

@@ -1,6 +1,7 @@
 package sftp
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -25,7 +26,7 @@ type Options struct {
 	KeyPassphrase      string              `json:"keyPassphrase,omitempty"`  // env var VFS_SFTP_KEYFILE_PASSPHRASE
 	KnownHostsFile     string              `json:"knownHostsFile,omitempty"` // env var VFS_SFTP_KNOWN_HOSTS_FILE
 	KnownHostsString   string              `json:"knownHostsString,omitempty"`
-	KnownHostsCallback ssh.HostKeyCallback //env var VFS_SFTP_INSECURE_KNOWN_HOSTS
+	KnownHostsCallback ssh.HostKeyCallback // env var VFS_SFTP_INSECURE_KNOWN_HOSTS
 	Retry              vfs.Retry
 	MaxRetries         int
 }
@@ -55,13 +56,13 @@ func getClient(authority utils.Authority, opts Options) (*_sftp.Client, error) {
 		HostKeyCallback: hostKeyCallback,
 	}
 
-	//default to port 22
+	// default to port 22
 	host := authority.Host
 	if !strings.Contains(host, ":") {
-		host = host + ":22"
+		host = fmt.Sprintf("%s%s", host, ":22")
 	}
 
-	//TODO begin timeout until session is created
+	// TODO begin timeout until session is created
 	sshClient, err := ssh.Dial("tcp", host, config)
 	if err != nil {
 		return nil, err
@@ -88,7 +89,7 @@ func getHostKeyCallback(opts Options) (ssh.HostKeyCallback, error) {
 
 	// use env var known_hosts file path, ie, /home/bob/.ssh/known_hosts
 	case opts.KnownHostsFile != "":
-		//check first to prevent auto-vivification of file
+		// check first to prevent auto-vivification of file
 		found, err := foundFile(opts.KnownHostsFile)
 		if err != nil {
 			return nil, err
@@ -102,7 +103,7 @@ func getHostKeyCallback(opts Options) (ssh.HostKeyCallback, error) {
 
 	// use env var known_hosts file path, ie, /home/bob/.ssh/known_hosts
 	case os.Getenv("VFS_SFTP_KNOWN_HOSTS_FILE") != "":
-		//check first to prevent auto-vivification of file
+		// check first to prevent auto-vivification of file
 		found, err := foundFile(os.Getenv("VFS_SFTP_KNOWN_HOSTS_FILE"))
 		if err != nil {
 			return nil, err
@@ -116,7 +117,7 @@ func getHostKeyCallback(opts Options) (ssh.HostKeyCallback, error) {
 
 	// use env var known_hosts file path, ie, /home/bob/.ssh/known_hosts
 	case os.Getenv("VFS_SFTP_INSECURE_KNOWN_HOSTS") != "":
-		return ssh.InsecureIgnoreHostKey(), nil
+		return ssh.InsecureIgnoreHostKey(), nil //nolint:gosec // this is only use if a uer specifically call it (testing)
 
 	// use user/system-wide known_hosts paths (as defined by OpenSSH https://man.openbsd.org/ssh)
 	default:
@@ -139,7 +140,7 @@ func findHomeSystemKnownHosts(knownHostsFiles []string) ([]string, error) {
 	}
 	homeKnonwHostsPath := utils.EnsureLeadingSlash(path.Join(home, ".ssh/known_hosts"))
 
-	//check file existence first to prevent auto-vivification of file
+	// check file existence first to prevent auto-vivification of file
 	found, err := foundFile(homeKnonwHostsPath)
 	if err != nil && err != os.ErrNotExist {
 		return nil, err
@@ -151,7 +152,7 @@ func findHomeSystemKnownHosts(knownHostsFiles []string) ([]string, error) {
 	// add /etc/ssh/.ssh/known_hosts for unix-like systems.  SSH doesn't exist natively on Windows and each
 	// implementation has a different location for known_hosts. Better to specify in KnownHostsFile for Windows
 	if runtime.GOOS != "windows" {
-		//check file existence first to prevent auto-vivification of file
+		// check file existence first to prevent auto-vivification of file
 		found, err := foundFile(systemWideKnownHosts)
 		if err != nil && err != os.ErrNotExist {
 			return nil, err
@@ -193,13 +194,13 @@ func getAuthMethods(opts Options) ([]ssh.AuthMethod, error) {
 		keyfile = opts.KeyFilePath
 	}
 	if keyfile != "" {
-		//gather passphrase, if any
+		// gather passphrase, if any
 		passphrase := os.Getenv("VFS_SFTP_KEYFILE_PASSPHRASE")
 		if opts.KeyPassphrase != "" {
 			passphrase = opts.KeyPassphrase
 		}
 
-		//setup keyfile
+		// setup keyfile
 		secretKey, err := getKeyFile(keyfile, passphrase)
 		if err != nil {
 			return []ssh.AuthMethod{}, err

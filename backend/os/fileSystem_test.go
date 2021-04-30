@@ -41,7 +41,7 @@ func (o *osFileSystemTest) TestNewFile() {
 	o.EqualError(err, utils.ErrBadAbsFilePath)
 	o.Nil(file, "file should be nil on err")
 
-	//success
+	// success
 	file, err = fs.NewFile("", "/valid/file")
 	o.NoError(err, "no error expected for valid file")
 	o.IsType(&File{}, file)
@@ -61,7 +61,7 @@ func (o *osFileSystemTest) TestNewLocation() {
 	o.EqualError(err, utils.ErrBadAbsLocationPath)
 	o.Nil(loc, "file should be nil on err")
 
-	//success
+	// success
 	loc, err = fs.NewLocation("", "/valid/location/")
 	o.NoError(err, "no error expected for valid file")
 	o.IsType(&Location{}, loc)

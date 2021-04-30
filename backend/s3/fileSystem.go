@@ -30,7 +30,7 @@ func (fs *FileSystem) Retry() vfs.Retry {
 }
 
 // NewFile function returns the s3 implementation of vfs.File.
-func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
+func (fs *FileSystem) NewFile(volume, name string) (vfs.File, error) {
 	if fs == nil {
 		return nil, errors.New("non-nil s3.FileSystem pointer is required")
 	}
@@ -49,7 +49,7 @@ func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
 }
 
 // NewLocation function returns the s3 implementation of vfs.Location.
-func (fs *FileSystem) NewLocation(volume string, name string) (vfs.Location, error) {
+func (fs *FileSystem) NewLocation(volume, name string) (vfs.Location, error) {
 	if fs == nil {
 		return nil, errors.New("non-nil s3.FileSystem pointer is required")
 	}
@@ -103,7 +103,7 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 	// only set options if vfs.Options is s3.Options
 	if opts, ok := opts.(Options); ok {
 		fs.options = opts
-		//we set client to nil to ensure that a new client is created using the new context when Client() is called
+		// we set client to nil to ensure that a new client is created using the new context when Client() is called
 		fs.client = nil
 	}
 	return fs
@@ -112,7 +112,7 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 // WithClient passes in an s3 client and returns the file system (chainable)
 func (fs *FileSystem) WithClient(client interface{}) *FileSystem {
 	switch client.(type) {
-	case s3iface.S3API, *s3.S3:
+	case *s3.S3, s3iface.S3API:
 		fs.client = client.(s3iface.S3API)
 		fs.options = nil
 	}
@@ -125,6 +125,6 @@ func NewFileSystem() *FileSystem {
 }
 
 func init() {
-	//registers a default FileSystem
+	// registers a default FileSystem
 	backend.Register(Scheme, NewFileSystem())
 }

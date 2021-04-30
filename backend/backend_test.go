@@ -29,18 +29,18 @@ func (s *testSuite) TestBackend() {
 	m3 := &mocks.FileSystem{}
 	Register("newest mock", m3)
 
-	// return backend
+	// get backend
 	b := Backend("new mock")
 	s.IsType(&mocks.FileSystem{}, b, "type is mocks.Filesystem")
 
 	// check all RegisteredBackends names
 	s.Len(RegisteredBackends(), 3, "found 3 backends")
 
-	//Unregister a backend
+	// Unregister a backend
 	Unregister("newest mock")
 	s.Len(RegisteredBackends(), 2, "found 2 backends")
 
-	//Unregister all backends
+	// Unregister all backends
 	UnregisterAll()
 	s.Len(RegisteredBackends(), 0, "found 0 backends")
 }

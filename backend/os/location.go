@@ -13,7 +13,7 @@ import (
 	"github.com/c2fo/vfs/v5/utils"
 )
 
-//Location implements the vfs.Location interface specific to OS fs.
+// Location implements the vfs.Location interface specific to OS fs.
 type Location struct {
 	name       string
 	fileSystem vfs.FileSystem
@@ -152,7 +152,7 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 		return nil, errors.New("non-nil os.Location pointer is required")
 	}
 
-	//make a copy of the original location first, then ChangeDir, leaving the original location as-is
+	// make a copy of the original location first, then ChangeDir, leaving the original location as-is
 	newLocation := &Location{}
 	*newLocation = *l
 	err := newLocation.ChangeDir(relativePath)
@@ -176,7 +176,7 @@ func (l *Location) ChangeDir(relativePath string) error {
 		return err
 	}
 
-	//update location path
+	// update location path
 	l.name = utils.EnsureTrailingSlash(utils.EnsureLeadingSlash(path.Join(l.name, relativePath)))
 
 	return nil

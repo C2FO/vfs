@@ -146,10 +146,8 @@ func (lt *locationTestSuite) TestListByRegex() {
 	}, nil).Once()
 	loc, err := lt.fs.NewLocation(bucket, locPath)
 	lt.NoError(err)
-	fileTypeRegex, err := regexp.Compile("txt$")
-	if err != nil {
-		lt.Fail("Failed to compile regex for test.")
-	}
+	fileTypeRegex := regexp.MustCompile("txt$")
+
 	fileList, err := loc.ListByRegex(fileTypeRegex)
 	lt.Nil(err, "Shouldn't return an error on successful call to ListByRegex")
 	lt.Len(fileList, len(expectedFileList), "Should return expected number of file keys.")
@@ -196,11 +194,11 @@ func (lt *locationTestSuite) TestNewFile() {
 	_, err = nilLoc.NewFile("/path/to/file.txt")
 	lt.EqualError(err, "non-nil s3.Location pointer is required", "errors returned by NewFile")
 
-	//test empty path error
+	// test empty path error
 	_, err = loc.NewFile("")
 	lt.EqualError(err, "non-empty string filePath is required", "errors returned by NewFile")
 
-	//test validation error
+	// test validation error
 	_, err = loc.NewFile("/absolute/path/to/file.txt")
 	lt.EqualError(err, utils.ErrBadRelFilePath, "errors returned by NewLocation")
 }
@@ -232,7 +230,7 @@ func (lt *locationTestSuite) TestExists_false() {
 }
 
 func (lt *locationTestSuite) TestChangeDir() {
-	//test nil Location
+	// test nil Location
 	var nilLoc *Location
 	err := nilLoc.ChangeDir("path/to/")
 	lt.EqualErrorf(err, "non-nil s3.Location pointer is required", "error expected for nil location")
@@ -277,11 +275,11 @@ func (lt *locationTestSuite) TestNewLocation() {
 	_, err = nilLoc.NewLocation("/path/to/")
 	lt.EqualError(err, "non-nil s3.Location pointer is required", "errors returned by NewLocation")
 
-	//test empty path error
+	// test empty path error
 	_, err = loc.NewLocation("")
 	lt.EqualError(err, "non-empty string relativePath is required", "errors returned by NewLocation")
 
-	//test validation error
+	// test validation error
 	_, err = loc.NewLocation("/absolute/path/to/")
 	lt.EqualError(err, utils.ErrBadRelLocationPath, "errors returned by NewLocation")
 }

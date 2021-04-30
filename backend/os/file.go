@@ -17,7 +17,7 @@ const osCrossDeviceLinkError = "invalid cross-device link"
 
 type opener func(filePath string) (*os.File, error)
 
-//File implements vfs.File interface for os fs.
+// File implements vfs.File interface for os fs.
 type File struct {
 	file        *os.File
 	name        string
@@ -132,7 +132,7 @@ func (f *File) Read(p []byte) (int, error) {
 	return read, nil
 }
 
-//Seek implements the io.Seeker interface.  It accepts an offset and "whence" where 0 means relative to the origin of
+// Seek implements the io.Seeker interface.  It accepts an offset and "whence" where 0 means relative to the origin of
 // the file, 1 means relative to the current offset, and 2 means relative to the end.  It returns the new offset and
 // an error, if any.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
@@ -153,18 +153,18 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 func (f *File) Exists() (bool, error) {
 	_, err := os.Stat(f.Path())
 	if err != nil {
-		//file does not exist
+		// file does not exist
 		if os.IsNotExist(err) {
 			return false, nil
 		}
-		//some other error
+		// some other error
 		return false, err
 	}
-	//file exists
+	// file exists
 	return true, nil
 }
 
-//Write implements the io.Writer interface.  It accepts a slice of bytes and returns the number of bytes written and an error, if any.
+// Write implements the io.Writer interface.  It accepts a slice of bytes and returns the number of bytes written and an error, if any.
 func (f *File) Write(p []byte) (n int, err error) {
 	f.useTempFile = true
 
@@ -262,7 +262,7 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 		return nil, err
 	}
 
-	//return vfs.File for newly moved file
+	// return vfs.File for newly moved file
 	return location.NewFile(f.Name())
 }
 
@@ -373,9 +373,9 @@ func ensureDir(location vfs.Location) error {
 }
 
 // If cursor is not (0,0) will copy original file to a temp file,
-//opening its file descriptor to the current cursor position.
-//If cursor is (0,0), just begin writing to new temp file.
-//No need to copy original first.
+// opening its file descriptor to the current cursor position.
+// If cursor is (0,0), just begin writing to new temp file.
+// No need to copy original first.
 func (f *File) getInternalFile() (*os.File, error) {
 	// this is the use case of vfs.file
 	if !f.useTempFile {
@@ -421,14 +421,14 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 		return nil, err
 	}
 	// todo: editing in place logic/appending logic (see issue #42)
-	//if _, err := io.Copy(tmpFile, f.file); err != nil {
+	// if _, err := io.Copy(tmpFile, f.file); err != nil {
 	//	return nil, err
-	//}
+	// }
 	//
-	//// Return cursor to the beginning of the new temp file
-	//if _, err := tmpFile.Seek(f.cursorPos, 0); err != nil {
+	// // Return cursor to the beginning of the new temp file
+	// if _, err := tmpFile.Seek(f.cursorPos, 0); err != nil {
 	//	return nil, err
-	//}
+	// }
 
 	return tmpFile, nil
 }

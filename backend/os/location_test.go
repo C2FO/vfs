@@ -68,7 +68,7 @@ func (s *osLocationTest) TestList_NonExistentDirectory() {
 	s.Nil(err, "error isn't expected")
 	s.Equal(0, len(prefixContents), "ListByPrefix should return empty slice for non-existent directory")
 
-	regex, _ := regexp.Compile("[-]+")
+	regex := regexp.MustCompile("-+")
 	regexContents, err := location.ListByRegex(regex)
 	s.Nil(err, "error isn't expected")
 	s.Equal(0, len(regexContents), "ListByRegex should return empty slice for non-existent directory")
@@ -82,7 +82,7 @@ func (s *osLocationTest) TestListByPrefix() {
 
 func (s *osLocationTest) TestListByRegex() {
 	expected := []string{"prefix-file.txt"}
-	regex, _ := regexp.Compile("[-]+")
+	regex := regexp.MustCompile("-+")
 	actual, _ := s.testFile.Location().ListByRegex(regex)
 	s.Equal(expected, actual)
 }

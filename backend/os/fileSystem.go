@@ -8,7 +8,7 @@ import (
 	"github.com/c2fo/vfs/v5/utils"
 )
 
-//Scheme defines the file system type.
+// Scheme defines the file system type.
 const Scheme = "file"
 const name = "os"
 
@@ -21,7 +21,7 @@ func (fs *FileSystem) Retry() vfs.Retry {
 }
 
 // NewFile function returns the os implementation of vfs.File.
-func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
+func (fs *FileSystem) NewFile(volume, name string) (vfs.File, error) {
 	err := utils.ValidateAbsoluteFilePath(name)
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error) {
 }
 
 // NewLocation function returns the os implementation of vfs.Location.
-func (fs *FileSystem) NewLocation(volume string, name string) (vfs.Location, error) {
+func (fs *FileSystem) NewLocation(volume, name string) (vfs.Location, error) {
 	err := utils.ValidateAbsoluteLocationPath(name)
 	if err != nil {
 		return nil, err

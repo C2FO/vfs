@@ -98,7 +98,7 @@ type Location interface {
 	NewLocation(relLocPath string) (Location, error)
 
 	// ChangeDir updates the existing Location's path to the provided relative location path.
-
+	//
 	// Given location:
 	// 	   loc := fs.NewLocation("file:///some/path/to/")
 	// calling:
@@ -109,7 +109,7 @@ type Location interface {
 	//   * ChangeDir accepts a relative location path.
 	ChangeDir(relLocPath string) error
 
-	//FileSystem returns the underlying vfs.FileSystem struct for Location.
+	// FileSystem returns the underlying vfs.FileSystem struct for Location.
 	FileSystem() FileSystem
 
 	// NewFile will instantiate a vfs.File instance at or relative to the current location's path.
