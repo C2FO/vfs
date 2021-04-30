@@ -292,7 +292,6 @@ func (lt *locationTestSuite) TestStringURI() {
 }
 
 func (lt *locationTestSuite) TestDeleteFile() {
-	lt.s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 	lt.s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
 	loc, err := lt.fs.NewLocation("bucket", "/old/")
 	lt.NoError(err)

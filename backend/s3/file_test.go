@@ -53,7 +53,6 @@ func (ts *fileTestSuite) TestRead() {
 	s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{
 		Body: nopCloser{bytes.NewBufferString(contents)},
 	}, nil)
-	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 
 	file, err := fs.NewFile("bucket", "/some/path/file.txt")
 	if err != nil {
@@ -91,7 +90,6 @@ func (ts *fileTestSuite) TestSeek() {
 	s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{
 		Body: nopCloser{bytes.NewBufferString(contents)},
 	}, nil)
-	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 
 	_, seekErr := file.Seek(6, 0)
 	assert.NoError(ts.T(), seekErr, "no error expected")
@@ -197,7 +195,6 @@ func (ts *fileTestSuite) TestMoveToFile() {
 
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
 	s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
-	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 
 	err := testFile.MoveToFile(targetFile)
 	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
@@ -395,7 +392,6 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
 	s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
-	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 
 	file, err := fs.NewFile("bucket", "/hello.txt")
 	if err != nil {
@@ -416,8 +412,6 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 
 	s3apiMock2 := &mocks.S3API{}
 	s3apiMock2.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
-	val := int64(0)
-	s3apiMock2.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{ContentLength: &val}, nil)
 
 	fs = FileSystem{client: s3apiMock2}
 	file2, err := fs.NewFile("bucket", "/hello.txt")
@@ -440,7 +434,6 @@ func (ts *fileTestSuite) TestMoveToLocationFail() {
 	location.On("NewFile", mock.Anything).Return(&File{fileSystem: &fs, bucket: "bucket", key: "/new/hello.txt"}, nil)
 
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(nil, errors.New("didn't copy, oh noes"))
-	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 
 	file, err := fs.NewFile("bucket", "/hello.txt")
 	if err != nil {
@@ -461,7 +454,6 @@ func (ts *fileTestSuite) TestMoveToLocationFail() {
 
 func (ts *fileTestSuite) TestDelete() {
 	s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
-	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 	err := testFile.Delete()
 	ts.Nil(err, "Successful delete should not return an error.")
 	s3apiMock.AssertExpectations(ts.T())

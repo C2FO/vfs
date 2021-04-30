@@ -180,7 +180,6 @@ func (f *File) Delete() error {
 // Close cleans up underlying mechanisms for reading from and writing to the file. Closes and removes the
 // local temp file, and triggers a write to s3 of anything in the f.writeBuffer if it has been created.
 func (f *File) Close() error {
-
 	if f.tempFile != nil {
 		err := f.tempFile.Close()
 		if err != nil {
@@ -258,7 +257,6 @@ func (f *File) Write(data []byte) (res int, err error) {
 // Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
 // Returns error if unable to touch File.
 func (f *File) Touch() error {
-
 	//check if file exists
 	exists, err := f.Exists()
 	if err != nil {
