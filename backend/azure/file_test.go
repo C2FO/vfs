@@ -62,6 +62,7 @@ func (s *FileTestSuite) TestSeek() {
 	s.Equal(int64(6), newOffset)
 	contents := make([]byte, 6)
 	n, err := f.Read(contents)
+	s.NoError(err)
 	s.Equal(6, n)
 	s.Equal("World!", string(contents))
 }
