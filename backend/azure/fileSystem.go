@@ -125,13 +125,13 @@ func (fs *FileSystem) Retry() vfs.Retry {
 }
 
 func init() {
-	//registers a default FileSystem
+	// registers a default FileSystem
 	backend.Register(Scheme, NewFileSystem())
 }
 
 // ParsePath is a utility function used by vfssiple to separate the host from the path.  The first parameter returned
 // is the host and the second parameter is the path.
-func ParsePath(p string) (string, string, error) {
+func ParsePath(p string) (host, pth string, err error) {
 	if p == "/" {
 		return "", "", errors.New("no container specified for Azure path")
 	}
@@ -141,7 +141,7 @@ func ParsePath(p string) (string, string, error) {
 
 // IsValidURI us a utility function used by vfssimple to determine if the given URI is a valid Azure URI
 func IsValidURI(u *url.URL) bool {
-	r := regexp.MustCompile(".*\\.blob\\.core\\.windows\\.net")
+	r := regexp.MustCompile(`.*\.blob\.core\.windows\.net`)
 
 	if u.Scheme == Scheme && r.MatchString(u.Host) {
 		return true

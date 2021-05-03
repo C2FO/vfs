@@ -5,8 +5,9 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/c2fo/vfs/v5"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/c2fo/vfs/v5"
 )
 
 type LocationTestSuite struct {
@@ -55,7 +56,7 @@ func (s *LocationTestSuite) TestListByRegex() {
 	client := MockAzureClient{ExpectedResult: []string{"file1.txt", "file2.txt", "foo.txt"}}
 	fs := NewFileSystem().WithClient(&client)
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
-	regex, _ := regexp.Compile("file")
+	regex := regexp.MustCompile("file")
 	listing, err := l.ListByRegex(regex)
 	s.NoError(err)
 	s.Len(listing, 2, "expect the 2 files with the substring 'file' to be returned")

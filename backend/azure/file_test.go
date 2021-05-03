@@ -46,6 +46,7 @@ func (s *FileTestSuite) TestRead() {
 	s.NoError(err, "The file should exist so no error should be returned")
 	contents := make([]byte, 12)
 	n, err := f.Read(contents)
+	s.NoError(err)
 	s.Equal(12, n)
 	s.Equal("Hello World!", string(contents))
 }
@@ -171,7 +172,7 @@ func (s *FileTestSuite) TestDelete() {
 }
 
 func (s *FileTestSuite) TestDelete_NonExistantFile() {
-	client := MockAzureClient{ExpectedError: errors.New("I always error")}
+	client := MockAzureClient{ExpectedError: errors.New("i always error")}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
@@ -204,7 +205,7 @@ func (s *FileTestSuite) TestSize() {
 }
 
 func (s *FileTestSuite) TestSize_NonExistantFile() {
-	client := MockAzureClient{PropertiesError: errors.New("I always error")}
+	client := MockAzureClient{PropertiesError: errors.New("i always error")}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
@@ -241,7 +242,7 @@ func (s *FileTestSuite) TestTouch() {
 }
 
 func (s *FileTestSuite) TestTouch_NonexistantContainer() {
-	client := MockAzureClient{ExpectedError: errors.New("I always error")}
+	client := MockAzureClient{ExpectedError: errors.New("i always error")}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("nosuchcontainer", "/foo.txt")
@@ -302,7 +303,7 @@ func (s *FileTestSuite) TestCheckTempFile_FileDoesNotExist() {
 }
 
 func (s *FileTestSuite) TestCheckTempFile_DownloadError() {
-	client := MockAzureClient{ExpectedError: errors.New("I always error")}
+	client := MockAzureClient{ExpectedError: errors.New("i always error")}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")

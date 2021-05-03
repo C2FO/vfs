@@ -23,16 +23,19 @@ func (s *FileSystemTestSuite) TestNewFile() {
 	fs := NewFileSystem().WithOptions(Options{AccountName: "test-container"})
 	file, err := fs.NewFile("", "")
 	s.Error(err, "volume and path are required")
+	s.Nil(file)
 	s.Equal("non-empty strings for container and path are required", err.Error())
 
 	fs = NewFileSystem().WithOptions(Options{AccountName: "test-container"})
 	file, err = fs.NewFile("temp", "")
 	s.Error(err, "volume and path are required")
+	s.Nil(file)
 	s.Equal("non-empty strings for container and path are required", err.Error())
 
 	fs = NewFileSystem().WithOptions(Options{AccountName: "test-container"})
 	file, err = fs.NewFile("", "/blah/blah.txt")
 	s.Error(err, "volume and path are required")
+	s.Nil(file)
 	s.Equal("non-empty strings for container and path are required", err.Error())
 
 	fs = NewFileSystem().WithOptions(Options{AccountName: "test-container"})
@@ -127,7 +130,7 @@ func (s *FileSystemTestSuite) TestRetry() {
 	}
 
 	var errorRetry = func(wrapped func() error) error {
-		return errors.New("I always error")
+		return errors.New("i always error")
 	}
 
 	fs := FileSystem{}
@@ -140,7 +143,7 @@ func (s *FileSystemTestSuite) TestRetry() {
 	retryFn = fs.Retry()
 	err = retryFn(doNothing)
 	s.Error(err, "This implementation should use the retry function from the options which always errors")
-	s.Equal("I always error", err.Error())
+	s.Equal("i always error", err.Error())
 }
 
 func (s *FileSystemTestSuite) TestNewFileSystem() {

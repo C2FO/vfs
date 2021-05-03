@@ -194,10 +194,12 @@ func (l *Location) DeleteFile(relFilePath string) error {
 
 // URI returns a URI string for the azure location.
 func (l *Location) URI() string {
-	return fmt.Sprintf("%s://%s%s", l.fileSystem.Scheme(), utils.EnsureTrailingSlash(l.fileSystem.Host()), utils.EnsureTrailingSlash(path.Join(l.container, l.path)))
+	return fmt.Sprintf("%s://%s%s", l.fileSystem.Scheme(), utils.EnsureTrailingSlash(l.fileSystem.Host()),
+		utils.EnsureTrailingSlash(path.Join(l.container, l.path)))
 }
 
 // ContainerURL returns the URL for the Azure Blob Storage container.
 func (l *Location) ContainerURL() string {
-	return fmt.Sprintf("%s://%s%s", l.fileSystem.Scheme(), utils.EnsureTrailingSlash(l.fileSystem.Host()), utils.EnsureTrailingSlash(l.container))
+	return fmt.Sprintf("%s://%s%s", l.fileSystem.Scheme(), utils.EnsureTrailingSlash(l.fileSystem.Host()),
+		utils.EnsureTrailingSlash(l.container))
 }
