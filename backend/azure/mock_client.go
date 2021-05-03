@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
+
 	"github.com/c2fo/vfs/v5"
 )
 
@@ -43,7 +44,7 @@ func (a *MockAzureClient) Download(file vfs.File) (io.ReadCloser, error) {
 }
 
 // Copy returns the value of ExpectedError
-func (a *MockAzureClient) Copy(srcFile vfs.File, tgtFile vfs.File) error {
+func (a *MockAzureClient) Copy(srcFile, tgtFile vfs.File) error {
 	return a.ExpectedError
 }
 
@@ -62,7 +63,6 @@ func (a *MockAzureClient) Delete(file vfs.File) error {
 
 // MockStorageError is a mock for the azblob.StorageError interface
 type MockStorageError struct {
-	error
 	azblob.ResponseError
 }
 

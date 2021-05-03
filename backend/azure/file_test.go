@@ -8,315 +8,316 @@ import (
 	"testing"
 	"time"
 
-	"github.com/c2fo/vfs/v5"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/c2fo/vfs/v5"
 )
 
 type FileTestSuite struct {
 	suite.Suite
 }
 
-func (suite *FileTestSuite) TestVFSFileImplementor() {
+func (s *FileTestSuite) TestVFSFileImplementor() {
 	f := File{}
-	suite.Implements((*vfs.File)(nil), &f, "Does not implement the vfs.File interface")
+	s.Implements((*vfs.File)(nil), &f, "Does not implement the vfs.File interface")
 }
 
-func (suite *FileTestSuite) TestClose() {
+func (s *FileTestSuite) TestClose() {
 	client := MockAzureClient{}
 	fs := NewFileSystem().WithClient(&client)
 	f, _ := fs.NewFile("test-container", "/foo.txt")
-	suite.NoError(f.Close())
+	s.NoError(f.Close())
 }
 
-func (suite *FileTestSuite) TestClose_FlushTempFile() {
+func (s *FileTestSuite) TestClose_FlushTempFile() {
 	client := MockAzureClient{PropertiesError: MockStorageError{}}
 	fs := NewFileSystem().WithClient(&client)
 	f, _ := fs.NewFile("test-container", "/foo.txt")
 
 	_, _ = f.Write([]byte("Hello, World!"))
-	suite.NoError(f.Close())
+	s.NoError(f.Close())
 }
 
-func (suite *FileTestSuite) TestRead() {
+func (s *FileTestSuite) TestRead() {
 	client := MockAzureClient{ExpectedResult: ioutil.NopCloser(strings.NewReader("Hello World!"))}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
-	suite.NoError(err, "The file should exist so no error should be returned")
+	s.NoError(err, "The file should exist so no error should be returned")
 	contents := make([]byte, 12)
 	n, err := f.Read(contents)
-	suite.Equal(12, n)
-	suite.Equal("Hello World!", string(contents))
+	s.Equal(12, n)
+	s.Equal("Hello World!", string(contents))
 }
 
-func (suite *FileTestSuite) TestSeek() {
+func (s *FileTestSuite) TestSeek() {
 	client := MockAzureClient{ExpectedResult: ioutil.NopCloser(strings.NewReader("Hello World!"))}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
-	suite.NoError(err, "The file should exist so no error should be returned")
+	s.NoError(err, "The file should exist so no error should be returned")
 	newOffset, err := f.Seek(6, io.SeekStart)
-	suite.NoError(err)
-	suite.Equal(int64(6), newOffset)
+	s.NoError(err)
+	s.Equal(int64(6), newOffset)
 	contents := make([]byte, 6)
 	n, err := f.Read(contents)
-	suite.Equal(6, n)
-	suite.Equal("World!", string(contents))
+	s.Equal(6, n)
+	s.Equal("World!", string(contents))
 }
 
-func (suite *FileTestSuite) TestWrite() {
+func (s *FileTestSuite) TestWrite() {
 	client := MockAzureClient{ExpectedResult: ioutil.NopCloser(strings.NewReader("Hello World!"))}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
-	suite.NotNil(f)
-	suite.NoError(err)
+	s.NotNil(f)
+	s.NoError(err)
 	n, err := f.Write([]byte(" Aaaaand, Goodbye!"))
-	suite.NoError(err)
-	suite.Equal(18, n)
+	s.NoError(err)
+	s.Equal(18, n)
 }
 
-func (suite *FileTestSuite) TestString() {
+func (s *FileTestSuite) TestString() {
 	fs := NewFileSystem().WithOptions(Options{AccountName: "test-account"})
 	l, _ := fs.NewLocation("temp", "/foo/bar/")
 	f, _ := l.NewFile("blah.txt")
-	suite.Equal("https://test-account.blob.core.windows.net/temp/foo/bar/blah.txt", f.String())
+	s.Equal("https://test-account.blob.core.windows.net/temp/foo/bar/blah.txt", f.String())
 
 	fs = NewFileSystem().WithOptions(Options{AccountName: "test-account"})
 	l, _ = fs.NewLocation("folder", "/blah/")
 	f, _ = l.NewFile("file.txt")
-	suite.Equal("https://test-account.blob.core.windows.net/folder/blah/file.txt", f.String())
+	s.Equal("https://test-account.blob.core.windows.net/folder/blah/file.txt", f.String())
 }
 
-func (suite *FileTestSuite) TestExists() {
+func (s *FileTestSuite) TestExists() {
 	client := MockAzureClient{PropertiesResult: &BlobProperties{}}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
-	suite.NoError(err, "The file should exist so no error should be returned")
+	s.NoError(err, "The file should exist so no error should be returned")
 	exists, err := f.Exists()
-	suite.NoError(err)
-	suite.True(exists)
+	s.NoError(err)
+	s.True(exists)
 }
 
-func (suite *FileTestSuite) TestExists_NonExistantFile() {
+func (s *FileTestSuite) TestExists_NonExistantFile() {
 	client := MockAzureClient{PropertiesError: MockStorageError{}}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
-	suite.NoError(err, "The path is valid so no error should be returned")
+	s.NoError(err, "The path is valid so no error should be returned")
 	exists, err := f.Exists()
-	suite.NoError(err, "no error is returned when  the file does not exist")
-	suite.False(exists)
+	s.NoError(err, "no error is returned when  the file does not exist")
+	s.False(exists)
 }
 
-func (suite *FileTestSuite) TestLocation() {
+func (s *FileTestSuite) TestLocation() {
 	fs := NewFileSystem().WithOptions(Options{AccountName: "test-account"})
 	f, _ := fs.NewFile("test-container", "/file.txt")
 	l := f.Location()
-	suite.NotNil(l)
-	suite.Equal("https://test-account.blob.core.windows.net/test-container/", l.URI())
+	s.NotNil(l)
+	s.Equal("https://test-account.blob.core.windows.net/test-container/", l.URI())
 }
 
-func (suite *FileTestSuite) TestCopyToLocation() {
+func (s *FileTestSuite) TestCopyToLocation() {
 	client := MockAzureClient{}
 	fs := NewFileSystem().WithClient(&client)
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	targetLoc, _ := fs.NewLocation("test-container", "/new/folder/")
 	copiedFile, err := source.CopyToLocation(targetLoc)
-	suite.NoError(err)
-	suite.NotNil(copiedFile)
-	suite.Equal("/new/folder/foo.txt", copiedFile.Path())
+	s.NoError(err)
+	s.NotNil(copiedFile)
+	s.Equal("/new/folder/foo.txt", copiedFile.Path())
 }
 
-func (suite *FileTestSuite) TestCopyToFile() {
+func (s *FileTestSuite) TestCopyToFile() {
 	client := MockAzureClient{}
 	fs := NewFileSystem().WithClient(&client)
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	target, _ := fs.NewFile("test-container", "/bar.txt")
 
 	err := source.CopyToFile(target)
-	suite.NoError(err)
+	s.NoError(err)
 }
 
-func (suite *FileTestSuite) TestMoveToLocation() {
+func (s *FileTestSuite) TestMoveToLocation() {
 	client := MockAzureClient{}
 	fs := NewFileSystem().WithClient(&client)
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	target, _ := fs.NewLocation("test-container", "/new/folder/")
 
 	movedFile, err := source.MoveToLocation(target)
-	suite.NoError(err)
-	suite.NotNil(movedFile)
-	suite.Equal("/new/folder/foo.txt", movedFile.Path())
+	s.NoError(err)
+	s.NotNil(movedFile)
+	s.Equal("/new/folder/foo.txt", movedFile.Path())
 }
 
-func (suite *FileTestSuite) TestMoveToFile() {
+func (s *FileTestSuite) TestMoveToFile() {
 	client := MockAzureClient{}
 	fs := NewFileSystem().WithClient(&client)
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	target, _ := fs.NewFile("test-container", "/bar.txt")
 	err := source.MoveToFile(target)
-	suite.NoError(err)
+	s.NoError(err)
 }
 
-func (suite *FileTestSuite) TestDelete() {
+func (s *FileTestSuite) TestDelete() {
 	client := MockAzureClient{}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
-	suite.NoError(err, "The path is valid so no error should be returned")
-	suite.NoError(f.Delete(), "The delete should succeed so there should be no error")
+	s.NoError(err, "The path is valid so no error should be returned")
+	s.NoError(f.Delete(), "The delete should succeed so there should be no error")
 }
 
-func (suite *FileTestSuite) TestDelete_NonExistantFile() {
+func (s *FileTestSuite) TestDelete_NonExistantFile() {
 	client := MockAzureClient{ExpectedError: errors.New("I always error")}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
-	suite.NoError(err, "The path is valid so no error should be returned")
+	s.NoError(err, "The path is valid so no error should be returned")
 	err = f.Delete()
-	suite.Error(err, "If the file does not exist we get an error")
+	s.Error(err, "If the file does not exist we get an error")
 }
 
-func (suite *FileTestSuite) TestLastModified() {
+func (s *FileTestSuite) TestLastModified() {
 	now := time.Now()
 	client := MockAzureClient{PropertiesResult: &BlobProperties{LastModified: &now}}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
-	suite.NoError(err, "The path is valid so no error should be returned")
+	s.NoError(err, "The path is valid so no error should be returned")
 	t, err := f.LastModified()
-	suite.NoError(err)
-	suite.NotNil(t)
+	s.NoError(err)
+	s.NotNil(t)
 }
 
-func (suite *FileTestSuite) TestSize() {
+func (s *FileTestSuite) TestSize() {
 	client := MockAzureClient{PropertiesResult: &BlobProperties{Size: 5}}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
-	suite.NoError(err, "The path is valid so no error should be returned")
+	s.NoError(err, "The path is valid so no error should be returned")
 	size, err := f.Size()
-	suite.NoError(err)
-	suite.Equal(uint64(5), size, "The size should be 5")
+	s.NoError(err)
+	s.Equal(uint64(5), size, "The size should be 5")
 }
 
-func (suite *FileTestSuite) TestSize_NonExistantFile() {
+func (s *FileTestSuite) TestSize_NonExistantFile() {
 	client := MockAzureClient{PropertiesError: errors.New("I always error")}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
-	suite.NoError(err, "The path is valid so no error should be returned")
+	s.NoError(err, "The path is valid so no error should be returned")
 	size, err := f.Size()
-	suite.Error(err, "If the file does not exist we get an error")
-	suite.Equal(uint64(0), size, "the file does not exist so the size is 0")
+	s.Error(err, "If the file does not exist we get an error")
+	s.Equal(uint64(0), size, "the file does not exist so the size is 0")
 }
 
-func (suite *FileTestSuite) TestPath() {
+func (s *FileTestSuite) TestPath() {
 	fs := NewFileSystem().WithOptions(Options{AccountName: "test-account"})
 	f, _ := fs.NewFile("test-container", "/foo/bar/blah.txt")
-	suite.Equal("/foo/bar/blah.txt", f.Path())
+	s.Equal("/foo/bar/blah.txt", f.Path())
 
 	f, _ = fs.NewFile("test-container", "/test/file.txt")
-	suite.Equal("/test/file.txt", f.Path())
+	s.Equal("/test/file.txt", f.Path())
 }
 
-func (suite *FileTestSuite) TestName() {
+func (s *FileTestSuite) TestName() {
 	f := File{}
-	suite.Equal(".", f.Name())
+	s.Equal(".", f.Name())
 
 	f = File{name: "foo.txt"}
-	suite.Equal("foo.txt", f.Name())
+	s.Equal("foo.txt", f.Name())
 }
 
-func (suite *FileTestSuite) TestTouch() {
+func (s *FileTestSuite) TestTouch() {
 	client := MockAzureClient{ExpectedResult: &BlobProperties{}, PropertiesError: MockStorageError{}}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
-	suite.NoError(err, "The path is valid so no error should be returned")
-	suite.NoError(f.Touch())
+	s.NoError(err, "The path is valid so no error should be returned")
+	s.NoError(f.Touch())
 }
 
-func (suite *FileTestSuite) TestTouch_NonexistantContainer() {
+func (s *FileTestSuite) TestTouch_NonexistantContainer() {
 	client := MockAzureClient{ExpectedError: errors.New("I always error")}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("nosuchcontainer", "/foo.txt")
-	suite.NoError(err, "The path is valid so no error should be returned")
-	suite.Error(f.Touch(), "The container does not exist so creating the new file should error")
+	s.NoError(err, "The path is valid so no error should be returned")
+	s.Error(f.Touch(), "The container does not exist so creating the new file should error")
 }
 
-func (suite *FileTestSuite) TestURI() {
+func (s *FileTestSuite) TestURI() {
 	fs := NewFileSystem().WithOptions(Options{AccountName: "test-container"})
 	f, _ := fs.NewFile("temp", "/foo/bar/blah.txt")
-	suite.Equal("https://test-container.blob.core.windows.net/temp/foo/bar/blah.txt", f.URI())
+	s.Equal("https://test-container.blob.core.windows.net/temp/foo/bar/blah.txt", f.URI())
 
 	fs = NewFileSystem().WithOptions(Options{AccountName: "test-container"})
 	f, _ = fs.NewFile("folder", "/blah/file.txt")
-	suite.Equal("https://test-container.blob.core.windows.net/folder/blah/file.txt", f.URI())
+	s.Equal("https://test-container.blob.core.windows.net/folder/blah/file.txt", f.URI())
 }
 
-func (suite *FileTestSuite) TestCheckTempFile() {
+func (s *FileTestSuite) TestCheckTempFile() {
 	client := MockAzureClient{ExpectedResult: ioutil.NopCloser(strings.NewReader("Hello World!"))}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
-	suite.NoError(err, "The file should exist so no error should be returned")
+	s.NoError(err, "The file should exist so no error should be returned")
 
 	azureFile, ok := f.(*File)
-	suite.True(ok, "Type assertion should succeed so we expect ok to be true")
-	suite.NotNil(azureFile)
+	s.True(ok, "Type assertion should succeed so we expect ok to be true")
+	s.NotNil(azureFile)
 
-	suite.Nil(azureFile.tempFile, "No calls to checkTempFile have occurred so we expect tempFile to be nil")
+	s.Nil(azureFile.tempFile, "No calls to checkTempFile have occurred so we expect tempFile to be nil")
 	err = azureFile.checkTempFile()
-	suite.NoError(err, "Check temp file should create a local temp file so no error is expected")
-	suite.NotNil(azureFile.tempFile, "After the call to checkTempFile we should have a non-nil tempFile")
+	s.NoError(err, "Check temp file should create a local temp file so no error is expected")
+	s.NotNil(azureFile.tempFile, "After the call to checkTempFile we should have a non-nil tempFile")
 
 	contents, err := ioutil.ReadAll(azureFile.tempFile)
-	suite.NoError(err, "No error should occur while reading the tempFile")
-	suite.Equal("Hello World!", string(contents))
+	s.NoError(err, "No error should occur while reading the tempFile")
+	s.Equal("Hello World!", string(contents))
 }
 
-func (suite *FileTestSuite) TestCheckTempFile_FileDoesNotExist() {
+func (s *FileTestSuite) TestCheckTempFile_FileDoesNotExist() {
 	client := MockAzureClient{PropertiesError: MockStorageError{}}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
-	suite.NoError(err, "The file should exist so no error should be returned")
+	s.NoError(err, "The file should exist so no error should be returned")
 
 	azureFile, ok := f.(*File)
-	suite.True(ok, "Type assertion should succeed so we expect ok to be true")
-	suite.NotNil(azureFile)
+	s.True(ok, "Type assertion should succeed so we expect ok to be true")
+	s.NotNil(azureFile)
 
-	suite.Nil(azureFile.tempFile, "No calls to checkTempFile have occurred so we expect tempFile to be nil")
+	s.Nil(azureFile.tempFile, "No calls to checkTempFile have occurred so we expect tempFile to be nil")
 	err = azureFile.checkTempFile()
-	suite.NoError(err, "Check temp file should create a local temp file so no error is expected")
-	suite.NotNil(azureFile.tempFile, "After the call to checkTempFile we should have a non-nil tempFile")
+	s.NoError(err, "Check temp file should create a local temp file so no error is expected")
+	s.NotNil(azureFile.tempFile, "After the call to checkTempFile we should have a non-nil tempFile")
 
 	contents, err := ioutil.ReadAll(azureFile.tempFile)
-	suite.NoError(err, "No error should occur while reading the tempFile")
-	suite.Equal("", string(contents))
+	s.NoError(err, "No error should occur while reading the tempFile")
+	s.Equal("", string(contents))
 }
 
-func (suite *FileTestSuite) TestCheckTempFile_DownloadError() {
+func (s *FileTestSuite) TestCheckTempFile_DownloadError() {
 	client := MockAzureClient{ExpectedError: errors.New("I always error")}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
-	suite.NoError(err, "The file should exist so no error should be returned")
+	s.NoError(err, "The file should exist so no error should be returned")
 
 	azureFile, ok := f.(*File)
-	suite.True(ok, "Type assertion should succeed so we expect ok to be true")
-	suite.NotNil(azureFile)
+	s.True(ok, "Type assertion should succeed so we expect ok to be true")
+	s.NotNil(azureFile)
 
-	suite.Nil(azureFile.tempFile, "No calls to checkTempFile have occurred so we expect tempFile to be nil")
+	s.Nil(azureFile.tempFile, "No calls to checkTempFile have occurred so we expect tempFile to be nil")
 	err = azureFile.checkTempFile()
-	suite.Error(err, "The call to client.Download() errors so we expect to get an error")
+	s.Error(err, "The call to client.Download() errors so we expect to get an error")
 }
 
-func (suite *FileTestSuite) TestIsSameAuth_SameAcctKey() {
+func (s *FileTestSuite) TestIsSameAuth_SameAcctKey() {
 	fs := NewFileSystem().WithOptions(Options{
 		AccountName: "foo",
 		AccountKey:  "bar",
@@ -327,10 +328,10 @@ func (suite *FileTestSuite) TestIsSameAuth_SameAcctKey() {
 	sourceFile := f1.(*File)
 	targetFile := f2.(*File)
 
-	suite.True(sourceFile.isSameAuth(targetFile), "Files were created with the same options so same auth should be true")
+	s.True(sourceFile.isSameAuth(targetFile), "Files were created with the same options so same auth should be true")
 }
 
-func (suite *FileTestSuite) TestIsSameAuth_DifferentAcctKey() {
+func (s *FileTestSuite) TestIsSameAuth_DifferentAcctKey() {
 	sourceFs := NewFileSystem().WithOptions(Options{
 		AccountName: "foo",
 		AccountKey:  "bar",
@@ -341,12 +342,12 @@ func (suite *FileTestSuite) TestIsSameAuth_DifferentAcctKey() {
 		AccountKey:  "blahblah",
 	})
 
-	s, _ := sourceFs.NewFile("test-container", "/foo.txt")
-	t, _ := targetFs.NewFile("test-container", "/bar.txt")
-	sourceFile := s.(*File)
-	targetFile := t.(*File)
+	src, _ := sourceFs.NewFile("test-container", "/foo.txt")
+	tgt, _ := targetFs.NewFile("test-container", "/bar.txt")
+	sourceFile := src.(*File)
+	targetFile := tgt.(*File)
 
-	suite.False(sourceFile.isSameAuth(targetFile), "Files were created with different account keys so same auth should be false")
+	s.False(sourceFile.isSameAuth(targetFile), "Files were created with different account keys so same auth should be false")
 }
 
 func TestAzureFile(t *testing.T) {

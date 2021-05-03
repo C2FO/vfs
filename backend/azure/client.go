@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/azure-pipeline-go/pipeline"
 	"github.com/Azure/azure-storage-blob-go/azblob"
+
 	"github.com/c2fo/vfs/v5"
 	"github.com/c2fo/vfs/v5/utils"
 )
@@ -98,7 +99,8 @@ func (a *ClientImpl) Upload(file vfs.File, content io.ReadSeeker) error {
 
 	containerURL := azblob.NewContainerURL(*URL, a.pipeline)
 	blobURL := containerURL.NewBlockBlobURL(utils.RemoveLeadingSlash(file.Path()))
-	_, err = blobURL.Upload(context.Background(), content, azblob.BlobHTTPHeaders{}, azblob.Metadata{}, azblob.BlobAccessConditions{}, azblob.DefaultAccessTier, nil, azblob.ClientProvidedKeyOptions{})
+	_, err = blobURL.Upload(context.Background(), content, azblob.BlobHTTPHeaders{}, azblob.Metadata{},
+		azblob.BlobAccessConditions{}, azblob.DefaultAccessTier, nil, azblob.ClientProvidedKeyOptions{})
 	return err
 }
 
@@ -134,7 +136,7 @@ func (a *ClientImpl) Download(file vfs.File) (io.ReadCloser, error) {
 // Copy copies srcFile to the destination tgtFile within Azure Blob Storage.  Note that in the case where we get
 // encoded spaces in the file name (i.e. %20) the '%' must be encoded or the copy command will return a not found
 // error.
-func (a *ClientImpl) Copy(srcFile vfs.File, tgtFile vfs.File) error {
+func (a *ClientImpl) Copy(srcFile, tgtFile vfs.File) error {
 	// Can't use url.PathEscape here since that will escape everything (even the directory separators)
 	srcURL, err := url.Parse(strings.Replace(srcFile.URI(), "%", "%25", -1))
 	if err != nil {
@@ -149,7 +151,8 @@ func (a *ClientImpl) Copy(srcFile vfs.File, tgtFile vfs.File) error {
 	containerURL := azblob.NewContainerURL(*tgtURL, a.pipeline)
 	blobURL := containerURL.NewBlockBlobURL(utils.RemoveLeadingSlash(tgtFile.Path()))
 	ctx := context.Background()
-	resp, err := blobURL.StartCopyFromURL(ctx, *srcURL, azblob.Metadata{}, azblob.ModifiedAccessConditions{}, azblob.BlobAccessConditions{}, azblob.DefaultAccessTier, nil)
+	resp, err := blobURL.StartCopyFromURL(ctx, *srcURL, azblob.Metadata{}, azblob.ModifiedAccessConditions{},
+		azblob.BlobAccessConditions{}, azblob.DefaultAccessTier, nil)
 	if err != nil {
 		return err
 	}
@@ -162,7 +165,7 @@ func (a *ClientImpl) Copy(srcFile vfs.File, tgtFile vfs.File) error {
 		return nil
 	}
 
-	return fmt.Errorf("Copy failed.  ERROR[%s]", resp.ErrorCode())
+	return fmt.Errorf("copy failed  ERROR[%s]", resp.ErrorCode())
 }
 
 // List will return a listing of the contents of the given location.  Each item in the list will contain the full key
@@ -177,7 +180,8 @@ func (a *ClientImpl) List(l vfs.Location) ([]string, error) {
 	ctx := context.Background()
 	var list []string
 	for marker := (azblob.Marker{}); marker.NotDone(); {
-		listBlob, err := containerURL.ListBlobsHierarchySegment(ctx, marker, "/", azblob.ListBlobsSegmentOptions{Prefix: utils.RemoveLeadingSlash(l.Path())})
+		listBlob, err := containerURL.ListBlobsHierarchySegment(ctx, marker, "/",
+			azblob.ListBlobsSegmentOptions{Prefix: utils.RemoveLeadingSlash(l.Path())})
 		if err != nil {
 			log.Fatal("Unable to list blobs.  error: " + err.Error())
 		}

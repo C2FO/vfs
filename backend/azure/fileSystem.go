@@ -60,7 +60,7 @@ func (fs *FileSystem) Client() (Client, error) {
 }
 
 // NewFile returns the azure implementation of vfs.File
-func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, error) {
+func (fs *FileSystem) NewFile(volume, absFilePath string) (vfs.File, error) {
 	if fs == nil {
 		return nil, errors.New(errNilFileSystemReceiver)
 	}
@@ -81,7 +81,7 @@ func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, erro
 }
 
 // NewLocation returns the azure implementation of vfs.Location
-func (fs *FileSystem) NewLocation(volume string, absLocPath string) (vfs.Location, error) {
+func (fs *FileSystem) NewLocation(volume, absLocPath string) (vfs.Location, error) {
 	if fs == nil {
 		return nil, errors.New(errNilFileSystemReceiver)
 	}
@@ -141,7 +141,7 @@ func ParsePath(p string) (string, string, error) {
 
 // IsValidURI us a utility function used by vfssimple to determine if the given URI is a valid Azure URI
 func IsValidURI(u *url.URL) bool {
-	r, _ := regexp.Compile(".*\\.blob\\.core\\.windows\\.net")
+	r := regexp.MustCompile(".*\\.blob\\.core\\.windows\\.net")
 
 	if u.Scheme == Scheme && r.MatchString(u.Host) {
 		return true

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
+
 	"github.com/c2fo/vfs/v5"
 	"github.com/c2fo/vfs/v5/utils"
 )
@@ -250,11 +251,11 @@ func (f *File) Touch() error {
 
 	newMetadata := make(map[string]string)
 	newMetadata["updated"] = "true"
-	if err = client.SetMetadata(f, newMetadata); err != nil {
+	if err := client.SetMetadata(f, newMetadata); err != nil {
 		return err
 	}
 
-	if err = client.SetMetadata(f, props.Metadata); err != nil {
+	if err := client.SetMetadata(f, props.Metadata); err != nil {
 		return err
 	}
 
