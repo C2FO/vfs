@@ -188,10 +188,11 @@ func (a *ClientImpl) List(l vfs.Location) ([]string, error) {
 
 		marker = listBlob.NextMarker
 
-		for _, blobInfo := range listBlob.Segment.BlobItems {
-			list = append(list, blobInfo.Name)
+		for i := range listBlob.Segment.BlobItems {
+			list = append(list, listBlob.Segment.BlobItems[i].Name)
 		}
 	}
+
 	return list, nil
 }
 
