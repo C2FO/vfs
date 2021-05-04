@@ -10,6 +10,7 @@ import (
 	"github.com/c2fo/vfs/v5"
 	"github.com/c2fo/vfs/v5/backend"
 	_ "github.com/c2fo/vfs/v5/backend/all" // register all backends
+	"github.com/c2fo/vfs/v5/backend/azure"
 )
 
 // NewLocation is a convenience function that allows for instantiating a location based on a uri string. Any
@@ -52,6 +53,11 @@ func parseSupportedURI(uri string) (vfs.FileSystem, string, string, error) { //n
 
 	var fs vfs.FileSystem
 	for _, backendScheme := range backend.RegisteredBackends() {
+		// Azure
+		if azure.IsValidURI(u) {
+			host, path, err = azure.ParsePath(u.Path)
+		}
+
 		// Object-level backend
 		if strings.HasPrefix(uri, backendScheme) {
 			fs = backend.Backend(backendScheme)

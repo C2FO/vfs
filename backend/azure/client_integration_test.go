@@ -1,0 +1,234 @@
+//+build vfsintegration
+
+package azure
+
+import (
+	"context"
+	"fmt"
+	"io/ioutil"
+	"net/url"
+	"os"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/stretchr/testify/suite"
+)
+
+type ClientTestSuite struct {
+	suite.Suite
+	testContainerURL azblob.ContainerURL
+	accountName      string
+	accountKey       string
+}
+
+func (s *ClientTestSuite) SetupSuite() {
+	s.accountName, s.accountKey = os.Getenv("AZURE_STORAGE_ACCOUNT"), os.Getenv("AZURE_STORAGE_ACCESS_KEY")
+
+	credential, err := azblob.NewSharedKeyCredential(s.accountName, s.accountKey)
+	if err != nil {
+		panic(err)
+	}
+
+	p := azblob.NewPipeline(credential, azblob.PipelineOptions{})
+	baseURL, err := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net", s.accountName))
+	s.NoError(err)
+	serviceURL := azblob.NewServiceURL(*baseURL, p)
+	s.testContainerURL = serviceURL.NewContainerURL("test-container")
+	_, err = s.testContainerURL.Create(context.Background(), azblob.Metadata{}, azblob.PublicAccessNone)
+	s.NoError(err)
+
+	// The create function claims to be synchronous but for some reason it does not exist for a little bit so
+	// we need to wait for it to be there.
+	_, err = s.testContainerURL.GetProperties(context.Background(), azblob.LeaseAccessConditions{})
+	for {
+		time.Sleep(2 * time.Second)
+		if err == nil || err.(azblob.StorageError).ServiceCode() != "BlobNotFound" {
+			break
+		}
+		_, err = s.testContainerURL.GetProperties(context.Background(), azblob.LeaseAccessConditions{})
+	}
+}
+
+func (s *ClientTestSuite) TearDownSuite() {
+	_, err := s.testContainerURL.Delete(context.Background(), azblob.ContainerAccessConditions{})
+	s.NoError(err)
+}
+
+func (s *ClientTestSuite) TestNewClient() {
+	client, err := NewClient("", "&")
+	s.Error(err, "AccountKey must be composed of base 64 decodable characters")
+	s.Nil(client, "The call to NewClient resulted in an error so the returned client should be nil")
+
+	client, err = NewClient(s.accountName, s.accountKey)
+	s.NoError(err, "Env variables (AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_ACCESS_KEY) should contain valid azure account credentials")
+	s.NotNil(client, "No error is expected so the client should be non-nil")
+	s.NotNil(client.pipeline, "pipeline should be non-nil")
+}
+
+func (s *ClientTestSuite) TestAllTheThings_FileWithNoPath() {
+	fs := NewFileSystem()
+	f, err := fs.NewFile("test-container", "/test.txt")
+	s.NoError(err)
+	client, err := fs.Client()
+	s.NoError(err, "Env variables (AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_ACCESS_KEY) should contain valid azure account credentials")
+
+	// Create the new file
+	err = client.Upload(f, strings.NewReader("Hello world!"))
+	s.NoError(err, "The file should be successfully uploaded to azure")
+
+	// make sure it exists
+	_, err = client.Properties(f.Location().URI(), f.Name())
+	s.NoError(err, "If the file exists no error should be returned")
+
+	// download it
+	reader, err := client.Download(f)
+	s.NoError(err)
+	dlContent, err := ioutil.ReadAll(reader)
+	err = reader.Close()
+	s.NoError(err)
+	s.NoError(err, "there should be no error reading the downloaded file")
+	s.Equal("Hello world!", string(dlContent))
+
+	// copy it
+	copyOf, err := fs.NewFile("test-container", "/copy_of_test.txt")
+	err = client.Copy(f, copyOf)
+	s.NoError(err, "Copy should succeed so there should be no error")
+	_, err = client.Properties(copyOf.Location().URI(), copyOf.Name())
+	s.NoError(err, "The copy should succeed so we should not get an error on the properties call")
+
+	// list the location
+	list, err := client.List(f.Location())
+	s.NoError(err)
+	s.Len(list, 2)
+	s.Equal("copy_of_test.txt", list[0])
+	s.Equal("test.txt", list[1])
+
+	// delete it
+	err = client.Delete(f)
+	s.NoError(err, "if the file was deleted no error should be returned")
+
+	// make sure it got deleted
+	_, err = client.Properties(f.Location().URI(), f.Name())
+	s.Error(err, "File should have been deleted so we should get an error")
+}
+
+func (s *ClientTestSuite) TestAllTheThings_FileWithPath() {
+	fs := NewFileSystem()
+	f, err := fs.NewFile("test-container", "/foo/bar/test.txt")
+	s.NoError(err)
+	client, err := fs.Client()
+	s.NoError(err, "Env variables (AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_ACCESS_KEY) should contain valid azure account credentials")
+
+	// create a new file
+	err = client.Upload(f, strings.NewReader("Hello world!"))
+	s.NoError(err, "The file should be successfully uploaded to azure")
+
+	// check to see if it exists
+	_, err = client.Properties(f.Location().(*Location).ContainerURL(), f.Path())
+	s.NoError(err, "If the file exists no error should be returned")
+
+	// download it
+	reader, err := client.Download(f)
+	s.NoError(err)
+	dlContent, err := ioutil.ReadAll(reader)
+	err = reader.Close()
+	s.NoError(err)
+	s.NoError(err, "there should be no error reading the downloaded file")
+	s.Equal("Hello world!", string(dlContent))
+
+	// list the location
+	list, err := client.List(f.Location())
+	s.NoError(err)
+	s.Len(list, 1)
+	s.Equal("foo/bar/test.txt", list[0])
+}
+
+func (s *ClientTestSuite) TestProperties() {
+	fs := NewFileSystem()
+	f, err := fs.NewFile("test-container", "/foo/bar/test.txt")
+	s.NoError(err)
+	client, err := fs.Client()
+	s.NoError(err, "Env variables (AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_ACCESS_KEY) should contain valid azure account credentials")
+
+	err = client.Upload(f, strings.NewReader("Hello world!"))
+	s.NoError(err, "The file should be successfully uploaded to azure so we shouldn't get an error")
+	props, err := client.Properties(f.Location().(*Location).ContainerURL(), f.Path())
+	s.NoError(err, "Tne file exists so we shouldn't get an error")
+	s.NotNil(props, "We should get a non-nil BlobProperties pointer back")
+	s.Greater(props.Size, uint64(0), "The size should be greater than zero")
+	s.NotNil(props.LastModified, "Should have a non-nil LastModified")
+}
+
+func (s *ClientTestSuite) TestProperties_Location() {
+	fs := NewFileSystem()
+	f, err := fs.NewFile("test-container", "/foo/bar/test.txt")
+	l, _ := fs.NewLocation("test-container", "/")
+	client, _ := fs.Client()
+
+	err = client.Upload(f, strings.NewReader("Hello world!"))
+	s.NoError(err, "The file should be successfully uploaded to azure so we shouldn't get an error")
+
+	props, err := client.Properties(l.URI(), "")
+	s.NoError(err)
+	s.Nil(props, "no props returned when calling properties on a location")
+}
+
+func (s *ClientTestSuite) TestProperties_NonExistentFile() {
+	fs := NewFileSystem()
+	f, err := fs.NewFile("test-container", "/nosuchfile.txt")
+	s.NoError(err)
+	client, err := fs.Client()
+	s.NoError(err, "Env variables (AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_ACCESS_KEY) should contain valid azure account credentials")
+
+	_, err = client.Properties(f.Location().URI(), f.Path())
+	s.Error(err, "Tne file does not exist so we expect an error")
+	s.Equal(404, err.(azblob.ResponseError).Response().StatusCode)
+}
+
+func (s *ClientTestSuite) TestDelete_NonExistentFile() {
+	fs := NewFileSystem()
+	f, err := fs.NewFile("test-container", "/nosuchfile.txt")
+	s.NoError(err)
+	client, err := fs.Client()
+	s.NoError(err, "Env variables (AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_ACCESS_KEY) should contain valid azure account credentials")
+
+	err = client.Delete(f)
+	s.Error(err, "Tne file does not exist so we expect an error")
+}
+
+func (s *ClientTestSuite) TestTouch_NonexistantContainer() {
+	fs := NewFileSystem()
+	f, err := fs.NewFile("nosuchcontainer", "/file.txt")
+	s.NoError(err)
+	client, err := fs.Client()
+	s.NoError(err, "Env variables (AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_ACCESS_KEY) should contain valid azure account credentials")
+
+	err = client.Upload(f, strings.NewReader(""))
+	s.Error(err, "The container doesn't exist so we should get an error")
+}
+
+func (s *ClientTestSuite) TestTouch_FileAlreadyExists() {
+	fs := NewFileSystem()
+	f, err := fs.NewFile("test-container", "/touch-test.txt")
+	s.NoError(err)
+	client, err := fs.Client()
+	s.NoError(err)
+
+	err = client.Upload(f, strings.NewReader("One fish, two fish, red fish, blue fish."))
+	s.NoError(err)
+	originalProps, err := client.Properties(f.Location().(*Location).ContainerURL(), f.Path())
+	s.NoError(err, "Should get properties back from azure with no error")
+
+	err = f.Touch()
+	s.NoError(err, "Should not receive an error when touching an existing file")
+	newProps, err := client.Properties(f.Location().(*Location).ContainerURL(), f.Path())
+	s.NoError(err)
+	s.NotNil(newProps, "New props should be non-nil")
+	s.True(newProps.LastModified.After(*originalProps.LastModified), "newProps.LastModified should be after originalProps.LastModified")
+}
+
+func TestAzureClient(t *testing.T) {
+	suite.Run(t, new(ClientTestSuite))
+}
