@@ -157,7 +157,7 @@ func (a *DefaultClient) Copy(srcFile, tgtFile vfs.File) error {
 		return nil
 	}
 
-	return fmt.Errorf("Copy failed.  ERROR[%s]", resp.ErrorCode())
+	return fmt.Errorf("copy failed ERROR[%s]", resp.ErrorCode())
 }
 
 // List will return a listing of the contents of the given location.  Each item in the list will contain the full key
@@ -180,8 +180,8 @@ func (a *DefaultClient) List(l vfs.Location) ([]string, error) {
 
 		marker = listBlob.NextMarker
 
-		for _, blobInfo := range listBlob.Segment.BlobItems {
-			list = append(list, blobInfo.Name)
+		for i := range listBlob.Segment.BlobItems {
+			list = append(list, listBlob.Segment.BlobItems[i].Name)
 		}
 	}
 	return list, nil
