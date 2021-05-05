@@ -7,6 +7,8 @@ require (
 	cloud.google.com/go/storage v1.10.0
 	github.com/Azure/azure-pipeline-go v0.2.3
 	github.com/Azure/azure-storage-blob-go v0.13.0
+	github.com/Azure/go-autorest/autorest v0.11.18
+	github.com/Azure/go-autorest/autorest/adal v0.9.13
 	github.com/aws/aws-sdk-go v1.36.12
 	github.com/fatih/color v1.10.0
 	github.com/mitchellh/go-homedir v1.1.0

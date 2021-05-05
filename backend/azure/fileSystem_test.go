@@ -133,13 +133,13 @@ func (s *FileSystemTestSuite) TestRetry() {
 		return errors.New("i always error")
 	}
 
-	fs := FileSystem{}
+	fs := NewFileSystem()
 	retryFn := fs.Retry()
 	s.NotNil(retryFn)
 	err := retryFn(doNothing)
 	s.NoError(err, "The default retry function just calls the passed func")
 
-	fs = *NewFileSystem().WithOptions(Options{RetryFunc: errorRetry})
+	fs = NewFileSystem().WithOptions(Options{RetryFunc: errorRetry})
 	retryFn = fs.Retry()
 	err = retryFn(doNothing)
 	s.Error(err, "This implementation should use the retry function from the options which always errors")

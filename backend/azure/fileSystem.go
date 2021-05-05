@@ -24,22 +24,20 @@ const errNilFileSystemReceiver = "azure.FileSystem receiver pointer must be non-
 
 // FileSystem implements the vfs.FileSystem interface for Azure Blob Storage
 type FileSystem struct {
-	options Options
+	options *Options
 	client  Client
 }
 
 // NewFileSystem creates a new default FileSystem.  This will set the options options.AccountName and
 // options.AccountKey with the env variables AZURE_STORAGE_ACCOUNT and AZURE_STORAGE_ACCESS_KEY respectively.
 func NewFileSystem() *FileSystem {
-	fs := FileSystem{}
-	fs.options.AccountName, fs.options.AccountKey = os.Getenv("AZURE_STORAGE_ACCOUNT"), os.Getenv("AZURE_STORAGE_ACCESS_KEY")
-	return &fs
+	return &FileSystem{options: NewOptions()}
 }
 
 // WithOptions allows the caller to override the default options
 func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 	azureOpts, _ := opts.(Options)
-	fs.options = azureOpts
+	fs.options = &azureOpts
 	return fs
 }
 
@@ -52,7 +50,7 @@ func (fs *FileSystem) WithClient(client Client) *FileSystem {
 // Client returns a Client to perform operations against Azure Blob Storage
 func (fs *FileSystem) Client() (Client, error) {
 	if fs.client == nil {
-		client, err := NewClient(fs.options.AccountName, fs.options.AccountKey)
+		client, err := NewClient(fs.options)
 		fs.client = client
 		return fs.client, err
 	}

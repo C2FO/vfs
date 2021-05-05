@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"net/url"
 	"strings"
 	"time"
@@ -19,39 +18,23 @@ import (
 // The Client interface contains methods that perform specific operations to Azure Blob Storage.  This interface is
 // here so we can write mocks over the actual functionality.
 type Client interface {
-	// Properties should return a BlobProperties struct for the blob specified by locationURI, and filePath.  If the
-	// blob is not found an error should be returned.
 	Properties(locationURI, filePath string) (*BlobProperties, error)
-
-	// SetMetadata should add the metadata specified by the parameter metadata for the blob specified by the parameter
-	// file.
 	SetMetadata(file vfs.File, metadata map[string]string) error
-
-	// Upload should create or update the blob specified by the file parameter with the contents of the content
-	// parameter
 	Upload(file vfs.File, content io.ReadSeeker) error
-
-	// Download should return a reader for the blob specified by the file parameter
 	Download(file vfs.File) (io.ReadCloser, error)
-
-	// Copy should copy the file specified by srcFile to the file specified by tgtFile
 	Copy(srcFile vfs.File, tgtFile vfs.File) error
-
-	// List should return a listing for the specified location.  Listings should include the full path for the file.
 	List(l vfs.Location) ([]string, error)
-
-	// Delete should delete the file specified by the parameter file.
 	Delete(file vfs.File) error
 }
 
-// ClientImpl is the main implementation that actually makes the calls to Azure Blob Storage
-type ClientImpl struct {
+// DefaultClient is the main implementation that actually makes the calls to Azure Blob Storage
+type DefaultClient struct {
 	pipeline pipeline.Pipeline
 }
 
-// NewClient initializes a new ClientImpl
-func NewClient(accountName, accountKey string) (*ClientImpl, error) {
-	credential, err := azblob.NewSharedKeyCredential(accountName, accountKey)
+// NewClient initializes a new DefaultClient
+func NewClient(options *Options) (*DefaultClient, error) {
+	credential, err := options.Credential()
 	if err != nil {
 		return nil, err
 	}
@@ -59,13 +42,22 @@ func NewClient(accountName, accountKey string) (*ClientImpl, error) {
 	// This configures the client to use the default retry policy.  The default policy uses exponential backoff with
 	// maxRetries = 4.  If this behavior needs to be changed, add the Retry member to azblob.PipelineOptions.  For
 	// more information on azure retry policies see https://pkg.go.dev/github.com/Azure/azure-storage-blob-go/azblob#RetryOptions
-	p := azblob.NewPipeline(credential, azblob.PipelineOptions{})
+	//
+	//  Example (this is not the default):
+	//	RetryOptions{
+	//		Policy:        RetryPolicyExponential, // Use exponential backoff as opposed to linear
+	//		MaxTries:      3,                      // Try at most 3 times to perform the operation (set to 1 to disable retries)
+	//		TryTimeout:    time.Second * 3,        // Maximum time allowed for any single try
+	//		RetryDelay:    time.Second * 1,        // Backoff amount for each retry (exponential or linear)
+	//		MaxRetryDelay: time.Second * 3,        // Max delay between retries
+	//	}
+	pl := azblob.NewPipeline(credential, azblob.PipelineOptions{})
 
-	return &ClientImpl{pipeline: p}, nil
+	return &DefaultClient{pl}, nil
 }
 
 // Properties fetches the properties for the blob specified by the parameters containerURI and filePath
-func (a *ClientImpl) Properties(containerURI, filePath string) (*BlobProperties, error) {
+func (a *DefaultClient) Properties(containerURI, filePath string) (*BlobProperties, error) {
 	URL, err := url.Parse(containerURI)
 	if err != nil {
 		return nil, err
@@ -91,7 +83,7 @@ func (a *ClientImpl) Properties(containerURI, filePath string) (*BlobProperties,
 }
 
 // Upload uploads a new file to Azure Blob Storage
-func (a *ClientImpl) Upload(file vfs.File, content io.ReadSeeker) error {
+func (a *DefaultClient) Upload(file vfs.File, content io.ReadSeeker) error {
 	URL, err := url.Parse(file.Location().(*Location).ContainerURL())
 	if err != nil {
 		return err
@@ -105,7 +97,7 @@ func (a *ClientImpl) Upload(file vfs.File, content io.ReadSeeker) error {
 }
 
 // SetMetadata sets the given metadata for the blob
-func (a *ClientImpl) SetMetadata(file vfs.File, metadata map[string]string) error {
+func (a *DefaultClient) SetMetadata(file vfs.File, metadata map[string]string) error {
 	URL, err := url.Parse(file.Location().(*Location).ContainerURL())
 	if err != nil {
 		return err
@@ -118,7 +110,7 @@ func (a *ClientImpl) SetMetadata(file vfs.File, metadata map[string]string) erro
 }
 
 // Download returns an io.ReadCloser for the given vfs.File
-func (a *ClientImpl) Download(file vfs.File) (io.ReadCloser, error) {
+func (a *DefaultClient) Download(file vfs.File) (io.ReadCloser, error) {
 	URL, err := url.Parse(file.Location().(*Location).ContainerURL())
 	if err != nil {
 		return nil, err
@@ -136,7 +128,7 @@ func (a *ClientImpl) Download(file vfs.File) (io.ReadCloser, error) {
 // Copy copies srcFile to the destination tgtFile within Azure Blob Storage.  Note that in the case where we get
 // encoded spaces in the file name (i.e. %20) the '%' must be encoded or the copy command will return a not found
 // error.
-func (a *ClientImpl) Copy(srcFile, tgtFile vfs.File) error {
+func (a *DefaultClient) Copy(srcFile, tgtFile vfs.File) error {
 	// Can't use url.PathEscape here since that will escape everything (even the directory separators)
 	srcURL, err := url.Parse(strings.Replace(srcFile.URI(), "%", "%25", -1))
 	if err != nil {
@@ -165,12 +157,12 @@ func (a *ClientImpl) Copy(srcFile, tgtFile vfs.File) error {
 		return nil
 	}
 
-	return fmt.Errorf("copy failed  ERROR[%s]", resp.ErrorCode())
+	return fmt.Errorf("Copy failed.  ERROR[%s]", resp.ErrorCode())
 }
 
 // List will return a listing of the contents of the given location.  Each item in the list will contain the full key
 // as specified by the azure blob (incliding the virtual 'path').
-func (a *ClientImpl) List(l vfs.Location) ([]string, error) {
+func (a *DefaultClient) List(l vfs.Location) ([]string, error) {
 	URL, err := url.Parse(l.(*Location).ContainerURL())
 	if err != nil {
 		return []string{}, err
@@ -183,21 +175,20 @@ func (a *ClientImpl) List(l vfs.Location) ([]string, error) {
 		listBlob, err := containerURL.ListBlobsHierarchySegment(ctx, marker, "/",
 			azblob.ListBlobsSegmentOptions{Prefix: utils.RemoveLeadingSlash(l.Path())})
 		if err != nil {
-			log.Fatal("Unable to list blobs.  error: " + err.Error())
+			return []string{}, err
 		}
 
 		marker = listBlob.NextMarker
 
-		for i := range listBlob.Segment.BlobItems {
-			list = append(list, listBlob.Segment.BlobItems[i].Name)
+		for _, blobInfo := range listBlob.Segment.BlobItems {
+			list = append(list, blobInfo.Name)
 		}
 	}
-
 	return list, nil
 }
 
 // Delete deletes the given file from Azure Blob Storage.
-func (a *ClientImpl) Delete(file vfs.File) error {
+func (a *DefaultClient) Delete(file vfs.File) error {
 	URL, err := url.Parse(file.Location().(*Location).ContainerURL())
 	if err != nil {
 		return err
