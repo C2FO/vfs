@@ -60,7 +60,7 @@ func NewOptions() *Options {
 	}
 }
 
-// The Credential method returns an azblob.Credential struct based on how options are configured.  Options are checked
+// Credential returns an azblob.Credential struct based on how options are configured.  Options are checked
 // and evaluated in the following order:
 //    1. If TenantID, ClientID, and ClientSecret are non-empty, return azblob.TokenCredential.  This form of authentication
 //       is used with service accounts and can be used to access containers across multiple storage accounts.
