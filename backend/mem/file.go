@@ -93,7 +93,6 @@ func (f *File) Read(p []byte) (n int, err error) {
 		return 0, doesNotExist()
 	}
 	// if file exists:
-	offset := f.cursor
 	if !f.isOpen {
 		f.isOpen = true
 	}
@@ -130,7 +129,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 	if f.cursor > len(f.contents) {
 		f.cursor = len(f.contents)
 	}
-	return readBufferLength - offset, nil
+	return readBufferLength, nil
 
 }
 

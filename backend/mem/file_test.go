@@ -1,6 +1,7 @@
 package mem
 
 import (
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -601,6 +602,36 @@ func (s *memFileTest) TestWrite() {
 	s.NoError(err, "unexpected write error")
 	s.EqualValues(length, num)
 
+}
+
+// TestRead ensures read can be called successively to get an entire file's contents in chunks
+func (s *memFileTest) TestRead() {
+	expectedSlice := []byte("Hello World!")
+	length := len(expectedSlice)
+	fileToRead, err := s.fileSystem.NewFile("", "/fileToRead.txt")
+	s.NoError(err, "unexpected new file error")
+	num, err := fileToRead.Write(expectedSlice)
+	s.NoError(err, "unexpected write error")
+	s.EqualValues(length, num)
+	s.NoError(fileToRead.Close(), "close error not expected")
+
+	chunk1 := make([]byte, 5)
+	num, err = fileToRead.Read(chunk1)
+	s.NoError(err, "unexpected read error")
+	s.EqualValues(5, num)
+	s.EqualValues(expectedSlice[:5], chunk1)
+
+	chunk2 := make([]byte, 5)
+	num, err = fileToRead.Read(chunk2)
+	s.NoError(err, "unexpected read error")
+	s.EqualValues(5, num)
+	s.EqualValues(expectedSlice[5:10], chunk2)
+
+	chunk3 := make([]byte, 5)
+	num, err = fileToRead.Read(chunk3)
+	s.EqualValues(io.EOF, err)
+	s.EqualValues(2, num)
+	s.EqualValues(expectedSlice[10:], chunk3[:2])
 }
 
 // TestWriteThenReadNoClose writes to a file, and reads from it without closing it by seeking to the start
