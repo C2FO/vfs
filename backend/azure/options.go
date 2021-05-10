@@ -68,6 +68,10 @@ func NewOptions() *Options {
 //       is used with storage accounts and only provides access to a single storage account.
 //    3. Returns an anonymous credential.  This allows access only to public blobs.
 func (o *Options) Credential() (azblob.Credential, error) {
+	if o.tokenCredentialFactory == nil {
+		o.tokenCredentialFactory = &DefaultTokenCredentialFactory{}
+	}
+
 	// Check to see if we have service account credentials
 	if o.TenantID != "" && o.ClientID != "" && o.ClientSecret != "" {
 		return o.tokenCredentialFactory.New(o.TenantID, o.ClientID, o.ClientSecret, o.AzureEnvName)
