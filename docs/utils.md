@@ -114,7 +114,7 @@ func ValidateRelativeLocationPath(name string) error
 ValidateRelativeLocationPath ensure that a file path has no leading slash but
 has a trailing slash
 
-#### type Authority
+### type Authority
 
 ```go
 type Authority struct {

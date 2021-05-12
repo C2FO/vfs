@@ -38,7 +38,7 @@ const Scheme = "mem"
 ```
 Scheme defines the FileSystem type's underlying implementation.
 
-#### type File
+### type File
 
 ```go
 type File struct {
@@ -193,7 +193,7 @@ func (f *File) Write(p []byte) (int, error)
 Write implements the io.Writer interface. Returns number of bytes written and
 any errors
 
-#### type FileSystem
+### type FileSystem
 
 ```go
 type FileSystem struct {
@@ -257,7 +257,7 @@ func (fs *FileSystem) Scheme() string
 ```
 Scheme returns the scheme of the underlying FileSystem
 
-#### type Location
+### type Location
 
 ```go
 type Location struct {

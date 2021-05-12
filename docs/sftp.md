@@ -156,7 +156,7 @@ const Scheme = "sftp"
 ```
 Scheme defines the filesystem type.
 
-#### type Client
+### type Client
 
 ```go
 type Client interface {
@@ -173,7 +173,7 @@ type Client interface {
 
 Client is an interface to make it easier to test
 
-#### type File
+### type File
 
 ```go
 type File struct {
@@ -321,7 +321,7 @@ func (f *File) Write(data []byte) (res int, err error)
 ```
 Write calls the underlying [sftp.File Write](https://godoc.org/github.com/pkg/sftp#File.Write).
 
-#### type FileSystem
+### type FileSystem
 
 ```go
 type FileSystem struct {
@@ -396,7 +396,7 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem
 ```
 WithOptions sets options for client and returns the filesystem (chainable)
 
-#### type Location
+### type Location
 
 ```go
 type Location struct {
@@ -511,7 +511,7 @@ func (l *Location) Volume() string
 ```
 Volume returns the [Authority](utils.md#type-authority) the location is contained in.
 
-#### type Options
+### type Options
 
 ```go
 type Options struct {
@@ -528,7 +528,7 @@ type Options struct {
 
 Options holds sftp-specific options. Currently only client options are used.
 
-#### type ReadWriteSeekCloser
+### type ReadWriteSeekCloser
 
 ```go
 type ReadWriteSeekCloser interface {

@@ -92,7 +92,7 @@ const Scheme = "gs"
 ```
 Scheme defines the file system type.
 
-#### type File
+### type File
 
 ```go
 type File struct {
@@ -238,7 +238,7 @@ func (f *File) Write(data []byte) (n int, err error)
 Write implements the standard for [io.Writer](https://godoc.org/io#Writer). A buffer is added to with each
 subsequent write. Calling [Close()](#func-file-close) will write the contents back to GCS.
 
-#### type FileSystem
+### type FileSystem
 
 ```go
 type FileSystem struct {
@@ -313,7 +313,7 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem
 ```
 WithOptions sets options for client and returns the FileSystem (chainable)
 
-#### type Location
+### type Location
 
 ```go
 type Location struct {
@@ -420,7 +420,7 @@ func (l *Location) Volume() string
 ```
 Volume returns the GCS bucket name.
 
-#### type Options
+### type Options
 
 ```go
 type Options struct {

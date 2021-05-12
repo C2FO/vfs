@@ -1,5 +1,6 @@
 # azure
---
+
+---
     import "github.com/c2fo/vfs/backend/azure"
 
 Package azure Microsoft Azure Blob Storage VFS Implementation
@@ -9,6 +10,7 @@ Package azure Microsoft Azure Blob Storage VFS Implementation
 
 Rely on github.com/c2fo/vfs/backend
 
+```go
     import(
         "github.com/c2fo/vfs/v5/backend"
         "github.com/c2fo/vfs/v5/backend/azure"
@@ -18,20 +20,24 @@ Rely on github.com/c2fo/vfs/backend
         fs := backend.Backend(azure.Scheme)
         ...
     }
+```
 
 Or call directly:
 
+```go
     import "github.com/c2fo/vfs/v5/backend/azure"
 
     func DoSomething() {
         fs := azure.NewFilesystem()
         ...
     }
+```
 
 azure can be augmented with the following implementation-specific methods.
-Backend returns vfs.Filesystem interface so it would have to be cast as
+[Backend](backend.md) returns [vfs.FileSystem](../README.md#type-filesystem) interface so it would have to be cast as
 azure.Filesystem to use the following:
 
+```go
     func DoSomething() {
 
         ...
@@ -51,7 +57,7 @@ azure.Filesystem to use the following:
         client, _ := azure.NewClient(MockAzureClient{...})
         fs = fs.WithClient(client)
     }
-
+```
 
 ### Authentication
 
@@ -59,12 +65,12 @@ Authentication, by default, occurs automatically when Client() is called. It
 looks for credentials in the following places, preferring the first location
 found:
 
-    1. When the ENV vars VFS_AZURE_ENV_NAME, VFS_AZURE_STORAGE_ACCOUNT, VFS_AZURE_TENANT_ID, VFS_AZURE_CLIENT_ID, and
-       VFS_AZURE_CLIENT_SECRET, authentication is performed using an OAuth Token Authenticator.  This will allow access
+1. When the ENV vars `VFS_AZURE_ENV_NAME`, `VFS_AZURE_STORAGE_ACCOUNT`, `VFS_AZURE_TENANT_ID`, `VFS_AZURE_CLIENT_ID`, and
+       `VFS_AZURE_CLIENT_SECRET`, authentication is performed using an OAuth Token Authenticator.  This will allow access
        to containers from multiple storage accounts.
-    2. The ENV vars VFS_AZURE_STORAGE_ACCOUNT and VFS_AZURE_STORAGE_KEY, a shared key authenticator is used.  This will
+1. The ENV vars `VFS_AZURE_STORAGE_ACCOUNT` and `VFS_AZURE_STORAGE_KEY`, a shared key authenticator is used.  This will
        allow access to any containers owned by the designated storage account.
-    3. If none of the above are present, then an anonymous authenticator is created and only publicly accessible blobs
+1. If none of the above are present, then an anonymous authenticator is created and only publicly accessible blobs
        will be available
 
 ## Usage
@@ -96,7 +102,7 @@ ParsePath is a utility function used by vfssiple to separate the host from the
 path. The first parameter returned is the host and the second parameter is the
 path.
 
-#### type BlobProperties
+### type BlobProperties
 
 ```go
 type BlobProperties struct {
@@ -121,7 +127,7 @@ func NewBlobProperties(azureProps *azblob.BlobGetPropertiesResponse) *BlobProper
 NewBlobProperties creates a new BlobProperties from an
 azblob.BlobGetPropertiesResponse
 
-#### type Client
+### type Client
 
 ```go
 type Client interface {
@@ -155,7 +161,7 @@ The Client interface contains methods that perform specific operations to Azure
 Blob Storage. This interface is here so we can write mocks over the actual
 functionality.
 
-#### type DefaultClient
+### type DefaultClient
 
 ```go
 type DefaultClient struct {
@@ -226,7 +232,7 @@ func (a *DefaultClient) Upload(file vfs.File, content io.ReadSeeker) error
 ```
 Upload uploads a new file to Azure Blob Storage
 
-#### type DefaultTokenCredentialFactory
+### type DefaultTokenCredentialFactory
 
 ```go
 type DefaultTokenCredentialFactory struct{}
@@ -242,7 +248,7 @@ func (f *DefaultTokenCredentialFactory) New(tenantID, clientID, clientSecret, az
 ```
 New creates a new azblob.TokenCredntial struct
 
-#### type File
+### type File
 
 ```go
 type File struct {
@@ -394,7 +400,7 @@ Write implements the io.Writer interface. Writes are performed against a
 temporary local file. The temp file is closed and flushed to Azure with
 f.Close() is called.
 
-#### type FileSystem
+### type FileSystem
 
 ```go
 type FileSystem struct {
@@ -477,7 +483,7 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem
 ```
 WithOptions allows the caller to override the default options
 
-#### type Location
+### type Location
 
 ```go
 type Location struct {
@@ -588,7 +594,7 @@ func (l *Location) Volume() string
 Volume returns the azure container. Azure containers are equivalent to AWS
 Buckets
 
-#### type MockAzureClient
+### type MockAzureClient
 
 ```go
 type MockAzureClient struct {
@@ -652,7 +658,7 @@ func (a *MockAzureClient) Upload(file vfs.File, content io.ReadSeeker) error
 ```
 Upload returns the value of ExpectedError
 
-#### type MockStorageError
+### type MockStorageError
 
 ```go
 type MockStorageError struct {
@@ -697,7 +703,7 @@ func (mse MockStorageError) Timeout() bool
 ```
 Timeout returns nil
 
-#### type MockTokenCredentialFactory
+### type MockTokenCredentialFactory
 
 ```go
 type MockTokenCredentialFactory struct{}
@@ -713,7 +719,7 @@ func (f *MockTokenCredentialFactory) New(tenantID, clientID, clientSecret, azure
 ```
 New creates a new azblob.TokenCredntial struct
 
-#### type Options
+### type Options
 
 ```go
 type Options struct {
@@ -778,7 +784,7 @@ configured. Options are checked and evaluated in the following order:
        is used with storage accounts and only provides access to a single storage account.
     3. Returns an anonymous credential.  This allows access only to public blobs.
 
-#### type TokenCredentialFactory
+### type TokenCredentialFactory
 
 ```go
 type TokenCredentialFactory interface {

@@ -3,6 +3,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [Unreleased]
+
+## [5.5.7]
+### Fixed
+- fixed: do not offset number of bytes read for memfs (#70) Jeffrey Larson <jeffothy@gmail.com>
+- fixed S3 VFS backend throws an error when you open then close a file.  shivanigaurh-c2fo
+- fixed minor markdown doc formatting of type headers
+### Added
+- Add Azure Blob Storage backend. Dusty McIlvain <dustin.mcilvain@c2fo.com>
+- Add github actions for testing and linting (golangci-lint)
 
 ## [5.5.6]
 ### Fixed
@@ -13,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - Upgraded dependencies.  Required regen of S3 API mock due to a couple new methods.
-  SSH returns a different error text since Go 1.14 (only affects 1 test).
+  SSH returns a different error  text since Go 1.14 (only affects 1 test).
 
 ## [5.5.5] - 2020-12-11
 ### Fixed

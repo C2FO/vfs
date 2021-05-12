@@ -43,7 +43,7 @@ const Scheme = "file"
 ```
 Scheme defines the file system type.
 
-#### type File
+### type File
 
 ```go
 type File struct {
@@ -188,7 +188,7 @@ func (f *File) Write(p []byte) (n int, err error)
 Write implements the [io.Writer](https://godoc.org/io#Writer) interface. It accepts a slice of bytes and
 returns the number of btyes written and an error, if any.
 
-#### type FileSystem
+### type FileSystem
 
 ```go
 type FileSystem struct{}
@@ -224,7 +224,7 @@ func (fs *FileSystem) Scheme() string
 ```
 Scheme return "file" as the initial part of a file URI ie: file://
 
-#### type Location
+### type Location
 
 ```go
 type Location struct {
