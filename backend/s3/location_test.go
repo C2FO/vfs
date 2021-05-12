@@ -129,7 +129,7 @@ func (lt *locationTestSuite) TestListByPrefix() {
 
 func (lt *locationTestSuite) TestListByRegex() {
 	expectedFileList := []string{"file1.txt", "file2.txt"}
-	keysReturnedFromAPI := append(expectedFileList, "file3.png", "file4.jpg")
+	keysReturnedFromAPI := []string{"file1.txt", "file2.txt", "file3.png", "file4.jpg"}
 	bucket := "bucket"
 	locPath := "/blah/"
 	prefix := "blah/"
