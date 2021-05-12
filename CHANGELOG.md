@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
-## [5.5.7]
+## [5.5.7] - 2021-05-12
 ### Fixed
 - fixed: do not offset number of bytes read for memfs (#70) Jeffrey Larson <jeffothy@gmail.com>
 - fixed S3 VFS backend throws an error when you open then close a file.  shivanigaurh-c2fo
@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add Azure Blob Storage backend. Dusty McIlvain <dustin.mcilvain@c2fo.com>
 - Add github actions for testing and linting (golangci-lint)
 
-## [5.5.6]
+## [5.5.6] - 2021-02-07
 ### Fixed
 - fixed failing test due to CI asking for mod tidy.
 - fixed ineffectual assignment failures keeping vfs from achieving 100% in goreportcard.
