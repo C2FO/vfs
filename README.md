@@ -4,15 +4,15 @@
 
 [![GitHub tag](https://img.shields.io/github/tag/c2fo/vfs.svg?style=flat)](https://github.com/c2fo/vfs/releases)
 [![Build Status](https://travis-ci.org/C2FO/vfs.svg?branch=master)](https://travis-ci.org/C2FO/vfs)
-[![GoDoc](https://godoc.org/github.com/c2fo/vfs?status.png)](http://godoc.org/github.com/c2fo/vfs)
+[![GoDoc](https://pkg.go.dev/badge/github.com/c2fo/vfs/v5?utm_source=godoc)](https://pkg.go.dev/github.com/c2fo/vfs/v5)
 [![codecov](https://codecov.io/gh/c2fo/vfs/branch/master/graph/badge.svg)](https://codecov.io/gh/c2fo/vfs)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](License.md)
 [![Go Report Card](https://goreportcard.com/badge/github.com/c2fo/vfs)](https://goreportcard.com/report/github.com/c2fo/vfs)
 [![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)
 
 Package vfs provides a pluggable, extensible, and opinionated set of file system
-functionality for Go across a number of file system types such as os, S3, and
-GCS.
+functionality for Go across a number of file system types such as os, Azure, S3, GCS
+and SFTP.
 
 
 ### Philosophy
@@ -148,8 +148,6 @@ Feel free to send a pull request if you want to add your backend to the list.
 ### Ideas
 
 Things to add:
-
-* Add Azure storage backend
 * Provide better List() functionality with more abstracted filtering and paging (iterator?) Return File structs vs URIs?
 * Add better/any context.Context() support
 
