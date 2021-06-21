@@ -34,10 +34,7 @@ func (l *Location) List() ([]string, error) {
 // ListByPrefix returns a slice of file base names and any error, if any
 // List functions return only file basenames
 func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error) {
-	prefix := utils.RemoveLeadingSlash(path.Join(l.prefix, filenamePrefix))
-	if filenamePrefix == "" {
-		prefix = utils.EnsureTrailingSlash(prefix)
-	}
+	prefix := utils.RemoveLeadingSlash(utils.EnsureTrailingSlash(path.Join(l.prefix, filenamePrefix)))
 	d := path.Dir(prefix)
 	q := &storage.Query{
 		Delimiter: "/",
@@ -100,7 +97,7 @@ func (l *Location) Path() string {
 func (l *Location) Exists() (bool, error) {
 	_, err := l.getBucketAttrs()
 	if err != nil {
-		if err.Error() == doesNotExistError {
+		if err == storage.ErrBucketNotExist {
 			return false, nil
 		}
 		return false, err
