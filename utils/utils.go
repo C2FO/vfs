@@ -98,16 +98,16 @@ func EnsureLeadingSlash(dir string) string {
 
 // TouchCopy is a wrapper around io.Copy which ensures that even empty source files (reader) will get written as an
 // empty file. It guarantees a Write() call on the target file.
-func TouchCopy(writer, reader vfs.File) error {
-	if size, err := reader.Size(); err != nil {
+func TouchCopy(writer io.Writer, reader io.Reader) error {
+	size, err := io.Copy(writer, reader)
+	if err != nil {
 		return err
-	} else if size == 0 {
+	}
+	if size == 0 {
 		_, err = writer.Write([]byte{})
 		if err != nil {
 			return err
 		}
-	} else if _, err := io.Copy(writer, reader); err != nil {
-		return err
 	}
 	return nil
 }
