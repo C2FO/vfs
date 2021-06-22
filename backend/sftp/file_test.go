@@ -212,16 +212,14 @@ func (ts *fileTestSuite) TestNotExists() {
 }
 
 func (ts *fileTestSuite) TestCopyToFile() {
-	contentLength := 0
+	content := "this is a test"
 
 	// set up source
-	sourceFileInfo := &mocks.FileInfo{}
-	sourceFileInfo.On("Size").Return(int64(contentLength))
-
 	sourceClient := &mocks.Client{}
-	sourceClient.On("Stat", mock.Anything).Return(sourceFileInfo, nil).Once()
 
 	sourceSftpFile := &mocks.SFTPFile{}
+	sourceSftpFile.On("Read", mock.Anything).Return(len(content), nil).Once()
+	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
 
 	sourceFile := &File{
@@ -241,7 +239,7 @@ func (ts *fileTestSuite) TestCopyToFile() {
 	targetClient := &mocks.Client{}
 
 	targetSftpFile := &mocks.SFTPFile{}
-	targetSftpFile.On("Write", mock.Anything).Return(contentLength, nil).Once()
+	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
 	targetSftpFile.On("Close").Return(nil).Once()
 
 	targetFile := &File{
@@ -265,23 +263,19 @@ func (ts *fileTestSuite) TestCopyToFile() {
 	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
 
 	sourceClient.AssertExpectations(ts.T())
-	sourceFileInfo.AssertExpectations(ts.T())
 	sourceSftpFile.AssertExpectations(ts.T())
 	targetClient.AssertExpectations(ts.T())
 	targetSftpFile.AssertExpectations(ts.T())
 }
 
-func (ts *fileTestSuite) TestCopyToLocation() {
-	contentLength := 0
+func (ts *fileTestSuite) TestCopyToFileEmpty() {
+	content := ""
 
 	// set up source
-	sourceFileInfo := &mocks.FileInfo{}
-	sourceFileInfo.On("Size").Return(int64(contentLength))
-
 	sourceClient := &mocks.Client{}
-	sourceClient.On("Stat", mock.Anything).Return(sourceFileInfo, nil).Once()
 
 	sourceSftpFile := &mocks.SFTPFile{}
+	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
 
 	sourceFile := &File{
@@ -301,7 +295,64 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 	targetClient := &mocks.Client{}
 
 	targetSftpFile := &mocks.SFTPFile{}
-	targetSftpFile.On("Write", mock.Anything).Return(contentLength, nil).Once()
+	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
+	targetSftpFile.On("Close").Return(nil).Once()
+
+	targetFile := &File{
+		fileSystem: &FileSystem{
+			sftpclient: targetClient,
+			options:    Options{},
+		},
+		Authority: utils.Authority{
+			Host: "host2.com:22",
+			User: "user",
+		},
+		path:     "/some/path.txt",
+		sftpfile: targetSftpFile,
+	}
+
+	targetMockLocation := &_mocks.Location{}
+	targetMockLocation.On("NewFile", mock.Anything).Return(targetFile, nil)
+
+	// run tests
+	err := sourceFile.CopyToFile(targetFile)
+	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
+
+	sourceClient.AssertExpectations(ts.T())
+	sourceSftpFile.AssertExpectations(ts.T())
+	targetClient.AssertExpectations(ts.T())
+	targetSftpFile.AssertExpectations(ts.T())
+}
+
+func (ts *fileTestSuite) TestCopyToLocation() {
+	content := "this is a location test"
+
+	// set up source
+	sourceClient := &mocks.Client{}
+
+	sourceSftpFile := &mocks.SFTPFile{}
+	sourceSftpFile.On("Read", mock.Anything).Return(len(content), nil).Once()
+	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
+	sourceSftpFile.On("Close").Return(nil).Once()
+
+	sourceFile := &File{
+		fileSystem: &FileSystem{
+			sftpclient: sourceClient,
+			options:    Options{},
+		},
+		Authority: utils.Authority{
+			Host: "host1.com:22",
+			User: "user",
+		},
+		path:     "/some/path.txt",
+		sftpfile: sourceSftpFile,
+	}
+
+	// set up target
+	targetClient := &mocks.Client{}
+
+	targetSftpFile := &mocks.SFTPFile{}
+	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
 	targetSftpFile.On("Close").Return(nil).Once()
 
 	targetFile := &File{
@@ -332,24 +383,21 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 	ts.Equal(newFile.URI(), "sftp://user@host2.com:22/some/path.txt", "new file uri check")
 
 	sourceClient.AssertExpectations(ts.T())
-	sourceFileInfo.AssertExpectations(ts.T())
 	sourceSftpFile.AssertExpectations(ts.T())
 	targetClient.AssertExpectations(ts.T())
 	targetSftpFile.AssertExpectations(ts.T())
 }
 
 func (ts *fileTestSuite) TestMoveToFile_differentAuthority() {
-	contentLength := 0
+	content := "blah"
 
 	// set up source
-	sourceFileInfo := &mocks.FileInfo{}
-	sourceFileInfo.On("Size").Return(int64(contentLength))
-
 	sourceClient := &mocks.Client{}
-	sourceClient.On("Stat", mock.Anything).Return(sourceFileInfo, nil).Once()
 	sourceClient.On("Remove", mock.Anything).Return(nil).Once()
 
 	sourceSftpFile := &mocks.SFTPFile{}
+	sourceSftpFile.On("Read", mock.Anything).Return(len(content), nil).Once()
+	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
 
 	sourceFile := &File{
@@ -369,7 +417,7 @@ func (ts *fileTestSuite) TestMoveToFile_differentAuthority() {
 	targetClient := &mocks.Client{}
 
 	targetSftpFile := &mocks.SFTPFile{}
-	targetSftpFile.On("Write", mock.Anything).Return(contentLength, nil).Once()
+	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
 	targetSftpFile.On("Close").Return(nil).Once()
 
 	targetFile := &File{
@@ -390,7 +438,6 @@ func (ts *fileTestSuite) TestMoveToFile_differentAuthority() {
 	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
 
 	sourceClient.AssertExpectations(ts.T())
-	sourceFileInfo.AssertExpectations(ts.T())
 	sourceSftpFile.AssertExpectations(ts.T())
 	targetClient.AssertExpectations(ts.T())
 	targetSftpFile.AssertExpectations(ts.T())
@@ -442,17 +489,15 @@ func (ts *fileTestSuite) TestMoveToFile_sameAuthority() {
 }
 
 func (ts *fileTestSuite) TestMoveToLocation() {
-	contentLength := 0
+	content := "loc test"
 
 	// set up source
-	sourceFileInfo := &mocks.FileInfo{}
-	sourceFileInfo.On("Size").Return(int64(contentLength))
-
 	sourceClient := &mocks.Client{}
-	sourceClient.On("Stat", mock.Anything).Return(sourceFileInfo, nil).Once()
 	sourceClient.On("Remove", mock.Anything).Return(nil).Once()
 
 	sourceSftpFile := &mocks.SFTPFile{}
+	sourceSftpFile.On("Read", mock.Anything).Return(len(content), nil).Once()
+	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
 
 	sourceFile := &File{
@@ -472,7 +517,7 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	targetClient := &mocks.Client{}
 
 	targetSftpFile := &mocks.SFTPFile{}
-	targetSftpFile.On("Write", mock.Anything).Return(contentLength, nil).Once()
+	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
 	targetSftpFile.On("Close").Return(nil).Once()
 
 	targetFile := &File{
@@ -503,7 +548,6 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	ts.Equal(newFile.URI(), "sftp://user@host2.com:22/some/other/path.txt", "new file uri check")
 
 	sourceClient.AssertExpectations(ts.T())
-	sourceFileInfo.AssertExpectations(ts.T())
 	sourceSftpFile.AssertExpectations(ts.T())
 	targetClient.AssertExpectations(ts.T())
 	targetSftpFile.AssertExpectations(ts.T())
