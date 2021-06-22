@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -173,8 +175,9 @@ func (ts *fileTestSuite) TestEmptyCopyToFile() {
 	targetFile.On("Write", mock.Anything).Return(0, nil)
 	targetFile.On("Close").Return(nil)
 
-	expectedSize := int64(0)
-	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{ContentLength: &expectedSize}, nil, nil)
+	// TODO: note that ioutils.NopCloser is deprecated with 1.16 and will be moved to io.NopCloser
+	rc := ioutil.NopCloser(strings.NewReader(""))
+	s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{Body: rc}, nil, nil)
 
 	err := testFile.CopyToFile(targetFile)
 	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
