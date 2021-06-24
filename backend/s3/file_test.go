@@ -201,7 +201,7 @@ func (ts *fileTestSuite) TestMoveToFile() {
 	s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
 
 	err := testFile.MoveToFile(targetFile)
-	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
+	ts.Nil(err, "Error shouldn't be returned from successful call to MoveToFile")
 	s3apiMock.AssertExpectations(ts.T())
 }
 
