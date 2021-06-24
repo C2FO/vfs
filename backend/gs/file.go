@@ -154,7 +154,13 @@ func (f *File) CopyToFile(file vfs.File) error {
 		}
 	}
 
-	if err := utils.TouchCopy(file, f); err != nil {
+	// Get a clean handle so that the cursor position does not affect what gets copied.
+	handle, err := f.newTempFileHandle()
+	if err != nil {
+		return err
+	}
+	defer handle.Close()
+	if err := utils.TouchCopy(file, handle); err != nil {
 		return err
 	}
 	// Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
@@ -375,6 +381,13 @@ func (f *File) checkTempFile() error {
 		f.tempFile = localTempFile
 	}
 	return nil
+}
+
+func (f *File) newTempFileHandle() (*os.File, error) {
+	if err := f.checkTempFile(); err != nil {
+		return nil, err
+	}
+	return os.Open(f.tempFile.Name())
 }
 
 func (f *File) copyToLocalTempReader() (*os.File, error) {

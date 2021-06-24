@@ -3,7 +3,9 @@ package gs
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"testing"
 
 	"cloud.google.com/go/storage"
@@ -29,6 +31,21 @@ func objectExists(bucket *storage.BucketHandle, objectName string) bool {
 	return true
 }
 
+func mustReadObject(bucket *storage.BucketHandle, objectName string) []byte {
+	objectHandle := bucket.Object(objectName)
+	ctx := context.Background()
+	reader, err := objectHandle.NewReader(ctx)
+	if err != nil {
+		panic(err)
+	}
+	defer reader.Close()
+	data, err := ioutil.ReadAll(reader)
+	if err != nil {
+		panic(err)
+	}
+	return data
+}
+
 func fsFileNameExists(fs *FileSystem, bucketName, objectName string) bool {
 	file, err := fs.NewFile(bucketName, "/"+objectName)
 	if err != nil {
@@ -39,6 +56,18 @@ func fsFileNameExists(fs *FileSystem, bucketName, objectName string) bool {
 		panic(err)
 	}
 	return exists
+}
+
+func fsMustReadFileName(fs *FileSystem, bucketName, objectName string) []byte {
+	file, err := fs.NewFile(bucketName, "/"+objectName)
+	if err != nil {
+		panic(err)
+	}
+	data, err := ioutil.ReadAll(file)
+	if err != nil {
+		panic(err)
+	}
+	return data
 }
 
 func (ts *fileTestSuite) TestRead() {
@@ -140,70 +169,99 @@ func (ts *fileTestSuite) TestNotExists() {
 	ts.Nil(err, "Error from key not existing should be hidden since it just confirms it doesn't")
 }
 
-func (ts *fileTestSuite) TestCopyToFile() {
-	sourceName := "source.txt"
-	targetName := "target.txt"
-	bucketName := "bucket-a"
-	server := fakestorage.NewServer(Objects{{
-		BucketName:      bucketName,
-		Name:            sourceName,
-		ContentType:     "text/plain",
-		ContentEncoding: "utf8",
-		Content:         []byte("content"),
-	}})
-	defer server.Stop()
-	client := server.Client()
-	fs := NewFileSystem().WithClient(client)
-	bucket := client.Bucket(bucketName)
+func (ts *fileTestSuite) TestMoveAndCopy() {
+	type TestCase struct {
+		move       bool
+		readFirst  bool
+		sameBucket bool
+	}
+	type TestCases []TestCase
 
-	ts.True(objectExists(bucket, sourceName), "source should exist")
-	ts.True(fsFileNameExists(fs, bucketName, sourceName), "source should exist")
+	testCases := TestCases{}
 
-	ts.False(objectExists(bucket, targetName), "target should not exist")
-	ts.False(fsFileNameExists(fs, bucketName, targetName), "target should not exist")
+	for idx := 0; idx <= (1<<3)-1; idx++ {
+		testCases = append(testCases, TestCase{
+			move:       (idx & (1 << 0)) != 0,
+			readFirst:  (idx & (1 << 1)) != 0,
+			sameBucket: (idx & (1 << 2)) != 0,
+		})
+	}
 
-	sourceFile, err := fs.NewFile(bucketName, "/"+sourceName)
-	ts.NoError(err)
-	targetFile, err := fs.NewFile(bucketName, "/"+targetName)
-	ts.NoError(err)
-	err = sourceFile.CopyToFile(targetFile)
-	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
+	for _, testCase := range testCases {
+		ts.Run(fmt.Sprintf("%#v", testCase), func() {
+			sourceName := "source.txt"
+			targetName := "target.txt"
+			sourceBucketName := "bucket-source"
+			var targetBucketName string
+			if testCase.sameBucket {
+				targetBucketName = sourceBucketName
+			} else {
+				targetBucketName = "bucket-target"
+			}
 
-	ts.True(objectExists(bucket, targetName), "target should exist")
-	ts.True(fsFileNameExists(fs, bucketName, targetName), "target should exist")
-}
+			content := []byte("content")
+			fakeObjects := Objects{{
+				BucketName:      sourceBucketName,
+				Name:            sourceName,
+				ContentType:     "text/plain",
+				ContentEncoding: "utf8",
+				Content:         content,
+			}}
+			fakeObjects = append(fakeObjects, fakestorage.Object{
+				BucketName:      targetBucketName,
+				Name:            "place.holder",
+				ContentType:     "text/plain",
+				ContentEncoding: "utf8",
+				Content:         []byte{},
+			})
+			server := fakestorage.NewServer(fakeObjects)
+			defer server.Stop()
+			client := server.Client()
+			fs := NewFileSystem().WithClient(client)
+			sourceBucket := client.Bucket(sourceBucketName)
+			targetBucket := client.Bucket(targetBucketName)
 
-func (ts *fileTestSuite) TestMoveToFile() {
-	sourceName := "source.txt"
-	targetName := "target.txt"
-	bucketName := "bucket-b"
-	server := fakestorage.NewServer(Objects{{
-		BucketName:      bucketName,
-		Name:            sourceName,
-		ContentType:     "text/plain",
-		ContentEncoding: "utf8",
-		Content:         []byte("content"),
-	}})
-	defer server.Stop()
-	client := server.Client()
-	fs := NewFileSystem().WithClient(client)
-	bucket := client.Bucket(bucketName)
+			ts.True(objectExists(sourceBucket, sourceName), "source should exist")
+			ts.True(fsFileNameExists(fs, sourceBucketName, sourceName), "source should exist")
+			ts.Equal(content, mustReadObject(sourceBucket, sourceName))
+			ts.Equal(content, fsMustReadFileName(fs, sourceBucketName, sourceName))
 
-	ts.True(objectExists(bucket, sourceName), "source should exist")
-	ts.True(fsFileNameExists(fs, bucketName, sourceName), "source should exist")
+			ts.False(objectExists(targetBucket, targetName), "target should not exist")
+			ts.False(fsFileNameExists(fs, sourceBucketName, targetName), "target should not exist")
 
-	ts.False(objectExists(bucket, targetName), "target should not exist")
-	ts.False(fsFileNameExists(fs, bucketName, targetName), "target should not exist")
+			sourceFile, err := fs.NewFile(sourceBucketName, "/"+sourceName)
+			ts.NoError(err)
+			targetFile, err := fs.NewFile(targetBucketName, "/"+targetName)
+			ts.NoError(err)
 
-	sourceFile, err := fs.NewFile(bucketName, "/"+sourceName)
-	ts.NoError(err)
-	targetFile, err := fs.NewFile(bucketName, "/"+targetName)
-	ts.NoError(err)
-	err = sourceFile.MoveToFile(targetFile)
-	ts.Nil(err, "Error shouldn't be returned from successful call to MoveToFile")
+			if testCase.readFirst {
+				_, err := ioutil.ReadAll(sourceFile)
+				ts.NoError(err)
+			}
+			if testCase.move {
+				err = sourceFile.MoveToFile(targetFile)
+				ts.Nil(err, "Error shouldn't be returned from successful call to MoveToFile")
+			} else {
+				err = sourceFile.CopyToFile(targetFile)
+				ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
+			}
 
-	ts.True(objectExists(bucket, targetName), "target should exist")
-	ts.True(fsFileNameExists(fs, bucketName, targetName), "target should exist")
+			if testCase.move {
+				ts.False(objectExists(sourceBucket, sourceName), "source should not exist")
+				ts.False(fsFileNameExists(fs, sourceBucketName, sourceName), "source should not exist")
+			} else {
+				ts.True(objectExists(sourceBucket, sourceName), "source should exist")
+				ts.True(fsFileNameExists(fs, sourceBucketName, sourceName), "source should exist")
+				ts.Equal(content, mustReadObject(sourceBucket, sourceName))
+				ts.Equal(content, fsMustReadFileName(fs, sourceBucketName, sourceName))
+			}
+
+			ts.True(objectExists(targetBucket, targetName), "target should exist")
+			ts.True(fsFileNameExists(fs, targetBucketName, targetName), "target should exist")
+			ts.Equal(content, mustReadObject(targetBucket, targetName))
+			ts.Equal(content, fsMustReadFileName(fs, targetBucketName, targetName))
+		})
+	}
 }
 
 func TestFile(t *testing.T) {
