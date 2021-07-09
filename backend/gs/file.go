@@ -144,6 +144,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 // CopyToFile puts the contents of File into the target vfs.File passed in. Uses the GCS CopierFrom
 // method if the target file is also on GCS, otherwise uses io.Copy.
+// This method should be called on a closed file or a file with 0 cursor position to avoid errors.
 func (f *File) CopyToFile(file vfs.File) error {
 	if tf, ok := file.(*File); ok {
 		options, ok := tf.Location().FileSystem().(*FileSystem).options.(Options)
@@ -153,7 +154,13 @@ func (f *File) CopyToFile(file vfs.File) error {
 			}
 		}
 	}
-
+	offset, err := f.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return fmt.Errorf("failed to determine current cursor offset: %w", err)
+	}
+	if offset != 0 {
+		return fmt.Errorf("current cursor offset is not 0 as required for this operation")
+	}
 	if err := utils.TouchCopy(file, f); err != nil {
 		return err
 	}
