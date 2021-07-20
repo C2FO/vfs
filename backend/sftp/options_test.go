@@ -338,6 +338,7 @@ func (o *optionsSuite) TestGetAuthMethods() {
 				KeyFilePath:   o.keyFiles.SSHPrivateKey,
 				KeyPassphrase: o.keyFiles.passphrase,
 				Password:      "somepassword",
+				KeyExchanges:  "diffie-hellman-group-exchange-sha256",
 			},
 			returnCount: 2,
 			hasError:    false,

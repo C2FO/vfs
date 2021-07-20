@@ -26,7 +26,7 @@ type Options struct {
 	KeyPassphrase      string              `json:"keyPassphrase,omitempty"`  // env var VFS_SFTP_KEYFILE_PASSPHRASE
 	KnownHostsFile     string              `json:"knownHostsFile,omitempty"` // env var VFS_SFTP_KNOWN_HOSTS_FILE
 	KnownHostsString   string              `json:"knownHostsString,omitempty"`
-	KeyExchanges   string              `json:"keyExchanges,omitempty"`
+	KeyExchanges       string              `json:"keyExchanges,omitempty"`
 	KnownHostsCallback ssh.HostKeyCallback // env var VFS_SFTP_INSECURE_KNOWN_HOSTS
 	Retry              vfs.Retry
 	MaxRetries         int
@@ -49,21 +49,23 @@ func getClient(authority utils.Authority, opts Options) (*_sftp.Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	//To avoid ssh: handshake failed: ssh: no common algorithm for key exchange;
+	//client offered: [curve25519-sha256@libssh.org ecdh-sha2-nistp256 ecdh-sha2-nistp384 ecdh-sha2-	nistp521 diffie-hellman-group14-sha1],
+	//server offered: [diffie-hellman-group-exchange-sha256 ]
+	//Now receive KeyExchange algorithm as an option
 	sshConfig := ssh.Config{}
 	if opts.KeyExchanges != "" {
 		sshConfig = ssh.Config{
 			KeyExchanges: []string{opts.KeyExchanges},
 		}
 	}
-	
 	// Define the Client Config
 	config := &ssh.ClientConfig{
 		User:            authority.User,
 		Auth:            authMethods,
 		HostKeyCallback: hostKeyCallback,
-		Config: sshConfig,
+		Config:          sshConfig,
 	}
-
 	// default to port 22
 	host := authority.Host
 	if !strings.Contains(host, ":") {
