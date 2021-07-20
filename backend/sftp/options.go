@@ -49,10 +49,10 @@ func getClient(authority utils.Authority, opts Options) (*_sftp.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	//To avoid ssh: handshake failed: ssh: no common algorithm for key exchange;
-	//client offered: [curve25519-sha256@libssh.org ecdh-sha2-nistp256 ecdh-sha2-nistp384 ecdh-sha2-	nistp521 diffie-hellman-group14-sha1],
-	//server offered: [diffie-hellman-group-exchange-sha256 ]
-	//Now receive KeyExchange algorithm as an option
+	// To avoid ssh: handshake failed: ssh: no common algorithm for key exchange;
+	// client offered: [curve25519-sha256@libssh.org ecdh-sha2-nistp256 ecdh-sha2-nistp384 ecdh-sha2-	nistp521 diffie-hellman-group14-sha1],
+	// server offered: [diffie-hellman-group-exchange-sha256 ]
+	// Now receive KeyExchange algorithm as an option
 	sshConfig := ssh.Config{}
 	if opts.KeyExchanges != "" {
 		sshConfig = ssh.Config{
