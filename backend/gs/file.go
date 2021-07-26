@@ -13,6 +13,7 @@ import (
 	"cloud.google.com/go/storage"
 
 	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/backend"
 	"github.com/c2fo/vfs/v5/utils"
 )
 
@@ -33,7 +34,7 @@ type File struct {
 // local temp file, and triggers a write to GCS of anything in the f.writeBuffer if it has been created.
 func (f *File) Close() error {
 	if f.tempFile != nil {
-		defer f.tempFile.Close()
+		defer func() { _ = f.tempFile.Close() }()
 
 		err := os.Remove(f.tempFile.Name())
 		if err != nil && !os.IsNotExist(err) {
@@ -53,7 +54,7 @@ func (f *File) Close() error {
 		ctx, cancel := context.WithCancel(f.fileSystem.ctx)
 		defer cancel()
 		w := handle.NewWriter(ctx)
-		defer w.Close()
+		defer func() { _ = w.Close() }()
 		if _, err := io.Copy(w, f.writeBuffer); err != nil {
 			// cancel context (replaces CloseWithError)
 			return err
@@ -146,6 +147,12 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 // method if the target file is also on GCS, otherwise uses io.Copy.
 // This method should be called on a closed file or a file with 0 cursor position to avoid errors.
 func (f *File) CopyToFile(file vfs.File) error {
+	// validate seek is at 0,0 before doing copy
+	if err := backend.ValidateCopySeekPosition(f); err != nil {
+		return err
+	}
+
+	// do native copy if same location/auth
 	if tf, ok := file.(*File); ok {
 		options, ok := tf.Location().FileSystem().(*FileSystem).options.(Options)
 		if ok {
@@ -154,13 +161,8 @@ func (f *File) CopyToFile(file vfs.File) error {
 			}
 		}
 	}
-	offset, err := f.Seek(0, io.SeekCurrent)
-	if err != nil {
-		return fmt.Errorf("failed to determine current cursor offset: %w", err)
-	}
-	if offset != 0 {
-		return fmt.Errorf("current cursor offset is not 0 as required for this operation")
-	}
+
+	// do non-native io copy
 	if err := utils.TouchCopy(file, f); err != nil {
 		return err
 	}

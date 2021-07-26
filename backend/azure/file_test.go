@@ -122,7 +122,8 @@ func (s *FileTestSuite) TestLocation() {
 }
 
 func (s *FileTestSuite) TestCopyToLocation() {
-	client := MockAzureClient{}
+	fooReader := ioutil.NopCloser(strings.NewReader("blah"))
+	client := MockAzureClient{ExpectedResult: fooReader}
 	fs := NewFileSystem().WithClient(&client)
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	targetLoc, _ := fs.NewLocation("test-container", "/new/folder/")
@@ -133,7 +134,8 @@ func (s *FileTestSuite) TestCopyToLocation() {
 }
 
 func (s *FileTestSuite) TestCopyToFile() {
-	client := MockAzureClient{}
+	fooReader := ioutil.NopCloser(strings.NewReader("blah"))
+	client := MockAzureClient{ExpectedResult: fooReader}
 	fs := NewFileSystem().WithClient(&client)
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	target, _ := fs.NewFile("test-container", "/bar.txt")
@@ -143,7 +145,8 @@ func (s *FileTestSuite) TestCopyToFile() {
 }
 
 func (s *FileTestSuite) TestMoveToLocation() {
-	client := MockAzureClient{}
+	fooReader := ioutil.NopCloser(strings.NewReader("blah"))
+	client := MockAzureClient{ExpectedResult: fooReader}
 	fs := NewFileSystem().WithClient(&client)
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	target, _ := fs.NewLocation("test-container", "/new/folder/")
@@ -155,7 +158,8 @@ func (s *FileTestSuite) TestMoveToLocation() {
 }
 
 func (s *FileTestSuite) TestMoveToFile() {
-	client := MockAzureClient{}
+	fooReader := ioutil.NopCloser(strings.NewReader("blah"))
+	client := MockAzureClient{ExpectedResult: fooReader}
 	fs := NewFileSystem().WithClient(&client)
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	target, _ := fs.NewFile("test-container", "/bar.txt")

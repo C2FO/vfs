@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
+- fixed #82 Return error when CopyTo/MoveTo functions are called when Seek offset is not (0,0) for all backends,
+not just GCS.
+  
 ## [5.7.0] - 2021-07-23
 ### Added
 - Add support of keyexchanges algorithm as a sftp option

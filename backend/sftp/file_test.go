@@ -44,7 +44,7 @@ type nopWriteCloser struct {
 }
 
 func (nopWriteCloser) Close() error                      { return nil }
-func (nopWriteCloser) Write(p []byte) (n int, err error) { return 0, nil }
+func (nopWriteCloser) Write(_ []byte) (n int, err error) { return 0, nil }
 
 func (ts *fileTestSuite) TestRead() {
 
@@ -218,6 +218,8 @@ func (ts *fileTestSuite) TestCopyToFile() {
 	sourceClient := &mocks.Client{}
 
 	sourceSftpFile := &mocks.SFTPFile{}
+
+	sourceSftpFile.On("Seek", int64(0), 1).Return(int64(0), nil)
 	sourceSftpFile.On("Read", mock.Anything).Return(len(content), nil).Once()
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
@@ -275,6 +277,7 @@ func (ts *fileTestSuite) TestCopyToFileEmpty() {
 	sourceClient := &mocks.Client{}
 
 	sourceSftpFile := &mocks.SFTPFile{}
+	sourceSftpFile.On("Seek", int64(0), 1).Return(int64(0), nil)
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
 
@@ -331,6 +334,7 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 	sourceClient := &mocks.Client{}
 
 	sourceSftpFile := &mocks.SFTPFile{}
+	sourceSftpFile.On("Seek", int64(0), 1).Return(int64(0), nil)
 	sourceSftpFile.On("Read", mock.Anything).Return(len(content), nil).Once()
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
@@ -368,13 +372,8 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 		sftpfile: targetSftpFile,
 	}
 
-	targetMockFileSystem := &_mocks.FileSystem{}
-	targetMockFileSystem.On("NewFile", mock.Anything, mock.Anything).Return(targetFile, nil)
-
 	targetMockLocation := &_mocks.Location{}
-	targetMockLocation.On("FileSystem").Return(targetMockFileSystem)
-	targetMockLocation.On("Volume").Return(targetFile.Authority.String())
-	targetMockLocation.On("Path").Return("/some/")
+	targetMockLocation.On("NewFile", mock.Anything).Return(targetFile, nil)
 
 	// run tests
 	newFile, err := sourceFile.CopyToLocation(targetMockLocation)
@@ -396,6 +395,7 @@ func (ts *fileTestSuite) TestMoveToFile_differentAuthority() {
 	sourceClient.On("Remove", mock.Anything).Return(nil).Once()
 
 	sourceSftpFile := &mocks.SFTPFile{}
+	sourceSftpFile.On("Seek", int64(0), 1).Return(int64(0), nil)
 	sourceSftpFile.On("Read", mock.Anything).Return(len(content), nil).Once()
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
@@ -461,6 +461,10 @@ func (ts *fileTestSuite) TestMoveToFile_sameAuthority() {
 		path: "/some/path.txt",
 	}
 
+	rws := &mocks.SFTPFile{}
+	rws.On("Seek", int64(0), 1).Return(int64(0), nil)
+	sourceFile.opener = func(c Client, p string, f int) (ReadWriteSeekCloser, error) { return rws, nil }
+
 	// set up target
 	targetFileInfo := &mocks.FileInfo{}
 	targetFileInfo.On("IsDir").Return(true).Once()
@@ -496,6 +500,7 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	sourceClient.On("Remove", mock.Anything).Return(nil).Once()
 
 	sourceSftpFile := &mocks.SFTPFile{}
+	sourceSftpFile.On("Seek", int64(0), 1).Return(int64(0), nil)
 	sourceSftpFile.On("Read", mock.Anything).Return(len(content), nil).Once()
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
@@ -533,13 +538,8 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 		sftpfile: targetSftpFile,
 	}
 
-	targetMockFileSystem := &_mocks.FileSystem{}
-	targetMockFileSystem.On("NewFile", mock.Anything, mock.Anything).Return(targetFile, nil)
-
 	targetMockLocation := &_mocks.Location{}
-	targetMockLocation.On("FileSystem").Return(targetMockFileSystem)
-	targetMockLocation.On("Volume").Return(targetFile.Authority.String())
-	targetMockLocation.On("Path").Return("/some/other/")
+	targetMockLocation.On("NewFile", mock.Anything).Return(targetFile, nil)
 
 	// run tests
 	newFile, err := sourceFile.MoveToLocation(targetMockLocation)
@@ -551,7 +551,6 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	sourceSftpFile.AssertExpectations(ts.T())
 	targetClient.AssertExpectations(ts.T())
 	targetSftpFile.AssertExpectations(ts.T())
-	targetMockFileSystem.AssertExpectations(ts.T())
 	targetMockLocation.AssertExpectations(ts.T())
 }
 

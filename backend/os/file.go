@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/backend"
 	"github.com/c2fo/vfs/v5/utils"
 )
 
@@ -192,6 +193,10 @@ func (f *File) Location() vfs.Location {
 
 // MoveToFile move a file. It accepts a target vfs.File and returns an error, if any.
 func (f *File) MoveToFile(file vfs.File) error {
+	// validate seek is at 0,0 before doing copy
+	if err := backend.ValidateCopySeekPosition(f); err != nil {
+		return err
+	}
 	// handle native os move/rename
 	if file.Location().FileSystem().Scheme() == Scheme {
 		return safeOsRename(f.Path(), file.Path())
@@ -270,6 +275,10 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 
 // CopyToFile copies the file to a new File.  It accepts a vfs.File and returns an error, if any.
 func (f *File) CopyToFile(file vfs.File) error {
+	// validate seek is at 0,0 before doing copy
+	if err := backend.ValidateCopySeekPosition(f); err != nil {
+		return err
+	}
 	_, err := f.copyWithName(file.Name(), file.Location())
 	return err
 }
@@ -277,6 +286,10 @@ func (f *File) CopyToFile(file vfs.File) error {
 // CopyToLocation copies existing File to new Location with the same name.
 // It accepts a vfs.Location and returns a vfs.File and error, if any.
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
+	// validate seek is at 0,0 before doing copy
+	if err := backend.ValidateCopySeekPosition(f); err != nil {
+		return nil, err
+	}
 	return f.copyWithName(f.Name(), location)
 }
 

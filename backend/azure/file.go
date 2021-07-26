@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/azure-storage-blob-go/azblob"
 
 	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/backend"
 	"github.com/c2fo/vfs/v5/utils"
 )
 
@@ -29,7 +30,7 @@ type File struct {
 func (f *File) Close() error {
 	if f.tempFile != nil {
 		defer func() {
-			f.tempFile.Close()
+			_ = f.tempFile.Close()
 			f.tempFile = nil
 			f.isDirty = false
 		}()
@@ -137,6 +138,11 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 // CopyToFile puts the contents of the receiver (f *File) into the passed vfs.File parameter.
 func (f *File) CopyToFile(file vfs.File) error {
+	// validate seek is at 0,0 before doing copy
+	if err := backend.ValidateCopySeekPosition(f); err != nil {
+		return err
+	}
+
 	azFile, ok := file.(*File)
 	if ok {
 		if f.isSameAuth(azFile) {
