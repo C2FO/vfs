@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/backend"
 	"github.com/c2fo/vfs/v5/utils"
 )
 
@@ -156,7 +157,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		}
 	case 1:
 		pos := f.cursor + int(offset)
-		if pos < length && pos >= 0 {
+		if pos <= length && pos >= 0 {
 			f.cursor = pos
 			return int64(pos), nil
 		}
@@ -287,6 +288,11 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 func (f *File) CopyToFile(target vfs.File) error {
 	if f == nil || target == nil {
 		return nilReference()
+	}
+
+	// validate seek is at 0,0 before doing copy
+	if err := backend.ValidateCopySeekPosition(f); err != nil {
+		return err
 	}
 
 	if ex, _ := f.Exists(); !ex {

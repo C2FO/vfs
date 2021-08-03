@@ -157,6 +157,7 @@ type File interface {
 	//   * In the case of an error, nil is returned for the file.
 	//   * CopyToLocation should use native functions when possible within the same scheme.
 	//   * If the file already exists at the location, the contents will be overwritten with the current file's contents.
+	//   * Unless Seek position is at 0,0 a vfs.CopyToNotPossible will be returned
 	//   * CopyToLocation will Close both the source and target Files which therefore can't be appended to without first
 	//     calling Seek() to move the cursor to the end of the file.
 	CopyToLocation(location Location) (File, error)
@@ -166,6 +167,7 @@ type File interface {
 	//   * In the case of an error, nil is returned for the file.
 	//   * CopyToLocation should use native functions when possible within the same scheme.
 	//   * If the file already exists, the contents will be overwritten with the current file's contents.
+	//   * Unless Seek position is at 0,0 a vfs.CopyToNotPossible will be returned
 	//   * CopyToFile will Close both the source and target Files which therefore can't be appended to without first
 	//     calling Seek() to move the cursor to the end of the file.
 	CopyToFile(file File) error
@@ -178,6 +180,7 @@ type File interface {
 	//   * In the case of an error, nil is returned for the file.
 	//   * When moving within the same Scheme, native move/rename should be used where possible.
 	//   * If the file already exists, the contents will be overwritten with the current file's contents.
+	//   * Unless Seek position is at 0,0 a vfs.CopyToNotPossible will be returned
 	//   * MoveToLocation will Close both the source and target Files which therefore can't be appended to without first
 	//     calling Seek() to move the cursor to the end of the file.
 	MoveToLocation(location Location) (File, error)
@@ -185,6 +188,7 @@ type File interface {
 	// MoveToFile will move the current file to the provided file instance.
 	//
 	//   * If the file already exists, the contents will be overwritten with the current file's contents.
+	//   * Unless Seek position is at 0,0 a vfs.CopyToNotPossible will be returned
 	//   * The current instance of the file will be removed.
 	//   * MoveToFile will Close both the source and target Files which therefore can't be appended to without first
 	//     calling Seek() to move the cursor to the end of the file.

@@ -163,6 +163,8 @@ func (ts *fileTestSuite) TestCopyToFile() {
 		key:    "testKey.txt",
 	}
 
+	fooReader := ioutil.NopCloser(strings.NewReader("blah"))
+	s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{Body: fooReader}, nil)
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
 
 	err := testFile.CopyToFile(targetFile)
@@ -197,6 +199,8 @@ func (ts *fileTestSuite) TestMoveToFile() {
 		key:    "testKey.txt",
 	}
 
+	fooReader := ioutil.NopCloser(strings.NewReader("blah"))
+	s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{Body: fooReader}, nil)
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
 	s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
 
@@ -296,6 +300,8 @@ func (ts *fileTestSuite) TestMoveToFile_CopyError() {
 		key:    "testKey.txt",
 	}
 
+	fooReader := ioutil.NopCloser(strings.NewReader("blah"))
+	s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{Body: fooReader}, nil)
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(nil, errors.New("some copy error"))
 
 	err := testFile.MoveToFile(targetFile)
@@ -306,6 +312,8 @@ func (ts *fileTestSuite) TestMoveToFile_CopyError() {
 
 func (ts *fileTestSuite) TestCopyToLocation() {
 	s3Mock1 := &mocks.S3API{}
+	fooReader := ioutil.NopCloser(strings.NewReader("blah"))
+	s3Mock1.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{Body: fooReader}, nil)
 	s3Mock1.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(nil, nil)
 	s3Mock1.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 	f := &File{
@@ -341,6 +349,8 @@ func (ts *fileTestSuite) TestTouch() {
 	// Copy portion tested through CopyToLocation, just need to test whether or not Delete happens
 	// in addition to CopyToLocation
 	s3Mock1 := &mocks.S3API{}
+	fooReader := ioutil.NopCloser(strings.NewReader("blah"))
+	s3Mock1.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{Body: fooReader}, nil)
 	s3Mock1.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 	s3Mock1.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(nil, nil)
 	s3Mock1.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
@@ -383,6 +393,8 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	// Copy portion tested through CopyToLocation, just need to test whether or not Delete happens
 	// in addition to CopyToLocation
 	s3Mock1 := &mocks.S3API{}
+	fooReader := ioutil.NopCloser(strings.NewReader("blah"))
+	s3Mock1.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{Body: fooReader}, nil)
 	s3Mock1.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(nil, nil)
 	s3Mock1.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 	f := &File{
@@ -396,6 +408,8 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	location := new(mocks.Location)
 	location.On("NewFile", mock.Anything).Return(f, nil)
 
+	fooReader2 := ioutil.NopCloser(strings.NewReader("blah"))
+	s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{Body: fooReader2}, nil)
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
 	s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
 
@@ -418,6 +432,8 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 		Return(&File{fileSystem: &FileSystem{client: s3Mock1}, bucket: "bucket", key: "/new/hello.txt"}, nil)
 
 	s3apiMock2 := &mocks.S3API{}
+	fooReader3 := ioutil.NopCloser(strings.NewReader("blah"))
+	s3apiMock2.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{Body: fooReader3}, nil)
 	s3apiMock2.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
 
 	fs = FileSystem{client: s3apiMock2}
@@ -440,6 +456,8 @@ func (ts *fileTestSuite) TestMoveToLocationFail() {
 	location := new(mocks.Location)
 	location.On("NewFile", mock.Anything).Return(&File{fileSystem: &fs, bucket: "bucket", key: "/new/hello.txt"}, nil)
 
+	fooReader := ioutil.NopCloser(strings.NewReader("blah"))
+	s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{Body: fooReader}, nil)
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(nil, errors.New("didn't copy, oh noes"))
 
 	file, err := fs.NewFile("bucket", "/hello.txt")

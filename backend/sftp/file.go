@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/backend"
 	"github.com/c2fo/vfs/v5/utils"
 )
 
@@ -121,6 +122,10 @@ func (f *File) Location() vfs.Location {
 // If the given location is also sftp AND for the same user and host, the sftp Rename method is used, otherwise
 // we'll do a an io.Copy to the destination file then delete source file.
 func (f *File) MoveToFile(t vfs.File) error {
+	// validate seek is at 0,0 before doing copy
+	if err := backend.ValidateCopySeekPosition(f); err != nil {
+		return err
+	}
 	// sftp rename if vfs is sftp and for the same user/host
 	if f.fileSystem.Scheme() == t.Location().FileSystem().Scheme() &&
 		f.Authority.User == t.(*File).Authority.User &&
@@ -154,20 +159,20 @@ func (f *File) MoveToFile(t vfs.File) error {
 // MoveToLocation works by creating a new file on the target location then calling MoveToFile() on it.
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 
-	newFile, err := location.FileSystem().NewFile(location.Volume(), path.Join(location.Path(), f.Name()))
+	newFile, err := location.NewFile(f.Name())
 	if err != nil {
 		return nil, err
 	}
 
-	err = f.MoveToFile(newFile)
-	if err != nil {
-		return nil, err
-	}
-	return newFile, nil
+	return newFile, f.MoveToFile(newFile)
 }
 
 // CopyToFile puts the contents of File into the targetFile passed.
 func (f *File) CopyToFile(file vfs.File) error {
+	// validate seek is at 0,0 before doing copy
+	if err := backend.ValidateCopySeekPosition(f); err != nil {
+		return err
+	}
 
 	if err := utils.TouchCopy(file, f); err != nil {
 		return err
@@ -184,23 +189,12 @@ func (f *File) CopyToFile(file vfs.File) error {
 // path at the given location.
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
-	newFile, err := location.FileSystem().NewFile(location.Volume(), path.Join(location.Path(), f.Name()))
+	newFile, err := location.NewFile(f.Name())
 	if err != nil {
 		return nil, err
 	}
 
-	if err := utils.TouchCopy(newFile, f); err != nil {
-		return nil, err
-	}
-	// Close target file to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
-	if cerr := newFile.Close(); cerr != nil {
-		return nil, cerr
-	}
-	// Close file (f) reader
-	if cerr := f.Close(); cerr != nil {
-		return nil, cerr
-	}
-	return newFile, nil
+	return newFile, f.CopyToFile(newFile)
 }
 
 // CRUD Operations

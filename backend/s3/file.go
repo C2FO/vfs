@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
 	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/backend"
 	"github.com/c2fo/vfs/v5/mocks"
 	"github.com/c2fo/vfs/v5/utils"
 )
@@ -90,6 +91,11 @@ func (f *File) Location() vfs.Location {
 // CopyToFile puts the contents of File into the targetFile passed. Uses the S3 CopyObject
 // method if the target file is also on S3, otherwise uses io.Copy.
 func (f *File) CopyToFile(file vfs.File) error {
+	// validate seek is at 0,0 before doing copy
+	if err := backend.ValidateCopySeekPosition(f); err != nil {
+		return err
+	}
+
 	// if target is S3
 	if tf, ok := file.(*File); ok {
 		input, err := f.getCopyObjectInput(tf)
