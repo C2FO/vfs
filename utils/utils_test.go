@@ -537,6 +537,164 @@ func (s *utilsTest) TestTouchCopy() {
 
 }
 
+func (s *utilsTest) TestTouchCopyBufferedDefaultBufferSize() {
+
+	// write out blank file
+	tmpfile, err := ioutil.TempFile("", "utils_test")
+	if err != nil {
+		s.NoError(err, "unexpected temp file setup error")
+	}
+	defer func() {
+		err := os.Remove(tmpfile.Name())
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	if _, err := tmpfile.Write([]byte{}); err != nil {
+		s.NoError(err, "unexpected temp file writing error")
+	}
+	if err := tmpfile.Close(); err != nil {
+		s.NoError(err, "unexpected temp file close error")
+	}
+
+	// setup reader vfs.File
+	osfs := _os.FileSystem{}
+	reader, err := osfs.NewFile("", tmpfile.Name())
+	s.NoError(err, "unexpected error creating vfs.File reader")
+
+	// setup writer vfs.File
+	writer, err := osfs.NewFile("", tmpfile.Name()+".new")
+	s.NoError(err, "unexpected error creating vfs.File writer")
+
+	byteCount, err := io.Copy(writer, reader)
+	s.NoError(err, "unexpected doing io.Copy")
+	s.Equal(int64(0), byteCount, "should be no content")
+
+	// writer file should not exist
+	_, err = os.Stat(writer.Path())
+	s.Error(err, "should have failed stat")
+	s.True(os.IsNotExist(err), "should be true: not exists")
+
+	// now with TouchCopyBuffered
+	_, err = reader.Seek(0, 0) // reset reader
+	s.NoError(err, "unexpected error resetting vfs.File reader")
+	err = utils.TouchCopyBuffered(writer, reader, 0)
+	s.NoError(err, "unexpected error running TouchCopyBuffered()")
+	defer func() {
+		err := writer.Delete()
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	// writer file should exist
+	fi, err := os.Stat(writer.Path())
+	s.NoError(err, "file should exist, so no error")
+	if fi != nil {
+		s.Equal(int64(0), fi.Size(), "file should be zero length")
+	}
+
+	// TouchCopyBuffered on file that actually has data
+	_, err = reader.Write([]byte("blah"))
+	s.NoError(err)
+	_ = reader.Close()
+	_, _ = reader.Seek(0, 0)
+
+	err = utils.TouchCopyBuffered(writer, reader, 0)
+	s.NoError(err, "unexpected error running TouchCopyBuffered()")
+	fi, err = os.Stat(writer.Path())
+	s.NoError(err, "file should exist, so no error")
+	s.NotEqual(fi, 0, "file should have a non-zero byte size")
+
+	// TouchCopyBuffered should fail on a reader.Size() error
+	nonexistantFile := path.Join(writer.Path(), "nonexistent.file")
+	noFile, err := osfs.NewFile("", nonexistantFile)
+	s.NoError(err, "unexpected error creating vfs.File reader for non-existent file")
+	err = utils.TouchCopyBuffered(writer, noFile, 0)
+	s.Error(err, "expected error running TouchCopyBuffered() using non-existent reader")
+
+}
+
+func (s *utilsTest) TestTouchCopyBufferedNonDefaultBufferSize() {
+
+	// write out blank file
+	tmpfile, err := ioutil.TempFile("", "utils_test")
+	if err != nil {
+		s.NoError(err, "unexpected temp file setup error")
+	}
+	defer func() {
+		err := os.Remove(tmpfile.Name())
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	if _, err := tmpfile.Write([]byte{}); err != nil {
+		s.NoError(err, "unexpected temp file writing error")
+	}
+	if err := tmpfile.Close(); err != nil {
+		s.NoError(err, "unexpected temp file close error")
+	}
+
+	// setup reader vfs.File
+	osfs := _os.FileSystem{}
+	reader, err := osfs.NewFile("", tmpfile.Name())
+	s.NoError(err, "unexpected error creating vfs.File reader")
+
+	// setup writer vfs.File
+	writer, err := osfs.NewFile("", tmpfile.Name()+".new")
+	s.NoError(err, "unexpected error creating vfs.File writer")
+
+	byteCount, err := io.Copy(writer, reader)
+	s.NoError(err, "unexpected doing io.Copy")
+	s.Equal(int64(0), byteCount, "should be no content")
+
+	// writer file should not exist
+	_, err = os.Stat(writer.Path())
+	s.Error(err, "should have failed stat")
+	s.True(os.IsNotExist(err), "should be true: not exists")
+
+	// now with TouchCopyBuffered
+	_, err = reader.Seek(0, 0) // reset reader
+	s.NoError(err, "unexpected error resetting vfs.File reader")
+	err = utils.TouchCopyBuffered(writer, reader, utils.TouchCopyMinBufferSize*2)
+	s.NoError(err, "unexpected error running TouchCopyBuffered()")
+	defer func() {
+		err := writer.Delete()
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	// writer file should exist
+	fi, err := os.Stat(writer.Path())
+	s.NoError(err, "file should exist, so no error")
+	if fi != nil {
+		s.Equal(int64(0), fi.Size(), "file should be zero length")
+	}
+
+	// TouchCopyBuffered on file that actually has data
+	_, err = reader.Write([]byte("blah"))
+	s.NoError(err)
+	_ = reader.Close()
+	_, _ = reader.Seek(0, 0)
+
+	err = utils.TouchCopyBuffered(writer, reader, 1048576)
+	s.NoError(err, "unexpected error running TouchCopyBuffered()")
+	fi, err = os.Stat(writer.Path())
+	s.NoError(err, "file should exist, so no error")
+	s.NotEqual(fi, 0, "file should have a non-zero byte size")
+
+	// TouchCopyBuffered should fail on a reader.Size() error
+	nonexistantFile := path.Join(writer.Path(), "nonexistent.file")
+	noFile, err := osfs.NewFile("", nonexistantFile)
+	s.NoError(err, "unexpected error creating vfs.File reader for non-existent file")
+	err = utils.TouchCopyBuffered(writer, noFile, 1048576)
+	s.Error(err, "expected error running TouchCopyBuffered() using non-existent reader")
+
+}
+
 func TestUtils(t *testing.T) {
 	suite.Run(t, new(utilsTest))
 }

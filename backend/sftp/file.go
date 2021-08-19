@@ -174,9 +174,16 @@ func (f *File) CopyToFile(file vfs.File) error {
 		return err
 	}
 
-	if err := utils.TouchCopy(file, f); err != nil {
+	fileBufferSize := 0
+
+	if opts, ok := f.Location().FileSystem().(*FileSystem).options.(Options); ok {
+		fileBufferSize = opts.FileBufferSize
+	}
+
+	if err := utils.TouchCopyBuffered(file, f, fileBufferSize); err != nil {
 		return err
 	}
+
 	// Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
 	if cerr := file.Close(); cerr != nil {
 		return cerr

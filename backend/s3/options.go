@@ -26,6 +26,7 @@ type Options struct {
 	ACL             string `json:"acl,omitempty"`
 	Retry           request.Retryer
 	MaxRetries      int
+	FileBufferSize  int //Buffer Size In Bytes Used with utils.TouchCopyBuffered
 }
 
 // getClient setup S3 client

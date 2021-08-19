@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 - fixed #82 Return error when CopyTo/MoveTo functions are called when Seek offset is not (0,0) for all backends,
 not just GCS.
+- Deprecated utils.TouchCopy and added utils.TouchCopyBuffered that uses a min buffer size of 256MB and allows for a
+custom buffer size to be set with filesystem options. Improves large file transfer ~46% on larger files ~1GB+ with 
+minimal impact on smaller file transfers.
   
 ## [5.7.0] - 2021-07-23
 ### Added

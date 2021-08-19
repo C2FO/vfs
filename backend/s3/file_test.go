@@ -3,6 +3,7 @@ package s3
 import (
 	"bytes"
 	"errors"
+	"github.com/c2fo/vfs/v5/utils"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -168,6 +169,27 @@ func (ts *fileTestSuite) TestCopyToFile() {
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
 
 	err := testFile.CopyToFile(targetFile)
+	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
+	s3apiMock.AssertExpectations(ts.T())
+
+	//Test With Non Minimum Buffer Size in TouchCopyBuffered
+	originalBufferSize := defaultOptions.FileBufferSize
+	defaultOptions.FileBufferSize = 2 * utils.TouchCopyMinBufferSize
+	targetFile = &File{
+		fileSystem: &FileSystem{
+			client:  s3apiMock,
+			options: defaultOptions,
+		},
+		bucket: "TestBucket",
+		key:    "testKey.txt",
+	}
+	defaultOptions.FileBufferSize = originalBufferSize
+
+	fooReader = ioutil.NopCloser(strings.NewReader("blah"))
+	s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{Body: fooReader}, nil)
+	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
+
+	err = testFile.CopyToFile(targetFile)
 	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
 	s3apiMock.AssertExpectations(ts.T())
 }

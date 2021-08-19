@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/c2fo/vfs/v5/utils"
 	"io"
 	"io/ioutil"
 	"testing"
@@ -38,7 +39,12 @@ func mustReadObject(bucket *storage.BucketHandle, objectName string) []byte {
 	if err != nil {
 		panic(err)
 	}
-	defer reader.Close()
+	defer func(reader *storage.Reader) {
+		err := reader.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(reader)
 	data, err := ioutil.ReadAll(reader)
 	if err != nil {
 		panic(err)
@@ -218,6 +224,107 @@ func (ts *fileTestSuite) TestMoveAndCopy() {
 			defer server.Stop()
 			client := server.Client()
 			fs := NewFileSystem().WithClient(client)
+			sourceBucket := client.Bucket(sourceBucketName)
+			targetBucket := client.Bucket(targetBucketName)
+
+			ts.True(objectExists(sourceBucket, sourceName), "source should exist")
+			ts.True(fsFileNameExists(fs, sourceBucketName, sourceName), "source should exist")
+			ts.Equal(content, mustReadObject(sourceBucket, sourceName))
+			ts.Equal(content, fsMustReadFileName(fs, sourceBucketName, sourceName))
+
+			ts.False(objectExists(targetBucket, targetName), "target should not exist")
+			ts.False(fsFileNameExists(fs, sourceBucketName, targetName), "target should not exist")
+
+			sourceFile, err := fs.NewFile(sourceBucketName, "/"+sourceName)
+			ts.NoError(err)
+			targetFile, err := fs.NewFile(targetBucketName, "/"+targetName)
+			ts.NoError(err)
+
+			if testCase.readFirst {
+				_, err := ioutil.ReadAll(sourceFile)
+				ts.NoError(err)
+			}
+
+			if testCase.move {
+				err = sourceFile.MoveToFile(targetFile)
+			} else {
+				err = sourceFile.CopyToFile(targetFile)
+			}
+
+			if testCase.readFirst {
+				ts.Error(err, "Error should be returned for operation on file that has been read (i.e. has non 0 cursor position)")
+			} else {
+				ts.Nil(err, "Error shouldn't be returned from successful operation")
+
+				if testCase.move {
+					ts.False(objectExists(sourceBucket, sourceName), "source should not exist")
+					ts.False(fsFileNameExists(fs, sourceBucketName, sourceName), "source should not exist")
+				} else {
+					ts.True(objectExists(sourceBucket, sourceName), "source should exist")
+					ts.True(fsFileNameExists(fs, sourceBucketName, sourceName), "source should exist")
+					ts.Equal(content, mustReadObject(sourceBucket, sourceName))
+					ts.Equal(content, fsMustReadFileName(fs, sourceBucketName, sourceName))
+				}
+
+				ts.True(objectExists(targetBucket, targetName), "target should exist")
+				ts.True(fsFileNameExists(fs, targetBucketName, targetName), "target should exist")
+				ts.Equal(content, mustReadObject(targetBucket, targetName))
+				ts.Equal(content, fsMustReadFileName(fs, targetBucketName, targetName))
+			}
+		})
+	}
+}
+
+func (ts *fileTestSuite) TestMoveAndCopyBuffered() {
+	type TestCase struct {
+		move       bool
+		readFirst  bool
+		sameBucket bool
+	}
+	type TestCases []TestCase
+
+	testCases := TestCases{}
+
+	for idx := 0; idx <= (1<<3)-1; idx++ {
+		testCases = append(testCases, TestCase{
+			move:       (idx & (1 << 0)) != 0,
+			readFirst:  (idx & (1 << 1)) != 0,
+			sameBucket: (idx & (1 << 2)) != 0,
+		})
+	}
+
+	for _, testCase := range testCases {
+		ts.Run(fmt.Sprintf("%#v", testCase), func() {
+			sourceName := "source.txt"
+			targetName := "target.txt"
+			sourceBucketName := "bucket-source"
+			var targetBucketName string
+			if testCase.sameBucket {
+				targetBucketName = sourceBucketName
+			} else {
+				targetBucketName = "bucket-target"
+			}
+
+			content := []byte("content")
+			fakeObjects := Objects{{
+				BucketName:      sourceBucketName,
+				Name:            sourceName,
+				ContentType:     "text/plain",
+				ContentEncoding: "utf8",
+				Content:         content,
+			}}
+			fakeObjects = append(fakeObjects, fakestorage.Object{
+				BucketName:      targetBucketName,
+				Name:            "place.holder",
+				ContentType:     "text/plain",
+				ContentEncoding: "utf8",
+				Content:         []byte{},
+			})
+			server := fakestorage.NewServer(fakeObjects)
+			defer server.Stop()
+			client := server.Client()
+			opts := Options{FileBufferSize: 2 * utils.TouchCopyMinBufferSize}
+			fs := NewFileSystem().WithOptions(opts).WithClient(client)
 			sourceBucket := client.Bucket(sourceBucketName)
 			targetBucket := client.Bucket(targetBucketName)
 

@@ -2,6 +2,7 @@ package azure
 
 import (
 	"errors"
+	"github.com/c2fo/vfs/v5/utils"
 	"io"
 	"io/ioutil"
 	"strings"
@@ -137,6 +138,18 @@ func (s *FileTestSuite) TestCopyToFile() {
 	fooReader := ioutil.NopCloser(strings.NewReader("blah"))
 	client := MockAzureClient{ExpectedResult: fooReader}
 	fs := NewFileSystem().WithClient(&client)
+	source, _ := fs.NewFile("test-container", "/foo.txt")
+	target, _ := fs.NewFile("test-container", "/bar.txt")
+
+	err := source.CopyToFile(target)
+	s.NoError(err)
+}
+
+func (s *FileTestSuite) TestCopyToFileBuffered() {
+	fooReader := ioutil.NopCloser(strings.NewReader("blah"))
+	client := MockAzureClient{ExpectedResult: fooReader}
+	opts := Options{FileBufferSize: 2 * utils.TouchCopyMinBufferSize}
+	fs := NewFileSystem().WithOptions(opts).WithClient(&client)
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	target, _ := fs.NewFile("test-container", "/bar.txt")
 
