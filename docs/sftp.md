@@ -5,6 +5,9 @@
 
 Package sftp SFTP VFS implementation.
 
+In this backend, any new FileSystem instance is a new connection to the remote server.  It may be impolite
+to take up a large number of a server's available connections, so better to use the same filesystem.
+
 
 ### Usage
 
@@ -135,7 +138,7 @@ Note that as of Go 1.12, OpenSSH private key format is not supported when encryp
 creation of PEM format(instead of OPENSSH format), use `ssh-keygen -m PEM`_
 
 
-### KNOWN HOSTS
+### Known Hosts
 
 Known hosts ensures that the server you're connecting to hasn't been somehow
 redirected to another server, collecting your info (man-in-the-middle attack).
@@ -148,6 +151,52 @@ functions. Environmental variable `VFS_SFTP_INSECURE_KNOWN_HOSTS` will set this 
 [ssh.InsecureIgnoreHostKey](https://godoc.org/golang.org/x/crypto/ssh#InsecureIgnoreHostKey) which may be helpful for 
 testing but should not be used in production.
 4. Defaults to trying to find and use <homedir>/.ssh/known_hosts.  For unix, system-wide location /etc/ssh/.ssh/known hosts is also checked. SSH doesn't exist natively on Windows and each third-party implementation has a different location for known_hosts. Because of this, no attempt is made to find a system-wide file for Windows.  It's better to specify in KnownHostsFile in that case.
+
+### Other Options
+
+#### AutoDisconnect
+When dialing an TCP connection, go doesn't disconnect for you, even when the connection fall out of scope (or even when
+garbage collection is forced).  It must be explicitly closed.  Unfortunately, VFS.FileSystem has no explicit close mechanism.
+Instead, the sftp backend will automatically disconnect 10 seconds (default) after connection.  This disconnect timer is 
+paused anytime a server-side request (like list, read, etc) is made.  Once the action is complete, a new timer will begin.
+If the timer is not interrupted by any request, it will disconnect from the server.  Any subsequent server request will
+first reconnect, the do the action.  This timer can be overridden with any number of second (zero is an immediate disconnect).
+
+[Options](#type-options).AutoDisconnect accepts an integer representing the number seconds before disconnecting after being idle.
+Default value is 10 seconds.
+
+Any server request action using the same underlying FileSystem (and therefore sftp client), will reset the time.  This
+should be the most desirable behavior.
+
+```go
+func doSFTPStuff() {
+    fs := sftp.NewFilesystem()
+    loc, err := fs.NewLocation("myuser@server.com:22", "/some/path/")
+    file1, _ := loc.NewFile("file1.txt")
+    file2, _ := loc.NewFile("file2.txt")
+    file1.Touch()                               // "touches" file and starts disconnect timer (default: 10sec)
+    _, _ := loc.List()                          // stops timer, does location listing, resets timer to 10 seconds
+    file2.Touch()                               // stops timer, "touches" file2, resets timer to 10 seconds
+    time.Sleep(time.Duration(15) * time.Second) // pause for 15 seconds, disconnects for server after 10 seconds
+    _, _ := loc.List()                          // does location listing, starts new disconnect timer
+    return
+}
+
+func main {
+	// call our sftp function
+	doSFTPStuff()
+	// even though the vfs sftp objects have fallen out of scope, our connection remains UNTIL the timer counts down
+	
+	// do more work (that take longer than 10 seconds
+	doOtherTimeConsumingStuff()
+	
+	// at some point during the above, the sftp connection will have closed
+}
+```
+
+NOTE: AutoDisconnect has nothing to do with "keep alive".  Here we're only concerned with releasing resources, not keeping
+the server from disconnecting us.  If that is something you want, you'd have to implement yourself, injecting your own 
+client using WithClient(). 
 
 ## Usage
 

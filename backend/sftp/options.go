@@ -27,6 +27,7 @@ type Options struct {
 	KnownHostsFile     string              `json:"knownHostsFile,omitempty"` // env var VFS_SFTP_KNOWN_HOSTS_FILE
 	KnownHostsString   string              `json:"knownHostsString,omitempty"`
 	KeyExchanges       string              `json:"keyExchanges,omitempty"`
+	AutoDisconnect     int                 `json:"autoDisconnect,omitempty"` // seconds before disconnecting. default: 10
 	KnownHostsCallback ssh.HostKeyCallback // env var VFS_SFTP_INSECURE_KNOWN_HOSTS
 	Retry              vfs.Retry
 	MaxRetries         int
@@ -36,7 +37,7 @@ type Options struct {
 // See https://github.com/golang/go/issues/18692
 // To force creation of PEM format(instead of OPENSSH format), use ssh-keygen -m PEM
 
-func getClient(authority utils.Authority, opts Options) (*_sftp.Client, error) {
+func getClient(authority utils.Authority, opts Options) (Client, error) {
 
 	// setup Authentication
 	authMethods, err := getAuthMethods(opts)
