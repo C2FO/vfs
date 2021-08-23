@@ -2,7 +2,6 @@ package azure
 
 import (
 	"errors"
-	"github.com/c2fo/vfs/v5/utils"
 	"io"
 	"io/ioutil"
 	"strings"
@@ -12,6 +11,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v5/utils"
 )
 
 type FileTestSuite struct {

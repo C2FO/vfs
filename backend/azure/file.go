@@ -154,7 +154,7 @@ func (f *File) CopyToFile(file vfs.File) error {
 		}
 	}
 
-	//Otherwise, use TouchCopyBuffered using io.CopyBuffer
+	// Otherwise, use TouchCopyBuffered using io.CopyBuffer
 	fileBufferSize := 0
 
 	if fs, ok := f.Location().FileSystem().(*FileSystem); ok {

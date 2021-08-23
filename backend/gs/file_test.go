@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/c2fo/vfs/v5/utils"
 	"io"
 	"io/ioutil"
 	"testing"
@@ -13,6 +12,8 @@ import (
 	"github.com/fsouza/fake-gcs-server/fakestorage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/c2fo/vfs/v5/utils"
 )
 
 type fileTestSuite struct {

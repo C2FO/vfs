@@ -37,7 +37,7 @@ type Options struct {
 	// RetryFunc holds the retry function
 	RetryFunc vfs.Retry
 
-	//Buffer Size In Bytes Used with utils.TouchCopyBuffered
+	// Buffer Size In Bytes Used with utils.TouchCopyBuffered
 	FileBufferSize int
 
 	tokenCredentialFactory TokenCredentialFactory

@@ -3,7 +3,6 @@ package s3
 import (
 	"bytes"
 	"errors"
-	"github.com/c2fo/vfs/v5/utils"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -21,6 +20,7 @@ import (
 
 	"github.com/c2fo/vfs/v5"
 	"github.com/c2fo/vfs/v5/mocks"
+	"github.com/c2fo/vfs/v5/utils"
 )
 
 type fileTestSuite struct {
@@ -172,7 +172,7 @@ func (ts *fileTestSuite) TestCopyToFile() {
 	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
 	s3apiMock.AssertExpectations(ts.T())
 
-	//Test With Non Minimum Buffer Size in TouchCopyBuffered
+	// Test With Non Minimum Buffer Size in TouchCopyBuffered
 	originalBufferSize := defaultOptions.FileBufferSize
 	defaultOptions.FileBufferSize = 2 * utils.TouchCopyMinBufferSize
 	targetFile = &File{

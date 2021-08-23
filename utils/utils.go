@@ -20,7 +20,7 @@ const (
 	ErrBadAbsLocationPath = "absolute location path is invalid - must include leading and trailing slashes"
 	// ErrBadRelLocationPath constant is returned when a file path is not relative
 	ErrBadRelLocationPath = "relative location path is invalid - may not include leading slash but must include trailing slash"
-	//TouchCopyBuffered min buffer size in bytes
+	// TouchCopyBuffered min buffer size in bytes
 	TouchCopyMinBufferSize = 262144
 )
 
@@ -128,7 +128,7 @@ func TouchCopyBuffered(writer io.Writer, reader io.Reader, bufferSize int) error
 		buffer = make([]byte, bufferSize)
 		size, err = io.CopyBuffer(writer, reader, buffer)
 	} else {
-		//Use Default Buffer of 256KB (256 * 1024 Bytes)
+		// Use Default Buffer of 256KB (256 * 1024 Bytes)
 		buffer = make([]byte, TouchCopyMinBufferSize)
 		size, err = io.CopyBuffer(writer, reader, buffer)
 	}
