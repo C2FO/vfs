@@ -29,6 +29,8 @@ func (l *Location) List() ([]string, error) {
 	if err != nil {
 		return filenames, err
 	}
+	// start timer once action is completed
+	defer l.fileSystem.connTimerStart()
 
 	fileinfos, err := client.ReadDir(l.Path())
 	if err != nil {
@@ -54,6 +56,8 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 	if err != nil {
 		return filenames, err
 	}
+	// start timer once action is completed
+	defer l.fileSystem.connTimerStart()
 
 	fullpath := path.Join(l.Path(), prefix)
 	// check if last char is not /, aka is not a dir, get base of path
@@ -119,6 +123,9 @@ func (l *Location) Exists() (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	// start timer once action is completed
+	defer l.fileSystem.connTimerStart()
+
 	info, err := client.Stat(l.Path())
 	if err != nil && err == os.ErrNotExist {
 		return false, nil

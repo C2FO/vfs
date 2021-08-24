@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"sync"
 	"time"
 
 	_sftp "github.com/pkg/sftp"
@@ -18,11 +19,16 @@ import (
 // Scheme defines the filesystem type.
 const Scheme = "sftp"
 const name = "Secure File Transfer Protocol"
+const defaultAutoDisconnectDuration = 10
+
+var defaultClientGetter func(utils.Authority, Options) (Client, error)
 
 // FileSystem implements vfs.Filesystem for the SFTP filesystem.
 type FileSystem struct {
 	options    vfs.Options
 	sftpclient Client
+	timerMutex sync.Mutex
+	connTimer  *time.Timer
 }
 
 // Retry will return the default no-op retrier. The SFTP client provides its own retryer interface, and is available
@@ -89,22 +95,53 @@ func (fs *FileSystem) Scheme() string {
 // Client returns the underlying sftp client, creating it, if necessary
 // See Overview for authentication resolution
 func (fs *FileSystem) Client(authority utils.Authority) (Client, error) {
+	// first stop connection timer, if any
+	fs.connTimerStop()
 	if fs.sftpclient == nil {
 		if fs.options == nil {
 			fs.options = Options{}
 		}
 
-		if opts, ok := fs.options.(Options); ok {
-			var err error
-			fs.sftpclient, err = fs.getClient(authority, opts)
-			if err != nil {
-				return nil, err
-			}
-		} else {
+		opts, ok := fs.options.(Options)
+		if !ok {
 			return nil, fmt.Errorf("unable to create client, vfs.Options must be an sftp.Options")
+		}
+		var err error
+		fs.sftpclient, err = defaultClientGetter(authority, opts)
+		if err != nil {
+			return nil, err
 		}
 	}
 	return fs.sftpclient, nil
+}
+
+func (fs *FileSystem) connTimerStart() {
+	fs.timerMutex.Lock()
+	defer fs.timerMutex.Unlock()
+
+	aliveSec := defaultAutoDisconnectDuration
+	if fs.options != nil {
+		if v, ok := fs.options.(Options); ok && v.AutoDisconnect != 0 {
+			aliveSec = v.AutoDisconnect
+		}
+	}
+
+	fs.connTimer = time.AfterFunc(time.Duration(aliveSec)*time.Second, func() {
+		// close connection and nil-ify client to force lazy reconnect
+		if fs.sftpclient != nil {
+			_ = fs.sftpclient.Close()
+			fs.sftpclient = nil
+		}
+	})
+}
+
+func (fs *FileSystem) connTimerStop() {
+	fs.timerMutex.Lock()
+	defer fs.timerMutex.Unlock()
+	if fs.connTimer != nil {
+		fs.connTimer.Stop()
+		fs.connTimer = nil
+	}
 }
 
 // WithOptions sets options for client and returns the filesystem (chainable)
@@ -135,15 +172,10 @@ func NewFileSystem() *FileSystem {
 }
 
 func init() {
+	defaultClientGetter = getClient
+
 	// registers a default Filesystem
 	backend.Register(Scheme, NewFileSystem())
-}
-
-func (fs *FileSystem) getClient(authority utils.Authority, opts Options) (client Client, err error) {
-	if fs.sftpclient != nil {
-		return fs.sftpclient, nil
-	}
-	return getClient(authority, opts)
 }
 
 // Client is an interface to make it easier to test
@@ -156,4 +188,5 @@ type Client interface {
 	Remove(path string) error
 	Rename(oldname, newname string) error
 	Stat(p string) (os.FileInfo, error)
+	Close() error
 }

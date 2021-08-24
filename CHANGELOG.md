@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 - fixed #82 Return error when CopyTo/MoveTo functions are called when Seek offset is not (0,0) for all backends,
 not just GCS.
+- fixed #84 where sftp connections were never disconnected in a long-lived app.  Added Close to sftp backend Client interface.  Close client automatically 10 seconds (configurable in Options) after connecting unless reset by calling some server request action.
   
 ## [5.7.0] - 2021-07-23
 ### Added
