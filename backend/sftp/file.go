@@ -31,6 +31,9 @@ func (f *File) LastModified() (*time.Time, error) {
 	if err != nil {
 		return nil, err
 	}
+	// start timer once action is completed
+	defer f.fileSystem.connTimerStart()
+
 	userinfo, err := client.Stat(f.Path())
 	if err != nil {
 		return nil, err
@@ -55,6 +58,8 @@ func (f *File) Exists() (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	// start timer once action is completed
+	defer f.fileSystem.connTimerStart()
 
 	_, err = client.Stat(f.Path())
 	if err != nil && err == os.ErrNotExist {
@@ -75,6 +80,9 @@ func (f *File) Touch() error {
 	}
 
 	if !exists {
+		// restart timer once action is completed
+		f.fileSystem.connTimerStop()
+		defer f.fileSystem.connTimerStart()
 		file, err := f.openFile(os.O_WRONLY | os.O_CREATE)
 		if err != nil {
 			return err
@@ -87,7 +95,10 @@ func (f *File) Touch() error {
 	if err != nil {
 		return err
 	}
+	// start timer once action is completed
+	defer f.fileSystem.connTimerStart()
 	now := time.Now()
+
 	return client.Chtimes(f.Path(), now, now)
 }
 
@@ -97,6 +108,9 @@ func (f *File) Size() (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
+	// start timer once action is completed
+	defer f.fileSystem.connTimerStart()
+
 	userinfo, err := client.Stat(f.Path())
 	if err != nil {
 		return 0, err
@@ -141,6 +155,9 @@ func (f *File) MoveToFile(t vfs.File) error {
 			if err != nil {
 				return err
 			}
+			// start timer once action is completed
+			defer f.fileSystem.connTimerStart()
+
 			err = client.MkdirAll(t.Location().Path())
 			if err != nil {
 				return err
@@ -212,11 +229,18 @@ func (f *File) Delete() error {
 	if err != nil {
 		return err
 	}
+	// start timer once action is completed
+	defer f.fileSystem.connTimerStart()
+
 	return client.Remove(f.Path())
 }
 
 // Close calls the underlying sftp.File Close, if opened, and clears the internal pointer
 func (f *File) Close() error {
+	// restart timer once action is completed
+	f.fileSystem.connTimerStop()
+	defer f.fileSystem.connTimerStart()
+
 	if f.sftpfile != nil {
 		err := f.sftpfile.Close()
 		if err != nil {
@@ -230,25 +254,37 @@ func (f *File) Close() error {
 
 // Read calls the underlying sftp.File Read.
 func (f *File) Read(p []byte) (n int, err error) {
+	// restart timer once action is completed
+	f.fileSystem.connTimerStop()
+	defer f.fileSystem.connTimerStart()
 
 	sftpfile, err := f.openFile(os.O_RDONLY)
 	if err != nil {
 		return 0, err
 	}
+
 	return sftpfile.Read(p)
 }
 
 // Seek calls the underlying sftp.File Seek.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
+	// restart timer once action is completed
+	f.fileSystem.connTimerStop()
+	defer f.fileSystem.connTimerStart()
+
 	sftpfile, err := f.openFile(os.O_RDWR)
 	if err != nil {
 		return 0, err
 	}
+
 	return sftpfile.Seek(offset, whence)
 }
 
 // Write calls the underlying sftp.File Write.
 func (f *File) Write(data []byte) (res int, err error) {
+	// restart timer once action is completed
+	f.fileSystem.connTimerStop()
+	defer f.fileSystem.connTimerStart()
 
 	sftpfile, err := f.openFile(os.O_WRONLY | os.O_CREATE)
 	if err != nil {
@@ -282,6 +318,7 @@ func (f *File) openFile(flag int) (ReadWriteSeekCloser, error) {
 	if err != nil {
 		return nil, err
 	}
+	// normally we'd do a defer of fs connTimerStart() here but not necessary since we handle it in the openFile caller
 
 	if flag&os.O_CREATE != 0 {
 		// vfs specifies that all implementations make dir path if it doesn't exist
@@ -317,6 +354,9 @@ func (f *File) sftpRename(target *File) error {
 	if err != nil {
 		return err
 	}
+	// start timer once action is completed
+	defer f.fileSystem.connTimerStart()
+
 	if err := client.Rename(f.Path(), target.Path()); err != nil {
 		return err
 	}

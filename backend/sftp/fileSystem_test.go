@@ -1,8 +1,10 @@
 package sftp
 
 import (
+	"os"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/suite"
 
@@ -114,12 +116,6 @@ func (ts *fileSystemTestSuite) TestClient() {
 	ts.NoError(err, "no error")
 	ts.Equal(ts.sftpfs.sftpclient, client, "client was already set")
 
-	// cached client
-	ts.sftpfs.sftpclient = &mocks.Client{}
-	client, err = ts.sftpfs.getClient(utils.Authority{}, Options{})
-	ts.NoError(err)
-	ts.IsType(&mocks.Client{}, client)
-
 	// bad options
 	badOpt := "not an sftp.Options"
 	ts.sftpfs.sftpclient = nil
@@ -135,6 +131,42 @@ func (ts *fileSystemTestSuite) TestClient() {
 		ts.Regexp(regexp.MustCompile("(?:no such host|Temporary failure in name resolution)"), err.Error(), "no such host", "error matches")
 	}
 
+}
+
+func (ts *fileSystemTestSuite) TestClientWithAutoDisconnect() {
+	getClientCount := 0
+	client := &mocks.Client{}
+	client.On("ReadDir", "/").Return([]os.FileInfo{}, nil).Times(3)
+	client.On("Close").Return(nil).Times(1)
+	defaultClientGetter = func(utils.Authority, Options) (Client, error) {
+		getClientCount++
+		return client, nil
+	}
+
+	// setup location with auto-disconnect of one second
+	fs := &FileSystem{}
+	fs.WithOptions(Options{AutoDisconnect: 1})
+	loc, err := fs.NewLocation("user@host.com:1234", "/")
+	ts.NoError(err)
+
+	// when List is first called, client should be nil, so we ask for a new client
+	_, err = loc.List()
+	ts.NoError(err)
+	// when List is immediately called a second time, client should be cached so no need for new client
+	_, err = loc.List()
+	ts.NoError(err)
+	// sleep for 2 seconds, client should disconnect and become nil
+	time.Sleep(2 * time.Second)
+	// when List is called a third time, client should be nil so we ask for a new client
+	_, err = loc.List()
+	ts.NoError(err)
+	fs.connTimerStop()
+	fs.connTimer = nil
+	// list should've been called 3 times
+	client.AssertExpectations(ts.T())
+
+	// newClient should only have been called twice (because it was cached one time.
+	ts.Equal(2, getClientCount, "newClient should only have been called twice (because it was cached one time")
 }
 
 func TestFileSystem(t *testing.T) {

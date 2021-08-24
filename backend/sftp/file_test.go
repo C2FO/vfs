@@ -260,9 +260,6 @@ func (ts *fileTestSuite) TestCopyToFile() {
 		sftpfile: targetSftpFile,
 	}
 
-	targetMockLocation := &_mocks.Location{}
-	targetMockLocation.On("NewFile", mock.Anything).Return(targetFile, nil)
-
 	// run tests
 	err := sourceFile.CopyToFile(targetFile)
 	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
