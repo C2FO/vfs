@@ -64,7 +64,8 @@ func (ts *fileTestSuite) TestRead() {
 
 	var localFile = bytes.NewBuffer([]byte{})
 
-	_, copyErr := io.Copy(localFile, file)
+	buffer := make([]byte, utils.TouchCopyMinBufferSize)
+	_, copyErr := io.CopyBuffer(localFile, file, buffer)
 	assert.NoError(ts.T(), copyErr, "no error expected")
 	closeErr := file.Close()
 	assert.NoError(ts.T(), closeErr, "no error expected")
@@ -99,7 +100,8 @@ func (ts *fileTestSuite) TestSeek() {
 
 	var localFile = bytes.NewBuffer([]byte{})
 
-	_, copyErr := io.Copy(localFile, file)
+	buffer := make([]byte, utils.TouchCopyMinBufferSize)
+	_, copyErr := io.CopyBuffer(localFile, file, buffer)
 	assert.NoError(ts.T(), copyErr, "no error expected")
 
 	ts.Equal("world!", localFile.String(), "Seeking should download the file and move the cursor as expected")
@@ -108,7 +110,8 @@ func (ts *fileTestSuite) TestSeek() {
 	_, seekErr2 := file.Seek(0, 0)
 	assert.NoError(ts.T(), seekErr2, "no error expected")
 
-	_, copyErr2 := io.Copy(localFile, file)
+	buffer = make([]byte, utils.TouchCopyMinBufferSize)
+	_, copyErr2 := io.CopyBuffer(localFile, file, buffer)
 	assert.NoError(ts.T(), copyErr2, "no error expected")
 	ts.Equal(contents, localFile.String(), "Subsequent calls to seek work on temp file as expected")
 

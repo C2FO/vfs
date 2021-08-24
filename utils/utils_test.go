@@ -488,7 +488,8 @@ func (s *utilsTest) TestTouchCopy() {
 	writer, err := osfs.NewFile("", tmpfile.Name()+".new")
 	s.NoError(err, "unexpected error creating vfs.File writer")
 
-	byteCount, err := io.Copy(writer, reader)
+	buffer := make([]byte, utils.TouchCopyMinBufferSize)
+	byteCount, err := io.CopyBuffer(writer, reader, buffer)
 	s.NoError(err, "unexpected doing io.Copy")
 	s.Equal(int64(0), byteCount, "should be no content")
 
@@ -567,7 +568,8 @@ func (s *utilsTest) TestTouchCopyBufferedDefaultBufferSize() {
 	writer, err := osfs.NewFile("", tmpfile.Name()+".new")
 	s.NoError(err, "unexpected error creating vfs.File writer")
 
-	byteCount, err := io.Copy(writer, reader)
+	buffer := make([]byte, utils.TouchCopyMinBufferSize)
+	byteCount, err := io.CopyBuffer(writer, reader, buffer)
 	s.NoError(err, "unexpected doing io.Copy")
 	s.Equal(int64(0), byteCount, "should be no content")
 
@@ -646,7 +648,8 @@ func (s *utilsTest) TestTouchCopyBufferedNonDefaultBufferSize() {
 	writer, err := osfs.NewFile("", tmpfile.Name()+".new")
 	s.NoError(err, "unexpected error creating vfs.File writer")
 
-	byteCount, err := io.Copy(writer, reader)
+	buffer := make([]byte, utils.TouchCopyMinBufferSize)
+	byteCount, err := io.CopyBuffer(writer, reader, buffer)
 	s.NoError(err, "unexpected doing io.Copy")
 	s.Equal(int64(0), byteCount, "should be no content")
 

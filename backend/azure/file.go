@@ -308,7 +308,8 @@ func (f *File) checkTempFile() error {
 				return tfErr
 			}
 
-			if _, err := io.Copy(tf, reader); err != nil {
+			buffer := make([]byte, utils.TouchCopyMinBufferSize)
+			if _, err := io.CopyBuffer(tf, reader, buffer); err != nil {
 				return err
 			}
 

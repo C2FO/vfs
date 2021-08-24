@@ -98,7 +98,8 @@ func (ts *fileTestSuite) TestRead() {
 
 	var localFile = bytes.NewBuffer([]byte{})
 
-	_, copyErr := io.Copy(localFile, file)
+	buffer := make([]byte, utils.TouchCopyMinBufferSize)
+	_, copyErr := io.CopyBuffer(localFile, file, buffer)
 	assert.NoError(ts.T(), copyErr, "no error expected")
 	closeErr := file.Close()
 	assert.NoError(ts.T(), closeErr, "no error expected")
