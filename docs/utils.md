@@ -18,9 +18,9 @@ const (
 	// ErrBadAbsLocationPath constant is returned when a file path is not absolute
 	ErrBadAbsLocationPath = "absolute location path is invalid - must include leading and trailing slashes"
 	// ErrBadRelLocationPath constant is returned when a file path is not relative
-	ErrBadRelLocationPath = "relative location path is invalid - may not include leading slash but must include trailing slash"
-    // TouchCopyMinBufferSize min buffer size used in TouchCopyBuffered in bytes
-    TouchCopyMinBufferSize = 262144
+	ErrBadRelLocationPath = "relative location path is invalid - may not include leading slash but must include trailing slash" 
+	// TouchCopyMinBufferSize min buffer size used in TouchCopyBuffered in bytes 
+	TouchCopyMinBufferSize = 262144
 )
 ```
 
