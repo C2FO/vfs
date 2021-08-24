@@ -4,10 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
+
+## [5.8.0] - 2021-08-24
+### Fixed
 - fixed #82 Return error when CopyTo/MoveTo functions are called when Seek offset is not (0,0) for all backends,
 not just GCS.
 - fixed #84 where sftp connections were never disconnected in a long-lived app.  Added Close to sftp backend Client interface.  Close client automatically 10 seconds (configurable in Options) after connecting unless reset by calling some server request action.
-- fixed #89 by deprecating utils.TouchCopy and added utils.TouchCopyBuffered. TouchCopyBuffered uses a min buffer size of 256MB and allows for a
+### Deprecated
+- Deprecating utils.TouchCopy (#89).
+### Added
+- Added utils.TouchCopyBuffered(#89). TouchCopyBuffered uses a min buffer size of 256MB and allows for a
   custom buffer size to be set with filesystem options. Improves large file transfer with negligible impact on smaller file transfers.
 
 ## [5.7.0] - 2021-07-23
