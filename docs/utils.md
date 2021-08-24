@@ -19,6 +19,8 @@ const (
 	ErrBadAbsLocationPath = "absolute location path is invalid - must include leading and trailing slashes"
 	// ErrBadRelLocationPath constant is returned when a file path is not relative
 	ErrBadRelLocationPath = "relative location path is invalid - may not include leading slash but must include trailing slash"
+    // TouchCopyMinBufferSize min buffer size used in TouchCopyBuffered in bytes
+    TouchCopyMinBufferSize = 262144
 )
 ```
 
@@ -71,8 +73,18 @@ RemoveTrailingSlash removes trailing slash, if any
 ```go
 func TouchCopy(writer io.Writer, reader io.Reader) error
 ```
-TouchCopy is a wrapper around [io.Copy](https://godoc.org/io#Copy) which ensures that even empty source files
+Deprecated: Use TouchCopyBuffer Instead. TouchCopy is a wrapper around [io.Copy](https://godoc.org/io#Copy) which ensures that even empty source files
 (reader) will get written as an empty file. It guarantees a Write() call on the target file.
+
+#### func  TouchCopyBuffered
+
+```go
+func TouchCopyBuffered(writer io.Writer, reader io.Reader, bufferSize int)
+```
+TouchCopy is a wrapper around [io.CopyBuffer](https://godoc.org/io#CopyBuffer) which ensures that even empty source files
+(reader) will get written as an empty file. It guarantees a Write() call on the target file. Furthermore, it will use a
+buffer that is equal to bufferSize measured in bytes. If bufferSize is 0, then a default buffer of TouchCopyMinBufferSize 
+bytes is used.
 
 #### func  UpdateLastModifiedByMoving
 

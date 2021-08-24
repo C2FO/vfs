@@ -20,7 +20,7 @@ const (
 	ErrBadAbsLocationPath = "absolute location path is invalid - must include leading and trailing slashes"
 	// ErrBadRelLocationPath constant is returned when a file path is not relative
 	ErrBadRelLocationPath = "relative location path is invalid - may not include leading slash but must include trailing slash"
-	// TouchCopyBuffered min buffer size in bytes
+	// TouchCopyMinBufferSize min buffer size used in TouchCopyBuffered in bytes
 	TouchCopyMinBufferSize = 262144
 )
 
@@ -98,7 +98,7 @@ func EnsureLeadingSlash(dir string) string {
 	return "/" + dir
 }
 
-// Deprecated - Use TouchCopyBuffer Instead
+// Deprecated: Use TouchCopyBuffer Instead
 // TouchCopy is a wrapper around io.Copy which ensures that even empty source files (reader) will get written as an
 // empty file. It guarantees a Write() call on the target file.
 func TouchCopy(writer io.Writer, reader io.Reader) error {
@@ -124,12 +124,13 @@ func TouchCopyBuffered(writer io.Writer, reader io.Reader, bufferSize int) error
 	var size int64
 	var err error
 
-	if bufferSize > TouchCopyMinBufferSize {
-		buffer = make([]byte, bufferSize)
+	if bufferSize <= 0 {
+		// Use TouchCopyMinBufferSize
+		buffer = make([]byte, TouchCopyMinBufferSize)
 		size, err = io.CopyBuffer(writer, reader, buffer)
 	} else {
-		// Use Default Buffer of 256KB (256 * 1024 Bytes)
-		buffer = make([]byte, TouchCopyMinBufferSize)
+		// Otherwise use provided bufferSize
+		buffer = make([]byte, bufferSize)
 		size, err = io.CopyBuffer(writer, reader, buffer)
 	}
 

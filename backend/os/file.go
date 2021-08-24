@@ -329,7 +329,7 @@ func (f *File) copyWithName(name string, location vfs.Location) (vfs.File, error
 		return nil, err
 	}
 
-	if err := utils.TouchCopyBuffered(newFile, f, 0); err != nil {
+	if err := utils.TouchCopyBuffered(newFile, f, utils.TouchCopyMinBufferSize); err != nil {
 		return nil, err
 	}
 	err = f.Close()
