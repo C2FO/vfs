@@ -20,6 +20,7 @@ import (
 
 	"github.com/c2fo/vfs/v5"
 	"github.com/c2fo/vfs/v5/mocks"
+	"github.com/c2fo/vfs/v5/utils"
 )
 
 type fileTestSuite struct {
@@ -63,7 +64,8 @@ func (ts *fileTestSuite) TestRead() {
 
 	var localFile = bytes.NewBuffer([]byte{})
 
-	_, copyErr := io.Copy(localFile, file)
+	buffer := make([]byte, utils.TouchCopyMinBufferSize)
+	_, copyErr := io.CopyBuffer(localFile, file, buffer)
 	assert.NoError(ts.T(), copyErr, "no error expected")
 	closeErr := file.Close()
 	assert.NoError(ts.T(), closeErr, "no error expected")
@@ -98,7 +100,8 @@ func (ts *fileTestSuite) TestSeek() {
 
 	var localFile = bytes.NewBuffer([]byte{})
 
-	_, copyErr := io.Copy(localFile, file)
+	buffer := make([]byte, utils.TouchCopyMinBufferSize)
+	_, copyErr := io.CopyBuffer(localFile, file, buffer)
 	assert.NoError(ts.T(), copyErr, "no error expected")
 
 	ts.Equal("world!", localFile.String(), "Seeking should download the file and move the cursor as expected")
@@ -107,7 +110,8 @@ func (ts *fileTestSuite) TestSeek() {
 	_, seekErr2 := file.Seek(0, 0)
 	assert.NoError(ts.T(), seekErr2, "no error expected")
 
-	_, copyErr2 := io.Copy(localFile, file)
+	buffer = make([]byte, utils.TouchCopyMinBufferSize)
+	_, copyErr2 := io.CopyBuffer(localFile, file, buffer)
 	assert.NoError(ts.T(), copyErr2, "no error expected")
 	ts.Equal(contents, localFile.String(), "Subsequent calls to seek work on temp file as expected")
 
@@ -168,6 +172,27 @@ func (ts *fileTestSuite) TestCopyToFile() {
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
 
 	err := testFile.CopyToFile(targetFile)
+	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
+	s3apiMock.AssertExpectations(ts.T())
+
+	// Test With Non Minimum Buffer Size in TouchCopyBuffered
+	originalBufferSize := defaultOptions.FileBufferSize
+	defaultOptions.FileBufferSize = 2 * utils.TouchCopyMinBufferSize
+	targetFile = &File{
+		fileSystem: &FileSystem{
+			client:  s3apiMock,
+			options: defaultOptions,
+		},
+		bucket: "TestBucket",
+		key:    "testKey.txt",
+	}
+	defaultOptions.FileBufferSize = originalBufferSize
+
+	fooReader = ioutil.NopCloser(strings.NewReader("blah"))
+	s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{Body: fooReader}, nil)
+	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
+
+	err = testFile.CopyToFile(targetFile)
 	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
 	s3apiMock.AssertExpectations(ts.T())
 }

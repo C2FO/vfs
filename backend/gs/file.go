@@ -55,7 +55,8 @@ func (f *File) Close() error {
 		defer cancel()
 		w := handle.NewWriter(ctx)
 		defer func() { _ = w.Close() }()
-		if _, err := io.Copy(w, f.writeBuffer); err != nil {
+		buffer := make([]byte, utils.TouchCopyMinBufferSize)
+		if _, err := io.CopyBuffer(w, f.writeBuffer, buffer); err != nil {
 			// cancel context (replaces CloseWithError)
 			return err
 		}
@@ -144,7 +145,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 }
 
 // CopyToFile puts the contents of File into the target vfs.File passed in. Uses the GCS CopierFrom
-// method if the target file is also on GCS, otherwise uses io.Copy.
+// method if the target file is also on GCS, otherwise uses io.CopyBuffer.
 // This method should be called on a closed file or a file with 0 cursor position to avoid errors.
 func (f *File) CopyToFile(file vfs.File) error {
 	// validate seek is at 0,0 before doing copy
@@ -162,8 +163,14 @@ func (f *File) CopyToFile(file vfs.File) error {
 		}
 	}
 
-	// do non-native io copy
-	if err := utils.TouchCopy(file, f); err != nil {
+	// Otherwise, use TouchCopyBuffered using io.CopyBuffer
+	fileBufferSize := 0
+
+	if opts, ok := f.Location().FileSystem().(*FileSystem).options.(Options); ok {
+		fileBufferSize = opts.FileBufferSize
+	}
+
+	if err := utils.TouchCopyBuffered(file, f, fileBufferSize); err != nil {
 		return err
 	}
 	// Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
@@ -402,7 +409,8 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 		return nil, err
 	}
 
-	if _, err := io.Copy(tmpFile, outputReader); err != nil {
+	buffer := make([]byte, utils.TouchCopyMinBufferSize)
+	if _, err := io.CopyBuffer(tmpFile, outputReader, buffer); err != nil {
 		return nil, err
 	}
 

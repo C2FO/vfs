@@ -247,7 +247,8 @@ func osCopy(srcName, dstName string) error {
 
 	// copy os files. Note that os.Create always does a "touch" (creates an empty file before writing data) so no need to
 	// do a TouchCopy like we do with other filesystems.
-	_, err = io.Copy(dstWriter, srcReader)
+	buffer := make([]byte, utils.TouchCopyMinBufferSize)
+	_, err = io.CopyBuffer(dstWriter, srcReader, buffer)
 	return err
 }
 
@@ -329,7 +330,7 @@ func (f *File) copyWithName(name string, location vfs.Location) (vfs.File, error
 		return nil, err
 	}
 
-	if err := utils.TouchCopy(newFile, f); err != nil {
+	if err := utils.TouchCopyBuffered(newFile, f, utils.TouchCopyMinBufferSize); err != nil {
 		return nil, err
 	}
 	err = f.Close()

@@ -13,6 +13,7 @@ type Options struct {
 	Endpoint       string   `json:"endpoint,omitempty"`
 	Scopes         []string `json:"WithoutAuthentication,omitempty"`
 	Retry          vfs.Retry
+	FileBufferSize int // Buffer Size In Bytes Used with utils.TouchCopyBuffered
 }
 
 func parseClientOptions(opts vfs.Options) []option.ClientOption {

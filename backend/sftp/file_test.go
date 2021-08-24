@@ -69,7 +69,8 @@ func (ts *fileTestSuite) TestRead() {
 	// perform test
 	var localFile = bytes.NewBuffer([]byte{})
 
-	b, copyErr := io.Copy(localFile, sftpfile)
+	buffer := make([]byte, utils.TouchCopyMinBufferSize)
+	b, copyErr := io.CopyBuffer(localFile, sftpfile, buffer)
 	ts.NoError(copyErr, "no error expected")
 	ts.Equal(b, int64(12), "byte count after copy")
 	ts.NoError(sftpfile.Close(), "no error expected")
@@ -104,7 +105,8 @@ func (ts *fileTestSuite) TestSeek() {
 
 	var localFile = bytes.NewBuffer([]byte{})
 
-	_, copyErr := io.Copy(localFile, sftpfile)
+	buffer := make([]byte, utils.TouchCopyMinBufferSize)
+	_, copyErr := io.CopyBuffer(localFile, sftpfile, buffer)
 	ts.NoError(copyErr, "no error expected")
 
 	ts.Equal("world!", localFile.String(), "Seeking should move the sftp file cursor as expected")
@@ -113,7 +115,8 @@ func (ts *fileTestSuite) TestSeek() {
 	_, seekErr2 := sftpfile.Seek(0, 0)
 	ts.NoError(seekErr2, "no error expected")
 
-	_, copyErr2 := io.Copy(localFile, sftpfile)
+	buffer = make([]byte, utils.TouchCopyMinBufferSize)
+	_, copyErr2 := io.CopyBuffer(localFile, sftpfile, buffer)
 	ts.NoError(copyErr2, "no error expected")
 	ts.Equal(contents, localFile.String(), "Subsequent calls to seek work on temp sftp file as expected")
 
@@ -267,6 +270,65 @@ func (ts *fileTestSuite) TestCopyToFile() {
 	targetSftpFile.AssertExpectations(ts.T())
 }
 
+func (ts *fileTestSuite) TestCopyToFileBuffered() {
+	content := "this is a test"
+
+	// set up source
+	sourceClient := &mocks.Client{}
+
+	sourceSftpFile := &mocks.SFTPFile{}
+
+	sourceSftpFile.On("Seek", int64(0), 1).Return(int64(0), nil)
+	sourceSftpFile.On("Read", mock.Anything).Return(len(content), nil).Once()
+	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
+	sourceSftpFile.On("Close").Return(nil).Once()
+
+	sourceFile := &File{
+		fileSystem: &FileSystem{
+			sftpclient: sourceClient,
+			options:    Options{FileBufferSize: 2 * utils.TouchCopyMinBufferSize},
+		},
+		Authority: utils.Authority{
+			Host: "host1.com:22",
+			User: "user",
+		},
+		path:     "/some/path.txt",
+		sftpfile: sourceSftpFile,
+	}
+
+	// set up target
+	targetClient := &mocks.Client{}
+
+	targetSftpFile := &mocks.SFTPFile{}
+	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
+	targetSftpFile.On("Close").Return(nil).Once()
+
+	targetFile := &File{
+		fileSystem: &FileSystem{
+			sftpclient: targetClient,
+			options:    Options{},
+		},
+		Authority: utils.Authority{
+			Host: "host2.com:22",
+			User: "user",
+		},
+		path:     "/some/path.txt",
+		sftpfile: targetSftpFile,
+	}
+
+	targetMockLocation := &_mocks.Location{}
+	targetMockLocation.On("NewFile", mock.Anything).Return(targetFile, nil)
+
+	// run tests
+	err := sourceFile.CopyToFile(targetFile)
+	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
+
+	sourceClient.AssertExpectations(ts.T())
+	sourceSftpFile.AssertExpectations(ts.T())
+	targetClient.AssertExpectations(ts.T())
+	targetSftpFile.AssertExpectations(ts.T())
+}
+
 func (ts *fileTestSuite) TestCopyToFileEmpty() {
 	content := ""
 
@@ -282,6 +344,63 @@ func (ts *fileTestSuite) TestCopyToFileEmpty() {
 		fileSystem: &FileSystem{
 			sftpclient: sourceClient,
 			options:    Options{},
+		},
+		Authority: utils.Authority{
+			Host: "host1.com:22",
+			User: "user",
+		},
+		path:     "/some/path.txt",
+		sftpfile: sourceSftpFile,
+	}
+
+	// set up target
+	targetClient := &mocks.Client{}
+
+	targetSftpFile := &mocks.SFTPFile{}
+	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
+	targetSftpFile.On("Close").Return(nil).Once()
+
+	targetFile := &File{
+		fileSystem: &FileSystem{
+			sftpclient: targetClient,
+			options:    Options{},
+		},
+		Authority: utils.Authority{
+			Host: "host2.com:22",
+			User: "user",
+		},
+		path:     "/some/path.txt",
+		sftpfile: targetSftpFile,
+	}
+
+	targetMockLocation := &_mocks.Location{}
+	targetMockLocation.On("NewFile", mock.Anything).Return(targetFile, nil)
+
+	// run tests
+	err := sourceFile.CopyToFile(targetFile)
+	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
+
+	sourceClient.AssertExpectations(ts.T())
+	sourceSftpFile.AssertExpectations(ts.T())
+	targetClient.AssertExpectations(ts.T())
+	targetSftpFile.AssertExpectations(ts.T())
+}
+
+func (ts *fileTestSuite) TestCopyToFileEmptyBuffered() {
+	content := ""
+
+	// set up source
+	sourceClient := &mocks.Client{}
+
+	sourceSftpFile := &mocks.SFTPFile{}
+	sourceSftpFile.On("Seek", int64(0), 1).Return(int64(0), nil)
+	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
+	sourceSftpFile.On("Close").Return(nil).Once()
+
+	sourceFile := &File{
+		fileSystem: &FileSystem{
+			sftpclient: sourceClient,
+			options:    Options{FileBufferSize: 2 * utils.TouchCopyMinBufferSize},
 		},
 		Authority: utils.Authority{
 			Host: "host1.com:22",
