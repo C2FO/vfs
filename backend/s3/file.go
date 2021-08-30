@@ -393,7 +393,9 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 		return nil, err
 	}
 
-	downloader := s3manager.NewDownloaderWithClient(client)
+	downloader := s3manager.NewDownloaderWithClient(client, func(d *s3manager.Downloader) {
+		d.PartSize = 32 * 1024 * 1024 // 32MB per part
+	})
 	_, err = downloader.Download(tmpFile, f.getObjectInput())
 	if err != nil {
 		return nil, err
