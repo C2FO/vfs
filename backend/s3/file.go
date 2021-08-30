@@ -382,22 +382,20 @@ func (f *File) checkTempFile() error {
 
 func (f *File) copyToLocalTempReader() (*os.File, error) {
 	tmpFile, err := ioutil.TempFile("", fmt.Sprintf("%s.%d", f.Name(), time.Now().UnixNano()))
+	//TODO Remove
+	fmt.Println(tmpFile.Name())
 	if err != nil {
 		return nil, err
 	}
 
-	outputReader, err := f.getObject()
+	client, err := f.fileSystem.Client()
 	if err != nil {
 		return nil, err
 	}
 
-	buffer := make([]byte, utils.TouchCopyMinBufferSize)
-	if _, err := io.CopyBuffer(tmpFile, outputReader, buffer); err != nil {
-		return nil, err
-	}
-
-	// Return cursor to the beginning of the new temp file
-	if _, err := tmpFile.Seek(0, 0); err != nil {
+	downloader := s3manager.NewDownloaderWithClient(client)
+	_, err = downloader.Download(tmpFile, f.getObjectInput())
+	if err != nil {
 		return nil, err
 	}
 
