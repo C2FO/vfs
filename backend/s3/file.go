@@ -3,7 +3,6 @@ package s3
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -381,11 +380,18 @@ func (f *File) checkTempFile() error {
 }
 
 func (f *File) copyToLocalTempReader() (*os.File, error) {
+	// Create temp file
 	tmpFile, err := ioutil.TempFile("", fmt.Sprintf("%s.%d", f.Name(), time.Now().UnixNano()))
-	//TODO Remove
-	fmt.Println(tmpFile.Name())
 	if err != nil {
 		return nil, err
+	}
+
+	// Create S3 Downloader, get client, and set partition size for multipart download
+	var partSize int64
+	if opts, ok := f.Location().FileSystem().(*FileSystem).options.(Options); ok {
+		if partSize = opts.DownloadPartitionSize; partSize == 0 {
+			partSize = 32 * 1024 * 1024 // 32 MB per partition default if opts.DownloadPartitionSize is 0
+		}
 	}
 
 	client, err := f.fileSystem.Client()
@@ -394,32 +400,21 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 	}
 
 	downloader := s3manager.NewDownloaderWithClient(client, func(d *s3manager.Downloader) {
-		d.PartSize = 32 * 1024 * 1024 // 32MB per part
+		d.PartSize = partSize
 	})
+
+	// Download file
 	_, err = downloader.Download(tmpFile, f.getObjectInput())
 	if err != nil {
 		return nil, err
 	}
 
-	// initialize temp ReadCloser
+	// Return temp file
 	return tmpFile, nil
 }
 
 func (f *File) getObjectInput() *s3.GetObjectInput {
 	return new(s3.GetObjectInput).SetBucket(f.bucket).SetKey(f.key)
-}
-
-func (f *File) getObject() (io.ReadCloser, error) {
-	client, err := f.fileSystem.Client()
-	if err != nil {
-		return nil, err
-	}
-	getOutput, err := client.GetObject(f.getObjectInput())
-	if err != nil {
-		return nil, err
-	}
-
-	return getOutput.Body, nil
 }
 
 //TODO: need to provide an implementation-agnostic container for providing config options such as SSE
