@@ -3,14 +3,17 @@ package s3
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/url"
 	"os"
 	"path"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
 	"github.com/c2fo/vfs/v5"
@@ -26,6 +29,14 @@ type File struct {
 	key         string
 	tempFile    *os.File
 	writeBuffer *bytes.Buffer
+}
+
+type S3Downloader interface {
+	Download(w io.WriterAt, input *s3.GetObjectInput, options ...func(downloader *s3manager.Downloader)) (n int64, err error)
+
+	DownloadWithContext(ctx aws.Context, w io.WriterAt, input *s3.GetObjectInput, options ...func(*s3manager.Downloader)) (n int64, err error)
+
+	DownloadWithIterator(ctx aws.Context, iter s3manager.BatchDownloadIterator, opts ...func(*s3manager.Downloader)) error
 }
 
 // Info Functions
@@ -399,12 +410,8 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 		return nil, err
 	}
 
-	downloader := s3manager.NewDownloaderWithClient(client, func(d *s3manager.Downloader) {
-		d.PartSize = partSize
-	})
-
 	// Download file
-	_, err = downloader.Download(tmpFile, f.getObjectInput())
+	_, err = getDownloader(client, partSize).Download(tmpFile, f.getObjectInput())
 	if err != nil {
 		return nil, err
 	}
@@ -475,4 +482,10 @@ func waitUntilFileExists(file vfs.File, retries int) error {
 	}
 
 	return nil
+}
+
+var getDownloader = func(client s3iface.S3API, partSize int64) S3Downloader {
+	return s3manager.NewDownloaderWithClient(client, func(d *s3manager.Downloader) {
+		d.PartSize = partSize
+	})
 }
