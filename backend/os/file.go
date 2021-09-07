@@ -232,7 +232,7 @@ func safeOsRename(srcName, dstName string) error {
 // osCopy just io.Copy's the os files
 func osCopy(srcName, dstName string) error {
 	// setup os reader
-	srcReader, err := os.Open(srcName)
+	srcReader, err := os.Open(srcName) //nolint:gosec
 	if err != nil {
 		return err
 	}
@@ -373,7 +373,7 @@ func openOSFile(filePath string) (*os.File, error) {
 		return nil, err
 	}
 
-	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, fileMode)
+	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, fileMode) //nolint:gosec
 	return file, err
 }
 

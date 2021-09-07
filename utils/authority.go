@@ -100,7 +100,7 @@ func parseAuthority(authority string) (username, password, host string, err erro
 	return
 }
 
-func split(s, c string) (string, string) { // nolint:gocritic // unnamedResult
+func split(s, c string) (string, string) {
 	i := strings.Index(s, c)
 	return s[:i], s[i+len(c):]
 }

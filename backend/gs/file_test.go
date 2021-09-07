@@ -81,13 +81,19 @@ func (ts *fileTestSuite) TestRead() {
 	contents := "hello world!"
 	bucketName := "bucki"
 	objectName := "some/path/file.txt"
-	server := fakestorage.NewServer(Objects{{
-		BucketName:      bucketName,
-		Name:            objectName,
-		ContentType:     "text/plain",
-		ContentEncoding: "utf8",
-		Content:         []byte(contents),
-	}})
+	server := fakestorage.NewServer(
+		Objects{
+			fakestorage.Object{
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName:      bucketName,
+					Name:            objectName,
+					ContentType:     "text/plain",
+					ContentEncoding: "utf8",
+				},
+				Content: []byte(contents),
+			},
+		},
+	)
 	defer server.Stop()
 	fs := NewFileSystem().WithClient(server.Client())
 
@@ -142,13 +148,16 @@ func (ts *fileTestSuite) TestExists() {
 	bucketName := "bucki"
 	objectName := "some/path/file.txt"
 
-	server := fakestorage.NewServer(Objects{{
-		BucketName:      bucketName,
-		Name:            objectName,
-		ContentType:     "text/plain",
-		ContentEncoding: "utf8",
-		Content:         []byte("content"),
-	}})
+	server := fakestorage.NewServer(Objects{
+		fakestorage.Object{
+			ObjectAttrs: fakestorage.ObjectAttrs{
+				BucketName:      bucketName,
+				Name:            objectName,
+				ContentType:     "text/plain",
+				ContentEncoding: "utf8",
+			},
+			Content: []byte("content"),
+		}})
 	defer server.Stop()
 	fs := NewFileSystem().WithClient(server.Client())
 
@@ -208,19 +217,24 @@ func (ts *fileTestSuite) TestMoveAndCopy() {
 			}
 
 			content := []byte("content")
-			fakeObjects := Objects{{
-				BucketName:      sourceBucketName,
-				Name:            sourceName,
-				ContentType:     "text/plain",
-				ContentEncoding: "utf8",
-				Content:         content,
-			}}
+			fakeObjects := Objects{
+				fakestorage.Object{
+					ObjectAttrs: fakestorage.ObjectAttrs{
+						BucketName:      sourceBucketName,
+						Name:            sourceName,
+						ContentType:     "text/plain",
+						ContentEncoding: "utf8",
+					},
+					Content: content,
+				}}
 			fakeObjects = append(fakeObjects, fakestorage.Object{
-				BucketName:      targetBucketName,
-				Name:            "place.holder",
-				ContentType:     "text/plain",
-				ContentEncoding: "utf8",
-				Content:         []byte{},
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName:      targetBucketName,
+					Name:            "place.holder",
+					ContentType:     "text/plain",
+					ContentEncoding: "utf8",
+				},
+				Content: []byte{},
 			})
 			server := fakestorage.NewServer(fakeObjects)
 			defer server.Stop()
@@ -284,7 +298,6 @@ func (ts *fileTestSuite) TestMoveAndCopyBuffered() {
 		sameBucket bool
 	}
 	type TestCases []TestCase
-
 	testCases := TestCases{}
 
 	for idx := 0; idx <= (1<<3)-1; idx++ {
@@ -308,19 +321,24 @@ func (ts *fileTestSuite) TestMoveAndCopyBuffered() {
 			}
 
 			content := []byte("content")
-			fakeObjects := Objects{{
-				BucketName:      sourceBucketName,
-				Name:            sourceName,
-				ContentType:     "text/plain",
-				ContentEncoding: "utf8",
-				Content:         content,
-			}}
+			fakeObjects := Objects{
+				fakestorage.Object{
+					ObjectAttrs: fakestorage.ObjectAttrs{
+						BucketName:      sourceBucketName,
+						Name:            sourceName,
+						ContentType:     "text/plain",
+						ContentEncoding: "utf8",
+					},
+					Content: content,
+				}}
 			fakeObjects = append(fakeObjects, fakestorage.Object{
-				BucketName:      targetBucketName,
-				Name:            "place.holder",
-				ContentType:     "text/plain",
-				ContentEncoding: "utf8",
-				Content:         []byte{},
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName:      targetBucketName,
+					Name:            "place.holder",
+					ContentType:     "text/plain",
+					ContentEncoding: "utf8",
+				},
+				Content: []byte{},
 			})
 			server := fakestorage.NewServer(fakeObjects)
 			defer server.Stop()

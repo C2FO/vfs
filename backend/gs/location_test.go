@@ -36,11 +36,13 @@ func (lt *locationTestSuite) TestList() {
 			objectNames = append(objectNames, objectName)
 			objectBaseNameSet[objectBaseName] = struct{}{}
 			objects = append(objects, fakestorage.Object{
-				BucketName:      bucket,
-				Name:            objectName,
-				ContentType:     "text/plain",
-				ContentEncoding: "utf8",
-				Content:         []byte(objectName + " content"),
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName:      bucket,
+					Name:            objectName,
+					ContentType:     "text/plain",
+					ContentEncoding: "utf8",
+				},
+				Content: []byte(objectName + " content"),
 			})
 		}
 		if levels > 0 {
@@ -178,13 +180,16 @@ func (lt *locationTestSuite) TestNewFile() {
 
 func (lt *locationTestSuite) TestExists_true() {
 	bucket := "foo"
-	server := fakestorage.NewServer(Objects{{
-		BucketName:      bucket,
-		Name:            "file.txt",
-		ContentType:     "text/plain",
-		ContentEncoding: "utf8",
-		Content:         []byte("content"),
-	}})
+	server := fakestorage.NewServer(Objects{
+		fakestorage.Object{
+			ObjectAttrs: fakestorage.ObjectAttrs{
+				BucketName:      bucket,
+				Name:            "file.txt",
+				ContentType:     "text/plain",
+				ContentEncoding: "utf8",
+			},
+			Content: []byte("content"),
+		}})
 	defer server.Stop()
 	fs := NewFileSystem().WithClient(server.Client())
 	loc, err := fs.NewLocation(bucket, "/")
@@ -280,13 +285,16 @@ func (lt *locationTestSuite) TestStringURI() {
 
 func (lt *locationTestSuite) TestDeleteFile() {
 	bucket := "bucket"
-	server := fakestorage.NewServer(Objects{{
-		BucketName:      bucket,
-		Name:            "old/filename.txt",
-		ContentType:     "text/plain",
-		ContentEncoding: "utf8",
-		Content:         []byte("content"),
-	}})
+	server := fakestorage.NewServer(Objects{
+		fakestorage.Object{
+			ObjectAttrs: fakestorage.ObjectAttrs{
+				BucketName:      bucket,
+				Name:            "old/filename.txt",
+				ContentType:     "text/plain",
+				ContentEncoding: "utf8",
+			},
+			Content: []byte("content"),
+		}})
 	defer server.Stop()
 	fs := NewFileSystem().WithClient(server.Client())
 

@@ -14,7 +14,11 @@ type OptionsTestSuite struct {
 }
 
 func (s *OptionsTestSuite) TearDownTest() {
-	clearEnv()
+	s.NoError(os.Unsetenv("VFS_AZURE_TENANT_ID"))
+	s.NoError(os.Unsetenv("VFS_AZURE_CLIENT_ID"))
+	s.NoError(os.Unsetenv("VFS_AZURE_CLIENT_SECRET"))
+	s.NoError(os.Unsetenv("VFS_AZURE_STORAGE_ACCOUNT"))
+	s.NoError(os.Unsetenv("VFS_AZURE_STORAGE_ACCESS_KEY"))
 }
 
 func (s *OptionsTestSuite) TestNewOptions() {
@@ -70,12 +74,4 @@ func (s *OptionsTestSuite) TestCredentials_Anon() {
 
 func TestOptions(t *testing.T) {
 	suite.Run(t, new(OptionsTestSuite))
-}
-
-func clearEnv() {
-	os.Unsetenv("VFS_AZURE_TENANT_ID")
-	os.Unsetenv("VFS_AZURE_CLIENT_ID")
-	os.Unsetenv("VFS_AZURE_CLIENT_SECRET")
-	os.Unsetenv("VFS_AZURE_STORAGE_ACCOUNT")
-	os.Unsetenv("VFS_AZURE_STORAGE_ACCESS_KEY")
 }

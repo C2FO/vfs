@@ -37,7 +37,7 @@ func NewFile(uri string) (vfs.File, error) {
 	return fs.NewFile(host, path)
 }
 
-func parseSupportedURI(uri string) (vfs.FileSystem, string, string, error) { //nolint:gocritic // unnamedResult
+func parseSupportedURI(uri string) (vfs.FileSystem, string, string, error) {
 	var err error
 	var u *url.URL
 	u, err = url.Parse(uri)

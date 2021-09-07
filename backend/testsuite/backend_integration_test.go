@@ -672,7 +672,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 		// do copy
 		_, err = srcFile.Seek(0, 0)
 		s.NoError(err)
-		buffer := make([]byte, utils.TouchCopyMinBufferSize)
+		buffer = make([]byte, utils.TouchCopyMinBufferSize)
 		b2, err := io.CopyBuffer(copyFile2, srcFile, buffer)
 		s.NoError(err)
 		s.EqualValues(28, b2)
@@ -698,7 +698,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 
 		_, err = srcFile.Seek(0, 0)
 		s.NoError(err)
-		buffer := make([]byte, utils.TouchCopyMinBufferSize)
+		buffer = make([]byte, utils.TouchCopyMinBufferSize)
 		_, err = io.CopyBuffer(fileForNew, srcFile, buffer)
 		s.NoError(err)
 		err = fileForNew.Close()
