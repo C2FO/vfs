@@ -7740,3 +7740,81 @@ func (_m *S3API) WaitUntilObjectNotExistsWithContext(_a0 context.Context, _a1 *s
 
 	return r0
 }
+
+// WriteGetObjectResponse provides a mock function with given fields: _a0
+func (_m *S3API) WriteGetObjectResponse(_a0 *s3.WriteGetObjectResponseInput) (*s3.WriteGetObjectResponseOutput, error) {
+	ret := _m.Called(_a0)
+
+	var r0 *s3.WriteGetObjectResponseOutput
+	if rf, ok := ret.Get(0).(func(*s3.WriteGetObjectResponseInput) *s3.WriteGetObjectResponseOutput); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*s3.WriteGetObjectResponseOutput)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(*s3.WriteGetObjectResponseInput) error); ok {
+		r1 = rf(_a0)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// WriteGetObjectResponseRequest provides a mock function with given fields: _a0
+func (_m *S3API) WriteGetObjectResponseRequest(_a0 *s3.WriteGetObjectResponseInput) (*request.Request, *s3.WriteGetObjectResponseOutput) {
+	ret := _m.Called(_a0)
+
+	var r0 *request.Request
+	if rf, ok := ret.Get(0).(func(*s3.WriteGetObjectResponseInput) *request.Request); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*request.Request)
+		}
+	}
+
+	var r1 *s3.WriteGetObjectResponseOutput
+	if rf, ok := ret.Get(1).(func(*s3.WriteGetObjectResponseInput) *s3.WriteGetObjectResponseOutput); ok {
+		r1 = rf(_a0)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*s3.WriteGetObjectResponseOutput)
+		}
+	}
+
+	return r0, r1
+}
+
+// WriteGetObjectResponseWithContext provides a mock function with given fields: _a0, _a1, _a2
+func (_m *S3API) WriteGetObjectResponseWithContext(_a0 context.Context, _a1 *s3.WriteGetObjectResponseInput, _a2 ...request.Option) (*s3.WriteGetObjectResponseOutput, error) {
+	_va := make([]interface{}, len(_a2))
+	for _i := range _a2 {
+		_va[_i] = _a2[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, _a0, _a1)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 *s3.WriteGetObjectResponseOutput
+	if rf, ok := ret.Get(0).(func(context.Context, *s3.WriteGetObjectResponseInput, ...request.Option) *s3.WriteGetObjectResponseOutput); ok {
+		r0 = rf(_a0, _a1, _a2...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*s3.WriteGetObjectResponseOutput)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *s3.WriteGetObjectResponseInput, ...request.Option) error); ok {
+		r1 = rf(_a0, _a1, _a2...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}

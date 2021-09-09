@@ -225,7 +225,7 @@ func getAuthMethods(opts Options) ([]ssh.AuthMethod, error) {
 
 func getKeyFile(file, passphrase string) (key ssh.Signer, err error) {
 
-	buf, err := ioutil.ReadFile(file)
+	buf, err := ioutil.ReadFile(file) //nolint:gosec
 	if err != nil {
 		return
 	}

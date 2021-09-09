@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
+## [5.9.0] - 2021-09-07
+### Added
+- Add support (and tests) for Go 1.17. Updated dependencies.
+- Updated golanci.yml config.
+### Fixed
+- fixed broken backend integration test.
+
 ## [5.8.0] - 2021-08-24
 ### Fixed
 - fixed #82 Return error when CopyTo/MoveTo functions are called when Seek offset is not (0,0) for all backends,

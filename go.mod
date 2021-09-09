@@ -1,23 +1,21 @@
 module github.com/c2fo/vfs/v5
 
-go 1.12
+go 1.13
 
 require (
-	cloud.google.com/go/storage v1.15.0
+	cloud.google.com/go/storage v1.16.1
 	github.com/Azure/azure-pipeline-go v0.2.3
-	github.com/Azure/azure-storage-blob-go v0.13.0
-	github.com/Azure/go-autorest/autorest v0.11.18
-	github.com/Azure/go-autorest/autorest/adal v0.9.13
-	github.com/aws/aws-sdk-go v1.36.12
-	github.com/fatih/color v1.10.0
-	github.com/fsouza/fake-gcs-server v1.26.0
+	github.com/Azure/azure-storage-blob-go v0.14.0
+	github.com/Azure/go-autorest/autorest v0.11.19
+	github.com/Azure/go-autorest/autorest/adal v0.9.14
+	github.com/aws/aws-sdk-go v1.40.37
+	github.com/fatih/color v1.12.0
+	github.com/fsouza/fake-gcs-server v1.30.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/errors v0.9.1
-	github.com/pkg/sftp v1.12.0
-	github.com/stretchr/objx v0.3.0 // indirect
-	github.com/stretchr/testify v1.6.1
-	golang.org/x/crypto v0.0.0-20201217014255-9d1352758620
-	golang.org/x/net v0.0.0-20210503060351-7fd8e65b6420
-	google.golang.org/api v0.48.0
-	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
+	github.com/pkg/sftp v1.13.3
+	github.com/stretchr/testify v1.7.0
+	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
+	golang.org/x/net v0.0.0-20210903162142-ad29c8ab022f
+	google.golang.org/api v0.56.0
 )

@@ -115,7 +115,7 @@ func TouchCopy(writer io.Writer, reader io.Reader) error {
 	return nil
 }
 
-// TouchCopyBuffer is a wrapper around io.CopyBuffer which ensures that even empty source files (reader) will get written as an
+// TouchCopyBuffered is a wrapper around io.CopyBuffer which ensures that even empty source files (reader) will get written as an
 // empty file. It guarantees a Write() call on the target file.
 // bufferSize is in bytes and if is less than TouchCopyMinBufferSize will result in a buffer of size TouchCopyMinBufferSize
 // bytes. If bufferSize is > TouchCopyMinBufferSize it will result in a buffer of size bufferSize bytes
