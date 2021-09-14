@@ -10,8 +10,10 @@ import (
 	"path"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
 	"github.com/c2fo/vfs/v5"
@@ -27,6 +29,15 @@ type File struct {
 	key         string
 	tempFile    *os.File
 	writeBuffer *bytes.Buffer
+}
+
+// Downloader interface needed to mock S3 Downloader data access object in tests
+type Downloader interface {
+	Download(w io.WriterAt, input *s3.GetObjectInput, options ...func(downloader *s3manager.Downloader)) (n int64, err error)
+
+	DownloadWithContext(ctx aws.Context, w io.WriterAt, input *s3.GetObjectInput, options ...func(*s3manager.Downloader)) (n int64, err error)
+
+	DownloadWithIterator(ctx aws.Context, iter s3manager.BatchDownloadIterator, opts ...func(*s3manager.Downloader)) error
 }
 
 // Info Functions
@@ -381,45 +392,37 @@ func (f *File) checkTempFile() error {
 }
 
 func (f *File) copyToLocalTempReader() (*os.File, error) {
+	// Create temp file
 	tmpFile, err := ioutil.TempFile("", fmt.Sprintf("%s.%d", f.Name(), time.Now().UnixNano()))
 	if err != nil {
 		return nil, err
 	}
 
-	outputReader, err := f.getObject()
+	// Create S3 Downloader, get client, and set partition size for multipart download
+	var partSize int64
+	if opts, ok := f.Location().FileSystem().(*FileSystem).options.(Options); ok {
+		if partSize = opts.DownloadPartitionSize; partSize == 0 {
+			partSize = 32 * 1024 * 1024 // 32 MB per partition default if opts.DownloadPartitionSize is 0
+		}
+	}
+
+	client, err := f.fileSystem.Client()
 	if err != nil {
 		return nil, err
 	}
 
-	buffer := make([]byte, utils.TouchCopyMinBufferSize)
-	if _, err := io.CopyBuffer(tmpFile, outputReader, buffer); err != nil {
+	// Download file
+	_, err = getDownloader(client, partSize).Download(tmpFile, f.getObjectInput())
+	if err != nil {
 		return nil, err
 	}
 
-	// Return cursor to the beginning of the new temp file
-	if _, err := tmpFile.Seek(0, 0); err != nil {
-		return nil, err
-	}
-
-	// initialize temp ReadCloser
+	// Return temp file
 	return tmpFile, nil
 }
 
 func (f *File) getObjectInput() *s3.GetObjectInput {
 	return new(s3.GetObjectInput).SetBucket(f.bucket).SetKey(f.key)
-}
-
-func (f *File) getObject() (io.ReadCloser, error) {
-	client, err := f.fileSystem.Client()
-	if err != nil {
-		return nil, err
-	}
-	getOutput, err := client.GetObject(f.getObjectInput())
-	if err != nil {
-		return nil, err
-	}
-
-	return getOutput.Body, nil
 }
 
 //TODO: need to provide an implementation-agnostic container for providing config options such as SSE
@@ -480,4 +483,10 @@ func waitUntilFileExists(file vfs.File, retries int) error {
 	}
 
 	return nil
+}
+
+var getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
+	return s3manager.NewDownloaderWithClient(client, func(d *s3manager.Downloader) {
+		d.PartSize = partSize
+	})
 }

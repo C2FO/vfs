@@ -18,15 +18,16 @@ import (
 
 // Options holds s3-specific options.  Currently only client options are used.
 type Options struct {
-	AccessKeyID     string `json:"accessKeyId,omitempty"`
-	SecretAccessKey string `json:"secretAccessKey,omitempty"`
-	SessionToken    string `json:"sessionToken,omitempty"`
-	Region          string `json:"region,omitempty"`
-	Endpoint        string `json:"endpoint,omitempty"`
-	ACL             string `json:"acl,omitempty"`
-	Retry           request.Retryer
-	MaxRetries      int
-	FileBufferSize  int // Buffer Size In Bytes Used with utils.TouchCopyBuffered
+	AccessKeyID           string `json:"accessKeyId,omitempty"`
+	SecretAccessKey       string `json:"secretAccessKey,omitempty"`
+	SessionToken          string `json:"sessionToken,omitempty"`
+	Region                string `json:"region,omitempty"`
+	Endpoint              string `json:"endpoint,omitempty"`
+	ACL                   string `json:"acl,omitempty"`
+	Retry                 request.Retryer
+	MaxRetries            int
+	FileBufferSize        int   // Buffer size in bytes used with utils.TouchCopyBuffered
+	DownloadPartitionSize int64 // Partition size in bytes used to multipart download large files using S3 Downloader
 }
 
 // getClient setup S3 client
