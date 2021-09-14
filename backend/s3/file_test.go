@@ -26,7 +26,7 @@ import (
 
 type fileTestSuite struct {
 	suite.Suite
-	getDownloader func(client s3iface.S3API, partSize int64) S3Downloader
+	getDownloader func(client s3iface.S3API, partSize int64) Downloader
 }
 
 var (
@@ -42,7 +42,7 @@ func (ts *fileTestSuite) SetupTest() {
 	defaultOptions = Options{AccessKeyID: "abc"}
 	fs = FileSystem{client: s3apiMock, options: defaultOptions}
 	testFile, err = fs.NewFile("bucket", "/some/path/to/file.txt")
-	getDownloader = func(client s3iface.S3API, partSize int64) S3Downloader {
+	getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
 		return mocks.S3MockDownloader{}
 	}
 
@@ -60,7 +60,7 @@ func (ts *fileTestSuite) TestRead() {
 	downloader := mocks.S3MockDownloader{
 		ExpectedContents: contents,
 	}
-	getDownloader = func(client s3iface.S3API, partSize int64) S3Downloader {
+	getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
 		return downloader
 	}
 
@@ -99,7 +99,7 @@ func (ts *fileTestSuite) TestSeek() {
 	downloader := mocks.S3MockDownloader{
 		ExpectedContents: contents,
 	}
-	getDownloader = func(client s3iface.S3API, partSize int64) S3Downloader {
+	getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
 		return downloader
 	}
 
@@ -205,7 +205,7 @@ func (ts *fileTestSuite) TestEmptyCopyToFile() {
 	downloader := mocks.S3MockDownloader{
 		ExpectedContents: contents,
 	}
-	getDownloader = func(client s3iface.S3API, partSize int64) S3Downloader {
+	getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
 		return downloader
 	}
 
@@ -225,7 +225,7 @@ func (ts *fileTestSuite) TestMoveToFile() {
 	downloader := mocks.S3MockDownloader{
 		ExpectedContents: contents,
 	}
-	getDownloader = func(client s3iface.S3API, partSize int64) S3Downloader {
+	getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
 		return downloader
 	}
 
@@ -332,7 +332,7 @@ func (ts *fileTestSuite) TestMoveToFile_CopyError() {
 	downloader := mocks.S3MockDownloader{
 		ExpectedContents: contents,
 	}
-	getDownloader = func(client s3iface.S3API, partSize int64) S3Downloader {
+	getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
 		return downloader
 	}
 
@@ -395,7 +395,7 @@ func (ts *fileTestSuite) TestTouch() {
 	downloader := mocks.S3MockDownloader{
 		ExpectedContents: contents,
 	}
-	getDownloader = func(client s3iface.S3API, partSize int64) S3Downloader {
+	getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
 		return downloader
 	}
 
@@ -448,7 +448,7 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	downloader := mocks.S3MockDownloader{
 		ExpectedContents: contents,
 	}
-	getDownloader = func(client s3iface.S3API, partSize int64) S3Downloader {
+	getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
 		return downloader
 	}
 
@@ -509,7 +509,7 @@ func (ts *fileTestSuite) TestMoveToLocationFail() {
 	downloader := mocks.S3MockDownloader{
 		ExpectedContents: contents,
 	}
-	getDownloader = func(client s3iface.S3API, partSize int64) S3Downloader {
+	getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
 		return downloader
 	}
 

@@ -31,8 +31,8 @@ type File struct {
 	writeBuffer *bytes.Buffer
 }
 
-// Interface needed to mock S3 Downloader data access object in tests
-type S3Downloader interface {
+// Downloader interface needed to mock S3 Downloader data access object in tests
+type Downloader interface {
 	Download(w io.WriterAt, input *s3.GetObjectInput, options ...func(downloader *s3manager.Downloader)) (n int64, err error)
 
 	DownloadWithContext(ctx aws.Context, w io.WriterAt, input *s3.GetObjectInput, options ...func(*s3manager.Downloader)) (n int64, err error)
@@ -485,7 +485,7 @@ func waitUntilFileExists(file vfs.File, retries int) error {
 	return nil
 }
 
-var getDownloader = func(client s3iface.S3API, partSize int64) S3Downloader {
+var getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
 	return s3manager.NewDownloaderWithClient(client, func(d *s3manager.Downloader) {
 		d.PartSize = partSize
 	})
