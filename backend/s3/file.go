@@ -31,6 +31,7 @@ type File struct {
 	writeBuffer *bytes.Buffer
 }
 
+// Interface needed to mock S3 Downloader data access object in tests
 type S3Downloader interface {
 	Download(w io.WriterAt, input *s3.GetObjectInput, options ...func(downloader *s3manager.Downloader)) (n int64, err error)
 
