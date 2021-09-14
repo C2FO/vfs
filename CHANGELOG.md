@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
+### Changed
+- Modified S3 file.go so that on the initial read when the remote file is downloaded, a temporary file is locally created
+using concurrent go routines to download parts of the file vs. a single request to download the whole object
 
 ## [5.9.0] - 2021-09-07
 ### Added
