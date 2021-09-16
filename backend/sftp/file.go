@@ -137,9 +137,9 @@ func (f *File) Location() vfs.Location {
 func (f *File) MoveToFile(t vfs.File) error {
 	// validate seek is at 0,0 before doing copy
 	// TODO: Fix this later
-	//if err := backend.ValidateCopySeekPosition(f); err != nil {
-	//	return err
-	//}
+	// if err := backend.ValidateCopySeekPosition(f); err != nil {
+	//	  return err
+	// }
 	// sftp rename if vfs is sftp and for the same user/host
 	if f.fileSystem.Scheme() == t.Location().FileSystem().Scheme() &&
 		f.Authority.User == t.(*File).Authority.User &&
@@ -188,9 +188,9 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 func (f *File) CopyToFile(file vfs.File) error {
 	// validate seek is at 0,0 before doing copy
 	// TODO: Fix this later
-	//if err := backend.ValidateCopySeekPosition(f); err != nil {
-	//	return err
-	//}
+	// if err := backend.ValidateCopySeekPosition(f); err != nil {
+	//  	return err
+	// }
 
 	fileBufferSize := 0
 
