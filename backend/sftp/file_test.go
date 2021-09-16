@@ -390,6 +390,7 @@ func (ts *fileTestSuite) TestCopyToFileEmptyBuffered() {
 	sourceClient := &mocks.Client{}
 
 	sourceSftpFile := &mocks.SFTPFile{}
+	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
 
 	sourceFile := &File{
