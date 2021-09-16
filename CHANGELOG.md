@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Modified S3 file.go so that on the initial read when the remote file is downloaded, a temporary file is locally created
 using concurrent go routines to download parts of the file vs. a single request to download the whole object
+### Fixed
+- Fixed #100 Rolled back Seek validation before Copy or Move in SFTP backend due to bug on some SFTP servers and how we cache open "file handles"
 
 ## [5.9.0] - 2021-09-07
 ### Added
