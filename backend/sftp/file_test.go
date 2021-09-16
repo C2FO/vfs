@@ -222,7 +222,7 @@ func (ts *fileTestSuite) TestCopyToFile() {
 
 	sourceSftpFile := &mocks.SFTPFile{}
 
-	sourceSftpFile.On("Seek", int64(0), 1).Return(int64(0), nil)
+	//	sourceSftpFile.On("Seek", int64(0), 1).Return(int64(0), nil)
 	sourceSftpFile.On("Read", mock.Anything).Return(len(content), nil).Once()
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
@@ -278,7 +278,7 @@ func (ts *fileTestSuite) TestCopyToFileBuffered() {
 
 	sourceSftpFile := &mocks.SFTPFile{}
 
-	sourceSftpFile.On("Seek", int64(0), 1).Return(int64(0), nil)
+	//	sourceSftpFile.On("Seek", int64(0), 1).Return(int64(0), nil)
 	sourceSftpFile.On("Read", mock.Anything).Return(len(content), nil).Once()
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
@@ -336,7 +336,7 @@ func (ts *fileTestSuite) TestCopyToFileEmpty() {
 	sourceClient := &mocks.Client{}
 
 	sourceSftpFile := &mocks.SFTPFile{}
-	sourceSftpFile.On("Seek", int64(0), 1).Return(int64(0), nil)
+	//	sourceSftpFile.On("Seek", int64(0), 1).Return(int64(0), nil)
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
 
@@ -393,7 +393,7 @@ func (ts *fileTestSuite) TestCopyToFileEmptyBuffered() {
 	sourceClient := &mocks.Client{}
 
 	sourceSftpFile := &mocks.SFTPFile{}
-	sourceSftpFile.On("Seek", int64(0), 1).Return(int64(0), nil)
+	//ourceSftpFile.On("Seek", int64(0), 1).Return(int64(0), nil)
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
 
@@ -450,7 +450,7 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 	sourceClient := &mocks.Client{}
 
 	sourceSftpFile := &mocks.SFTPFile{}
-	sourceSftpFile.On("Seek", int64(0), 1).Return(int64(0), nil)
+	//sourceSftpFile.On("Seek", int64(0), 1).Return(int64(0), nil)
 	sourceSftpFile.On("Read", mock.Anything).Return(len(content), nil).Once()
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
@@ -511,7 +511,7 @@ func (ts *fileTestSuite) TestMoveToFile_differentAuthority() {
 	sourceClient.On("Remove", mock.Anything).Return(nil).Once()
 
 	sourceSftpFile := &mocks.SFTPFile{}
-	sourceSftpFile.On("Seek", int64(0), 1).Return(int64(0), nil)
+//	sourceSftpFile.On("Seek", int64(0), 1).Return(int64(0), nil)
 	sourceSftpFile.On("Read", mock.Anything).Return(len(content), nil).Once()
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
@@ -616,7 +616,7 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	sourceClient.On("Remove", mock.Anything).Return(nil).Once()
 
 	sourceSftpFile := &mocks.SFTPFile{}
-	sourceSftpFile.On("Seek", int64(0), 1).Return(int64(0), nil)
+	//sourceSftpFile.On("Seek", int64(0), 1).Return(int64(0), nil)
 	sourceSftpFile.On("Read", mock.Anything).Return(len(content), nil).Once()
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()

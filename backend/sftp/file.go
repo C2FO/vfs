@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/c2fo/vfs/v5"
-	"github.com/c2fo/vfs/v5/backend"
 	"github.com/c2fo/vfs/v5/utils"
 )
 
@@ -137,9 +136,10 @@ func (f *File) Location() vfs.Location {
 // we'll do a an io.Copy to the destination file then delete source file.
 func (f *File) MoveToFile(t vfs.File) error {
 	// validate seek is at 0,0 before doing copy
-	if err := backend.ValidateCopySeekPosition(f); err != nil {
-		return err
-	}
+	// TODO: Fix this later
+	//if err := backend.ValidateCopySeekPosition(f); err != nil {
+	//	return err
+	//}
 	// sftp rename if vfs is sftp and for the same user/host
 	if f.fileSystem.Scheme() == t.Location().FileSystem().Scheme() &&
 		f.Authority.User == t.(*File).Authority.User &&
@@ -187,9 +187,10 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 // CopyToFile puts the contents of File into the targetFile passed.
 func (f *File) CopyToFile(file vfs.File) error {
 	// validate seek is at 0,0 before doing copy
-	if err := backend.ValidateCopySeekPosition(f); err != nil {
-		return err
-	}
+	// TODO: Fix this later
+	//if err := backend.ValidateCopySeekPosition(f); err != nil {
+	//	return err
+	//}
 
 	fileBufferSize := 0
 
