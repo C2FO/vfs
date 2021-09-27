@@ -26,7 +26,7 @@ type Options struct {
 	KeyPassphrase      string              `json:"keyPassphrase,omitempty"`  // env var VFS_SFTP_KEYFILE_PASSPHRASE
 	KnownHostsFile     string              `json:"knownHostsFile,omitempty"` // env var VFS_SFTP_KNOWN_HOSTS_FILE
 	KnownHostsString   string              `json:"knownHostsString,omitempty"`
-	KeyExchanges       string              `json:"keyExchanges,omitempty"`
+	KeyExchanges       []string            `json:"keyExchanges,omitempty"`
 	AutoDisconnect     int                 `json:"autoDisconnect,omitempty"` // seconds before disconnecting. default: 10
 	KnownHostsCallback ssh.HostKeyCallback // env var VFS_SFTP_INSECURE_KNOWN_HOSTS
 	Retry              vfs.Retry
@@ -56,9 +56,9 @@ func getClient(authority utils.Authority, opts Options) (Client, error) {
 	// server offered: [diffie-hellman-group-exchange-sha256 ]
 	// Now receive KeyExchange algorithm as an option
 	sshConfig := ssh.Config{}
-	if opts.KeyExchanges != "" {
+	if len(opts.KeyExchanges) != 0 {
 		sshConfig = ssh.Config{
-			KeyExchanges: []string{opts.KeyExchanges},
+			KeyExchanges: opts.KeyExchanges,
 		}
 	}
 	// Define the Client Config

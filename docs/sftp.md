@@ -154,6 +154,11 @@ testing but should not be used in production.
 
 ### Other Options
 
+Passing in multiple key exchange algorithms is supported - these are specified as a slice.
+```
+'{"keyFilePath":"hsbc_uat_rsa", "keyExchanges":["diffie-hellman-group-a256"]}'
+```
+
 #### AutoDisconnect
 When dialing an TCP connection, go doesn't disconnect for you, even when the connection fall out of scope (or even when
 garbage collection is forced).  It must be explicitly closed.  Unfortunately, VFS.FileSystem has no explicit close mechanism.
@@ -569,7 +574,7 @@ type Options struct {
 	KeyPassphrase      string              `json:"keyPassphrase,omitempty"`  // env var VFS_SFTP_KEYFILE_PASSPHRASE
 	KnownHostsFile     string              `json:"knownHostsFile,omitempty"` // env var VFS_SFTP_KNOWN_HOSTS_FILE
 	KnownHostsString   string              `json:"knownHostsString,omitempty"`
-	KeyExchanges       string              `json:"keyExchanges,omitempty"`
+	KeyExchanges       []string            `json:"keyExchanges,omitempty"`
 	KnownHostsCallback ssh.HostKeyCallback //env var VFS_SFTP_INSECURE_KNOWN_HOSTS
 	Retry              vfs.Retry
 	MaxRetries         int
