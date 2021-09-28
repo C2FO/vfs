@@ -346,6 +346,16 @@ func (o *optionsSuite) TestGetAuthMethods() {
 			message:     "multiple auths",
 		},
 		{
+			options: Options{
+				Password:     "somepassword",
+				KeyExchanges: []string{"diffie-hellman-group-exchange-sha256", "ecdh-sha2-nistp256"},
+			},
+			returnCount: 1,
+			hasError:    false,
+			errMessage:  "",
+			message:     "multiple key exchange algorithms",
+		},
+		{
 			envVars: map[string]string{
 				"VFS_SFTP_KEYFILE": "nonexistent.key",
 			},
