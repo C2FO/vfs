@@ -156,7 +156,7 @@ testing but should not be used in production.
 
 Passing in multiple key exchange algorithms is supported - these are specified as a slice.
 ```
-'{"keyFilePath":"hsbc_uat_rsa", "keyExchanges":["diffie-hellman-group-a256"]}'
+"keyExchanges":["diffie-hellman-group-a256", "ecdh-sha2-nistp256"]
 ```
 
 #### AutoDisconnect
