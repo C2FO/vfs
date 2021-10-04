@@ -55,12 +55,8 @@ func getClient(authority utils.Authority, opts Options) (Client, error) {
 	// client offered: [curve25519-sha256@libssh.org ecdh-sha2-nistp256 ecdh-sha2-nistp384 ecdh-sha2-	nistp521 diffie-hellman-group14-sha1],
 	// server offered: [diffie-hellman-group-exchange-sha256 ]
 	// Now receive KeyExchange algorithm as an option
-	sshConfig := ssh.Config{}
-	if len(opts.KeyExchanges) != 0 {
-		sshConfig = ssh.Config{
-			KeyExchanges: opts.KeyExchanges,
-		}
-	}
+	sshConfig := ssh.Config{KeyExchanges: opts.KeyExchanges}
+
 	// Define the Client Config
 	config := &ssh.ClientConfig{
 		User:            authority.User,

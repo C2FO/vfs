@@ -127,5 +127,11 @@ your info (man-in-the-middle attack).  Handling for this can be accomplished via
    SSH doesn't exist natively on Windows and each third-party implementation has a different location for known_hosts. Because
    of this, no attempt is made to find a system-wide file for Windows.  It's better to specify in KnownHostsFile in that case.
 
+OTHER OPTIONS
+
+Passing in multiple key exchange algorithms is supported - these are specified as a slice.
+Example:
+`"keyExchanges":["diffie-hellman-group-a256", "ecdh-sha2-nistp256"]`
+
 */
 package sftp
