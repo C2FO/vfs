@@ -47,7 +47,8 @@ Post 1.17:
 Upgrading
 
 Upgrading from v5 to v6
-With v6.0.0, we changed the Auth creation options to accept an array of Key Exchange algorithms rather than a string. To update, change the syntax of the auth commands.
+With v6.0.0, we changed the Auth creation options to accept an array of Key Exchange algorithms rather than a string.
+To update, change the syntax of the auth commands.
   "keyExchanges":"diffie-hellman-group-a256"
 becomes
   "keyExchanges":["diffie-hellman-group-a256"]
