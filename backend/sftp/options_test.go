@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/ssh"
 
-	"github.com/c2fo/vfs/v5/utils"
+	"github.com/c2fo/vfs/v6/utils"
 )
 
 /**********************************

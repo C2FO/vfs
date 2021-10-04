@@ -11,8 +11,8 @@ import (
 	"github.com/Azure/azure-pipeline-go/pipeline"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 
-	"github.com/c2fo/vfs/v5"
-	"github.com/c2fo/vfs/v5/utils"
+	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v6/utils"
 )
 
 // The Client interface contains methods that perform specific operations to Azure Blob Storage.  This interface is

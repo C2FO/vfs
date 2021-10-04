@@ -4,7 +4,7 @@
 
 [![GitHub tag](https://img.shields.io/github/tag/c2fo/vfs.svg?style=flat)](https://github.com/c2fo/vfs/releases)
 [![Build Status](https://travis-ci.org/C2FO/vfs.svg?branch=master)](https://travis-ci.org/C2FO/vfs)
-[![GoDoc](https://pkg.go.dev/badge/github.com/c2fo/vfs/v5?utm_source=godoc)](https://pkg.go.dev/github.com/c2fo/vfs/v5)
+[![GoDoc](https://pkg.go.dev/badge/github.com/c2fo/vfs/v6?utm_source=godoc)](https://pkg.go.dev/github.com/c2fo/vfs/v6)
 [![codecov](https://codecov.io/gh/c2fo/vfs/branch/master/graph/badge.svg)](https://codecov.io/gh/c2fo/vfs)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](License.md)
 [![Go Report Card](https://goreportcard.com/badge/github.com/c2fo/vfs)](https://goreportcard.com/report/github.com/c2fo/vfs)
@@ -62,7 +62,7 @@ file system backends.
 
 Go install:
 
-    go get -u github.com/c2fo/vfs/v5
+    go get -u github.com/c2fo/vfs/v6
 
 
 ### Usage

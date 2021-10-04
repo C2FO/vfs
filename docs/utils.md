@@ -4,7 +4,7 @@
 
 
 ```go
-    import "github.com/c2fo/vfs/v5/utils"
+    import "github.com/c2fo/vfs/v6/utils"
 ```
 
 #### Error Constants

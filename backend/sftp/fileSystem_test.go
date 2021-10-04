@@ -8,9 +8,9 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v5"
-	"github.com/c2fo/vfs/v5/backend/sftp/mocks"
-	"github.com/c2fo/vfs/v5/utils"
+	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v6/backend/sftp/mocks"
+	"github.com/c2fo/vfs/v6/utils"
 )
 
 type fileSystemTestSuite struct {

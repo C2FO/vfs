@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v6"
 )
 
 type FileSystemTestSuite struct {

@@ -7,12 +7,12 @@ Package mem, in-memory backend VFS implementation.
 
 ### Usage 
 
-Rely on github.com/c2fo/vfs/v5/backend
+Rely on github.com/c2fo/vfs/v6/backend
 
 ```go
     import(
-        "github.com/c2fo/vfs/v5/backend"
-        "github.com/c2fo/vfs/v5/backend/mem"
+        "github.com/c2fo/vfs/v6/backend"
+        "github.com/c2fo/vfs/v6/backend/mem"
     )
     func UseFs() error {
         fs := backend.Backend(mem.Scheme)
@@ -23,7 +23,7 @@ Rely on github.com/c2fo/vfs/v5/backend
 Or call directly:
 
 ```go
-      import _mem "github.com/c2fo/vfs/v5/backend/mem"
+      import _mem "github.com/c2fo/vfs/v6/backend/mem"
       
       func DoSomething() {
     	fs := _mem.NewFileSystem()

@@ -16,15 +16,15 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v5"
-	"github.com/c2fo/vfs/v5/backend/azure"
-	"github.com/c2fo/vfs/v5/backend/gs"
-	"github.com/c2fo/vfs/v5/backend/mem"
-	_os "github.com/c2fo/vfs/v5/backend/os"
-	"github.com/c2fo/vfs/v5/backend/s3"
-	"github.com/c2fo/vfs/v5/backend/sftp"
-	"github.com/c2fo/vfs/v5/utils"
-	"github.com/c2fo/vfs/v5/vfssimple"
+	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v6/backend/azure"
+	"github.com/c2fo/vfs/v6/backend/gs"
+	"github.com/c2fo/vfs/v6/backend/mem"
+	_os "github.com/c2fo/vfs/v6/backend/os"
+	"github.com/c2fo/vfs/v6/backend/s3"
+	"github.com/c2fo/vfs/v6/backend/sftp"
+	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v6/vfssimple"
 )
 
 type vfsTestSuite struct {

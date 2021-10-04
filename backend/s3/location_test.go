@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v5/mocks"
-	"github.com/c2fo/vfs/v5/utils"
+	"github.com/c2fo/vfs/v6/mocks"
+	"github.com/c2fo/vfs/v6/utils"
 )
 
 type locationTestSuite struct {

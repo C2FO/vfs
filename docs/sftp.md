@@ -11,12 +11,12 @@ to take up a large number of a server's available connections, so better to use 
 
 ### Usage
 
-Rely on github.com/c2fo/vfs/v5/backend
+Rely on github.com/c2fo/vfs/v6/backend
 
 ```go
       import(
-    	  "github.com/c2fo/vfs/v5/backend"
-    	  "github.com/c2fo/vfs/v5/backend/sftp"
+    	  "github.com/c2fo/vfs/v6/backend"
+    	  "github.com/c2fo/vfs/v6/backend/sftp"
       )
 
       func UseFs() error {
@@ -28,7 +28,7 @@ Rely on github.com/c2fo/vfs/v5/backend
 Or call directly:
 
 ```go
-      import "github.com/c2fo/vfs/v5/backend/sftp"
+      import "github.com/c2fo/vfs/v6/backend/sftp"
 
       func DoSomething() {
     	  fs := sftp.NewFilesystem()

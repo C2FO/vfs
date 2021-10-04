@@ -9,7 +9,7 @@ import (
 
 	"github.com/fatih/color"
 
-	"github.com/c2fo/vfs/v5/vfssimple"
+	"github.com/c2fo/vfs/v6/vfssimple"
 )
 
 const usageTemplate = `
