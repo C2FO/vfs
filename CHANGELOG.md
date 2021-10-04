@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Modified sftp Key Exchange option to accept an array instead of a string, allowing multiple kex algorithms
 
+### Upgrade steps
+
+With v6.0.0, we changed the Auth creation options to accept an array of Key Exchange algorithms rather than a string. To update, change the syntax of the auth commands. 
+```
+"keyExchanges":"diffie-hellman-group-a256"
+```
+becomes 
+```
+"keyExchanges":["diffie-hellman-group-a256"]
+```
+
 ## [5.10.0] - 2021-09-16
 ### Changed
 - Modified S3 file.go so that on the initial read when the remote file is downloaded, a temporary file is locally created
