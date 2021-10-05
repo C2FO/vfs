@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Upgrade steps
 
-With v6.0.0, we changed the Auth creation options to accept an array of Key Exchange algorithms rather than a string. To update, change the syntax of the auth commands. 
+With v6.0.0, sftp.Options struct changed to accept an array of Key Exchange algorithms rather than a string. To update, change the syntax of the auth commands. 
 ```
 "keyExchanges":"diffie-hellman-group-a256"
 ```
