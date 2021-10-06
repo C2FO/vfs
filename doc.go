@@ -37,8 +37,21 @@ What we needed/wanted was the following(and more):
 
 Install
 
-Go install:
-  go get -u github.com/c2fo/vfs/v5
+Pre 1.17:
+  go get -u github.com/c2fo/vfs/v6
+
+Post 1.17:
+  go install -u github.com/c2fo/vfs/v6
+
+
+Upgrading
+
+Upgrading from v5 to v6
+With v6.0.0, sftp.Options struct changed to accept an array of Key Exchange algorithms rather than a string.
+To update, change the syntax of the auth commands.
+  "keyExchanges":"diffie-hellman-group-a256"
+becomes
+  "keyExchanges":["diffie-hellman-group-a256"]
 
 Usage
 

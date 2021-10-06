@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v6"
 )
 
 const (

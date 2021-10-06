@@ -12,8 +12,8 @@ Rely on github.com/c2fo/vfs/backend
 
 ```go
     import(
-        "github.com/c2fo/vfs/v5/backend"
-        "github.com/c2fo/vfs/v5/backend/azure"
+        "github.com/c2fo/vfs/v6/backend"
+        "github.com/c2fo/vfs/v6/backend/azure"
     )
 
     func UseFs() error {
@@ -25,7 +25,7 @@ Rely on github.com/c2fo/vfs/backend
 Or call directly:
 
 ```go
-    import "github.com/c2fo/vfs/v5/backend/azure"
+    import "github.com/c2fo/vfs/v6/backend/azure"
 
     func DoSomething() {
         fs := azure.NewFilesystem()

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v6"
 )
 
 func ValidateCopySeekPosition(f vfs.File) error {

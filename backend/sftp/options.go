@@ -13,8 +13,8 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
 
-	"github.com/c2fo/vfs/v5"
-	"github.com/c2fo/vfs/v5/utils"
+	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v6/utils"
 )
 
 const systemWideKnownHosts = "/etc/ssh/ssh_known_hosts"
@@ -26,7 +26,7 @@ type Options struct {
 	KeyPassphrase      string              `json:"keyPassphrase,omitempty"`  // env var VFS_SFTP_KEYFILE_PASSPHRASE
 	KnownHostsFile     string              `json:"knownHostsFile,omitempty"` // env var VFS_SFTP_KNOWN_HOSTS_FILE
 	KnownHostsString   string              `json:"knownHostsString,omitempty"`
-	KeyExchanges       string              `json:"keyExchanges,omitempty"`
+	KeyExchanges       []string            `json:"keyExchanges,omitempty"`
 	AutoDisconnect     int                 `json:"autoDisconnect,omitempty"` // seconds before disconnecting. default: 10
 	KnownHostsCallback ssh.HostKeyCallback // env var VFS_SFTP_INSECURE_KNOWN_HOSTS
 	Retry              vfs.Retry
@@ -55,12 +55,8 @@ func getClient(authority utils.Authority, opts Options) (Client, error) {
 	// client offered: [curve25519-sha256@libssh.org ecdh-sha2-nistp256 ecdh-sha2-nistp384 ecdh-sha2-	nistp521 diffie-hellman-group14-sha1],
 	// server offered: [diffie-hellman-group-exchange-sha256 ]
 	// Now receive KeyExchange algorithm as an option
-	sshConfig := ssh.Config{}
-	if opts.KeyExchanges != "" {
-		sshConfig = ssh.Config{
-			KeyExchanges: []string{opts.KeyExchanges},
-		}
-	}
+	sshConfig := ssh.Config{KeyExchanges: opts.KeyExchanges}
+
 	// Define the Client Config
 	config := &ssh.ClientConfig{
 		User:            authority.User,

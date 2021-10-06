@@ -7,7 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v5/utils"
+	"github.com/c2fo/vfs/v6/utils"
 )
 
 type fileSystemTestSuite struct {

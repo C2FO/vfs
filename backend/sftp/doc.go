@@ -3,11 +3,11 @@ Package sftp SFTP VFS implementation.
 
 Usage
 
-Rely on github.com/c2fo/vfs/v5/backend
+Rely on github.com/c2fo/vfs/v6/backend
 
   import(
-	  "github.com/c2fo/vfs/v5/backend"
-	  "github.com/c2fo/vfs/v5/backend/sftp"
+	  "github.com/c2fo/vfs/v6/backend"
+	  "github.com/c2fo/vfs/v6/backend/sftp"
   )
 
   func UseFs() error {
@@ -17,7 +17,7 @@ Rely on github.com/c2fo/vfs/v5/backend
 
 Or call directly:
 
-  import "github.com/c2fo/vfs/v5/backend/sftp"
+  import "github.com/c2fo/vfs/v6/backend/sftp"
 
   func DoSomething() {
 	  fs := sftp.NewFilesystem()
@@ -126,6 +126,12 @@ your info (man-in-the-middle attack).  Handling for this can be accomplished via
 4. Defaults to trying to find and use <homedir>/.ssh/known_hosts.  For unix, system-wide location /etc/ssh/.ssh/known hosts is also checked.
    SSH doesn't exist natively on Windows and each third-party implementation has a different location for known_hosts. Because
    of this, no attempt is made to find a system-wide file for Windows.  It's better to specify in KnownHostsFile in that case.
+
+OTHER OPTIONS
+
+Passing in multiple key exchange algorithms is supported - these are specified as a slice.
+Example:
+`"keyExchanges":["diffie-hellman-group-a256", "ecdh-sha2-nistp256"]`
 
 */
 package sftp

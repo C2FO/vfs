@@ -11,12 +11,12 @@ to take up a large number of a server's available connections, so better to use 
 
 ### Usage
 
-Rely on github.com/c2fo/vfs/v5/backend
+Rely on github.com/c2fo/vfs/v6/backend
 
 ```go
       import(
-    	  "github.com/c2fo/vfs/v5/backend"
-    	  "github.com/c2fo/vfs/v5/backend/sftp"
+    	  "github.com/c2fo/vfs/v6/backend"
+    	  "github.com/c2fo/vfs/v6/backend/sftp"
       )
 
       func UseFs() error {
@@ -28,7 +28,7 @@ Rely on github.com/c2fo/vfs/v5/backend
 Or call directly:
 
 ```go
-      import "github.com/c2fo/vfs/v5/backend/sftp"
+      import "github.com/c2fo/vfs/v6/backend/sftp"
 
       func DoSomething() {
     	  fs := sftp.NewFilesystem()
@@ -153,6 +153,11 @@ testing but should not be used in production.
 4. Defaults to trying to find and use <homedir>/.ssh/known_hosts.  For unix, system-wide location /etc/ssh/.ssh/known hosts is also checked. SSH doesn't exist natively on Windows and each third-party implementation has a different location for known_hosts. Because of this, no attempt is made to find a system-wide file for Windows.  It's better to specify in KnownHostsFile in that case.
 
 ### Other Options
+
+Passing in multiple key exchange algorithms is supported - these are specified as a slice.
+```
+"keyExchanges":["diffie-hellman-group-a256", "ecdh-sha2-nistp256"]
+```
 
 #### AutoDisconnect
 When dialing an TCP connection, go doesn't disconnect for you, even when the connection fall out of scope (or even when
@@ -569,7 +574,7 @@ type Options struct {
 	KeyPassphrase      string              `json:"keyPassphrase,omitempty"`  // env var VFS_SFTP_KEYFILE_PASSPHRASE
 	KnownHostsFile     string              `json:"knownHostsFile,omitempty"` // env var VFS_SFTP_KNOWN_HOSTS_FILE
 	KnownHostsString   string              `json:"knownHostsString,omitempty"`
-	KeyExchanges       string              `json:"keyExchanges,omitempty"`
+	KeyExchanges       []string            `json:"keyExchanges,omitempty"`
 	KnownHostsCallback ssh.HostKeyCallback //env var VFS_SFTP_INSECURE_KNOWN_HOSTS
 	Retry              vfs.Retry
 	MaxRetries         int

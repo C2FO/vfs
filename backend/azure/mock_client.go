@@ -6,7 +6,7 @@ import (
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 
-	"github.com/c2fo/vfs/v5"
+	"github.com/c2fo/vfs/v6"
 )
 
 // MockAzureClient is a mock implementation of azure.Client.

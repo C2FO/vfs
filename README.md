@@ -4,7 +4,7 @@
 
 [![GitHub tag](https://img.shields.io/github/tag/c2fo/vfs.svg?style=flat)](https://github.com/c2fo/vfs/releases)
 [![Build Status](https://travis-ci.org/C2FO/vfs.svg?branch=master)](https://travis-ci.org/C2FO/vfs)
-[![GoDoc](https://pkg.go.dev/badge/github.com/c2fo/vfs/v5?utm_source=godoc)](https://pkg.go.dev/github.com/c2fo/vfs/v5)
+[![GoDoc](https://pkg.go.dev/badge/github.com/c2fo/vfs/v6?utm_source=godoc)](https://pkg.go.dev/github.com/c2fo/vfs/v6)
 [![codecov](https://codecov.io/gh/c2fo/vfs/branch/master/graph/badge.svg)](https://codecov.io/gh/c2fo/vfs)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](License.md)
 [![Go Report Card](https://goreportcard.com/badge/github.com/c2fo/vfs)](https://goreportcard.com/report/github.com/c2fo/vfs)
@@ -60,10 +60,27 @@ file system backends.
 
 ### Install
 
-Go install:
+Pre 1.17:
+```
+go get -u github.com/c2fo/vfs/v6
+```
 
-    go get -u github.com/c2fo/vfs/v5
+Post 1.17:
+```
+go install -u github.com/c2fo/vfs/v6
+```
 
+### Upgrading
+
+#### Upgrading from v5 to v6
+With v6.0.0, sftp.Options struct changed to to accept an array of Key Exchange algorithms rather than a string. To update, change the syntax of the auth commands.
+```
+  "keyExchanges":"diffie-hellman-group-a256"
+```
+becomes
+```
+  "keyExchanges":["diffie-hellman-group-a256"]
+```
 
 ### Usage
 

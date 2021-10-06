@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/ssh"
 
-	"github.com/c2fo/vfs/v5/utils"
+	"github.com/c2fo/vfs/v6/utils"
 )
 
 /**********************************
@@ -338,12 +338,22 @@ func (o *optionsSuite) TestGetAuthMethods() {
 				KeyFilePath:   o.keyFiles.SSHPrivateKey,
 				KeyPassphrase: o.keyFiles.passphrase,
 				Password:      "somepassword",
-				KeyExchanges:  "diffie-hellman-group-exchange-sha256",
+				KeyExchanges:  []string{"diffie-hellman-group-exchange-sha256"},
 			},
 			returnCount: 2,
 			hasError:    false,
 			errMessage:  "",
 			message:     "multiple auths",
+		},
+		{
+			options: Options{
+				Password:     "somepassword",
+				KeyExchanges: []string{"diffie-hellman-group-exchange-sha256", "ecdh-sha2-nistp256"},
+			},
+			returnCount: 1,
+			hasError:    false,
+			errMessage:  "",
+			message:     "multiple key exchange algorithms",
 		},
 		{
 			envVars: map[string]string{

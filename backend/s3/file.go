@@ -16,10 +16,10 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
-	"github.com/c2fo/vfs/v5"
-	"github.com/c2fo/vfs/v5/backend"
-	"github.com/c2fo/vfs/v5/mocks"
-	"github.com/c2fo/vfs/v5/utils"
+	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v6/backend"
+	"github.com/c2fo/vfs/v6/mocks"
+	"github.com/c2fo/vfs/v6/utils"
 )
 
 // File implements vfs.File interface for S3 fs.
