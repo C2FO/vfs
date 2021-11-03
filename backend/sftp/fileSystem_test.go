@@ -1,6 +1,7 @@
 package sftp
 
 import (
+	"io"
 	"os"
 	"regexp"
 	"testing"
@@ -138,9 +139,9 @@ func (ts *fileSystemTestSuite) TestClientWithAutoDisconnect() {
 	client := &mocks.Client{}
 	client.On("ReadDir", "/").Return([]os.FileInfo{}, nil).Times(3)
 	client.On("Close").Return(nil).Times(1)
-	defaultClientGetter = func(utils.Authority, Options) (Client, error) {
+	defaultClientGetter = func(utils.Authority, Options) (Client, io.Closer, error) {
 		getClientCount++
-		return client, nil
+		return client, nil, nil
 	}
 
 	// setup location with auto-disconnect of one second
