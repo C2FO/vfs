@@ -77,7 +77,7 @@ func getClient(authority utils.Authority, opts Options) (Client, io.Closer, erro
 		return nil, nil, err
 	}
 
-	sftpClient, err :=  _sftp.NewClient(sshConn)
+	sftpClient, err := _sftp.NewClient(sshConn)
 	if err != nil {
 		return nil, nil, err
 	}

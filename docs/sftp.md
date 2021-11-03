@@ -164,7 +164,7 @@ Passing in multiple key exchange algorithms is supported - these are specified a
 When dialing an TCP connection, go doesn't disconnect for you, even when the connection falls out of scope (or even when
 garbage collection is forced).  It must be explicitly closed.  Unfortunately, VFS.FileSystem has no explicit close mechanism.
 Instead, the sftp backend will automatically disconnect 10 seconds (default) after connection.  This disconnect timer is 
-cancelled anytime a server-side request (like list, read, etc) is made.  Once the action is complete, a new timer will begin.
+canceled anytime a server-side request (like list, read, etc) is made.  Once the action is complete, a new timer will begin.
 If the timer is not interrupted by any request, it will disconnect from the server.  Any subsequent server request will
 first reconnect, the do the action.  This timer can be overridden with any number of second (zero is an immediate disconnect).
 
