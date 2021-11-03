@@ -159,18 +159,19 @@ Passing in multiple key exchange algorithms is supported - these are specified a
 "keyExchanges":["diffie-hellman-group-a256", "ecdh-sha2-nistp256"]
 ```
 
-#### AutoDisconnect
-When dialing an TCP connection, go doesn't disconnect for you, even when the connection fall out of scope (or even when
+### AutoDisconnect
+
+When dialing an TCP connection, go doesn't disconnect for you, even when the connection falls out of scope (or even when
 garbage collection is forced).  It must be explicitly closed.  Unfortunately, VFS.FileSystem has no explicit close mechanism.
 Instead, the sftp backend will automatically disconnect 10 seconds (default) after connection.  This disconnect timer is 
-paused anytime a server-side request (like list, read, etc) is made.  Once the action is complete, a new timer will begin.
+cancelled anytime a server-side request (like list, read, etc) is made.  Once the action is complete, a new timer will begin.
 If the timer is not interrupted by any request, it will disconnect from the server.  Any subsequent server request will
 first reconnect, the do the action.  This timer can be overridden with any number of second (zero is an immediate disconnect).
 
 [Options](#type-options).AutoDisconnect accepts an integer representing the number seconds before disconnecting after being idle.
 Default value is 10 seconds.
 
-Any server request action using the same underlying FileSystem (and therefore sftp client), will reset the time.  This
+Any server request action using the same underlying FileSystem (and therefore sftp client), will reset the timer.  This
 should be the most desirable behavior.
 
 ```go
@@ -201,7 +202,7 @@ func main {
 
 NOTE: AutoDisconnect has nothing to do with "keep alive".  Here we're only concerned with releasing resources, not keeping
 the server from disconnecting us.  If that is something you want, you'd have to implement yourself, injecting your own 
-client using WithClient(). 
+client using WithClient().
 
 ## Usage
 
