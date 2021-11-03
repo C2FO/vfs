@@ -444,7 +444,7 @@ func (o *optionsSuite) TestGetClient() {
 
 	for _, t := range tests { // nolint:gocritic // rangeValCopy
 		// apply test
-		_, err := getClient(t.authority, t.options)
+		_, _, err := getClient(t.authority, t.options)
 		if t.hasError {
 			if o.Error(err, "error found") {
 				re := regexp.MustCompile(t.errRegex)

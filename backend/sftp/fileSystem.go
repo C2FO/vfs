@@ -3,6 +3,7 @@ package sftp
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"sync"
@@ -21,12 +22,13 @@ const Scheme = "sftp"
 const name = "Secure File Transfer Protocol"
 const defaultAutoDisconnectDuration = 10
 
-var defaultClientGetter func(utils.Authority, Options) (Client, error)
+var defaultClientGetter func(utils.Authority, Options) (Client, io.Closer, error)
 
 // FileSystem implements vfs.Filesystem for the SFTP filesystem.
 type FileSystem struct {
 	options    vfs.Options
 	sftpclient Client
+	sshConn    io.Closer
 	timerMutex sync.Mutex
 	connTimer  *time.Timer
 }
@@ -107,7 +109,7 @@ func (fs *FileSystem) Client(authority utils.Authority) (Client, error) {
 			return nil, fmt.Errorf("unable to create client, vfs.Options must be an sftp.Options")
 		}
 		var err error
-		fs.sftpclient, err = defaultClientGetter(authority, opts)
+		fs.sftpclient, fs.sshConn, err = defaultClientGetter(authority, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -131,6 +133,11 @@ func (fs *FileSystem) connTimerStart() {
 		if fs.sftpclient != nil {
 			_ = fs.sftpclient.Close()
 			fs.sftpclient = nil
+		}
+
+		if fs.sshConn != nil {
+			_ = fs.sshConn.Close()
+			fs.sshConn = nil
 		}
 	})
 }

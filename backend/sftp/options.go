@@ -2,6 +2,7 @@ package sftp
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -38,18 +39,18 @@ type Options struct {
 // See https://github.com/golang/go/issues/18692
 // To force creation of PEM format(instead of OPENSSH format), use ssh-keygen -m PEM
 
-func getClient(authority utils.Authority, opts Options) (Client, error) {
+func getClient(authority utils.Authority, opts Options) (Client, io.Closer, error) {
 
 	// setup Authentication
 	authMethods, err := getAuthMethods(opts)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// get callback for handling known_hosts man-in-the-middle checks
 	hostKeyCallback, err := getHostKeyCallback(opts)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// To avoid ssh: handshake failed: ssh: no common algorithm for key exchange;
 	// client offered: [curve25519-sha256@libssh.org ecdh-sha2-nistp256 ecdh-sha2-nistp384 ecdh-sha2-	nistp521 diffie-hellman-group14-sha1],
@@ -71,12 +72,17 @@ func getClient(authority utils.Authority, opts Options) (Client, error) {
 	}
 
 	// TODO begin timeout until session is created
-	sshClient, err := ssh.Dial("tcp", host, config)
+	sshConn, err := ssh.Dial("tcp", host, config)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return _sftp.NewClient(sshClient)
+	sftpClient, err :=  _sftp.NewClient(sshConn)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return sftpClient, sshConn, nil
 }
 
 // getHostKeyCallback gets host key callback for all known_hosts files
