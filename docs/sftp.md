@@ -159,18 +159,20 @@ Passing in multiple key exchange algorithms is supported - these are specified a
 "keyExchanges":["diffie-hellman-group-a256", "ecdh-sha2-nistp256"]
 ```
 
-#### AutoDisconnect
-When dialing an TCP connection, go doesn't disconnect for you, even when the connection fall out of scope (or even when
-garbage collection is forced).  It must be explicitly closed.  Unfortunately, VFS.FileSystem has no explicit close mechanism.
-Instead, the sftp backend will automatically disconnect 10 seconds (default) after connection.  This disconnect timer is 
-paused anytime a server-side request (like list, read, etc) is made.  Once the action is complete, a new timer will begin.
-If the timer is not interrupted by any request, it will disconnect from the server.  Any subsequent server request will
-first reconnect, the do the action.  This timer can be overridden with any number of second (zero is an immediate disconnect).
+### AutoDisconnect
+
+When dialing a TCP connection, Go doesn't disconnect for you.  This is true even when the connection falls out of scope, and even when
+garbage collection is forced.  The connection must be explicitly closed.  Unfortunately, VFS.FileSystem has no explicit close mechanism.
+
+Instead, the SFTP backend will automatically disconnect 10 seconds (default) after connection.  This disconnect timer is
+canceled anytime a server-side request (like list, read, etc) is made.  Once the request has completed, a new timer will begin.
+If the timer expires (because it is not interrupted by any request), the server connection will be closed.  Any subsequent server
+request will first reconnect, perform the request, and start a new disconnect timer.
 
 [Options](#type-options).AutoDisconnect accepts an integer representing the number seconds before disconnecting after being idle.
 Default value is 10 seconds.
 
-Any server request action using the same underlying FileSystem (and therefore sftp client), will reset the time.  This
+Any server request action using the same underlying FileSystem (and therefore sftp client), will reset the timer.  This
 should be the most desirable behavior.
 
 ```go
@@ -183,7 +185,7 @@ func doSFTPStuff() {
     _, _ := loc.List()                          // stops timer, does location listing, resets timer to 10 seconds
     file2.Touch()                               // stops timer, "touches" file2, resets timer to 10 seconds
     time.Sleep(time.Duration(15) * time.Second) // pause for 15 seconds, disconnects for server after 10 seconds
-    _, _ := loc.List()                          // does location listing, starts new disconnect timer
+    _, _ := loc.List()                          // reconnects, does location listing, starts new disconnect timer
     return
 }
 
@@ -201,7 +203,7 @@ func main {
 
 NOTE: AutoDisconnect has nothing to do with "keep alive".  Here we're only concerned with releasing resources, not keeping
 the server from disconnecting us.  If that is something you want, you'd have to implement yourself, injecting your own 
-client using WithClient(). 
+client using WithClient().
 
 ## Usage
 
