@@ -98,9 +98,9 @@ func EnsureLeadingSlash(dir string) string {
 	return "/" + dir
 }
 
-// Deprecated: Use TouchCopyBuffer Instead
 // TouchCopy is a wrapper around io.Copy which ensures that even empty source files (reader) will get written as an
 // empty file. It guarantees a Write() call on the target file.
+// Deprecated: Use TouchCopyBuffer Instead
 func TouchCopy(writer io.Writer, reader io.Reader) error {
 	size, err := io.Copy(writer, reader)
 	if err != nil {

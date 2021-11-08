@@ -1,3 +1,4 @@
+//go:build vfsintegration
 // +build vfsintegration
 
 package azure

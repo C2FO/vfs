@@ -1,4 +1,5 @@
-//+build vfsintegration
+//go:build vfsintegration
+// +build vfsintegration
 
 package testsuite
 
