@@ -85,27 +85,7 @@ func parseURI(uri string) (scheme, authority, path string, err error) {
 }
 
 // parseSupportedURI checks if URI matches any backend name as prefix, capturing the longest(most specific) match found.
-// For instance, given registered backends with the names:
-//
-// 's3'                         - registered by default
-// 's3://somebucket/'           - perhaps this was registered using AWS access key id x
-// 's3://somebucket/path/'      - and this was registered using AWS access key id y
-// 's3://somebucket/path/a.txt' - and this was registered using AWS access key id z
-// 's3://some'                  - another contrived registered fs for bucket
-//
-// See the expected registered bucket name for each:
-//
-// 's3://somebucket/path/a.txt' - URI: 's3://somebucket/path/a.txt'         (most specific match)
-// 's3://somebucket/path/a.txt' - URI: 's3://somebucket/path/a.txt.tar.gz'  (prefix still matches)
-// 's3//somebucket/path/'       - URI: 's3://somebucket/path/otherfile.txt' (file only matches path-level registered fs)
-// 's3//somebucket/path/'       - URI: 's3://somebucket/path/'              (exact path-elve match)
-// 's3//somebucket/'            - URI: 's3://somebucket/test/file.txt'      (bucket-level match only)
-// 's3//somebucket/'            - URI: 's3://somebucket/test/'              (still bucket-level match only)
-// 's3//somebucket/'            - URI: 's3://somebucket/'                   (exact bucket-level match)
-// 's3//some'                   - URI: 's3://some-other-bucket/'            (bucket-level match)
-// 's3'                         - URI: 's3://other/'                        (scheme-level match, only)
-// 's3'                         - URI: 's3://other/file.txt'                (scheme-level match, only)
-// 's3'                         - URI: 's3://other/path/to/nowhere/'        (scheme-level match, only)
+// See doc.go Registered Backend Resoltion seciton for examples.
 func parseSupportedURI(uri string) (vfs.FileSystem, string, string, error) {
 	_, authority, path, err := parseURI(uri)
 	if err != nil {
