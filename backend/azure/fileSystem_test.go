@@ -189,6 +189,13 @@ func (s *FileSystemTestSuite) TestParsePath() {
 	s.Error(err, "a container is required so we should get an error")
 	s.Equal("", volume, "we got an error so volume should be empty")
 	s.Equal("", path, "we got an error so path should be empty")
+
+	uri = "https://my-account.blob.core.windows.net/my_container/foo/bar/baz.txt"
+	u, _ = url.Parse(uri)
+	volume, path, err = ParsePath(u.Path)
+	s.NoError(err, "File Path is valid so we should not get an error")
+	s.Equal("my_container", volume)
+	s.Equal("/foo/bar/baz.txt", path)
 }
 
 func (s *FileSystemTestSuite) TestIsValidURI() {
