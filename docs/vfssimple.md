@@ -26,18 +26,18 @@ Just import vfssimple.
 	func main() {
 		myLocalDir, err := vfssimple.NewLocation("file:///tmp/")
 		if err != nil {
-            panic(err)
-        }
+			panic(err)
+		}
 
 		myS3File, err := vfssimple.NewFile("s3://mybucket/some/path/to/key.txt")
 		if err != nil {
-            panic(err)
-        }
+			panic(err)
+		}
 
 		localFile, err := myS3File.MoveToLocation(myLocalDir)
 		if err != nil {
-            panic(err)
-        }
+			panic(err)
+		}
 
 		fmt.Printf("moved %s to %s\n", myS3File, localFile)
 	}
