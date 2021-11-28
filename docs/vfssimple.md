@@ -15,32 +15,32 @@ supported backend file system by using full URI's:
 Just import vfssimple.
 
 ```go
-    package main
-    
-    import (
-        "fmt"
-    
-        "github.com/c2fo/vfs/v6/vfssimple"
-    )
-    
-    func main() {
-        myLocalDir, err := vfssimple.NewLocation("file:///tmp/")
-        if err != nil {
+	package main
+
+	import (
+		"fmt"
+
+		"github.com/c2fo/vfs/v6/vfssimple"
+	)
+
+	func main() {
+		myLocalDir, err := vfssimple.NewLocation("file:///tmp/")
+		if err != nil {
             panic(err)
         }
-    
-        myS3File, err := vfssimple.NewFile("s3://mybucket/some/path/to/key.txt")
-        if err != nil {
+
+		myS3File, err := vfssimple.NewFile("s3://mybucket/some/path/to/key.txt")
+		if err != nil {
             panic(err)
         }
-    
-        localFile, err := myS3File.MoveToLocation(myLocalDir)
-        if err != nil {
+
+		localFile, err := myS3File.MoveToLocation(myLocalDir)
+		if err != nil {
             panic(err)
         }
-    
-        fmt.Printf("moved %s to %s\n", myS3File, localFile)
-    }
+
+		fmt.Printf("moved %s to %s\n", myS3File, localFile)
+	}
 ```
 
 ### Authentication and Options
@@ -56,37 +56,37 @@ resolve the provided URI in NewFile() or NewLocation() to the registered file sy
 ```go
 	package main
 
-    import(
+	import(
 		"fmt"
 
-        "github.com/c2fo/vfs/v6/backend"
-        "github.com/c2fo/vfs/v6/backend/s3"
-        "github.com/c2fo/vfs/v6/vfssimple"
-    )
-    
-    func main() {
-        bucketAuth := s3.NewFileSystem().WithOptions(s3.Options{
-            AccessKeyID:     "key1",
-            SecretAccessKey: "secret1",
-            Region:          "us-west-2",
-        })
-    
-        fileAuth := s3.NewFileSystem().WithOptions(s3.Options{
-            AccessKeyID:     "key2",
-            SecretAccessKey: "secret2",
-            Region:          "us-west-2",
-        })
-    
-        backend.Register("s3://bucket1/", bucketAuth)
-        backend.Register("s3://bucket2/file.txt", fileAuth)
-    
-        secureFile, _ := vfssimple.NewFile("s3://bucket2/file.txt")
-        publicLocation, _ := vfssimple.NewLocation("s3://bucket1/")
-    
-        secureFile.CopyToLocation(publicLocation)
+		"github.com/c2fo/vfs/v6/backend"
+		"github.com/c2fo/vfs/v6/backend/s3"
+		"github.com/c2fo/vfs/v6/vfssimple"
+	)
+
+	func main() {
+		bucketAuth := s3.NewFileSystem().WithOptions(s3.Options{
+			AccessKeyID:     "key1",
+			SecretAccessKey: "secret1",
+			Region:          "us-west-2",
+		})
+
+		fileAuth := s3.NewFileSystem().WithOptions(s3.Options{
+			AccessKeyID:     "key2",
+			SecretAccessKey: "secret2",
+			Region:          "us-west-2",
+		})
+
+		backend.Register("s3://bucket1/", bucketAuth)
+		backend.Register("s3://bucket2/file.txt", fileAuth)
+
+		secureFile, _ := vfssimple.NewFile("s3://bucket2/file.txt")
+		publicLocation, _ := vfssimple.NewLocation("s3://bucket1/")
+
+		secureFile.CopyToLocation(publicLocation)
 
 		fmt.Printf("copied %s to %s\n", secureFile, publicLocation)
-    }
+	}
 ```
 
 ### Registered Backend Resolution
