@@ -34,7 +34,13 @@ func (l *Location) List() ([]string, error) {
 // ListByPrefix returns a slice of file base names and any error, if any
 // List functions return only file basenames
 func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error) {
-	prefix := utils.RemoveLeadingSlash(utils.EnsureTrailingSlash(path.Join(l.prefix, filenamePrefix)))
+	prefix := utils.RemoveLeadingSlash(path.Join(l.prefix, filenamePrefix))
+	if filenamePrefix == "" || filenamePrefix[len(filenamePrefix)-1:] == "/" {
+		prefix = utils.EnsureTrailingSlash(prefix)
+	}
+	if prefix == "/" {
+		prefix = ""
+	}
 	d := path.Dir(prefix)
 	q := &storage.Query{
 		Delimiter: "/",

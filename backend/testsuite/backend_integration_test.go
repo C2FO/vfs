@@ -111,7 +111,7 @@ func (s *vfsTestSuite) SetupSuite() {
 
 }
 
-//Test File
+// Test File
 func (s *vfsTestSuite) TestScheme() {
 	for scheme, location := range s.testLocations {
 		fmt.Printf("************** TESTING scheme: %s **************\n", scheme)
@@ -121,11 +121,11 @@ func (s *vfsTestSuite) TestScheme() {
 	}
 }
 
-//Test FileSystem
+// Test FileSystem
 func (s *vfsTestSuite) FileSystem(baseLoc vfs.Location) {
 	fmt.Println("****** testing vfs.FileSystem ******")
 
-	//setup FileSystem
+	// setup FileSystem
 	fs := baseLoc.FileSystem()
 	// NewFile initializes a File on the specified volume at path 'absFilePath'.
 	//
@@ -189,14 +189,14 @@ func (s *vfsTestSuite) FileSystem(baseLoc vfs.Location) {
 	}
 }
 
-//Test Location
+// Test Location
 func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 	fmt.Println("****** testing vfs.Location ******")
 
 	srcLoc, err := baseLoc.NewLocation("locTestSrc/")
 	s.NoError(err, "there should be no error")
 	defer func() {
-		//clean up srcLoc after test for OS
+		// clean up srcLoc after test for OS
 		if srcLoc.FileSystem().Scheme() == "file" {
 			exists, err := srcLoc.Exists()
 			if err != nil {
@@ -282,7 +282,7 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 	//
 	//   * ChangeDir accepts a relative location path.
 
-	//setup test
+	// setup test
 	cdTestLoc, err := srcLoc.NewLocation("chdirTest/")
 	s.NoError(err)
 
@@ -335,7 +335,7 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 	s.NoError(err)
 	s.True(exists, "baseLoc location exists check")
 
-	//setup list tests
+	// setup list tests
 	f1, err := srcLoc.NewFile("file1.txt")
 	s.NoError(err)
 	_, err = f1.Write([]byte("this is a test file"))
@@ -448,18 +448,18 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 	s.NoError(srcLoc.DeleteFile(f3.Name()), "deleteFile self.txt")
 	s.NoError(srcLoc.DeleteFile("somepath/that.txt"), "deleted relative path")
 
-	//should error if file doesn't exist
+	// should error if file doesn't exist
 	s.Error(srcLoc.DeleteFile(f1.Path()), "deleteFile trying to delete a file already deleted")
 
 }
 
-//Test File
+// Test File
 func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 	fmt.Println("****** testing vfs.File ******")
 	srcLoc, err := baseLoc.NewLocation("fileTestSrc/")
 	s.NoError(err)
 	defer func() {
-		//clean up srcLoc after test for OS
+		// clean up srcLoc after test for OS
 		if srcLoc.FileSystem().Scheme() == "file" {
 			exists, err := srcLoc.Exists()
 			if err != nil {
@@ -471,7 +471,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 		}
 	}()
 
-	//setup srcFile
+	// setup srcFile
 	srcFile, err := srcLoc.NewFile("srcFile.txt")
 	s.NoError(err)
 
@@ -585,7 +585,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 		s.NoError(err)
 		fmt.Printf("** location %s **\n", dstLoc)
 		defer func() {
-			//clean up dstLoc after test for OS
+			// clean up dstLoc after test for OS
 			if dstLoc.FileSystem().Scheme() == "file" {
 				exists, err := dstLoc.Exists()
 				if err != nil {
@@ -769,7 +769,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 		}
 
 		for _, test := range tests {
-			//setup src
+			// setup src
 			srcSpaces, err := srcLoc.NewFile(path.Join(test.Path, test.Filename))
 			s.NoError(err)
 			b, err := srcSpaces.Write([]byte("something"))
@@ -834,11 +834,11 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 	s.NoError(err)
 	s.Equal(uint64(0), size, "%s should be empty", touchedFile)
 
-	//capture last modified
+	// capture last modified
 	modified, err := touchedFile.LastModified()
 	s.NoError(err)
 	modifiedDeRef := *modified
-	//wait for eventual consistency
+	// wait for eventual consistency
 	time.Sleep(1 * time.Second)
 	err = touchedFile.Touch()
 	s.NoError(err)
@@ -858,7 +858,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 	s.NoError(err)
 	s.False(exists, "file no longer exists")
 
-	//The following blocks test that an error is thrown when these operations are called on a non-existent file
+	// The following blocks test that an error is thrown when these operations are called on a non-existent file
 	srcFile, err = srcLoc.NewFile("thisFileDoesNotExist")
 	s.NoError(err, "unexpected error creating file")
 
@@ -880,7 +880,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 	_, err = srcFile.Read(make([]byte, 1))
 	s.Error(err, "expected error because file does not exist")
 
-	//end existence tests
+	// end existence tests
 
 }
 
@@ -914,7 +914,7 @@ func (s *vfsTestSuite) gsList(baseLoc vfs.Location) {
 
 	ctx := context.Background()
 
-	//write zero length object
+	// write zero length object
 	writer := objHandle.NewWriter(ctx)
 	_, err = writer.Write([]byte(""))
 	s.NoError(err)
@@ -953,7 +953,7 @@ func sftpRemoveAll(location *sftp.Location) error {
 		return err
 	}
 
-	//recursively remove directory
+	// recursively remove directory
 	return recursiveSFTPRemove(location.Path(), client)
 }
 
@@ -963,7 +963,7 @@ func recursiveSFTPRemove(absPath string, client sftp.Client) error {
 	err := client.Remove(absPath)
 	// if we succeeded or it didn't exist, just return
 	if err == nil || os.IsNotExist(err) {
-		//success
+		// success
 		return nil
 	}
 
@@ -982,7 +982,7 @@ func recursiveSFTPRemove(absPath string, client sftp.Client) error {
 	var rErr error
 	for _, child := range children {
 		childName := child.Name()
-		//TODO: what about symlinks to directories? we're not recursing into them, which I think is right
+		// TODO: what about symlinks to directories? we're not recursing into them, which I think is right
 		//      if we need to, we'd do:
 		//          if child.Mode() & ModeSymLink != 0 {
 		// 	          do something
