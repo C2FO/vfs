@@ -35,9 +35,16 @@ func (l *Location) List() ([]string, error) {
 // List functions return only file basenames
 func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error) {
 	prefix := utils.RemoveLeadingSlash(path.Join(l.prefix, filenamePrefix))
+	// add trailing slash to location prefix when file query prefix is empty:
+	//     NewLocation("/some/path/").ListByPrefix("")
+	// OR when it ended with a slash (for directory level searches):
+	//     NewLocation("/some/path/").ListByPrefix("dir1/dir2/")
+	// obviously we don't want to add a trailing slash if we're looking for a file prefix:
+	//     NewLocation("/some/path/").ListByPrefix("dir1/MyFilePrefix")
 	if filenamePrefix == "" || filenamePrefix[len(filenamePrefix)-1:] == "/" {
 		prefix = utils.EnsureTrailingSlash(prefix)
 	}
+	// remove location prefix altogether if this is the root
 	if prefix == "/" {
 		prefix = ""
 	}
