@@ -73,7 +73,7 @@ func (lt *locationTestSuite) TestList() {
 			if err != nil {
 				lt.T().Fatal(err)
 			}
-			t.Logf("log.URI() = %s", loc.URI())
+			t.Logf("location URI: %q", loc.URI())
 
 			files, err := loc.List()
 			if err != nil {
@@ -86,7 +86,7 @@ func (lt *locationTestSuite) TestList() {
 			if err != nil {
 				lt.T().Fatal(err)
 			}
-			t.Logf("log.URI() = %s", loc.URI())
+			t.Logf("location URI: %q", loc.URI())
 
 			t.Run("without slash", func(t *testing.T) {
 				files, err := loc.ListByPrefix(objectPrefix)
@@ -102,13 +102,21 @@ func (lt *locationTestSuite) TestList() {
 				}
 				assert.ElementsMatch(t, objectBaseNames, files, "should find all files in the location")
 			})
+			t.Run("include object-level filename prefix f2", func(t *testing.T) {
+				files, err := loc.ListByPrefix(objectPrefix + "/f2")
+				if err != nil {
+					lt.T().Fatal(err)
+				}
+				fileObjectBaseNames := []string{"f2.txt"}
+				assert.ElementsMatch(t, fileObjectBaseNames, files, "should find all files in the location matching f2")
+			})
 		})
 		lt.T().Run("list regex "+objectPrefix, func(t *testing.T) {
 			loc, err := fs.NewLocation(bucket, "/"+objectPrefix)
 			if err != nil {
 				lt.T().Fatal(err)
 			}
-			t.Logf("log.URI() = %s", loc.URI())
+			t.Logf("location URI: %q", loc.URI())
 
 			files, err := loc.ListByRegex(regexp.MustCompile("^f[02].txt$"))
 			if err != nil {

@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Fixed
 - fixed linting issues with missing godoc on exported functions and new build tag formatting.
+- fixed #92 (broken by #72) where calling ListByPrefix() was fail from non-root locations when calling file-level prefixes.
 
 ## [6.0.1] - 2021-11-07
 ### Fixed
