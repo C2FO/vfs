@@ -10,6 +10,8 @@ import (
 	"github.com/c2fo/vfs/v6/backend"
 	_ "github.com/c2fo/vfs/v6/backend/all" // register all backends
 	"github.com/c2fo/vfs/v6/backend/azure"
+	"github.com/c2fo/vfs/v6/backend/mem"
+	"github.com/c2fo/vfs/v6/backend/os"
 )
 
 var (
@@ -77,7 +79,7 @@ func parseURI(uri string) (scheme, authority, path string, err error) {
 		authority = fmt.Sprintf("%s@%s", u.User, u.Host)
 	}
 	// network-based schemes require authority, but not file:// or mem://
-	if authority == "" && !(scheme == "file" || scheme == "mem") {
+	if authority == "" && !(scheme == os.Scheme || scheme == mem.Scheme) {
 		return "", "", "", ErrMissingAuthority
 	}
 
