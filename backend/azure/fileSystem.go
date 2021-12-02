@@ -127,14 +127,22 @@ func init() {
 	backend.Register(Scheme, NewFileSystem())
 }
 
-// ParsePath is a utility function used by vfssiple to separate the host from the path.  The first parameter returned
+// ParsePath is a utility function used by vfssimple to separate the host from the path.  The first parameter returned
 // is the host and the second parameter is the path.
 func ParsePath(p string) (host, pth string, err error) {
 	if p == "/" {
 		return "", "", errors.New("no container specified for Azure path")
 	}
+	var isLocation bool
+	if p[len(p)-1:] == string(os.PathSeparator) {
+		isLocation = true
+	}
 	l := strings.Split(p, string(os.PathSeparator))
-	return l[1], utils.EnsureTrailingSlash(utils.EnsureLeadingSlash(path.Join(l[2:]...))), nil
+	p = utils.EnsureLeadingSlash(path.Join(l[2:]...))
+	if isLocation {
+		p = utils.EnsureTrailingSlash(p)
+	}
+	return l[1], p, nil
 }
 
 // IsValidURI us a utility function used by vfssimple to determine if the given URI is a valid Azure URI

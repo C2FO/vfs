@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - fixed linting issues with missing godoc on exported functions and new build tag formatting.
 - fixed #92 (broken by #72) where calling ListByPrefix() was fail from non-root locations when calling file-level prefixes.
+- fixed azure helper func for vfssimple, ensuring it works on File URIs in addition to Location URIs
+- fixed #97 by updating vfssimple logic to ensure the most specific registered backend that matches a url is used, not just the first one it comes across.  Updated vfssimple docs.
+- Added vfssimple tests.  Zero to 100% coverage.
 
 ## [6.0.1] - 2021-11-07
 ### Fixed
