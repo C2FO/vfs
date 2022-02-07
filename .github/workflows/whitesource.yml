@@ -9,6 +9,8 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
     steps:
     - uses: actions/checkout@v2
 
@@ -16,6 +18,13 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: 1.16
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_C2FO_GITHUB_ACTIONS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_C2FO_GITHUB_ACTIONS_SECRET }}
+        aws-region: us-west-2
 
     - name: Build
       run: go build -v ./...
@@ -28,6 +37,6 @@ jobs:
         WS_PRODUCTNAME: GH_${{github.event.repository.name}}
         WS_PROJECTNAME: GH_${{github.event.repository.name}}
       run: |
-        curl -LJO https://unified-agent.s3.amazonaws.com/wss-unified-agent.jar
+        aws s3api get-object --bucket secops-approved-libraries --key whitesource/wss-unified-agent.jar ./wss-unified-agent.jar
         echo Unified Agent downloaded successfully
         java -jar wss-unified-agent.jar
