@@ -126,22 +126,18 @@ func PathToURI(p string) (string, error) {
 		return p, nil
 	}
 
-	if u.IsAbs() {
-		// already absolute path
-		URI = "file://" + p
-	} else {
-		// make relative path absolute path
-		absPath, err := filepath.Abs(p)
-		if err != nil {
-			return "", err
-		}
-		// Abs() strips trailing slashes so add back if original path had slash
-		if p[len(p)-1:] == "/" {
-			absPath = EnsureTrailingSlash(absPath)
-		}
-
-		URI = "file://" + absPath
+	// make absolute path (if not already)
+	absPath, err := filepath.Abs(p)
+	if err != nil {
+		return "", err
 	}
+
+	// Abs() strips trailing slashes so add back if original path had slash
+	if p[len(p)-1:] == "/" {
+		absPath = EnsureTrailingSlash(absPath)
+	}
+
+	URI = "file://" + absPath
 
 	return URI, err
 }
