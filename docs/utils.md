@@ -1,13 +1,9 @@
 # utils
+--
+    import "command-line-arguments"
 
----
 
-
-```go
-    import "github.com/c2fo/vfs/v6/utils"
-```
-
-#### Error Constants
+## Usage
 
 ```go
 const (
@@ -18,8 +14,8 @@ const (
 	// ErrBadAbsLocationPath constant is returned when a file path is not absolute
 	ErrBadAbsLocationPath = "absolute location path is invalid - must include leading and trailing slashes"
 	// ErrBadRelLocationPath constant is returned when a file path is not relative
-	ErrBadRelLocationPath = "relative location path is invalid - may not include leading slash but must include trailing slash" 
-	// TouchCopyMinBufferSize min buffer size used in TouchCopyBuffered in bytes 
+	ErrBadRelLocationPath = "relative location path is invalid - may not include leading slash but must include trailing slash"
+	// TouchCopyMinBufferSize min buffer size used in TouchCopyBuffered in bytes
 	TouchCopyMinBufferSize = 262144
 )
 ```
@@ -54,6 +50,27 @@ func GetLocationURI(l vfs.Location) string
 ```
 GetLocationURI returns a Location URI
 
+#### func  PathToURI
+
+```go
+func PathToURI(p string) (string, error)
+```
+PathToURI takes a relative or absolute path and returns an OS URI. 
+* We assume
+non-scheme path is an OS File or Location. 
+* We assume volume(URI authority) is
+empty. 
+* We assume relative paths are relative to the pwd (program's working
+directory)
+* We assum an empty path is equal to the root path: "/"
+
+| original path | becomes URI |
+| --------------- | --------------- |
+| /absolute/path/to/file.txt | file:///absolute/path/to/file.txt |
+| /some/absolute/path/ | file:///absolute/path/ |
+| relative/path/to/file.txt | file:///absolute/path/with/relative/path/to/file.txt |
+| relative/path/ | file:///absolute/path/with/relative/path/ |
+
 #### func  RemoveLeadingSlash
 
 ```go
@@ -69,22 +86,25 @@ func RemoveTrailingSlash(path string) string
 RemoveTrailingSlash removes trailing slash, if any
 
 #### func  TouchCopy
- 
+
 ```go
 func TouchCopy(writer io.Writer, reader io.Reader) error
 ```
-Deprecated: Use TouchCopyBuffer Instead. TouchCopy is a wrapper around [io.Copy](https://godoc.org/io#Copy) which ensures that even empty source files
-(reader) will get written as an empty file. It guarantees a Write() call on the target file.
+TouchCopy is a wrapper around [io.Copy](https://godoc.org/io#Copy) which ensures that even empty source files
+(reader) will get written as an empty file. It guarantees a Write() call on the
+target file. Deprecated: Use TouchCopyBuffer Instead
 
 #### func  TouchCopyBuffered
 
 ```go
-func TouchCopyBuffered(writer io.Writer, reader io.Reader, bufferSize int)
+func TouchCopyBuffered(writer io.Writer, reader io.Reader, bufferSize int) error
 ```
-TouchCopy is a wrapper around [io.CopyBuffer](https://godoc.org/io#CopyBuffer) which ensures that even empty source files
-(reader) will get written as an empty file. It guarantees a Write() call on the target file. Furthermore, it will use a
-buffer that is equal to bufferSize measured in bytes. If bufferSize is 0, then a default buffer of TouchCopyMinBufferSize 
-bytes is used.
+TouchCopyBuffered is a wrapper around [io.CopyBuffer](https://godoc.org/io#CopyBuffer) which ensures that even
+empty source files (reader) will get written as an empty file. It guarantees a
+Write() call on the target file. bufferSize is in bytes and if is less than
+TouchCopyMinBufferSize will result in a buffer of size TouchCopyMinBufferSize
+bytes. If bufferSize is > TouchCopyMinBufferSize it will result in a buffer of
+size bufferSize bytes
 
 #### func  UpdateLastModifiedByMoving
 
