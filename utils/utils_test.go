@@ -499,10 +499,10 @@ func (s *utilsTest) TestPathToURI() {
 
 	// test error return from bad uri.parse
 	const nullChar = '\u0000'
-	// parse
+	// parse path with null character
 	_, err := utils.PathToURI(fmt.Sprintf("/some%s/path/", string(nullChar)))
 	s.Error(err, "expected error on ctrl char in path")
-	s.EqualError(err, "blah")
+	s.EqualError(err, "parse \"/some\\x00/path/\": net/url: invalid control character in URL")
 }
 
 func (s *utilsTest) TestGetURI() {
