@@ -1,7 +1,12 @@
 # utils
---
+---
 
-## Usage
+
+```go
+    import "github.com/c2fo/vfs/v6/utils"
+```
+
+#### Error Constants
 
 ```go
 const (
