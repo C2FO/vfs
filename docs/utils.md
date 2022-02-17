@@ -1,7 +1,5 @@
 # utils
 --
-    import "command-line-arguments"
-
 
 ## Usage
 
