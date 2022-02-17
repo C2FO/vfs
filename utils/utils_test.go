@@ -422,6 +422,81 @@ func (s *utilsTest) TestValidateRelLocationPath() {
 	}
 }
 
+type URITest struct {
+	path     string
+	expected string
+	message  string
+	isRegex  bool
+}
+
+func (s *utilsTest) TestPathToURI() {
+	tests := []URITest{
+		{
+			path:     "/absolute/path/",
+			expected: "file:///absolute/path/",
+			message:  "absolute location path",
+		},
+		{
+			path:     "/absolute/path",
+			expected: "file:///absolute/path",
+			message:  "absolute file path - looks like location",
+		},
+		{
+			path:     "/absolute/path/to/file.txt",
+			expected: "file:///absolute/path/to/file.txt",
+			message:  "absolute file path",
+		},
+		{
+			path:     "relative/path/",
+			expected: "file:///.+?/relative/path/",
+			message:  "relative location path",
+			isRegex:  true,
+		},
+		{
+			path:     "relative/path",
+			expected: "file:///.+?/relative/path",
+			message:  "relative file path - looks like location",
+			isRegex:  true,
+		},
+		{
+			path:     "relative/path/to/file.txt",
+			expected: "file:///.+?/relative/path/to/file.txt",
+			message:  "relative file path",
+			isRegex:  true,
+		},
+		{
+			path:     "/",
+			expected: "file:///",
+			message:  "just a slash - root location",
+		},
+		{
+			path:     "",
+			expected: "file:///",
+			message:  "empty string - root location",
+		},
+		{
+			path:     "file:///some/path/file.txt",
+			expected: "file:///some/path/file.txt",
+			message:  "already a URI - OS Scheme",
+		},
+		{
+			path:     "s3://bucket/some/path/file.txt",
+			expected: "s3://bucket/some/path/file.txt",
+			message:  "already a URI - other Scheme",
+		},
+	}
+
+	for _, slashtest := range tests {
+		uri, err := utils.PathToURI(slashtest.path)
+		s.Require().NoError(err, "no error expected")
+		if slashtest.isRegex {
+			s.Regexp(slashtest.expected, uri, slashtest.message)
+		} else {
+			s.Equal(slashtest.expected, uri, slashtest.message)
+		}
+	}
+}
+
 func (s *utilsTest) TestGetURI() {
 
 	// set up mocks

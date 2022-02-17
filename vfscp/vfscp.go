@@ -3,12 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"net/url"
 	"os"
-	"path/filepath"
 
 	"github.com/fatih/color"
 
+	"github.com/c2fo/vfs/v6/utils"
 	"github.com/c2fo/vfs/v6/vfssimple"
 )
 
@@ -48,11 +47,11 @@ func main() {
 
 	fmt.Println("")
 
-	srcFileURI, err := normalizeArgs(flag.Arg(0))
+	srcFileURI, err := utils.PathToURI(flag.Arg(0))
 	if err != nil {
 		panic(err)
 	}
-	targetFileURI, err := normalizeArgs(flag.Arg(1))
+	targetFileURI, err := utils.PathToURI(flag.Arg(1))
 	if err != nil {
 		panic(err)
 	}
@@ -80,24 +79,6 @@ func copyFiles(srcFileURI, targetFileURI string) {
 
 	fmt.Print(green.Sprint("done\n\n"))
 
-}
-
-func normalizeArgs(str string) (string, error) {
-	var normalizedArg string
-	u, err := url.Parse(str)
-	if err != nil {
-		return "", err
-	}
-	if u.IsAbs() {
-		normalizedArg = str
-	} else {
-		absPath, err := filepath.Abs(str)
-		if err != nil {
-			return "", err
-		}
-		normalizedArg = "file://" + absPath
-	}
-	return normalizedArg, err
 }
 
 func failMessage(err error) {
