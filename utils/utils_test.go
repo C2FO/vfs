@@ -1,6 +1,7 @@
 package utils_test
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -495,6 +496,13 @@ func (s *utilsTest) TestPathToURI() {
 			s.Equal(slashtest.expected, uri, slashtest.message)
 		}
 	}
+
+	// test error return from bad uri.parse
+	const nullChar = '\u0000'
+	// parse
+	_, err := utils.PathToURI(fmt.Sprintf("/some%s/path/", string(nullChar)))
+	s.Error(err, "expected error on ctrl char in path")
+	s.EqualError(err, "blah")
 }
 
 func (s *utilsTest) TestGetURI() {
