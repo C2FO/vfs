@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -96,6 +98,48 @@ func EnsureLeadingSlash(dir string) string {
 		return dir
 	}
 	return "/" + dir
+}
+
+// PathToURI takes a relative or absolute path and returns an OS URI.
+// We assume non-scheme path is an OS File or Location.
+// We assume volume(URI authority) is empty.
+// We assume relative paths are relative to the pwd (program's working directory)
+//
+// /absolute/path/to/file.txt : file:///absolute/path/to/file.txt
+// /some/absolute/path/       : file:///absolute/path/
+// relative/path/to/file.txt  : file:///absolute/path/with/relative/path/to/file.txt
+// relative/path/             : file:///absolute/path/with/relative/path/
+func PathToURI(p string) (string, error) {
+	if p == "" {
+		p = "/"
+	}
+	var URI string
+
+	// parse path
+	u, err := url.Parse(p)
+	if err != nil {
+		return "", err
+	}
+
+	// if scheme is found, its already a URI
+	if u.Scheme != "" {
+		return p, nil
+	}
+
+	// make absolute path (if not already)
+	absPath, err := filepath.Abs(p)
+	if err != nil {
+		return "", err
+	}
+
+	// Abs() strips trailing slashes so add back if original path had slash
+	if p[len(p)-1:] == "/" {
+		absPath = EnsureTrailingSlash(absPath)
+	}
+
+	URI = "file://" + absPath
+
+	return URI, err
 }
 
 // TouchCopy is a wrapper around io.Copy which ensures that even empty source files (reader) will get written as an
