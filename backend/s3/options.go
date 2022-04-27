@@ -18,16 +18,18 @@ import (
 
 // Options holds s3-specific options.  Currently only client options are used.
 type Options struct {
-	AccessKeyID           string `json:"accessKeyId,omitempty"`
-	SecretAccessKey       string `json:"secretAccessKey,omitempty"`
-	SessionToken          string `json:"sessionToken,omitempty"`
-	Region                string `json:"region,omitempty"`
-	Endpoint              string `json:"endpoint,omitempty"`
-	ACL                   string `json:"acl,omitempty"`
-	Retry                 request.Retryer
-	MaxRetries            int
-	FileBufferSize        int   // Buffer size in bytes used with utils.TouchCopyBuffered
-	DownloadPartitionSize int64 // Partition size in bytes used to multipart download large files using S3 Downloader
+	AccessKeyID                 string `json:"accessKeyId,omitempty"`
+	SecretAccessKey             string `json:"secretAccessKey,omitempty"`
+	SessionToken                string `json:"sessionToken,omitempty"`
+	Region                      string `json:"region,omitempty"`
+	Endpoint                    string `json:"endpoint,omitempty"`
+	ACL                         string `json:"acl,omitempty"`
+	ForcePathStyle              bool   `json:"forcePathStyle,omitempty"`
+	DisableServerSideEncryption bool   `json:"disableServerSideEncryption,omitempty"`
+	Retry                       request.Retryer
+	MaxRetries                  int
+	FileBufferSize              int   // Buffer size in bytes used with utils.TouchCopyBuffered
+	DownloadPartitionSize       int64 // Partition size in bytes used to multipart download large files using S3 Downloader
 }
 
 // getClient setup S3 client
@@ -41,6 +43,11 @@ func getClient(opt Options) (s3iface.S3API, error) {
 		awsConfig.WithRegion(opt.Region)
 	} else if val, ok := os.LookupEnv("AWS_DEFAULT_REGION"); ok {
 		awsConfig.WithRegion(val)
+	}
+
+	// set filepath for minio users
+	if opt.ForcePathStyle {
+		awsConfig.S3ForcePathStyle = &opt.ForcePathStyle
 	}
 
 	// use specific endpoint, otherwise, will use aws "default endpoint resolver" based on region
