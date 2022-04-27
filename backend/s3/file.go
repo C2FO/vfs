@@ -361,13 +361,14 @@ func (f *File) getCopyObjectInput(targetFile *File) (*s3.CopyObjectInput, error)
 		copySourceKey := url.PathEscape(path.Join(f.bucket, f.key))
 
 		copyInput := new(s3.CopyObjectInput).
+			SetServerSideEncryption("AES256").
 			SetACL(ACL).
 			SetKey(targetFile.key).
 			SetBucket(targetFile.bucket).
 			SetCopySource(copySourceKey)
 
-		if !f.fileSystem.options.(Options).DisableServerSideEncryption {
-			copyInput = copyInput.SetServerSideEncryption("AES256")
+		if f.fileSystem.options != nil && f.fileSystem.options.(Options).DisableServerSideEncryption {
+			copyInput.ServerSideEncryption = nil
 		}
 
 		// validate copyInput
@@ -428,16 +429,17 @@ func (f *File) getObjectInput() *s3.GetObjectInput {
 	return new(s3.GetObjectInput).SetBucket(f.bucket).SetKey(f.key)
 }
 
-//TODO: need to provide an implementation-agnostic container for providing config options such as SSE
+// TODO: need to provide an implementation-agnostic container for providing config options such as SSE
 func uploadInput(f *File) *s3manager.UploadInput {
+	sseType := "AES256"
 	input := &s3manager.UploadInput{
-		Bucket: &f.bucket,
-		Key:    &f.key,
+		Bucket:               &f.bucket,
+		Key:                  &f.key,
+		ServerSideEncryption: &sseType,
 	}
 
-	if !f.fileSystem.options.(Options).DisableServerSideEncryption {
-		sseType := "AES256"
-		input.ServerSideEncryption = &sseType
+	if f.fileSystem.options != nil && f.fileSystem.options.(Options).DisableServerSideEncryption {
+		input.ServerSideEncryption = nil
 	}
 
 	if f.fileSystem.options == nil {
