@@ -29,11 +29,13 @@ func (o *optionsTestSuite) TestGetClient() {
 		AccessKeyID:     "mykey",
 		SecretAccessKey: "mysecret",
 		Region:          "some-region",
+		ForcePathStyle:  true,
 	}
 	client, err = getClient(opts)
 	o.NoError(err)
 	o.NotNil(client, "client is set")
 	o.Equal("some-region", *client.(*s3.S3).Config.Region, "region is set")
+	o.Truef(*client.(*s3.S3).Config.S3ForcePathStyle, "region is set")
 
 	// env var
 	_ = os.Setenv("AWS_DEFAULT_REGION", "set-by-envvar")
