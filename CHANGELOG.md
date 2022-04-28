@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [6.2.0]
 ### Added
-update
+- Add S3 option ForcePathStyle.  Fixes #96
+- Add S3 option DisableServerSideEncryption. Fixes #98
 
 ## [6.1.0]
 ### Added
