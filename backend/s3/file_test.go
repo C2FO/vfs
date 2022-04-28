@@ -277,8 +277,11 @@ func (ts *fileTestSuite) TestGetCopyObject() {
 	for _, t := range tests {
 		sourceFile := &File{
 			fileSystem: &FileSystem{
-				client:  s3apiMock,
-				options: defaultOptions,
+				client: s3apiMock,
+				options: Options{
+					AccessKeyID:                 "abc",
+					DisableServerSideEncryption: true,
+				},
 			},
 			bucket: "TestBucket",
 			key:    t.key,
@@ -286,8 +289,10 @@ func (ts *fileTestSuite) TestGetCopyObject() {
 
 		targetFile := &File{
 			fileSystem: &FileSystem{
-				client:  s3apiMock,
-				options: defaultOptions,
+				client: s3apiMock,
+				options: Options{
+					AccessKeyID: "abc",
+				},
 			},
 			bucket: "TestBucket",
 			key:    "source.txt",
@@ -297,6 +302,7 @@ func (ts *fileTestSuite) TestGetCopyObject() {
 		actual, err := sourceFile.getCopyObjectInput(targetFile)
 		ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
 		ts.Equal("TestBucket"+t.expectedCopySource, *actual.CopySource)
+		ts.Nil(actual.ServerSideEncryption, "sse is disabled")
 	}
 
 	// test that different options returns nil
@@ -603,6 +609,16 @@ func (ts *fileTestSuite) TestUploadInput() {
 	ts.Equal("AES256", *uploadInput(file.(*File)).ServerSideEncryption, "sse was set")
 	ts.Equal("/some/file/test.txt", *uploadInput(file.(*File)).Key, "key was set")
 	ts.Equal("mybucket", *uploadInput(file.(*File)).Bucket, "bucket was set")
+}
+
+func (ts *fileTestSuite) TestUploadInputDisableSSE() {
+	fs := NewFileSystem().
+		WithOptions(Options{DisableServerSideEncryption: true})
+	file, _ := fs.NewFile("mybucket", "/some/file/test.txt")
+	input := uploadInput(file.(*File))
+	ts.Nil(input.ServerSideEncryption, "sse was disabled")
+	ts.Equal("/some/file/test.txt", *input.Key, "key was set")
+	ts.Equal("mybucket", *input.Bucket, "bucket was set")
 }
 
 func (ts *fileTestSuite) TestNewFile() {

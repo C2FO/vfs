@@ -438,12 +438,12 @@ func uploadInput(f *File) *s3manager.UploadInput {
 		ServerSideEncryption: &sseType,
 	}
 
-	if f.fileSystem.options != nil && f.fileSystem.options.(Options).DisableServerSideEncryption {
-		input.ServerSideEncryption = nil
-	}
-
 	if f.fileSystem.options == nil {
 		f.fileSystem.options = Options{}
+	}
+
+	if f.fileSystem.options.(Options).DisableServerSideEncryption {
+		input.ServerSideEncryption = nil
 	}
 
 	if opts, ok := f.fileSystem.options.(Options); ok {
