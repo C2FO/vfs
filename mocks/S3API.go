@@ -3549,6 +3549,84 @@ func (_m *S3API) GetObjectAclWithContext(_a0 context.Context, _a1 *s3.GetObjectA
 	return r0, r1
 }
 
+// GetObjectAttributes provides a mock function with given fields: _a0
+func (_m *S3API) GetObjectAttributes(_a0 *s3.GetObjectAttributesInput) (*s3.GetObjectAttributesOutput, error) {
+	ret := _m.Called(_a0)
+
+	var r0 *s3.GetObjectAttributesOutput
+	if rf, ok := ret.Get(0).(func(*s3.GetObjectAttributesInput) *s3.GetObjectAttributesOutput); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*s3.GetObjectAttributesOutput)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(*s3.GetObjectAttributesInput) error); ok {
+		r1 = rf(_a0)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetObjectAttributesRequest provides a mock function with given fields: _a0
+func (_m *S3API) GetObjectAttributesRequest(_a0 *s3.GetObjectAttributesInput) (*request.Request, *s3.GetObjectAttributesOutput) {
+	ret := _m.Called(_a0)
+
+	var r0 *request.Request
+	if rf, ok := ret.Get(0).(func(*s3.GetObjectAttributesInput) *request.Request); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*request.Request)
+		}
+	}
+
+	var r1 *s3.GetObjectAttributesOutput
+	if rf, ok := ret.Get(1).(func(*s3.GetObjectAttributesInput) *s3.GetObjectAttributesOutput); ok {
+		r1 = rf(_a0)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*s3.GetObjectAttributesOutput)
+		}
+	}
+
+	return r0, r1
+}
+
+// GetObjectAttributesWithContext provides a mock function with given fields: _a0, _a1, _a2
+func (_m *S3API) GetObjectAttributesWithContext(_a0 context.Context, _a1 *s3.GetObjectAttributesInput, _a2 ...request.Option) (*s3.GetObjectAttributesOutput, error) {
+	_va := make([]interface{}, len(_a2))
+	for _i := range _a2 {
+		_va[_i] = _a2[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, _a0, _a1)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 *s3.GetObjectAttributesOutput
+	if rf, ok := ret.Get(0).(func(context.Context, *s3.GetObjectAttributesInput, ...request.Option) *s3.GetObjectAttributesOutput); ok {
+		r0 = rf(_a0, _a1, _a2...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*s3.GetObjectAttributesOutput)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *s3.GetObjectAttributesInput, ...request.Option) error); ok {
+		r1 = rf(_a0, _a1, _a2...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetObjectLegalHold provides a mock function with given fields: _a0
 func (_m *S3API) GetObjectLegalHold(_a0 *s3.GetObjectLegalHoldInput) (*s3.GetObjectLegalHoldOutput, error) {
 	ret := _m.Called(_a0)

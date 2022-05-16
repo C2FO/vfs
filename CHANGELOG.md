@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
+## [6.3.0]
+### Security
+- Update go.mod min version to Go 1.17
+- Update actions/setup-go action to v3
+- Update actions/checkout action to v3
+- Update golangci/golangci-lint-action action to v3
+- Update actions to test only supported Go versions (1.17, 1.18)
+- Updated dependencies (ie, Google Cloud, Azure, AWS sdks)
+
 ## [6.2.0]
 ### Added
 - Add S3 option ForcePathStyle.  Fixes #96
