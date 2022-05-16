@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update actions/checkout action to v3
 - Update golangci/golangci-lint-action action to v3
 - Update actions to test only supported Go versions (1.17, 1.18)
+- Updated dependencies (ie, Google Cloud, Azure, AWS sdks)
 
 ## [6.2.0]
 ### Added

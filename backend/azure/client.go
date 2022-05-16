@@ -108,7 +108,7 @@ func (a *DefaultClient) Upload(file vfs.File, content io.ReadSeeker) error {
 	containerURL := azblob.NewContainerURL(*URL, a.pipeline)
 	blobURL := containerURL.NewBlockBlobURL(utils.RemoveLeadingSlash(file.Path()))
 	_, err = blobURL.Upload(context.Background(), content, azblob.BlobHTTPHeaders{}, azblob.Metadata{},
-		azblob.BlobAccessConditions{}, azblob.DefaultAccessTier, nil, azblob.ClientProvidedKeyOptions{})
+		azblob.BlobAccessConditions{}, azblob.DefaultAccessTier, nil, azblob.ClientProvidedKeyOptions{}, azblob.ImmutabilityPolicyOptions{})
 	return err
 }
 
