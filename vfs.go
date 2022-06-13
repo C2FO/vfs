@@ -5,6 +5,8 @@ import (
 	"io"
 	"regexp"
 	"time"
+
+	"github.com/c2fo/vfs/v6/options"
 )
 
 // FileSystem represents a file system with any authentication accounted for.
@@ -129,7 +131,7 @@ type Location interface {
 	// error handling overhead.
 	//
 	// * Accepts relative file path.
-	DeleteFile(relFilePath string) error
+	DeleteFile(relFilePath string, deleteOpts ...options.DeleteOption) error
 
 	// URI returns the fully qualified absolute URI for the Location.  IE, s3://bucket/some/path/
 	//
@@ -195,7 +197,7 @@ type File interface {
 	MoveToFile(file File) error
 
 	// Delete unlinks the File on the file system.
-	Delete() error
+	Delete(deleteOpts ...options.DeleteOption) error
 
 	// LastModified returns the timestamp the file was last modified (as *time.Time).
 	LastModified() (*time.Time, error)

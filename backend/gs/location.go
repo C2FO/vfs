@@ -10,6 +10,7 @@ import (
 	"google.golang.org/api/iterator"
 
 	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -176,13 +177,13 @@ func (l *Location) NewFile(filePath string) (vfs.File, error) {
 }
 
 // DeleteFile deletes the file at the given path, relative to the current location.
-func (l *Location) DeleteFile(fileName string) error {
+func (l *Location) DeleteFile(fileName string, opts ...options.DeleteOption) error {
 	file, err := l.NewFile(fileName)
 	if err != nil {
 		return err
 	}
 
-	return file.Delete()
+	return file.Delete(opts...)
 }
 
 // URI returns a URI string for the GCS location.

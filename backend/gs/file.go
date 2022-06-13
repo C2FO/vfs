@@ -11,9 +11,12 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"google.golang.org/api/iterator"
 
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/backend"
+	"github.com/c2fo/vfs/v6/options"
+	"github.com/c2fo/vfs/v6/options/deleteOptions"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -206,17 +209,41 @@ func (f *File) MoveToFile(file vfs.File) error {
 }
 
 // Delete clears any local temp file, or write buffer from read/writes to the file, then makes
-// a DeleteObject call to GCS for the file. Returns any error returned by the API.
-func (f *File) Delete() error {
+// a DeleteObject call to GCS for the file. If DeleteAllVersions option is provided,
+// DeleteObject call is made to GCS for each version of the file. Returns any error returned by the API.
+func (f *File) Delete(opts ...options.DeleteOption) error {
 	f.writeBuffer = nil
 	if err := f.Close(); err != nil {
 		return err
 	}
-	handle, err := f.getObjectHandle()
-	if err != nil {
-		return err
+
+	var deleteAllVersions bool
+	for _, o := range opts {
+		switch o.(type) {
+		case deleteOptions.DeleteAllVersions:
+			deleteAllVersions = true
+		}
 	}
-	return handle.Delete(f.fileSystem.ctx)
+
+	if deleteAllVersions {
+		handles, err := f.getObjectGenerationHandles()
+		if err != nil {
+			return err
+		}
+		for _, handle := range handles {
+			err := handle.Delete(f.fileSystem.ctx)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	} else {
+		handle, err := f.getObjectHandle()
+		if err != nil {
+			return err
+		}
+		return handle.Delete(f.fileSystem.ctx)
+	}
 }
 
 // Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
@@ -439,6 +466,30 @@ func (f *File) getObjectHandle() (ObjectHandleCopier, error) {
 
 	handler := client.Bucket(f.bucket).Object(utils.RemoveLeadingSlash(f.key))
 	return &RetryObjectHandler{Retry: f.fileSystem.Retry(), handler: handler}, nil
+}
+
+// getObjectGenerationHandles returns Object generation structs for file
+func (f *File) getObjectGenerationHandles() ([]*storage.ObjectHandle, error) {
+	client, err := f.fileSystem.Client()
+	var handles []*storage.ObjectHandle
+	if err != nil {
+		return nil, err
+	}
+	it := client.Bucket(f.bucket).
+		Objects(f.fileSystem.ctx, &storage.Query{Versions: true, Prefix: utils.RemoveLeadingSlash(f.key)})
+
+	for {
+		attrs, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		handle := client.Bucket(attrs.Bucket).Object(attrs.Name).Generation(attrs.Generation)
+		handles = append(handles, handle)
+	}
+	return handles, err
 }
 
 // getObjectAttrs returns the file's attributes

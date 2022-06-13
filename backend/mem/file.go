@@ -10,6 +10,7 @@ import (
 
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/backend"
+	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -420,7 +421,7 @@ func (f *File) MoveToFile(file vfs.File) error {
 
 // Delete removes the file from the FileSystem. Sets it path in the fsMap to nil,
 // and also nils the file's members
-func (f *File) Delete() error {
+func (f *File) Delete(opts ...options.DeleteOption) error {
 	if f == nil {
 		return nilReference()
 	}

@@ -19,6 +19,8 @@ import (
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/backend"
 	"github.com/c2fo/vfs/v6/mocks"
+	"github.com/c2fo/vfs/v6/options"
+	"github.com/c2fo/vfs/v6/options/deleteOptions"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -181,8 +183,9 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 // CRUD Operations
 
 // Delete clears any local temp file, or write buffer from read/writes to the file, then makes
-// a DeleteObject call to s3 for the file. Returns any error returned by the API.
-func (f *File) Delete() error {
+// a DeleteObject call to s3 for the file. If DeleteAllVersions option is provided,
+// DeleteObject call is made to s3 for each version of the file. Returns any error returned by the API.
+func (f *File) Delete(opts ...options.DeleteOption) error {
 	f.writeBuffer = nil
 	if err := f.Close(); err != nil {
 		return err
@@ -193,10 +196,36 @@ func (f *File) Delete() error {
 		return err
 	}
 
-	_, err = client.DeleteObject(&s3.DeleteObjectInput{
-		Key:    &f.key,
-		Bucket: &f.bucket,
-	})
+	var deleteAllVersions bool
+	for _, o := range opts {
+		switch o.(type) {
+		case deleteOptions.DeleteAllVersions:
+			deleteAllVersions = true
+		}
+	}
+
+	if deleteAllVersions {
+		objectVersions, err := f.getAllObjectVersions(client)
+		if err != nil {
+			return err
+		}
+
+		for _, version := range objectVersions.Versions {
+			if _, err = client.DeleteObject(&s3.DeleteObjectInput{
+				Key:       &f.key,
+				Bucket:    &f.bucket,
+				VersionId: version.VersionId,
+			}); err != nil {
+				return err
+			}
+		}
+	} else {
+		_, err = client.DeleteObject(&s3.DeleteObjectInput{
+			Key:    &f.key,
+			Bucket: &f.bucket,
+		})
+	}
+
 	return err
 }
 
@@ -316,6 +345,15 @@ func (f *File) String() string {
 /*
 	Private helper functions
 */
+func (f *File) getAllObjectVersions(client s3iface.S3API) (*s3.ListObjectVersionsOutput, error) {
+	prefix := utils.RemoveLeadingSlash(f.key)
+	objVers, err := client.ListObjectVersions(&s3.ListObjectVersionsInput{
+		Bucket: &f.bucket,
+		Prefix: &prefix,
+	})
+	return objVers, err
+}
+
 func (f *File) getHeadObject() (*s3.HeadObjectOutput, error) {
 	headObjectInput := new(s3.HeadObjectInput).SetKey(f.key).SetBucket(f.bucket)
 	client, err := f.fileSystem.Client()

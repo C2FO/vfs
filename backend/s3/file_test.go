@@ -21,6 +21,7 @@ import (
 
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/mocks"
+	"github.com/c2fo/vfs/v6/options/deleteOptions"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -548,6 +549,23 @@ func (ts *fileTestSuite) TestDelete() {
 	err := testFile.Delete()
 	ts.Nil(err, "Successful delete should not return an error.")
 	s3apiMock.AssertExpectations(ts.T())
+}
+
+func (ts *fileTestSuite) TestDeleteWithDeleteAllVersionsOption() {
+	var versions []*s3.ObjectVersion
+	for _, s := range [...]string{"ver1", "ver2"} {
+		versions = append(versions, &s3.ObjectVersion{VersionId: &s})
+	}
+	versOutput := s3.ListObjectVersionsOutput{
+		Versions: versions,
+	}
+	s3apiMock.On("ListObjectVersions", mock.AnythingOfType("*s3.ListObjectVersionsInput")).Return(&versOutput, nil)
+	s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
+
+	err := testFile.Delete(deleteOptions.WithDeleteAllVersion())
+	ts.Nil(err, "Successful delete should not return an error.")
+	s3apiMock.AssertExpectations(ts.T())
+	s3apiMock.AssertNumberOfCalls(ts.T(), "DeleteObject", 2)
 }
 
 func (ts *fileTestSuite) TestLastModified() {
