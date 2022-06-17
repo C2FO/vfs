@@ -113,6 +113,41 @@ func (ts *fileTestSuite) TestRead() {
 	ts.Equal(localFile.String(), contents, "Copying an gs file to a buffer should fill buffer with file's contents")
 }
 
+func (ts *fileTestSuite) TestDelete() {
+	contents := "hello world!"
+	bucketName := "bucki"
+	objectName := "some/path/file.txt"
+	server := fakestorage.NewServer(
+		Objects{
+			fakestorage.Object{
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName:      bucketName,
+					Name:            objectName,
+					ContentType:     "text/plain",
+					ContentEncoding: "utf8",
+				},
+				Content: []byte(contents),
+			},
+		},
+	)
+	defer server.Stop()
+	client := server.Client()
+	fs := NewFileSystem().WithClient(client)
+
+	file, err := fs.NewFile(bucketName, "/"+objectName)
+	if err != nil {
+		ts.Fail("Shouldn't fail creating new file")
+	}
+
+	err = file.Delete()
+	if err != nil {
+		ts.Fail("Shouldn't fail deleting the file")
+	}
+
+	bucket := client.Bucket(bucketName)
+	assert.Equal(ts.T(), false, objectExists(bucket, objectName))
+}
+
 func (ts *fileTestSuite) TestWrite() {
 	contents := "hello world!"
 	bucketName := "bucki"
