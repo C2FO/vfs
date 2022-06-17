@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/c2fo/vfs/v6/options/deleteOptions"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -146,6 +147,53 @@ func (ts *fileTestSuite) TestDelete() {
 
 	bucket := client.Bucket(bucketName)
 	assert.Equal(ts.T(), false, objectExists(bucket, objectName))
+}
+
+func (ts *fileTestSuite) TestDeleteRemoveAllVersions() {
+	contents := "hello world!"
+	bucketName := "bucki"
+	objectName := "some/path/file.txt"
+	server := fakestorage.NewServer(
+		Objects{
+			fakestorage.Object{
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName:      bucketName,
+					Name:            objectName,
+					ContentType:     "text/plain",
+					ContentEncoding: "utf8",
+				},
+				Content: []byte(contents),
+			},
+		},
+	)
+	defer server.Stop()
+	client := server.Client()
+	fs := NewFileSystem().WithClient(client)
+
+	file, err := fs.NewFile(bucketName, "/"+objectName)
+	if err != nil {
+		ts.Fail("Shouldn't fail creating new file")
+	}
+
+	f := file.(*File)
+	handles, err := f.getObjectGenerationHandles()
+	if err != nil {
+		ts.Fail("Shouldn't fail getting object generation handles")
+	}
+	assert.Equal(ts.T(), 1, len(handles))
+
+	err = file.Delete(deleteOptions.WithDeleteAllVersion())
+	if err != nil {
+		ts.Fail("Shouldn't fail deleting the file")
+	}
+
+	bucket := client.Bucket(bucketName)
+	assert.Equal(ts.T(), false, objectExists(bucket, objectName))
+	handles, err = f.getObjectGenerationHandles()
+	if err != nil {
+		ts.Fail("Shouldn't fail getting object generation handles")
+	}
+	assert.Nil(ts.T(), handles)
 }
 
 func (ts *fileTestSuite) TestWrite() {
