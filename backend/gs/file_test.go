@@ -149,6 +149,36 @@ func (ts *fileTestSuite) TestDelete() {
 	assert.Equal(ts.T(), false, objectExists(bucket, objectName))
 }
 
+func (ts *fileTestSuite) TestDeleteError() {
+	contents := "hello world!"
+	bucketName := "bucki"
+	objectName := "some/path/file.txt"
+	server := fakestorage.NewServer(
+		Objects{
+			fakestorage.Object{
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName:      bucketName,
+					Name:            objectName,
+					ContentType:     "text/plain",
+					ContentEncoding: "utf8",
+				},
+				Content: []byte(contents),
+			},
+		},
+	)
+	defer server.Stop()
+	client := server.Client()
+	fs := NewFileSystem().WithClient(client)
+
+	file, err := fs.NewFile(bucketName, "/invalidObject")
+	if err != nil {
+		ts.Fail("Shouldn't fail creating new file")
+	}
+
+	err = file.Delete()
+	ts.NotNil(err, "Should return an error if gs client had error")
+}
+
 func (ts *fileTestSuite) TestDeleteRemoveAllVersions() {
 	contents := "hello world!"
 	bucketName := "bucki"
