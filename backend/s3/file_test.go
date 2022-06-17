@@ -553,8 +553,9 @@ func (ts *fileTestSuite) TestDelete() {
 
 func (ts *fileTestSuite) TestDeleteWithDeleteAllVersionsOption() {
 	var versions []*s3.ObjectVersion
-	for _, s := range [...]string{"ver1", "ver2"} {
-		versions = append(versions, &s3.ObjectVersion{VersionId: &s})
+	verIds := [...]string{"ver1", "ver2"}
+	for i := range verIds {
+		versions = append(versions, &s3.ObjectVersion{VersionId: &verIds[i]})
 	}
 	versOutput := s3.ListObjectVersionsOutput{
 		Versions: versions,

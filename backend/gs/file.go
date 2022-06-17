@@ -222,6 +222,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		switch o.(type) {
 		case deleteOptions.DeleteAllVersions:
 			deleteAllVersions = true
+		default:
 		}
 	}
 
