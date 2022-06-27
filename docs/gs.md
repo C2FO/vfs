@@ -131,11 +131,11 @@ to the new file.
 #### func (*File) Delete
 
 ```go
-func (f *File) Delete() error
+func (f *File) Delete(opts ...options.DeleteOption) error
 ```
 Delete clears any local temp file, or write buffer from read/writes to the file,
-then makes a DeleteObject call to s3 for the file. Returns any error returned by
-the API.
+then makes a DeleteObject call to GCS for the file. If opts is of type DeleteAllVersions, DeleteObject call is made to 
+GCS for each version of the file. Returns any error returned by the API. 
 
 #### func (*File) Exists
 
@@ -332,9 +332,9 @@ ChangeDir changes the current location's path to the new, relative path.
 #### func (*Location) DeleteFile
 
 ```go
-func (l *Location) DeleteFile(fileName string) error
+func (l *Location) DeleteFile(fileName string, opts ...options.DeleteOption) error
 ```
-DeleteFile deletes the file at the given path, relative to the current location.
+DeleteFile deletes the file at the given path, relative to the current location using given options.
 
 #### func (*Location) Exists
 
