@@ -16,7 +16,7 @@ import (
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/backend"
 	"github.com/c2fo/vfs/v6/options"
-	"github.com/c2fo/vfs/v6/options/deleteOptions"
+	"github.com/c2fo/vfs/v6/options/delete"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
