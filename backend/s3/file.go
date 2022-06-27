@@ -199,7 +199,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 	var deleteAllVersions bool
 	for _, o := range opts {
 		switch o.(type) {
-		case deleteOptions.DeleteAllVersions:
+		case delete.DeleteAllVersions:
 			deleteAllVersions = true
 		default:
 		}

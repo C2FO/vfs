@@ -1,10 +1,10 @@
-package deleteOptions
+package delete
 
 import "github.com/c2fo/vfs/v6/options"
 
 const OptionNameDeleteAllVersions = "deleteAllVersions"
 
-func WithDeleteAllVersion() options.DeleteOption {
+func WithDeleteAllVersions() options.DeleteOption {
 	return DeleteAllVersions{}
 }
 
