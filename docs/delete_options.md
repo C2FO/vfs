@@ -4,6 +4,7 @@
 
 Package delete consists of custom delete options
 
+## DeleteAllVersions
 Currently, we have DeleteAllVersions option that can be used to remove all the versions of a file upon delete.
 This is supported for all filesystems that have file versioning (E.g: S3, GS etc.)
 
