@@ -41,6 +41,9 @@ type Client interface {
 
 	// Delete should delete the file specified by the parameter file.
 	Delete(file vfs.File) error
+
+	// DeleteAllVersions should delete all versions of the file specified by the parameter file.
+	DeleteAllVersions(file vfs.File) error
 }
 
 // DefaultClient is the main implementation that actually makes the calls to Azure Blob Storage
@@ -214,4 +217,61 @@ func (a *DefaultClient) Delete(file vfs.File) error {
 	blobURL := containerURL.NewBlockBlobURL(utils.RemoveLeadingSlash(file.Path()))
 	_, err = blobURL.Delete(context.Background(), azblob.DeleteSnapshotsOptionNone, azblob.BlobAccessConditions{})
 	return err
+}
+
+// DeleteAllVersions deletes all the versions of the given file from Azure Blob Storage.
+// First the file blob is deleted, then each version of the blob is deleted.
+// If soft deletion is enabled for blobs in the storage account, each version will be marked for deletion and will be
+// permanently deleted by Azure as per the soft deletion policy.
+func (a *DefaultClient) DeleteAllVersions(file vfs.File) error {
+	URL, err := url.Parse(file.Location().(*Location).ContainerURL())
+	if err != nil {
+		return err
+	}
+
+	containerURL := azblob.NewContainerURL(*URL, a.pipeline)
+	blobURL := containerURL.NewBlockBlobURL(utils.RemoveLeadingSlash(file.Path()))
+
+	// Delete the blob so that latest version is moved to previous versions
+	_, err = blobURL.Delete(context.Background(), azblob.DeleteSnapshotsOptionNone, azblob.BlobAccessConditions{})
+	if err != nil {
+		return err
+	}
+
+	versions, err := a.getBlobVersions(containerURL, utils.RemoveLeadingSlash(file.Location().Path()))
+	if err != nil {
+		return err
+	}
+
+	for _, version := range versions {
+		// Delete a specific version
+		_, err = blobURL.WithVersionID(*version).Delete(context.Background(), azblob.DeleteSnapshotsOptionNone, azblob.BlobAccessConditions{})
+		if err != nil {
+			return err
+		}
+	}
+
+	return err
+}
+
+func (a *DefaultClient) getBlobVersions(containerURL azblob.ContainerURL, blobName string) ([]*string, error) {
+	ctx := context.Background()
+	var versions []*string
+	for marker := (azblob.Marker{}); marker.NotDone(); {
+		listBlob, err := containerURL.ListBlobsFlatSegment(ctx, marker,
+			azblob.ListBlobsSegmentOptions{Prefix: blobName, Details: azblob.BlobListingDetails{Versions: true}})
+		if err != nil {
+			return nil, err
+		}
+
+		marker = listBlob.NextMarker
+
+		for i := range listBlob.Segment.BlobItems {
+			blobItem := listBlob.Segment.BlobItems[i]
+			if blobItem.VersionID != nil {
+				versions = append(versions, blobItem.VersionID)
+			}
+		}
+	}
+	return versions, nil
 }

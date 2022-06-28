@@ -14,6 +14,7 @@ import (
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/backend"
 	"github.com/c2fo/vfs/v6/options"
+	"github.com/c2fo/vfs/v6/options/delete"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -193,6 +194,9 @@ func (f *File) MoveToFile(file vfs.File) error {
 }
 
 // Delete deletes the file.
+// If DeleteAllVersions option is provided, each version of the file is deleted. NOTE: if soft deletion is enabled,
+// it will mark all versions as soft deleted, and they will be removed by Azure as per soft deletion policy.
+// Returns any error returned by the API.
 func (f *File) Delete(opts ...options.DeleteOption) error {
 	if err := f.Close(); err != nil {
 		return err
@@ -202,7 +206,22 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 	if err != nil {
 		return err
 	}
-	return client.Delete(f)
+
+	var deleteAllVersions bool
+	for _, o := range opts {
+		switch o.(type) {
+		case delete.DeleteAllVersions:
+			deleteAllVersions = true
+		default:
+		}
+	}
+
+	if deleteAllVersions {
+		return client.DeleteAllVersions(f)
+	} else {
+		return client.Delete(f)
+	}
+
 }
 
 // LastModified returns the last modified time as a time.Time

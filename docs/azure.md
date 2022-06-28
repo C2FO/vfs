@@ -194,6 +194,15 @@ func (a *DefaultClient) Delete(file vfs.File) error
 ```
 Delete deletes the given file from Azure Blob Storage.
 
+#### func (*DefaultClient) DeleteAllVersions
+
+```go
+func (a *DefaultClient) Delete(file vfs.File) error
+```
+
+Deletes the file blob using Azure's delete blob api, then each version of the blob is deleted using Azure's delete api. NOTE that if soft deletion is enabled for the blobs in the storage account, each version will be marked as deleted and will get permanently deleted by Azure as per the soft deletion policy. Returns any error returned by the API.
+
+
 #### func (*DefaultClient) Download
 
 ```go
@@ -287,9 +296,9 @@ be done to the new file.
 #### func (*File) Delete
 
 ```go
-func (f *File) Delete() error
+func (f *File) Delete(opts ...options.DeleteOption) error
 ```
-Delete deletes the file.
+Deletes the file using Azure's delete blob api. If opts is of type DeleteAllVersions, after deleting the blob, each version of the blob is deleted using Azure's delete api. NOTE that if soft deletion is enabled for the blobs, each version will be marked as deleted and will get permanently deleted by Azure as per the soft deletion policy. Returns any error returned by the API.
 
 #### func (*File) Exists
 
