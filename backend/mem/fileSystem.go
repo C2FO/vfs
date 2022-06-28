@@ -21,7 +21,7 @@ type objMap map[string]*fsObject
 
 // FileSystem implements vfs.FileSystem for an in-memory file system.
 type FileSystem struct {
-	sync.Mutex
+	mu    sync.Mutex
 	fsMap map[string]objMap
 }
 

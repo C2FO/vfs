@@ -3,7 +3,6 @@ package sftp
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"runtime"
@@ -227,7 +226,7 @@ func getAuthMethods(opts Options) ([]ssh.AuthMethod, error) {
 
 func getKeyFile(file, passphrase string) (key ssh.Signer, err error) {
 
-	buf, err := ioutil.ReadFile(file) //nolint:gosec
+	buf, err := os.ReadFile(file) //nolint:gosec
 	if err != nil {
 		return
 	}

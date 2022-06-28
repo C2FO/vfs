@@ -2,7 +2,6 @@ package sftp
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path"
 	"regexp"
@@ -109,7 +108,7 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 
 // Volume returns the Authority the location is contained in.
 func (l *Location) Volume() string {
-	return fmt.Sprint(l.Authority)
+	return l.Authority.String()
 }
 
 // Path returns the path the location references in most SFTP calls.
