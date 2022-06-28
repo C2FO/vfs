@@ -5,9 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
+## [6.4.0]
+
 ### Added
 - Add DeleteAllVersions option support for S3 to remove all versions of a file
 - Add DeleteAllVersions option support for GS to remove all versions of a file
+
+### Security
+- Update dependencies
+- Update .gvmrc
 
 ## [6.3.0]
 ### Security
