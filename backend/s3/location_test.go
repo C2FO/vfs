@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v6/mocks"
+	"github.com/c2fo/vfs/v6/options/delete"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -297,6 +298,26 @@ func (lt *locationTestSuite) TestDeleteFile() {
 	err = loc.DeleteFile("filename.txt")
 	lt.Nil(err, "Successful delete should not return an error.")
 	lt.s3apiMock.AssertExpectations(lt.T())
+}
+
+func (lt *locationTestSuite) TestDeleteFileWithDeleteAllVersionsOption() {
+	var versions []*s3.ObjectVersion
+	verIds := [...]string{"ver1", "ver2"}
+	for i := range verIds {
+		versions = append(versions, &s3.ObjectVersion{VersionId: &verIds[i]})
+	}
+	versOutput := s3.ListObjectVersionsOutput{
+		Versions: versions,
+	}
+	lt.s3apiMock.On("ListObjectVersions", mock.AnythingOfType("*s3.ListObjectVersionsInput")).Return(&versOutput, nil)
+	lt.s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
+	loc, err := lt.fs.NewLocation("bucket", "/old/")
+	lt.NoError(err)
+
+	err = loc.DeleteFile("filename.txt", delete.WithDeleteAllVersions())
+	lt.Nil(err, "Successful delete should not return an error.")
+	lt.s3apiMock.AssertExpectations(lt.T())
+	lt.s3apiMock.AssertNumberOfCalls(lt.T(), "DeleteObject", 2)
 }
 
 func TestLocation(t *testing.T) {

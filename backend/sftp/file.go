@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -225,7 +226,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 // CRUD Operations
 
 // Delete removes the remote file.  Error is returned, if any.
-func (f *File) Delete() error {
+func (f *File) Delete(opts ...options.DeleteOption) error {
 	client, err := f.fileSystem.Client(f.Authority)
 	if err != nil {
 		return err

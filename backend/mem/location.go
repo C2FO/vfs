@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -196,7 +197,7 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 }
 
 // DeleteFile locates the file given the fileName and calls delete on it
-func (l *Location) DeleteFile(relFilePath string) error {
+func (l *Location) DeleteFile(relFilePath string, opts ...options.DeleteOption) error {
 	l.fileSystem.Lock()
 	defer l.fileSystem.Unlock()
 	err := utils.ValidateRelativeFilePath(relFilePath)

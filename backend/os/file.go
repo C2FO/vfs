@@ -11,6 +11,7 @@ import (
 
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/backend"
+	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -30,7 +31,7 @@ type File struct {
 }
 
 // Delete unlinks the file returning any error or nil.
-func (f *File) Delete() error {
+func (f *File) Delete(opts ...options.DeleteOption) error {
 	err := os.Remove(f.Path())
 	if err == nil {
 		f.file = nil

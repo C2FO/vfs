@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -197,13 +198,13 @@ func (l *Location) NewFile(filePath string) (vfs.File, error) {
 }
 
 // DeleteFile removes the file at fileName path.
-func (l *Location) DeleteFile(fileName string) error {
+func (l *Location) DeleteFile(fileName string, opts ...options.DeleteOption) error {
 	file, err := l.NewFile(fileName)
 	if err != nil {
 		return err
 	}
 
-	return file.Delete()
+	return file.Delete(opts...)
 }
 
 // FileSystem returns a vfs.fileSystem interface of the location's underlying fileSystem.
