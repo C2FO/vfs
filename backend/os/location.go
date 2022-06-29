@@ -2,7 +2,6 @@ package os
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -96,7 +95,7 @@ func (l *Location) fileList(testEval fileTest) ([]string, error) {
 	// systems. If the user cares about the distinction between directories that are empty, vs non-existent then
 	// Location.Exists() should be used first.
 	if exists {
-		entries, err := ioutil.ReadDir(l.Path())
+		entries, err := os.ReadDir(l.Path())
 		if err != nil {
 			return files, err
 		}

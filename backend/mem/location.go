@@ -197,9 +197,9 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 }
 
 // DeleteFile locates the file given the fileName and calls delete on it
-func (l *Location) DeleteFile(relFilePath string, opts ...options.DeleteOption) error {
-	l.fileSystem.Lock()
-	defer l.fileSystem.Unlock()
+func (l *Location) DeleteFile(relFilePath string, _ ...options.DeleteOption) error {
+	l.fileSystem.mu.Lock()
+	defer l.fileSystem.mu.Unlock()
 	err := utils.ValidateRelativeFilePath(relFilePath)
 	if err != nil {
 		return err

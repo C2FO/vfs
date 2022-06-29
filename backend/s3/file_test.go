@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -362,7 +361,7 @@ func (ts *fileTestSuite) TestMoveToFile_CopyError() {
 
 func (ts *fileTestSuite) TestCopyToLocation() {
 	s3Mock1 := &mocks.S3API{}
-	fooReader := ioutil.NopCloser(strings.NewReader("blah"))
+	fooReader := io.NopCloser(strings.NewReader("blah"))
 	s3Mock1.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{Body: fooReader}, nil)
 	s3Mock1.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(nil, nil)
 	s3Mock1.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
