@@ -158,9 +158,9 @@ func (f *File) CopyToFile(file vfs.File) error {
 
 	// do native copy if same location/auth
 	if tf, ok := file.(*File); ok {
-		options, ok := tf.Location().FileSystem().(*FileSystem).options.(Options)
+		opts, ok := tf.Location().FileSystem().(*FileSystem).options.(Options)
 		if ok {
-			if f.isSameAuth(&options) {
+			if f.isSameAuth(&opts) {
 				return f.copyWithinGCSToFile(tf)
 			}
 		}
@@ -354,23 +354,23 @@ func (f *File) createEmptyFile() error {
 	return nil
 }
 
-func (f *File) isSameAuth(options *Options) bool {
+func (f *File) isSameAuth(opts *Options) bool {
 	// If options are nil on both sides, assume Google's default context is used in both cases.
-	if options == nil && f.fileSystem.options == nil {
+	if opts == nil && f.fileSystem.options == nil {
 		return true
 	}
 
-	if options == nil || f.fileSystem.options == nil {
+	if opts == nil || f.fileSystem.options == nil {
 		return false
 	}
 
 	fOptions := f.fileSystem.options.(Options)
 
-	if options.CredentialFile != "" && options.CredentialFile == fOptions.CredentialFile {
+	if opts.CredentialFile != "" && opts.CredentialFile == fOptions.CredentialFile {
 		return true
 	}
 
-	if options.APIKey != "" && options.APIKey == fOptions.APIKey {
+	if opts.APIKey != "" && opts.APIKey == fOptions.APIKey {
 		return true
 	}
 

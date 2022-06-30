@@ -3,6 +3,7 @@ package os
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -400,7 +401,7 @@ func (s *osFileTest) TestOsCopy() {
 
 	s.NoError(osCopy(path.Join(file1.Location().Volume(), file1.Path()), path.Join(file2.Location().Volume(), file2.Path())), "test osCopy")
 
-	b, err := ioutil.ReadAll(file2)
+	b, err := io.ReadAll(file2)
 	s.NoError(err)
 	s.Equal(testBytes, b, "contents match")
 }
@@ -759,7 +760,7 @@ func createDir(baseLoc vfs.Location, dirname string) {
 
 func writeStringFile(baseLoc vfs.Location, filename, data string) {
 	file := path.Join(baseLoc.Path(), filename)
-	f, err := os.Create(file)
+	f, err := os.Create(file) //nolint:gosec
 	if err != nil {
 		teardownTestFiles(baseLoc)
 		panic(err)

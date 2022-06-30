@@ -31,7 +31,7 @@ type File struct {
 }
 
 // Delete unlinks the file returning any error or nil.
-func (f *File) Delete(opts ...options.DeleteOption) error {
+func (f *File) Delete(_ ...options.DeleteOption) error {
 	err := os.Remove(f.Path())
 	if err == nil {
 		f.file = nil
@@ -240,7 +240,7 @@ func osCopy(srcName, dstName string) error {
 	defer func() { _ = srcReader.Close() }()
 
 	// setup os writer
-	dstWriter, err := os.Create(dstName)
+	dstWriter, err := os.Create(dstName) //nolint:gosec
 	if err != nil {
 		return err
 	}

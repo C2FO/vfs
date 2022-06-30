@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -149,7 +148,7 @@ func (ts *fileTestSuite) Test_openFile() {
 	// file already opened
 	f, err := file.openFile(os.O_RDONLY)
 	ts.NoError(err, "no error expected")
-	b, err := ioutil.ReadAll(f)
+	b, err := io.ReadAll(f)
 	ts.NoError(err, "no error expected")
 	ts.Equal(string(b), "file 1", "mock returned")
 
@@ -160,7 +159,7 @@ func (ts *fileTestSuite) Test_openFile() {
 	ts.NoError(err, "no error expected")
 	f, err = file.openFile(os.O_RDONLY)
 	ts.NoError(err, "no error expected")
-	b, err = ioutil.ReadAll(f)
+	b, err = io.ReadAll(f)
 	ts.NoError(err, "no error expected")
 	ts.Equal(string(b), "file 1", "mock returned")
 
@@ -180,7 +179,7 @@ func (ts *fileTestSuite) Test_openFile() {
 	client.On("MkdirAll", path.Dir(filepath)).Return(nil)
 	f, err = file.openFile(os.O_RDWR | os.O_CREATE)
 	ts.NoError(err, "no error expected")
-	b, err = ioutil.ReadAll(f)
+	b, err = io.ReadAll(f)
 	ts.NoError(err, "no error expected")
 	ts.Equal(string(b), "file 1", "mock returned")
 

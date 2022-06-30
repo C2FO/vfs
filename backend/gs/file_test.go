@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"testing"
 
 	"cloud.google.com/go/storage"
@@ -47,7 +46,7 @@ func mustReadObject(bucket *storage.BucketHandle, objectName string) []byte {
 			panic(err)
 		}
 	}(reader)
-	data, err := ioutil.ReadAll(reader)
+	data, err := io.ReadAll(reader)
 	if err != nil {
 		panic(err)
 	}
@@ -71,7 +70,7 @@ func fsMustReadFileName(fs *FileSystem, bucketName, objectName string) []byte {
 	if err != nil {
 		panic(err)
 	}
-	data, err := ioutil.ReadAll(file)
+	data, err := io.ReadAll(file)
 	if err != nil {
 		panic(err)
 	}
@@ -370,7 +369,7 @@ func (ts *fileTestSuite) TestMoveAndCopy() {
 			ts.NoError(err)
 
 			if testCase.readFirst {
-				_, err := ioutil.ReadAll(sourceFile)
+				_, err := io.ReadAll(sourceFile)
 				ts.NoError(err)
 			}
 
@@ -475,7 +474,7 @@ func (ts *fileTestSuite) TestMoveAndCopyBuffered() {
 			ts.NoError(err)
 
 			if testCase.readFirst {
-				_, err := ioutil.ReadAll(sourceFile)
+				_, err := io.ReadAll(sourceFile)
 				ts.NoError(err)
 			}
 

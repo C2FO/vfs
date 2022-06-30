@@ -52,9 +52,9 @@ type foundFileTest struct {
 func (o *optionsSuite) TestFoundFile() {
 	// test file
 	filename := filepath.Join(o.tmpdir, "some.key")
-	f, err := os.Create(filename)
+	f, err := os.Create(filename) //nolint:gosec
 	o.NoError(err, "create file for foundfile test")
-	_, err = f.Write([]byte("blah"))
+	_, err = f.WriteString("blah")
 	o.NoError(err, "writing to file for foundfile test")
 	o.NoError(f.Close(), "closing file for foundfile test")
 	defer func() { o.NoError(os.Remove(filename), "clean up file for foundfile test") }()
@@ -159,9 +159,9 @@ type hostkeyTest struct {
 func (o *optionsSuite) TestGetHostKeyCallback() {
 
 	knwonHosts := filepath.Join(o.tmpdir, "known_hosts")
-	f, err := os.Create(knwonHosts)
+	f, err := os.Create(knwonHosts) //nolint:gosec
 	o.NoError(err, "create file for getHostKeyCallback test")
-	_, err = f.Write([]byte("127.0.0.1 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBMkEmvHLSa43yoLA8QBqTfwgXgNCfd0DKs20NlBVbMoo21+Bs0fUpemyy6U0nnGHiOJVhiL7lNG/lB1fF1ymouM=")) //nolint:lll // long line
+	_, err = f.WriteString("127.0.0.1 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBMkEmvHLSa43yoLA8QBqTfwgXgNCfd0DKs20NlBVbMoo21+Bs0fUpemyy6U0nnGHiOJVhiL7lNG/lB1fF1ymouM=") //nolint:lll // long line
 	o.NoError(err, "writing to file for getHostKeyCallback test")
 	o.NoError(f.Close(), "closing file for getHostKeyCallback test")
 	defer func() { o.NoError(os.Remove(knwonHosts), "clean up file for getHostKeyCallback test") }()
@@ -528,12 +528,12 @@ func setupKeyFiles(tmpdir string) (*keyFiles, error) {
 }
 
 func writeFileString(p, contents string) error {
-	f, err := os.Create(p)
+	f, err := os.Create(p) //nolint:gosec
 	if err != nil {
 		return err
 	}
 
-	_, err = f.Write([]byte(contents))
+	_, err = f.WriteString(contents)
 	if err != nil {
 		return err
 	}

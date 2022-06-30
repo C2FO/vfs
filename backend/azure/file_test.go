@@ -3,7 +3,6 @@ package azure
 import (
 	"errors"
 	"io"
-	"io/ioutil"
 	"strings"
 	"testing"
 	"time"
@@ -41,7 +40,7 @@ func (s *FileTestSuite) TestClose_FlushTempFile() {
 }
 
 func (s *FileTestSuite) TestRead() {
-	client := MockAzureClient{ExpectedResult: ioutil.NopCloser(strings.NewReader("Hello World!"))}
+	client := MockAzureClient{ExpectedResult: io.NopCloser(strings.NewReader("Hello World!"))}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
@@ -54,7 +53,7 @@ func (s *FileTestSuite) TestRead() {
 }
 
 func (s *FileTestSuite) TestSeek() {
-	client := MockAzureClient{ExpectedResult: ioutil.NopCloser(strings.NewReader("Hello World!"))}
+	client := MockAzureClient{ExpectedResult: io.NopCloser(strings.NewReader("Hello World!"))}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
@@ -70,7 +69,7 @@ func (s *FileTestSuite) TestSeek() {
 }
 
 func (s *FileTestSuite) TestWrite() {
-	client := MockAzureClient{ExpectedResult: ioutil.NopCloser(strings.NewReader("Hello World!"))}
+	client := MockAzureClient{ExpectedResult: io.NopCloser(strings.NewReader("Hello World!"))}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
@@ -124,7 +123,7 @@ func (s *FileTestSuite) TestLocation() {
 }
 
 func (s *FileTestSuite) TestCopyToLocation() {
-	fooReader := ioutil.NopCloser(strings.NewReader("blah"))
+	fooReader := io.NopCloser(strings.NewReader("blah"))
 	client := MockAzureClient{ExpectedResult: fooReader}
 	fs := NewFileSystem().WithClient(&client)
 	source, _ := fs.NewFile("test-container", "/foo.txt")
@@ -136,7 +135,7 @@ func (s *FileTestSuite) TestCopyToLocation() {
 }
 
 func (s *FileTestSuite) TestCopyToFile() {
-	fooReader := ioutil.NopCloser(strings.NewReader("blah"))
+	fooReader := io.NopCloser(strings.NewReader("blah"))
 	client := MockAzureClient{ExpectedResult: fooReader}
 	fs := NewFileSystem().WithClient(&client)
 	source, _ := fs.NewFile("test-container", "/foo.txt")
@@ -147,7 +146,7 @@ func (s *FileTestSuite) TestCopyToFile() {
 }
 
 func (s *FileTestSuite) TestCopyToFileBuffered() {
-	fooReader := ioutil.NopCloser(strings.NewReader("blah"))
+	fooReader := io.NopCloser(strings.NewReader("blah"))
 	client := MockAzureClient{ExpectedResult: fooReader}
 	opts := Options{FileBufferSize: 2 * utils.TouchCopyMinBufferSize}
 	fs := NewFileSystem().WithOptions(opts).WithClient(&client)
@@ -159,7 +158,7 @@ func (s *FileTestSuite) TestCopyToFileBuffered() {
 }
 
 func (s *FileTestSuite) TestMoveToLocation() {
-	fooReader := ioutil.NopCloser(strings.NewReader("blah"))
+	fooReader := io.NopCloser(strings.NewReader("blah"))
 	client := MockAzureClient{ExpectedResult: fooReader}
 	fs := NewFileSystem().WithClient(&client)
 	source, _ := fs.NewFile("test-container", "/foo.txt")
@@ -172,7 +171,7 @@ func (s *FileTestSuite) TestMoveToLocation() {
 }
 
 func (s *FileTestSuite) TestMoveToFile() {
-	fooReader := ioutil.NopCloser(strings.NewReader("blah"))
+	fooReader := io.NopCloser(strings.NewReader("blah"))
 	client := MockAzureClient{ExpectedResult: fooReader}
 	fs := NewFileSystem().WithClient(&client)
 	source, _ := fs.NewFile("test-container", "/foo.txt")
@@ -299,7 +298,7 @@ func (s *FileTestSuite) TestURI() {
 }
 
 func (s *FileTestSuite) TestCheckTempFile() {
-	client := MockAzureClient{ExpectedResult: ioutil.NopCloser(strings.NewReader("Hello World!"))}
+	client := MockAzureClient{ExpectedResult: io.NopCloser(strings.NewReader("Hello World!"))}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
@@ -314,7 +313,7 @@ func (s *FileTestSuite) TestCheckTempFile() {
 	s.NoError(err, "Check temp file should create a local temp file so no error is expected")
 	s.NotNil(azureFile.tempFile, "After the call to checkTempFile we should have a non-nil tempFile")
 
-	contents, err := ioutil.ReadAll(azureFile.tempFile)
+	contents, err := io.ReadAll(azureFile.tempFile)
 	s.NoError(err, "No error should occur while reading the tempFile")
 	s.Equal("Hello World!", string(contents))
 }
@@ -335,7 +334,7 @@ func (s *FileTestSuite) TestCheckTempFile_FileDoesNotExist() {
 	s.NoError(err, "Check temp file should create a local temp file so no error is expected")
 	s.NotNil(azureFile.tempFile, "After the call to checkTempFile we should have a non-nil tempFile")
 
-	contents, err := ioutil.ReadAll(azureFile.tempFile)
+	contents, err := io.ReadAll(azureFile.tempFile)
 	s.NoError(err, "No error should occur while reading the tempFile")
 	s.Equal("", string(contents))
 }
