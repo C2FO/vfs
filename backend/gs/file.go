@@ -226,6 +226,15 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		}
 	}
 
+	handle, err := f.getObjectHandle()
+	if err != nil {
+		return err
+	}
+	err = handle.Delete(f.fileSystem.ctx)
+	if err != nil {
+		return err
+	}
+
 	if deleteAllVersions {
 		handles, err := f.getObjectGenerationHandles()
 		if err != nil {
@@ -237,14 +246,8 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 				return err
 			}
 		}
-		return nil
-	} else {
-		handle, err := f.getObjectHandle()
-		if err != nil {
-			return err
-		}
-		return handle.Delete(f.fileSystem.ctx)
 	}
+	return nil
 }
 
 // Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
