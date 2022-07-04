@@ -8,13 +8,13 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v5/backend/ftp/mocks"
-	"github.com/c2fo/vfs/v5/utils"
+	"github.com/c2fo/vfs/v6/backend/ftp/mocks"
+	"github.com/c2fo/vfs/v6/utils"
 )
 
 type locationTestSuite struct {
 	suite.Suite
-	ftpfs *FileSystem
+	ftpfs  *FileSystem
 	client *mocks.Client
 }
 
@@ -214,11 +214,11 @@ func (lt *locationTestSuite) TestNewFile() {
 	_, err = nilLoc.NewFile("/path/to/file.txt")
 	lt.EqualError(err, "non-nil ftp.Location pointer receiver is required", "errors returned by NewFile")
 
-	//test empty path error
+	// test empty path error
 	_, err = loc.NewFile("")
 	lt.EqualError(err, "non-empty string filePath is required", "errors returned by NewFile")
 
-	//test validation error
+	// test validation error
 	_, err = loc.NewFile("/absolute/path/to/file.txt")
 	lt.EqualError(err, utils.ErrBadRelFilePath, "errors returned by NewLocation")
 }
@@ -239,7 +239,7 @@ func (lt *locationTestSuite) TestExists() {
 	lt.Nil(err, "No error expected from Exists")
 	lt.True(exists, "Call to Exists expected to return true.")
 
-	//locations does not exist
+	// locations does not exist
 	locPath = "/my/dir/"
 	dir1 = &mocks.FileInfo{}
 	lt.client.On("Stat", locPath).Return(dir1, os.ErrNotExist).Once()
@@ -249,7 +249,7 @@ func (lt *locationTestSuite) TestExists() {
 	lt.Nil(err, "No error expected from Exists")
 	lt.True(!exists, "Call to Exists expected to return false.")
 
-	//some error calling stat
+	// some error calling stat
 	lt.client.On("Stat", locPath).Return(dir1, errors.New("some error")).Once()
 	loc, err = lt.ftpfs.NewLocation(authority, locPath)
 	lt.NoError(err)
@@ -257,7 +257,7 @@ func (lt *locationTestSuite) TestExists() {
 	lt.Error(err, "from Exists")
 	lt.True(!exists, "Call to Exists expected to return false.")
 
-	//check for not dir -- this shoudln't be possible since NewLocation won't accept non-absolute directories
+	// check for not dir -- this shoudln't be possible since NewLocation won't accept non-absolute directories
 	dir1 = &mocks.FileInfo{}
 	dir1.
 		On("Name").Return(locPath).
@@ -273,7 +273,7 @@ func (lt *locationTestSuite) TestExists() {
 }
 
 func (lt *locationTestSuite) TestChangeDir() {
-	//test nil Location
+	// test nil Location
 	var nilLoc *Location
 	err := nilLoc.ChangeDir("path/to/")
 	lt.EqualErrorf(err, "non-nil ftp.Location pointer receiver is required", "error expected for nil location")
@@ -318,11 +318,11 @@ func (lt *locationTestSuite) TestNewLocation() {
 	_, err = nilLoc.NewLocation("/path/to/")
 	lt.EqualError(err, "non-nil ftp.Location pointer receiver is required", "errors returned by NewLocation")
 
-	//test empty path error
+	// test empty path error
 	_, err = loc.NewLocation("")
 	lt.EqualError(err, "non-empty string relativePath is required", "errors returned by NewLocation")
 
-	//test validation error
+	// test validation error
 	_, err = loc.NewLocation("/absolute/path/to/")
 	lt.EqualError(err, utils.ErrBadRelLocationPath, "errors returned by NewLocation")
 }
@@ -335,7 +335,7 @@ func (lt *locationTestSuite) TestDeleteFile() {
 	err = loc.DeleteFile("filename.txt")
 	lt.NoError(err, "Successful delete should not return an error.")
 
-	//error deleteing
+	// error deleteing
 	lt.client.On("Remove", "/old/filename.txt").Return(os.ErrNotExist).Once()
 	err = loc.DeleteFile("filename.txt")
 	lt.Error(err, "failed delete")

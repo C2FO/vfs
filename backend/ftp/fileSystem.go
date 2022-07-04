@@ -8,9 +8,9 @@ import (
 
 	_ftp "github.com/jlaffaye/ftp"
 
-	"github.com/c2fo/vfs/v5"
-	"github.com/c2fo/vfs/v5/backend"
-	"github.com/c2fo/vfs/v5/utils"
+	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v6/backend"
+	"github.com/c2fo/vfs/v6/utils"
 )
 
 // Scheme defines the filesystem type.
@@ -111,7 +111,7 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 	// only set options if vfs.Options is ftp.Options
 	if opts, ok := opts.(Options); ok {
 		fs.options = opts
-		//we set client to nil to ensure that a new client is created using the new context when Client() is called
+		// we set client to nil to ensure that a new client is created using the new context when Client() is called
 		fs.ftpclient = nil
 	}
 	return fs
@@ -133,7 +133,7 @@ func NewFileSystem() *FileSystem {
 }
 
 func init() {
-	//registers a default Filesystem
+	// registers a default Filesystem
 	backend.Register(Scheme, NewFileSystem())
 }
 
@@ -152,6 +152,6 @@ type Client interface {
 	MakeDir(path string) error
 	Quit() error
 	Rename(from, to string) error
-	RetrFrom(path string, offset uint64) (*_ftp.Response, error) //is a ReadCloser (with Deadline)
-	StorFrom(path string, r io.Reader, offset uint64) error      //hint use io.Pipe() if io.Writer is required.
+	RetrFrom(path string, offset uint64) (*_ftp.Response, error) // is a ReadCloser (with Deadline)
+	StorFrom(path string, r io.Reader, offset uint64) error      // hint use io.Pipe() if io.Writer is required.
 }
