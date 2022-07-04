@@ -1,10 +1,11 @@
 package ftp
 
 import (
-	"github.com/c2fo/vfs/v5"
 	_ftp "github.com/jlaffaye/ftp"
 
-	"github.com/c2fo/vfs/v5/utils"
+	"github.com/c2fo/vfs/v6"
+
+	"github.com/c2fo/vfs/v6/utils"
 )
 
 const systemWideKnownHosts = "/etc/ssh/ssh_known_hosts"
@@ -14,7 +15,7 @@ type Options struct {
 	Password   string `json:"password,omitempty"` // env var VFS_FTP_PASSWORD
 	Retry      vfs.Retry
 	MaxRetries int
-	protocol string `json:"username,omitempty"` // env var VFS_FTP_PROTOCOL
+	protocol   string `json:"username,omitempty"` // env var VFS_FTP_PROTOCOL
 }
 
 func getClient(authority utils.Authority, opts Options) (*_ftp.ServerConn, error) {
@@ -22,11 +23,11 @@ func getClient(authority utils.Authority, opts Options) (*_ftp.ServerConn, error
 	return nil, nil
 }
 
-//---part of uri
+// ---part of uri
 // host
 // ports
 
-//--- could be part of uri or not
+// --- could be part of uri or not
 // username
 
 // password (env var, explicit)

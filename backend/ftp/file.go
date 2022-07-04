@@ -1,15 +1,17 @@
 package ftp
 
 import (
-	_ftp "github.com/jlaffaye/ftp"
 	"io"
 	"os"
 	"path"
 	"strconv"
 	"time"
 
-	"github.com/c2fo/vfs/v5"
-	"github.com/c2fo/vfs/v5/utils"
+	_ftp "github.com/jlaffaye/ftp"
+
+	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v6/options"
+	"github.com/c2fo/vfs/v6/utils"
 )
 
 type OpenType int
@@ -19,7 +21,7 @@ const (
 	openWrite
 )
 
-//File implements vfs.File interface for FTP fs.
+// File implements vfs.File interface for FTP fs.
 type File struct {
 	fileSystem *FileSystem
 	Authority  utils.Authority
@@ -146,17 +148,17 @@ func (f *File) MoveToFile(t vfs.File) error {
 			return err
 		}
 
-		//TODO ensure we have test for if renaming to new path that doesn't exist.
-		// If so, we don't need to check exists and do makdir, just rename
+		// TODO ensure we have test for if renaming to new path that doesn't exist.
+		// If so, we don't need to check exists and do mkdir, just rename
 
-		//ensure destination exists before moving
+		// ensure destination exists before moving
 		exists, err := t.Location().Exists()
 		if err != nil {
 			return err
 		}
 
 		if !exists {
-			//it doesn't matter which client we use since they are effectively the same
+			// it doesn't matter which client we use since they are effectively the same
 			err = client.MakeDir(t.Location().Path())
 			if err != nil {
 				return err
@@ -165,7 +167,7 @@ func (f *File) MoveToFile(t vfs.File) error {
 		return client.Rename(t.Path(), f.Path())
 	}
 
-	//otherwise do copy-delete
+	// otherwise do copy-delete
 	if err := f.CopyToFile(t); err != nil {
 		return err
 	}
@@ -190,44 +192,32 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 // CopyToFile puts the contents of File into the targetFile passed.
 func (f *File) CopyToFile(file vfs.File) error {
 
-	if err := utils.TouchCopy(file, f); err != nil {
+	if err := utils.TouchCopyBuffered(file, f, 0); err != nil {
 		return err
 	}
-	//Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
+	// Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
 	if cerr := file.Close(); cerr != nil {
 		return cerr
 	}
-	//Close file (f) reader
+	// Close file (f) reader
 	return f.Close()
 }
 
 // CopyToLocation creates a copy of *File, using the file's current path as the new file's
 // path at the given location.
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
-
-	newFile, err := location.FileSystem().NewFile(location.Volume(), path.Join(location.Path(), f.Name()))
+	newFile, err := location.NewFile(f.Name())
 	if err != nil {
 		return nil, err
 	}
 
-	if err := utils.TouchCopy(newFile, f); err != nil {
-		return nil, err
-	}
-	//Close target file to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
-	if cerr := newFile.Close(); cerr != nil {
-		return nil, cerr
-	}
-	//Close file (f) reader
-	if cerr := f.Close(); cerr != nil {
-		return nil, cerr
-	}
-	return newFile, nil
+	return newFile, f.CopyToFile(newFile)
 }
 
 // CRUD Operations
 
 // Delete removes the remote file.  Error is returned, if any.
-func (f *File) Delete() error {
+func (f *File) Delete(_ ...options.DeleteOption) error {
 	client, err := f.fileSystem.Client(f.Authority)
 	if err != nil {
 		return err
@@ -244,7 +234,7 @@ func (f *File) Close() error {
 		}
 		f.dataconn = nil
 	}
-	//no op for unopened file
+	// no op for unopened file
 	f.offset = 0
 	return nil
 }
@@ -353,7 +343,7 @@ func (f *File) String() string {
 	Private helper functions
 */
 
-type DataConn interface{
+type DataConn interface {
 	Mode() OpenType
 	Close() error
 }

@@ -5,9 +5,9 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v5"
-	"github.com/c2fo/vfs/v5/backend/ftp/mocks"
-	"github.com/c2fo/vfs/v5/utils"
+	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v6/backend/ftp/mocks"
+	"github.com/c2fo/vfs/v6/utils"
 )
 
 type fileSystemTestSuite struct {
@@ -40,7 +40,7 @@ func (ts *fileSystemTestSuite) TestNewFile_Error() {
 	_, err := nilftpfs.NewFile("host.com", "/path/to/file.txt")
 	ts.EqualError(err, "non-nil ftp.FileSystem pointer is required", "errors returned by NewFile")
 
-	//test validation error
+	// test validation error
 	file, err := ts.ftpfs.NewFile("host.com", "relative/path/to/file.txt")
 	ts.EqualError(err, utils.ErrBadAbsFilePath, "errors returned by NewFile")
 	ts.Nil(file, "NewFile shouldn't return a file")
@@ -69,7 +69,7 @@ func (ts *fileSystemTestSuite) TestNewLocation_Error() {
 	_, err := nilftpfs.NewLocation("somehost.com", "/path/to/")
 	ts.EqualError(err, "non-nil ftp.FileSystem pointer is required", "errors returned by NewLocation")
 
-	//test validation error
+	// test validation error
 	file, err := ts.ftpfs.NewLocation("host.com", "relative/path/to/")
 	ts.EqualError(err, utils.ErrBadAbsLocationPath, "errors returned by NewLocation")
 	ts.Nil(file, "NewFile shouldn't return a file")
@@ -98,7 +98,7 @@ func (ts *fileSystemTestSuite) TestRetry() {
 }
 
 func (ts *fileSystemTestSuite) TestWithOptions() {
-	//ignore non-ftp.Options
+	// ignore non-ftp.Options
 	fs := ts.ftpfs.WithOptions("just a string")
 	ts.Equal(ts.ftpfs, fs, "no change for non-ftp.Options")
 
@@ -108,12 +108,12 @@ func (ts *fileSystemTestSuite) TestWithOptions() {
 }
 
 func (ts *fileSystemTestSuite) TestClient() {
-	//client already set
+	// client already set
 	client, err := ts.ftpfs.Client(utils.Authority{})
 	ts.NoError(err, "no error")
 	ts.Equal(ts.ftpfs.ftpclient, client, "client was already set")
 
-	//cached client
+	// cached client
 	ts.ftpfs.ftpclient = &mocks.Client{}
 	client, err = ts.ftpfs.getClient(utils.Authority{}, Options{})
 	ts.NoError(err)
@@ -127,14 +127,14 @@ func (ts *fileSystemTestSuite) TestClient() {
 	ts.Error(err, "error found")
 	ts.Equal("unable to create client, vfs.Options must be an ftp.Options", err.Error(), "client was already set")
 
-	//no opts, no authority
+	// no opts, no authority
 	ts.ftpfs.options = nil
 	ts.ftpfs.ftpclient = nil
 	_, err = ts.ftpfs.Client(utils.Authority{Host: "badhost"})
-	//TODO: this was copied from sftp but seems to only check known_hosts... may not be valuable here
-	//if ts.Error(err, "error found") {
+	// TODO: this was copied from sftp but seems to only check known_hosts... may not be valuable here
+	// if ts.Error(err, "error found") {
 	//	ts.Contains(err.Error(), "no such host", "error matches")
-	//}
+	// }
 
 }
 

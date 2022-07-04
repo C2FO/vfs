@@ -11,11 +11,12 @@ import (
 
 	_ftp "github.com/jlaffaye/ftp"
 
-	"github.com/c2fo/vfs/v5"
-	"github.com/c2fo/vfs/v5/utils"
+	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v6/options"
+	"github.com/c2fo/vfs/v6/utils"
 )
 
-//Location implements the vfs.Location interface specific to ftp fs.
+// Location implements the vfs.Location interface specific to ftp fs.
 type Location struct {
 	fileSystem *FileSystem
 	path       string
@@ -58,7 +59,7 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 	}
 
 	fullpath := path.Join(l.Path(), prefix)
-	//check if last char is not /, aka is not a dir, get base of path
+	// check if last char is not /, aka is not a dir, get base of path
 	baseprefix := ""
 	r, _ := utf8.DecodeLastRuneInString(fullpath)
 	if r != rune('/') {
@@ -143,7 +144,7 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 		return nil, errors.New("non-nil ftp.Location pointer receiver is required")
 	}
 
-	//make a copy of the original location first, then ChangeDir, leaving the original location as-is
+	// make a copy of the original location first, then ChangeDir, leaving the original location as-is
 	newLocation := &Location{}
 	*newLocation = *l
 	err := newLocation.ChangeDir(relativePath)
@@ -192,7 +193,7 @@ func (l *Location) NewFile(filePath string) (vfs.File, error) {
 }
 
 // DeleteFile removes the file at fileName path.
-func (l *Location) DeleteFile(fileName string) error {
+func (l *Location) DeleteFile(fileName string, _ ...options.DeleteOption) error {
 	file, err := l.NewFile(fileName)
 	if err != nil {
 		return err
