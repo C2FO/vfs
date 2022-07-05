@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	ftp "github.com/c2fo/vfs/v6/backend/ftp"
+	types "github.com/c2fo/vfs/v6/backend/ftp/types"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -57,14 +57,14 @@ func (_c *DataConn_Close_Call) Return(_a0 error) *DataConn_Close_Call {
 }
 
 // Mode provides a mock function with given fields:
-func (_m *DataConn) Mode() ftp.OpenType {
+func (_m *DataConn) Mode() types.OpenType {
 	ret := _m.Called()
 
-	var r0 ftp.OpenType
-	if rf, ok := ret.Get(0).(func() ftp.OpenType); ok {
+	var r0 types.OpenType
+	if rf, ok := ret.Get(0).(func() types.OpenType); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(ftp.OpenType)
+		r0 = ret.Get(0).(types.OpenType)
 	}
 
 	return r0
@@ -87,7 +87,7 @@ func (_c *DataConn_Mode_Call) Run(run func()) *DataConn_Mode_Call {
 	return _c
 }
 
-func (_c *DataConn_Mode_Call) Return(_a0 ftp.OpenType) *DataConn_Mode_Call {
+func (_c *DataConn_Mode_Call) Return(_a0 types.OpenType) *DataConn_Mode_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
