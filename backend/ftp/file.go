@@ -343,11 +343,6 @@ func (f *File) String() string {
 	Private helper functions
 */
 
-type DataConn interface {
-	Mode() OpenType
-	Close() error
-}
-
 type dataConn struct {
 	R    *_ftp.Response
 	W    *io.PipeWriter
