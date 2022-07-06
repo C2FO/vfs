@@ -34,6 +34,8 @@ var (
 	fs             FileSystem
 	testFile       vfs.File
 	defaultOptions Options
+	testFileName   string
+	bucket         string
 )
 
 func (ts *fileTestSuite) SetupTest() {
@@ -41,7 +43,9 @@ func (ts *fileTestSuite) SetupTest() {
 	s3apiMock = &mocks.S3API{}
 	defaultOptions = Options{AccessKeyID: "abc"}
 	fs = FileSystem{client: s3apiMock, options: defaultOptions}
-	testFile, err = fs.NewFile("bucket", "/some/path/to/file.txt")
+	testFileName = "/some/path/to/file.txt"
+	bucket = "bucket"
+	testFile, err = fs.NewFile(bucket, testFileName)
 	getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
 		return mocks.S3MockDownloader{}
 	}
@@ -573,7 +577,7 @@ func (ts *fileTestSuite) TestDeleteWithDeleteAllVersionsOption() {
 	err := testFile.Delete(delete.WithDeleteAllVersions())
 	ts.Nil(err, "Successful delete should not return an error.")
 	s3apiMock.AssertExpectations(ts.T())
-	s3apiMock.AssertNumberOfCalls(ts.T(), "DeleteObject", 2)
+	s3apiMock.AssertNumberOfCalls(ts.T(), "DeleteObject", 3)
 }
 
 func (ts *fileTestSuite) TestDeleteWithDeleteAllVersionsOptionError() {
@@ -586,12 +590,13 @@ func (ts *fileTestSuite) TestDeleteWithDeleteAllVersionsOptionError() {
 		Versions: versions,
 	}
 	s3apiMock.On("ListObjectVersions", mock.AnythingOfType("*s3.ListObjectVersionsInput")).Return(&versOutput, nil)
-	s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(nil, errors.New("something went wrong"))
+	s3apiMock.On("DeleteObject", &s3.DeleteObjectInput{Key: &testFileName, Bucket: &bucket}).Return(&s3.DeleteObjectOutput{}, nil)
+	s3apiMock.On("DeleteObject", &s3.DeleteObjectInput{Key: &testFileName, Bucket: &bucket, VersionId: &verIds[0]}).Return(nil, errors.New("something went wrong"))
 
 	err := testFile.Delete(delete.WithDeleteAllVersions())
 	ts.NotNil(err, "Delete should return an error if s3 api had error.")
 	s3apiMock.AssertExpectations(ts.T())
-	s3apiMock.AssertNumberOfCalls(ts.T(), "DeleteObject", 1)
+	s3apiMock.AssertNumberOfCalls(ts.T(), "DeleteObject", 2)
 }
 
 func (ts *fileTestSuite) TestLastModified() {

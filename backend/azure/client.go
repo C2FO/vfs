@@ -232,12 +232,6 @@ func (a *DefaultClient) DeleteAllVersions(file vfs.File) error {
 	containerURL := azblob.NewContainerURL(*URL, a.pipeline)
 	blobURL := containerURL.NewBlockBlobURL(utils.RemoveLeadingSlash(file.Path()))
 
-	// Delete the blob so that latest version is moved to previous versions
-	_, err = blobURL.Delete(context.Background(), azblob.DeleteSnapshotsOptionNone, azblob.BlobAccessConditions{})
-	if err != nil {
-		return err
-	}
-
 	versions, err := a.getBlobVersions(containerURL, utils.RemoveLeadingSlash(file.Location().Path()))
 	if err != nil {
 		return err

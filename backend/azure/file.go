@@ -216,12 +216,15 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		}
 	}
 
-	if deleteAllVersions {
-		return client.DeleteAllVersions(f)
-	} else {
-		return client.Delete(f)
+	if err = client.Delete(f); err != nil {
+		return err
 	}
 
+	if deleteAllVersions {
+		return client.DeleteAllVersions(f)
+	}
+
+	return err
 }
 
 // LastModified returns the last modified time as a time.Time
