@@ -216,7 +216,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		}
 	}
 
-	if err = client.Delete(f); err != nil {
+	if err := client.Delete(f); err != nil {
 		return err
 	}
 

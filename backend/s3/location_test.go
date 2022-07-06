@@ -317,7 +317,7 @@ func (lt *locationTestSuite) TestDeleteFileWithDeleteAllVersionsOption() {
 	err = loc.DeleteFile("filename.txt", delete.WithDeleteAllVersions())
 	lt.Nil(err, "Successful delete should not return an error.")
 	lt.s3apiMock.AssertExpectations(lt.T())
-	lt.s3apiMock.AssertNumberOfCalls(lt.T(), "DeleteObject", 2)
+	lt.s3apiMock.AssertNumberOfCalls(lt.T(), "DeleteObject", 3)
 }
 
 func TestLocation(t *testing.T) {
