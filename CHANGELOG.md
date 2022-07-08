@@ -5,10 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
+## [6.5.1] - 2022-07-08
+
 ### Fixed
 - Fixed the azure deleteAllVersions to fetch versions using file path instead of location path
 
-## [6.5.0]
+## [6.5.0] - 2022-07-08
 
 ### Added
 - Add DeleteAllVersions option support for Azure to remove all versions of a file
@@ -17,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed golangci-lint issues
 - Fixed #90 - integration were tests failing on move for mem-to-mem move and bad mutex unlock call when doing mem to non-mem move
 
-## [6.4.0]
+## [6.4.0] - 2022-06-27
 
 ### Added
 - Add DeleteAllVersions option support for S3 to remove all versions of a file
@@ -27,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update dependencies
 - Update .gvmrc
 
-## [6.3.0]
+## [6.3.0] - 2022-05-16
 ### Security
 - Update go.mod min version to Go 1.17
 - Update actions/setup-go action to v3
@@ -36,16 +38,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update actions to test only supported Go versions (1.17, 1.18)
 - Updated dependencies (ie, Google Cloud, Azure, AWS sdks)
 
-## [6.2.0]
+## [6.2.0] - 2022-04-28
 ### Added
 - Add S3 option ForcePathStyle.  Fixes #96
 - Add S3 option DisableServerSideEncryption. Fixes #98
 
-## [6.1.0]
+## [6.1.0] - 2022-02-18
 ### Added
 - Added utils.PathToURI() func to change path to OS URI.  resolves #112
 
-## [6.0.2]
+## [6.0.2] - 2021-12-03
 ### Fixed
 - fixed linting issues with missing godoc on exported functions and new build tag formatting.
 - fixed #92 (broken by #72) where calling ListByPrefix() was fail from non-root locations when calling file-level prefixes.
