@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
+### Added
+- Add DeleteAllVersions option support for Azure to remove all versions of a file
+
 ### Fixed
 - Fixed golangci-lint issues
 

@@ -205,6 +205,14 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		}
 	}
 
+	_, err = client.DeleteObject(&s3.DeleteObjectInput{
+		Key:    &f.key,
+		Bucket: &f.bucket,
+	})
+	if err != nil {
+		return err
+	}
+
 	if deleteAllVersions {
 		objectVersions, err := f.getAllObjectVersions(client)
 		if err != nil {
@@ -220,11 +228,6 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 				return err
 			}
 		}
-	} else {
-		_, err = client.DeleteObject(&s3.DeleteObjectInput{
-			Key:    &f.key,
-			Bucket: &f.bucket,
-		})
 	}
 
 	return err

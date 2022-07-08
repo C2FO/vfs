@@ -61,6 +61,11 @@ func (a *MockAzureClient) Delete(file vfs.File) error {
 	return a.ExpectedError
 }
 
+// DeleteAllVersions returns the value of ExpectedError
+func (a *MockAzureClient) DeleteAllVersions(file vfs.File) error {
+	return a.ExpectedError
+}
+
 // MockStorageError is a mock for the azblob.StorageError interface
 type MockStorageError struct {
 	azblob.ResponseError

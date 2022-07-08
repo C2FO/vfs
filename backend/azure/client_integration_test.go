@@ -137,6 +137,35 @@ func (s *ClientIntegrationTestSuite) TestAllTheThings_FileWithPath() {
 	s.Equal("foo/bar/test.txt", list[0])
 }
 
+func (s *ClientIntegrationTestSuite) TestDeleteAllVersions() {
+	fs := NewFileSystem()
+	f, err := fs.NewFile("test-container", "/test.txt")
+	s.NoError(err)
+	client, err := fs.Client()
+	s.NoError(err, "Env variables (AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_ACCESS_KEY) should contain valid azure account credentials")
+
+	// Create the new file
+	err = client.Upload(f, strings.NewReader("Hello!"))
+	s.NoError(err, "The file should be successfully uploaded to azure")
+
+	// Recreate the file
+	err = client.Upload(f, strings.NewReader("Hello world!"))
+	s.NoError(err, "The file should be successfully uploaded to azure")
+
+	// make sure it exists
+	_, err = client.Properties(f.Location().URI(), f.Name())
+	s.NoError(err, "If the file exists no error should be returned")
+
+	// delete it
+	err = client.DeleteAllVersions(f)
+	s.NoError(err, "if the file versions were deleted no error should be returned")
+
+	// make sure the file doesn't exist
+	exists, err := f.Exists()
+	s.NoError(err, "no error should be returned on exists check")
+	s.Equal(false, exists)
+}
+
 func (s *ClientIntegrationTestSuite) TestProperties() {
 	fs := NewFileSystem()
 	f, err := fs.NewFile("test-container", "/foo/bar/test.txt")

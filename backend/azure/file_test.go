@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v6/options/delete"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -188,7 +189,26 @@ func (s *FileTestSuite) TestDelete() {
 	s.NoError(f.Delete(), "The delete should succeed so there should be no error")
 }
 
-func (s *FileTestSuite) TestDelete_NonExistantFile() {
+func (s *FileTestSuite) TestDeleteWithDeleteAllVersionsOption() {
+	client := MockAzureClient{}
+	fs := NewFileSystem().WithClient(&client)
+
+	f, err := fs.NewFile("test-container", "/foo.txt")
+	s.NoError(err, "The path is valid so no error should be returned")
+	s.NoError(f.Delete(delete.WithDeleteAllVersions()), "The delete should succeed so there should be no error")
+}
+
+func (s *FileTestSuite) TestDeleteWithDeleteAllVersionsOption_Error() {
+	client := MockAzureClient{ExpectedError: errors.New("i always error")}
+	fs := NewFileSystem().WithClient(&client)
+
+	f, err := fs.NewFile("test-container", "/foo.txt")
+	s.NoError(err, "The path is valid so no error should be returned")
+	err = f.Delete(delete.WithDeleteAllVersions())
+	s.Error(err, "If the file does not exist we get an error")
+}
+
+func (s *FileTestSuite) TestDelete_NonExistentFile() {
 	client := MockAzureClient{ExpectedError: errors.New("i always error")}
 	fs := NewFileSystem().WithClient(&client)
 
