@@ -375,8 +375,8 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 				return file, nil
 			}
 		}
+		f.memFile.location.FileSystem().(*FileSystem).mu.Unlock()
 	}
-	f.memFile.location.FileSystem().(*FileSystem).mu.Unlock()
 	// if the file doesn't yet exist at the location, create it there
 	newFile, err := location.NewFile(f.Name())
 	if err != nil {
@@ -447,7 +447,7 @@ func (f *File) Delete(_ ...options.DeleteOption) error {
 			thisObj.i = nil
 			thisObj = nil
 			// setting that key to nil so it truly no longer lives on this system
-			mapRef[loc.Volume()][str] = nil
+			delete(mapRef[loc.Volume()], str)
 		}
 	}
 

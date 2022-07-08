@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed golangci-lint issues
+- Fixed #90 - integration were tests failing on move for mem-to-mem move and bad mutex unlock call when doing mem to non-mem move
 
 ## [6.4.0]
 
