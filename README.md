@@ -67,7 +67,7 @@ go get -u github.com/c2fo/vfs/v6
 
 Post 1.17:
 ```
-go install -u github.com/c2fo/vfs/v6
+go install github.com/c2fo/vfs/v6
 ```
 
 ### Upgrading
