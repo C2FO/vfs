@@ -1,10 +1,12 @@
 package ftp
 
 import (
+	"fmt"
+	"strings"
+
 	_ftp "github.com/jlaffaye/ftp"
 
 	"github.com/c2fo/vfs/v6"
-
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -15,10 +17,24 @@ type Options struct {
 	Password   string `json:"password,omitempty"` // env var VFS_FTP_PASSWORD
 	Retry      vfs.Retry
 	MaxRetries int
-	protocol   string `json:"username,omitempty"` // env var VFS_FTP_PROTOCOL
+	protocol   string `json:"protocol,omitempty"` // env var VFS_FTP_PROTOCOL
 }
 
-func getClient(authority utils.Authority, opts Options) (*_ftp.ServerConn, error) {
+func getClient(authority utils.Authority, opts Options) (Client, error) {
+
+	host := authority.Host
+	if !strings.Contains(host, ":") {
+		host = fmt.Sprintf("%s%s", host, ":21")
+	}
+	// TODO: DialWithContext(ctx), DialWithTLS(tlsConf), DialWithExplicitTLS(tlsConf), DialWithDebugOutput(io.Writer), DialWithDisabledEPSV
+	c, err := _ftp.Dial(host)
+	if err != nil {
+		return nil, err
+	}
+	err = c.Login(opts.UserName, opts.UserName)
+	if err != nil {
+		return nil, err
+	}
 
 	return nil, nil
 }

@@ -1,6 +1,6 @@
 package ftp
 
-//import (
+// import (
 //	"bytes"
 //	"errors"
 //	"io"
@@ -19,16 +19,16 @@ package ftp
 //	"github.com/c2fo/vfs/v5/backend/ftp/mocks"
 //	_mocks "github.com/c2fo/vfs/v5/mocks"
 //	"github.com/c2fo/vfs/v5/utils"
-//)
+// )
 //
-//type fileTestSuite struct {
+// type fileTestSuite struct {
 //	suite.Suite
 //	ftpMock  *mocks.Client
 //	fs       FileSystem
 //	testFile vfs.File
-//}
+// }
 //
-//func (ts *fileTestSuite) SetupTest() {
+// func (ts *fileTestSuite) SetupTest() {
 //	var err error
 //	ts.ftpMock = &mocks.Client{}
 //	ts.fs = FileSystem{ftpclient: ts.ftpMock, options: Options{}}
@@ -36,11 +36,11 @@ package ftp
 //	if err != nil {
 //		ts.Fail("Shouldn't return error creating test ftp.File instance.")
 //	}
-//}
+// }
 //
 //
 //
-//func (ts *fileTestSuite) TestRead() {
+// func (ts *fileTestSuite) TestRead() {
 //
 //	// set up ftpfile
 //	filepath := "/some/path.txt"
@@ -71,9 +71,9 @@ package ftp
 //	ts.Equal(localFile.String(), contents, "Copying an ftp file to a buffer should fill buffer with localfile's contents")
 //
 //	client.AssertExpectations(ts.T())
-//}
+// }
 //
-//func (ts *fileTestSuite) TestSeek() {
+// func (ts *fileTestSuite) TestSeek() {
 //
 //	// set up ftpfile
 //	filepath := "/some/path.txt"
@@ -115,9 +115,9 @@ package ftp
 //	closeErr := ftpfile.Close()
 //	ts.NoError(closeErr, "no error expected")
 //	client.AssertExpectations(ts.T())
-//}
+// }
 //
-//func (ts *fileTestSuite) Test_openFile() {
+// func (ts *fileTestSuite) Test_openFile() {
 //
 //	// set up ftpfile
 //	filepath := "/some/path.txt"
@@ -177,9 +177,9 @@ package ftp
 //	ts.Equal(string(b), "file 1", "mock returned")
 //
 //	client.AssertExpectations(ts.T())
-//}
+// }
 //
-//func (ts *fileTestSuite) TestExists() {
+// func (ts *fileTestSuite) TestExists() {
 //	ftpfile, err := ts.fs.NewFile("user@host.com", "/path/hello.txt")
 //	if err != nil {
 //		ts.Fail("Shouldn't fail creating new file.")
@@ -191,9 +191,9 @@ package ftp
 //	exists, err := ftpfile.Exists()
 //	ts.True(exists, "Should return true for exists based on this setup")
 //	ts.Nil(err, "Shouldn't return an error when exists is true")
-//}
+// }
 //
-//func (ts *fileTestSuite) TestNotExists() {
+// func (ts *fileTestSuite) TestNotExists() {
 //	ftpfile, err := ts.fs.NewFile("user@host.com", "/path/hello.txt")
 //	if err != nil {
 //		ts.Fail("Shouldn't fail creating new file.")
@@ -204,9 +204,9 @@ package ftp
 //	exists, err := ftpfile.Exists()
 //	ts.False(exists, "Should return false for exists based on setup")
 //	ts.Nil(err, "Error from key not existing should be hidden since it just confirms it doesn't")
-//}
+// }
 //
-//func (ts *fileTestSuite) TestCopyToFile() {
+// func (ts *fileTestSuite) TestCopyToFile() {
 //	contentLength := 0
 //
 //	// set up source
@@ -264,9 +264,9 @@ package ftp
 //	sourceSftpFile.AssertExpectations(ts.T())
 //	targetClient.AssertExpectations(ts.T())
 //	targetSftpFile.AssertExpectations(ts.T())
-//}
+// }
 //
-//func (ts *fileTestSuite) TestCopyToLocation() {
+// func (ts *fileTestSuite) TestCopyToLocation() {
 //	contentLength := 0
 //
 //	// set up source
@@ -331,9 +331,9 @@ package ftp
 //	sourceSftpFile.AssertExpectations(ts.T())
 //	targetClient.AssertExpectations(ts.T())
 //	targetSftpFile.AssertExpectations(ts.T())
-//}
+// }
 //
-//func (ts *fileTestSuite) TestMoveToFile_differentAuthority() {
+// func (ts *fileTestSuite) TestMoveToFile_differentAuthority() {
 //	contentLength := 0
 //
 //	// set up source
@@ -342,7 +342,7 @@ package ftp
 //
 //	sourceClient := &mocks.Client{}
 //	sourceClient.On("Stat", mock.Anything).Return(sourceFileInfo, nil).Once()
-//	sourceClient.On("Remove", mock.Anything).Return(nil).Once()
+//	sourceClient.On("Delete", mock.Anything).Return(nil).Once()
 //
 //	sourceSftpFile := &mocks.FTPFile{}
 //	sourceSftpFile.On("Close").Return(nil).Once()
@@ -389,9 +389,9 @@ package ftp
 //	sourceSftpFile.AssertExpectations(ts.T())
 //	targetClient.AssertExpectations(ts.T())
 //	targetSftpFile.AssertExpectations(ts.T())
-//}
+// }
 //
-//func (ts *fileTestSuite) TestMoveToFile_sameAuthority() {
+// func (ts *fileTestSuite) TestMoveToFile_sameAuthority() {
 //	// set up source
 //	sourceClient := &mocks.Client{}
 //	sourceClient.On("Rename", mock.Anything, mock.Anything).Return(nil).Once()
@@ -434,9 +434,9 @@ package ftp
 //
 //	sourceClient.AssertExpectations(ts.T())
 //	targetClient.AssertExpectations(ts.T())
-//}
+// }
 //
-//func (ts *fileTestSuite) TestMoveToLocation() {
+// func (ts *fileTestSuite) TestMoveToLocation() {
 //	contentLength := 0
 //
 //	// set up source
@@ -445,7 +445,7 @@ package ftp
 //
 //	sourceClient := &mocks.Client{}
 //	sourceClient.On("Stat", mock.Anything).Return(sourceFileInfo, nil).Once()
-//	sourceClient.On("Remove", mock.Anything).Return(nil).Once()
+//	sourceClient.On("Delete", mock.Anything).Return(nil).Once()
 //
 //	sourceSftpFile := &mocks.FTPFile{}
 //	sourceSftpFile.On("Close").Return(nil).Once()
@@ -504,9 +504,9 @@ package ftp
 //	targetSftpFile.AssertExpectations(ts.T())
 //	targetMockFileSystem.AssertExpectations(ts.T())
 //	targetMockLocation.AssertExpectations(ts.T())
-//}
+// }
 //
-//func (ts *fileTestSuite) TestTouch_exists() {
+// func (ts *fileTestSuite) TestTouch_exists() {
 //	filepath := "/some/path.txt"
 //	// set up source
 //	sourceFileInfo := &mocks.DataConn{}
@@ -534,9 +534,9 @@ package ftp
 //	client.AssertExpectations(ts.T())
 //	dconn.AssertExpectations(ts.T())
 //	sourceFileInfo.AssertExpectations(ts.T())
-//}
+// }
 //
-//func (ts *fileTestSuite) TestTouch_notExists() {
+// func (ts *fileTestSuite) TestTouch_notExists() {
 //	filepath := "/some/path.txt"
 //	// set up source
 //	sourceFileInfo := &mocks.FileInfo{}
@@ -565,16 +565,16 @@ package ftp
 //	client.AssertExpectations(ts.T())
 //	ftpFile.AssertExpectations(ts.T())
 //	sourceFileInfo.AssertExpectations(ts.T())
-//}
+// }
 //
-//func (ts *fileTestSuite) TestDelete() {
-//	ts.ftpMock.On("Remove", ts.testFile.Path()).Return(nil).Once()
+// func (ts *fileTestSuite) TestDelete() {
+//	ts.ftpMock.On("Delete", ts.testFile.Path()).Return(nil).Once()
 //	err := ts.testFile.Delete()
 //	ts.Nil(err, "Successful delete should not return an error.")
 //	ts.ftpMock.AssertExpectations(ts.T())
-//}
+// }
 //
-//func (ts *fileTestSuite) TestLastModified() {
+// func (ts *fileTestSuite) TestLastModified() {
 //	now := time.Now()
 //	file1 := &mocks.FileInfo{}
 //	file1.On("ModTime").Return(now, nil)
@@ -582,9 +582,9 @@ package ftp
 //	modTime, err := ts.testFile.LastModified()
 //	ts.Nil(err, "Error should be nil when correctly returning time of object.")
 //	ts.Equal(&now, modTime, "Returned time matches expected LastModified time.")
-//}
+// }
 //
-//func (ts *fileTestSuite) TestLastModifiedFail() {
+// func (ts *fileTestSuite) TestLastModifiedFail() {
 //	file1 := &mocks.FileInfo{}
 //	myErr := errors.New("some error")
 //	file1.On("ModTime").Return(time.Time{}, myErr)
@@ -592,13 +592,13 @@ package ftp
 //	m, e := ts.testFile.LastModified()
 //	ts.Error(e, "got error as expected")
 //	ts.Nil(m, "nil ModTime returned")
-//}
+// }
 //
-//func (ts *fileTestSuite) TestName() {
+// func (ts *fileTestSuite) TestName() {
 //	ts.Equal("file.txt", ts.testFile.Name(), "Name should return just the name of the file.")
-//}
+// }
 //
-//func (ts *fileTestSuite) TestSize() {
+// func (ts *fileTestSuite) TestSize() {
 //	contentLength := int64(100)
 //	file1 := &mocks.FileInfo{}
 //	file1.On("Size").Return(contentLength)
@@ -613,23 +613,23 @@ package ftp
 //	ts.Equal(uint64(0), size, "Size should be 0 on error")
 //
 //	ts.ftpMock.AssertExpectations(ts.T())
-//}
+// }
 //
-//func (ts *fileTestSuite) TestPath() {
+// func (ts *fileTestSuite) TestPath() {
 //	ts.Equal("/some/path/to/file.txt", ts.testFile.Path(), "Should return file.key (with leading slash)")
-//}
+// }
 //
-//func (ts *fileTestSuite) TestURI() {
+// func (ts *fileTestSuite) TestURI() {
 //	expected := "ftp://user@host.com:22/some/path/to/file.txt"
 //	ts.Equal(expected, ts.testFile.URI(), "URI test")
-//}
+// }
 //
-//func (ts *fileTestSuite) TestStringer() {
+// func (ts *fileTestSuite) TestStringer() {
 //	expected := "ftp://user@host.com:22/some/path/to/file.txt"
 //	ts.Equal(expected, ts.testFile.String(), "String test")
-//}
+// }
 //
-//func (ts *fileTestSuite) TestNewFile() {
+// func (ts *fileTestSuite) TestNewFile() {
 //	fs := &FileSystem{}
 //	// fs is nil
 //	_, err := fs.NewFile("user@host.com", "")
@@ -649,8 +649,8 @@ package ftp
 //	ts.IsType(&File{}, ftpFile, "newFile returned a File struct")
 //	ts.Equal(authority, ftpFile.Location().Volume())
 //	ts.Equal(key, ftpFile.Path())
-//}
+// }
 //
-//func TestFile(t *testing.T) {
+// func TestFile(t *testing.T) {
 //	suite.Run(t, new(fileTestSuite))
-//}
+// }
