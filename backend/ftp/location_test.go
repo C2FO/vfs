@@ -5,7 +5,9 @@ import (
 	"os"
 	"regexp"
 	"testing"
+	"time"
 
+	_ftp "github.com/jlaffaye/ftp"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v6/backend/ftp/mocks"
@@ -19,31 +21,36 @@ type locationTestSuite struct {
 }
 
 func (lt *locationTestSuite) SetupTest() {
-	lt.client = &mocks.Client{}
-	lt.ftpfs = &FileSystem{
-		ftpclient: lt.client,
-	}
+	lt.client = mocks.NewClient(lt.T())
+	lt.ftpfs = NewFileSystem().WithClient(lt.client)
 }
 
 func (lt *locationTestSuite) TestList() {
-	expectedFileList := []string{"file.txt", "file2.txt"}
+	expectedFileList := []string{"file1.txt", "file2.txt"}
 
-	file1 := &mocks.FileInfo{}
-	file1.
-		On("Name").Return("file2.txt").
-		On("IsDir").Return(false)
-	file2 := &mocks.FileInfo{}
-	file2.
-		On("Name").Return("file2.txt").
-		On("IsDir").Return(false)
-	subdir1 := &mocks.FileInfo{}
-	subdir1.
-		On("Name").Return("subdir").
-		On("IsDir").Return(true)
-	keyListFromAPI := []*mocks.FileInfo{subdir1, file1, file2}
+	entries := []*_ftp.Entry{
+		{
+			Name:   "file1.txt",
+			Target: "",
+			Type:   _ftp.EntryTypeFile,
+			Time:   time.Now().UTC(),
+		},
+		{
+			Name:   "file2.txt",
+			Target: "",
+			Type:   _ftp.EntryTypeFile,
+			Time:   time.Now().UTC(),
+		},
+		{
+			Name:   "subdir",
+			Target: "",
+			Type:   _ftp.EntryTypeFolder,
+			Time:   time.Now().UTC(),
+		},
+	}
 	authority := "host.com"
 	locPath := "/dir1/"
-	lt.client.On("ReadDir", locPath).Return(sliceImplementationToInterface(keyListFromAPI), nil).Once()
+	lt.client.On("List", locPath).Return(entries, nil).Once()
 
 	loc, err := lt.ftpfs.NewLocation(authority, locPath)
 	lt.NoError(err)
@@ -55,13 +62,13 @@ func (lt *locationTestSuite) TestList() {
 	}
 
 	// file not found (location doesn't exist)
-	lt.client.On("ReadDir", locPath).Return(make([]os.FileInfo, 0), errors.New("some error")).Once()
+	lt.client.On("List", locPath).Return([]*_ftp.Entry{}, errors.New("some error")).Once()
 	fileList, err = loc.List()
 	lt.Error(err, "should return error")
 	lt.Len(fileList, 0, "Should return no files on error")
 
 	// file not found (location doesn't exist)
-	lt.client.On("ReadDir", locPath).Return(make([]os.FileInfo, 0), os.ErrNotExist).Once()
+	lt.client.On("List", locPath).Return([]*_ftp.Entry{}, os.ErrNotExist).Once()
 	fileList, err = loc.List()
 	lt.NoError(err, "Shouldn't return an error on file not found.")
 	lt.Len(fileList, 0, "Should return no files on file not found")
@@ -71,28 +78,37 @@ func (lt *locationTestSuite) TestList() {
 
 func (lt *locationTestSuite) TestListByPrefix() {
 
-	expectedFileList := []string{"file.txt", "file2.txt"}
+	expectedFileList := []string{"file1.txt", "file2.txt"}
 
-	file1 := &mocks.FileInfo{}
-	file1.
-		On("Name").Return("file2.txt").
-		On("IsDir").Return(false)
-	file2 := &mocks.FileInfo{}
-	file2.
-		On("Name").Return("file2.txt").
-		On("IsDir").Return(false)
-	file3 := &mocks.FileInfo{}
-	file3.
-		On("Name").Return("my_file.txt").
-		On("IsDir").Return(false)
-	subdir1 := &mocks.FileInfo{}
-	subdir1.
-		On("Name").Return("filedir").
-		On("IsDir").Return(true)
-	keyListFromAPI := []*mocks.FileInfo{subdir1, file1, file2, file3}
+	entries := []*_ftp.Entry{
+		{
+			Name:   "file1.txt",
+			Target: "",
+			Type:   _ftp.EntryTypeFile,
+			Time:   time.Now().UTC(),
+		},
+		{
+			Name:   "file2.txt",
+			Target: "",
+			Type:   _ftp.EntryTypeFile,
+			Time:   time.Now().UTC(),
+		},
+		{
+			Name:   "my_file.txt",
+			Target: "",
+			Type:   _ftp.EntryTypeFile,
+			Time:   time.Now().UTC(),
+		},
+		{
+			Name:   "filedir",
+			Target: "",
+			Type:   _ftp.EntryTypeFolder,
+			Time:   time.Now().UTC(),
+		},
+	}
 	authority := "host.com"
 	locPath := "/dir1/"
-	lt.client.On("ReadDir", locPath).Return(sliceImplementationToInterface(keyListFromAPI), nil).Once()
+	lt.client.On("List", locPath).Return(entries, nil).Once()
 	loc, err := lt.ftpfs.NewLocation(authority, locPath)
 	lt.NoError(err)
 	prefix := "fil"
@@ -108,30 +124,41 @@ func (lt *locationTestSuite) TestListByPrefix() {
 func (lt *locationTestSuite) TestListByRegex() {
 	expectedFileList := []string{"file1.txt", "file2.txt", "stuff.txt"}
 
-	file1 := &mocks.FileInfo{}
-	file1.
-		On("Name").Return("file2.txt").
-		On("IsDir").Return(false)
-	file2 := &mocks.FileInfo{}
-	file2.
-		On("Name").Return("file2.txt").
-		On("IsDir").Return(false)
-	file3 := &mocks.FileInfo{}
-	file3.
-		On("Name").Return("file.jpg").
-		On("IsDir").Return(false)
-	file4 := &mocks.FileInfo{}
-	file4.
-		On("Name").Return("stuff.txt").
-		On("IsDir").Return(false)
-	subdir1 := &mocks.FileInfo{}
-	subdir1.
-		On("Name").Return("subdirtxt").
-		On("IsDir").Return(true)
-	keyListFromAPI := []*mocks.FileInfo{subdir1, file1, file2, file4}
+	entries := []*_ftp.Entry{
+		{
+			Name:   "file1.txt",
+			Target: "",
+			Type:   _ftp.EntryTypeFile,
+			Time:   time.Now().UTC(),
+		},
+		{
+			Name:   "file2.txt",
+			Target: "",
+			Type:   _ftp.EntryTypeFile,
+			Time:   time.Now().UTC(),
+		},
+		{
+			Name:   "file.jpg",
+			Target: "",
+			Type:   _ftp.EntryTypeFile,
+			Time:   time.Now().UTC(),
+		},
+		{
+			Name:   "stuff.txt",
+			Target: "",
+			Type:   _ftp.EntryTypeFile,
+			Time:   time.Now().UTC(),
+		},
+		{
+			Name:   "subdirtxt",
+			Target: "",
+			Type:   _ftp.EntryTypeFolder,
+			Time:   time.Now().UTC(),
+		},
+	}
 	authority := "host.com"
 	locPath := "/dir1/"
-	lt.client.On("ReadDir", locPath).Return(sliceImplementationToInterface(keyListFromAPI), nil).Once()
+	lt.client.On("List", locPath).Return(entries, nil).Once()
 	loc, err := lt.ftpfs.NewLocation(authority, locPath)
 	lt.NoError(err)
 	fileTypeRegex, err := regexp.Compile("txt$")
@@ -148,10 +175,10 @@ func (lt *locationTestSuite) TestListByRegex() {
 }
 
 func (lt *locationTestSuite) TestURI() {
-	authority := "user@host.com:22"
+	authority := "user@host.com:21"
 	loc, err := lt.ftpfs.NewLocation(authority, "/blah/")
 	lt.NoError(err)
-	lt.Equal("ftp://user@host.com:22/blah/", loc.URI(), "location uri with user, host, port")
+	lt.Equal("ftp://user@host.com:21/blah/", loc.URI(), "location uri with user, host, port")
 
 	authority = "user:password@host.com"
 	file, err := lt.ftpfs.NewFile(authority, "/blah/file.txt")
@@ -160,10 +187,10 @@ func (lt *locationTestSuite) TestURI() {
 }
 
 func (lt *locationTestSuite) TestString() {
-	authority := "user@host.com:22"
+	authority := "user@host.com:21"
 	loc, err := lt.ftpfs.NewLocation(authority, "/blah/")
 	lt.NoError(err)
-	lt.Equal("ftp://user@host.com:22/blah/", loc.String(), "location string with user, host, port")
+	lt.Equal("ftp://user@host.com:21/blah/", loc.String(), "location string with user, host, port")
 
 	authority = "user:password@host.com"
 	file, err := lt.ftpfs.NewFile(authority, "/blah/file.txt")
@@ -172,10 +199,10 @@ func (lt *locationTestSuite) TestString() {
 }
 
 func (lt *locationTestSuite) TestVolume() {
-	authority := "user@host.com:22"
+	authority := "user@host.com:21"
 	loc, err := lt.ftpfs.NewLocation(authority, "/blah/")
 	lt.NoError(err)
-	lt.Equal("user@host.com:22", loc.Volume(), "Volume() should return the authority string on location.")
+	lt.Equal("user@host.com:21", loc.Volume(), "Volume() should return the authority string on location.")
 
 	authority = "user:password@host.com"
 	loc, err = lt.ftpfs.NewLocation(authority, "/blah/")
@@ -199,7 +226,7 @@ func (lt *locationTestSuite) TestPath() {
 }
 
 func (lt *locationTestSuite) TestNewFile() {
-	loc, err := lt.ftpfs.NewLocation("bucket", "/some/path/to/")
+	loc, err := lt.ftpfs.NewLocation("host.com", "/some/path/to/")
 	lt.NoError(err)
 	lt.Equal("/some/path/to/", loc.Path(), "Path() should return the path on location.")
 
@@ -208,11 +235,6 @@ func (lt *locationTestSuite) TestNewFile() {
 
 	newrelfile, _ := loc.NewFile("../../where/file.txt")
 	lt.Equal("/some/where/file.txt", newrelfile.Path(), "Newfile relative dot path works")
-
-	// test nil pointer
-	var nilLoc *Location
-	_, err = nilLoc.NewFile("/path/to/file.txt")
-	lt.EqualError(err, "non-nil ftp.Location pointer receiver is required", "errors returned by NewFile")
 
 	// test empty path error
 	_, err = loc.NewFile("")
@@ -228,11 +250,15 @@ func (lt *locationTestSuite) TestExists() {
 
 	// location exists
 	locPath := "/"
-	dir1 := &mocks.FileInfo{}
-	dir1.
-		On("Name").Return(locPath).
-		On("IsDir").Return(true)
-	lt.client.On("Stat", locPath).Return(dir1, nil).Once()
+	dirs := []*_ftp.Entry{
+		{
+			Name:   locPath,
+			Target: "",
+			Type:   _ftp.EntryTypeFolder,
+			Time:   time.Now().UTC(),
+		},
+	}
+	lt.client.On("List", locPath).Return(dirs, nil).Once()
 	loc, err := lt.ftpfs.NewLocation(authority, locPath)
 	lt.NoError(err)
 	exists, err := loc.Exists()
@@ -241,16 +267,16 @@ func (lt *locationTestSuite) TestExists() {
 
 	// locations does not exist
 	locPath = "/my/dir/"
-	dir1 = &mocks.FileInfo{}
-	lt.client.On("Stat", locPath).Return(dir1, os.ErrNotExist).Once()
+	dirs = []*_ftp.Entry{}
+	lt.client.On("List", locPath).Return(dirs, nil).Once()
 	loc, err = lt.ftpfs.NewLocation(authority, locPath)
 	lt.NoError(err)
 	exists, err = loc.Exists()
 	lt.Nil(err, "No error expected from Exists")
 	lt.True(!exists, "Call to Exists expected to return false.")
 
-	// some error calling stat
-	lt.client.On("Stat", locPath).Return(dir1, errors.New("some error")).Once()
+	// some error calling list
+	lt.client.On("List", locPath).Return(dirs, errors.New("some error")).Once()
 	loc, err = lt.ftpfs.NewLocation(authority, locPath)
 	lt.NoError(err)
 	exists, err = loc.Exists()
@@ -258,11 +284,15 @@ func (lt *locationTestSuite) TestExists() {
 	lt.True(!exists, "Call to Exists expected to return false.")
 
 	// check for not dir -- this shoudln't be possible since NewLocation won't accept non-absolute directories
-	dir1 = &mocks.FileInfo{}
-	dir1.
-		On("Name").Return(locPath).
-		On("IsDir").Return(false) // set isdir false
-	lt.client.On("Stat", locPath).Return(dir1, nil).Once()
+	dirs = []*_ftp.Entry{
+		{
+			Name:   locPath,
+			Target: "",
+			Type:   _ftp.EntryTypeFile,
+			Time:   time.Now().UTC(),
+		},
+	}
+	lt.client.On("List", locPath).Return(dirs, nil).Once()
 	loc, err = lt.ftpfs.NewLocation(authority, locPath)
 	lt.NoError(err)
 	exists, err = loc.Exists()
@@ -273,10 +303,6 @@ func (lt *locationTestSuite) TestExists() {
 }
 
 func (lt *locationTestSuite) TestChangeDir() {
-	// test nil Location
-	var nilLoc *Location
-	err := nilLoc.ChangeDir("path/to/")
-	lt.EqualErrorf(err, "non-nil ftp.Location pointer receiver is required", "error expected for nil location")
 
 	loc := &Location{fileSystem: lt.ftpfs, path: "/", Authority: utils.Authority{}}
 
@@ -302,7 +328,7 @@ func (lt *locationTestSuite) TestChangeDir() {
 }
 
 func (lt *locationTestSuite) TestNewLocation() {
-	loc, err := lt.ftpfs.NewLocation("bucket", "/old/")
+	loc, err := lt.ftpfs.NewLocation("ftp.host.com:21", "/old/")
 	lt.NoError(err)
 	newLoc, err := loc.NewLocation("new/path/")
 	lt.NoError(err, "No error from successful call to NewLocation")
@@ -312,11 +338,6 @@ func (lt *locationTestSuite) TestNewLocation() {
 	newRelLoc, err := newLoc.NewLocation("../../some/path/")
 	lt.NoError(err)
 	lt.Equal("/old/some/path/", newRelLoc.Path(), "NewLocation works with rel dot paths")
-
-	// test nil pointer
-	var nilLoc *Location
-	_, err = nilLoc.NewLocation("/path/to/")
-	lt.EqualError(err, "non-nil ftp.Location pointer receiver is required", "errors returned by NewLocation")
 
 	// test empty path error
 	_, err = loc.NewLocation("")
@@ -328,15 +349,15 @@ func (lt *locationTestSuite) TestNewLocation() {
 }
 
 func (lt *locationTestSuite) TestDeleteFile() {
-	lt.client.On("Remove", "/old/filename.txt").Return(nil).Once()
-	loc, err := lt.ftpfs.NewLocation("bucket", "/old/")
+	lt.client.On("Delete", "/old/filename.txt").Return(nil).Once()
+	loc, err := lt.ftpfs.NewLocation("ftp.host.com:21", "/old/")
 	lt.NoError(err)
 
 	err = loc.DeleteFile("filename.txt")
 	lt.NoError(err, "Successful delete should not return an error.")
 
-	// error deleteing
-	lt.client.On("Remove", "/old/filename.txt").Return(os.ErrNotExist).Once()
+	// error deleting
+	lt.client.On("Delete", "/old/filename.txt").Return(os.ErrNotExist).Once()
 	err = loc.DeleteFile("filename.txt")
 	lt.Error(err, "failed delete")
 
@@ -345,16 +366,4 @@ func (lt *locationTestSuite) TestDeleteFile() {
 
 func TestLocation(t *testing.T) {
 	suite.Run(t, new(locationTestSuite))
-}
-
-/*
-	Helpers
-*/
-
-func sliceImplementationToInterface(fis []*mocks.FileInfo) []os.FileInfo {
-	osFIs := make([]os.FileInfo, len(fis))
-	for i, v := range fis {
-		osFIs[i] = os.FileInfo(v)
-	}
-	return osFIs
 }

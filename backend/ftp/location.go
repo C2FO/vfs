@@ -123,10 +123,12 @@ func (l *Location) Exists() (bool, error) {
 		return false, err
 	}
 	entries, err := client.List(l.Path())
-	if err != nil && err == os.ErrNotExist {
-		return false, nil
-	} else if err != nil {
+	if err != nil {
 		return false, err
+	}
+
+	if len(entries) == 0 {
+		return false, nil
 	}
 
 	if entries[0].Type != _ftp.EntryTypeFolder {

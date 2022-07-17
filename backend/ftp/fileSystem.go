@@ -30,7 +30,7 @@ func (fs *FileSystem) Retry() vfs.Retry {
 }
 
 // NewFile function returns the FTP implementation of vfs.File.
-func (fs *FileSystem) NewFile(authority string, filePath string) (vfs.File, error) {
+func (fs *FileSystem) NewFile(authority, filePath string) (vfs.File, error) {
 	if fs == nil {
 		return nil, errors.New("non-nil ftp.FileSystem pointer is required")
 	}
@@ -54,7 +54,7 @@ func (fs *FileSystem) NewFile(authority string, filePath string) (vfs.File, erro
 }
 
 // NewLocation function returns the FTP implementation of vfs.Location.
-func (fs *FileSystem) NewLocation(authority string, locPath string) (vfs.Location, error) {
+func (fs *FileSystem) NewLocation(authority, locPath string) (vfs.Location, error) {
 	if fs == nil {
 		return nil, errors.New("non-nil ftp.FileSystem pointer is required")
 	}
@@ -119,11 +119,9 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 
 // WithClient passes in an ftp client and returns the filesystem (chainable)
 func (fs *FileSystem) WithClient(client Client) *FileSystem {
-	switch client.(type) {
-	case *_ftp.ServerConn:
-		fs.ftpclient = client.(*_ftp.ServerConn)
-		fs.options = nil
-	}
+	fs.ftpclient = client
+	fs.options = nil
+
 	return fs
 }
 
@@ -139,7 +137,7 @@ func init() {
 
 func (fs *FileSystem) getClient(authority utils.Authority, opts Options) (client Client, err error) {
 	if fs.ftpclient != nil {
-		return fs.ftpclient.(Client), nil
+		return fs.ftpclient, nil
 	}
 	return getClient(authority, opts)
 }
