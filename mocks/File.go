@@ -80,6 +80,8 @@ func (_m *File) Delete(deleteOpts ...options.DeleteOption) error {
 	var r0 error
 	if rf, ok := ret.Get(0).(func(...options.DeleteOption) error); ok {
 		r0 = rf(deleteOpts...)
+	} else if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
 	} else {
 		r0 = ret.Error(0)
 	}
