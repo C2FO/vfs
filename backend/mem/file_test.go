@@ -753,6 +753,25 @@ func (s *memFileTest) TestStringer() {
 
 }
 
+func (s *memFileTest) TestFileNewWrite() {
+	file, err := s.fileSystem.NewFile("", "/test_files/lots/of/directories/here/we/go/test.txt")
+	s.Require().NoError(err)
+	_, err = file.Write([]byte("hello world"))
+	s.Require().NoError(err)
+	s.Require().NoError(file.Close())
+
+	data, err := ioutil.ReadAll(file)
+	s.Equal("hello world", string(data))
+
+	// Re-write the same data should not append
+	_, err = file.Write([]byte("hello world"))
+	s.Require().NoError(err)
+	s.Require().NoError(file.Close())
+
+	data, err = ioutil.ReadAll(file)
+	s.Equal("hello world", string(data))
+}
+
 func TestMemFile(t *testing.T) {
 	suite.Run(t, new(memFileTest))
 	_ = os.Remove("test_files/new.txt")
