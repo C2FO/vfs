@@ -1,7 +1,7 @@
 package mem
 
 import (
-	"io/ioutil"
+	"io"
 	"path"
 	"regexp"
 	"testing"
@@ -314,7 +314,7 @@ func (s *memLocationTest) TestDeleteFile() {
 
 }
 
-// TestWriteExistingFile tests that initalizing a pre-existing file from a location, using a relative path will not result
+// TestWriteExistingFile tests that initializing a pre-existing file from a location, using a relative path will not result
 // in a blank file
 func (s *memLocationTest) TestWriteExistingFile() {
 
@@ -335,7 +335,8 @@ func (s *memLocationTest) TestWriteExistingFile() {
 	s.Require().NoError(err)
 	s.True(exists)
 
-	data, err := ioutil.ReadAll(file)
+	data, err := io.ReadAll(file)
+	s.Require().NoError(err)
 	s.Equal("hello world", string(data))
 }
 

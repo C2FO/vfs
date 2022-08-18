@@ -760,7 +760,8 @@ func (s *memFileTest) TestFileNewWrite() {
 	s.Require().NoError(err)
 	s.Require().NoError(file.Close())
 
-	data, err := ioutil.ReadAll(file)
+	data, err := io.ReadAll(file)
+	s.Require().NoError(err)
 	s.Equal("hello world", string(data))
 
 	// Re-write the same data should not append
@@ -768,7 +769,8 @@ func (s *memFileTest) TestFileNewWrite() {
 	s.Require().NoError(err)
 	s.Require().NoError(file.Close())
 
-	data, err = ioutil.ReadAll(file)
+	data, err = io.ReadAll(file)
+	s.Require().NoError(err)
 	s.Equal("hello world", string(data))
 }
 
