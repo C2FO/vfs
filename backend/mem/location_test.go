@@ -1,6 +1,7 @@
 package mem
 
 import (
+	"io"
 	"path"
 	"regexp"
 	"testing"
@@ -311,6 +312,32 @@ func (s *memLocationTest) TestDeleteFile() {
 	s.False(existence1)
 	s.NoError(eerr1, "unexpected existence error")
 
+}
+
+// TestWriteExistingFile tests that initializing a pre-existing file from a location, using a relative path will not result
+// in a blank file
+func (s *memLocationTest) TestWriteExistingFile() {
+
+	newFile, err := s.fileSystem.NewFile("", "/path/to/file/bar.txt")
+	s.NoError(err, "unexpected error creating a new file")
+
+	_, err = newFile.Write([]byte("hello world"))
+	s.Require().NoError(err)
+	s.Require().NoError(newFile.Close())
+
+	location, err := s.fileSystem.NewLocation("", "/path/")
+	s.Require().NoError(err)
+
+	file, err := location.NewFile("to/file/bar.txt")
+	s.Require().NoError(err)
+
+	exists, err := file.Exists()
+	s.Require().NoError(err)
+	s.True(exists)
+
+	data, err := io.ReadAll(file)
+	s.Require().NoError(err)
+	s.Equal("hello world", string(data))
 }
 
 func TestMemLocation(t *testing.T) {

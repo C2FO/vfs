@@ -187,6 +187,10 @@ func (f *File) Write(p []byte) (int, error) {
 			return 0, err
 		}
 	}
+	// If it's a new write session, assume data will be overwritten
+	if f.memFile.writeBuffer.Len() == 0 && len(f.memFile.contents) > 0 {
+		f.memFile.contents = []byte{}
+	}
 	f.memFile.Lock()
 	num, err := f.memFile.writeBuffer.Write(p)
 	f.memFile.lastModified = time.Now()

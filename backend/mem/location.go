@@ -170,7 +170,8 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 	// file already exists. if it does, return a reference to it
 	mapRef := l.fileSystem.fsMap
 	if _, ok := mapRef[l.volume]; ok {
-		fileList := mapRef[l.volume].filesHere(l.Path())
+		relativeLocationPath := utils.EnsureTrailingSlash(path.Dir(path.Join(l.Path(), relFilePath)))
+		fileList := mapRef[l.volume].filesHere(relativeLocationPath)
 		for _, file := range fileList {
 			if file.name == path.Base(relFilePath) {
 				fileCopy := deepCopy(file)

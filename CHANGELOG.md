@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
+- fixed edge cases where in-memory files either weren't found when they should be, or didn't reset state on new writes
+
 ### Fixed
 - Replaced pre-generated ssh keypair in sftp options tests with auto-generated pair to remediate false-positive security alerts for hard-coded credentials.
 
