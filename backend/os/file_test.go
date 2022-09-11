@@ -718,7 +718,7 @@ func TestOSFile(t *testing.T) {
 }
 
 /*
-	Setup TEST FILES
+Setup TEST FILES
 */
 func setupTestFiles(baseLoc vfs.Location) {
 

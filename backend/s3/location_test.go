@@ -325,7 +325,7 @@ func TestLocation(t *testing.T) {
 }
 
 /*
-	Helpers
+Helpers
 */
 func convertKeysToS3Objects(keys []string) []*s3.Object {
 	var objects []*s3.Object

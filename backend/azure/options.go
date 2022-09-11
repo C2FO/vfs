@@ -44,13 +44,14 @@ type Options struct {
 }
 
 // NewOptions creates a new Options struct by populating values from environment variables.
-//   Env Vars:
-//     *VFS_AZURE_STORAGE_ACCOUNT
-//     *VFS_AZURE_STORAGE_ACCESS_KEY
-//     *VFS_AZURE_TENANT_ID
-//     *VFS_AZURE_CLIENT_ID
-//     *VFS_AZURE_CLIENT_SECRET
-//     *VFS_AZURE_ENV_NAME
+//
+//	Env Vars:
+//	  *VFS_AZURE_STORAGE_ACCOUNT
+//	  *VFS_AZURE_STORAGE_ACCESS_KEY
+//	  *VFS_AZURE_TENANT_ID
+//	  *VFS_AZURE_CLIENT_ID
+//	  *VFS_AZURE_CLIENT_SECRET
+//	  *VFS_AZURE_ENV_NAME
 func NewOptions() *Options {
 	return &Options{
 		AccountName:            os.Getenv("VFS_AZURE_STORAGE_ACCOUNT"),
@@ -65,11 +66,11 @@ func NewOptions() *Options {
 
 // Credential returns an azblob.Credential struct based on how options are configured.  Options are checked
 // and evaluated in the following order:
-//    1. If TenantID, ClientID, and ClientSecret are non-empty, return azblob.TokenCredential.  This form of authentication
-//       is used with service accounts and can be used to access containers across multiple storage accounts.
-//    2. If AccountName, and AccountKey are non-empty, return azblob.SharedKeyCredential.  This form or authentication
-//       is used with storage accounts and only provides access to a single storage account.
-//    3. Returns an anonymous credential.  This allows access only to public blobs.
+//  1. If TenantID, ClientID, and ClientSecret are non-empty, return azblob.TokenCredential.  This form of authentication
+//     is used with service accounts and can be used to access containers across multiple storage accounts.
+//  2. If AccountName, and AccountKey are non-empty, return azblob.SharedKeyCredential.  This form or authentication
+//     is used with storage accounts and only provides access to a single storage account.
+//  3. Returns an anonymous credential.  This allows access only to public blobs.
 func (o *Options) Credential() (azblob.Credential, error) {
 	if o.tokenCredentialFactory == nil {
 		o.tokenCredentialFactory = &DefaultTokenCredentialFactory{}
