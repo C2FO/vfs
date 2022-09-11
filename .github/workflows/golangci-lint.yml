@@ -6,7 +6,6 @@ on:
     branches:
       - master
       - main
-      - feature/fixLint
   pull_request:
 jobs:
   golangci:
