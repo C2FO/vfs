@@ -231,13 +231,14 @@ type Options interface{}
 // is called by the underlying VFS implementation.
 //
 // Ex:
-//   var retrier Retry = func(wrapped func() error) error {
-//     var ret error
-//     for i := 0; i < 5; i++ {
-//        if err := wrapped(); err != nil { ret = err; continue }
-//     }
-//     return ret
-//   }
+//
+//	var retrier Retry = func(wrapped func() error) error {
+//	  var ret error
+//	  for i := 0; i < 5; i++ {
+//	     if err := wrapped(); err != nil { ret = err; continue }
+//	  }
+//	  return ret
+//	}
 type Retry func(wrapped func() error) error
 
 // DefaultRetryer returns a no-op retryer which simply calls the wrapped command without looping.

@@ -104,7 +104,7 @@ func initCredentialProviderChain(opt Options) ([]credentials.Provider, error) {
 	// * Access Key ID:     AWS_ACCESS_KEY_ID or AWS_ACCESS_KEY
 	//
 	// * Secret Access Key: AWS_SECRET_ACCESS_KEY or AWS_SECRET_KEY
-	p = append(p, &credentials.EnvProvider{}) // nolint:gocritic // appendCombine
+	p = append(p, &credentials.EnvProvider{}) //nolint:gocritic // appendCombine
 
 	// Path to the shared credentials file.
 	//
