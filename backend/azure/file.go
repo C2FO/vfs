@@ -3,7 +3,6 @@ package azure
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -315,7 +314,7 @@ func (f *File) checkTempFile() error {
 			return err
 		}
 		if !exists {
-			tf, tfErr := ioutil.TempFile("", fmt.Sprintf("%s.%d", path.Base(f.Name()), time.Now().UnixNano()))
+			tf, tfErr := os.CreateTemp("", fmt.Sprintf("%s.%d", path.Base(f.Name()), time.Now().UnixNano()))
 			if tfErr != nil {
 				return tfErr
 			}
@@ -326,7 +325,7 @@ func (f *File) checkTempFile() error {
 				return dlErr
 			}
 
-			tf, tfErr := ioutil.TempFile("", fmt.Sprintf("%s.%d", path.Base(f.Name()), time.Now().UnixNano()))
+			tf, tfErr := os.CreateTemp("", fmt.Sprintf("%s.%d", path.Base(f.Name()), time.Now().UnixNano()))
 			if tfErr != nil {
 				return tfErr
 			}

@@ -6,7 +6,6 @@ package azure
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"strings"
@@ -75,7 +74,7 @@ func (s *ClientIntegrationTestSuite) TestAllTheThings_FileWithNoPath() {
 	// download it
 	reader, err := client.Download(f)
 	s.NoError(err)
-	dlContent, err := ioutil.ReadAll(reader)
+	dlContent, err := io.ReadAll(reader)
 	s.NoError(err)
 	err = reader.Close()
 	s.NoError(err, "there should be no error reading the downloaded file")
@@ -123,7 +122,7 @@ func (s *ClientIntegrationTestSuite) TestAllTheThings_FileWithPath() {
 	// download it
 	reader, err := client.Download(f)
 	s.NoError(err)
-	dlContent, err := ioutil.ReadAll(reader)
+	dlContent, err := io.ReadAll(reader)
 	s.NoError(err)
 	err = reader.Close()
 	s.NoError(err)

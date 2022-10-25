@@ -3,7 +3,7 @@ package mocks
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -32,7 +32,7 @@ func NewStringFile(data, fileName string) *ReadWriteFile {
 
 // NewMockFromFilepath creates a new ReadWriteFile instance that can read a file from the provided path.
 func NewMockFromFilepath(filePath string) *ReadWriteFile {
-	data, err := ioutil.ReadFile(filePath)
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		data = make([]byte, 0)
 	}

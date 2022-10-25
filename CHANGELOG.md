@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Fixed
 - fixed #129(cdd4143) Resolve failing golangci-lint - elliotwutingfeng
+- fixed #133 Replaced usage of deprecated ioutil functions with os and io equivalents.
 
 ### Security
 - Update go.mod min version to Go 1.18. Fixes #131.

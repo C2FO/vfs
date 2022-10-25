@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -31,7 +30,7 @@ type osFileTest struct {
 func (s *osFileTest) SetupSuite() {
 	fs := &FileSystem{}
 	s.fileSystem = fs
-	dir, err := ioutil.TempDir("", "os_file_test")
+	dir, err := os.MkdirTemp("", "os_file_test")
 	dir = utils.EnsureTrailingSlash(dir)
 	s.NoError(err)
 	s.tmploc, err = fs.NewLocation("", dir)
@@ -278,7 +277,7 @@ func (s *osFileTest) TestCopyToLocationIgnoreExtraSeparator() {
 
 func (s *osFileTest) TestMoveToLocation() {
 	expectedText := "moved file"
-	dir, terr := ioutil.TempDir(path.Join(s.tmploc.Path(), "test_files"), "example")
+	dir, terr := os.MkdirTemp(path.Join(s.tmploc.Path(), "test_files"), "example")
 	s.NoError(terr)
 
 	origFileName := path.Join(dir, "test_files/move.txt")
@@ -341,7 +340,7 @@ func (s *osFileTest) TestMoveToLocation() {
 }
 
 func (s *osFileTest) TestSafeOsRename() {
-	dir, err := ioutil.TempDir(path.Join(s.tmploc.Path(), "test_files"), "example")
+	dir, err := os.MkdirTemp(path.Join(s.tmploc.Path(), "test_files"), "example")
 	s.NoError(err)
 	defer func() {
 		err := os.RemoveAll(dir)
@@ -382,7 +381,7 @@ func (s *osFileTest) TestSafeOsRename() {
 }
 
 func (s *osFileTest) TestOsCopy() {
-	dir, err := ioutil.TempDir(path.Join(s.tmploc.Path(), "test_files"), "example")
+	dir, err := os.MkdirTemp(path.Join(s.tmploc.Path(), "test_files"), "example")
 	s.NoError(err)
 	defer func() {
 		err := os.RemoveAll(dir)
@@ -407,7 +406,7 @@ func (s *osFileTest) TestOsCopy() {
 }
 
 func (s *osFileTest) TestMoveToFile() {
-	dir, terr := ioutil.TempDir(path.Join(s.tmploc.Path(), "test_files"), "example")
+	dir, terr := os.MkdirTemp(path.Join(s.tmploc.Path(), "test_files"), "example")
 	s.NoError(terr)
 
 	file1, err := s.fileSystem.NewFile("", path.Join(dir, "original.txt"))

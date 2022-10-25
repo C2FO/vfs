@@ -3,7 +3,6 @@ package utils_test
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -544,7 +543,7 @@ func (s *utilsTest) TestGetURI() {
 func (s *utilsTest) TestTouchCopy() {
 
 	// write out blank file
-	tmpfile, err := ioutil.TempFile("", "utils_test")
+	tmpfile, err := os.CreateTemp("", "utils_test")
 	if err != nil {
 		s.NoError(err, "unexpected temp file setup error")
 	}
@@ -624,7 +623,7 @@ func (s *utilsTest) TestTouchCopy() {
 func (s *utilsTest) TestTouchCopyBufferedDefaultBufferSize() {
 
 	// write out blank file
-	tmpfile, err := ioutil.TempFile("", "utils_test")
+	tmpfile, err := os.CreateTemp("", "utils_test")
 	if err != nil {
 		s.NoError(err, "unexpected temp file setup error")
 	}
@@ -704,7 +703,7 @@ func (s *utilsTest) TestTouchCopyBufferedDefaultBufferSize() {
 func (s *utilsTest) TestTouchCopyBufferedNonDefaultBufferSize() {
 
 	// write out blank file
-	tmpfile, err := ioutil.TempFile("", "utils_test")
+	tmpfile, err := os.CreateTemp("", "utils_test")
 	if err != nil {
 		s.NoError(err, "unexpected temp file setup error")
 	}

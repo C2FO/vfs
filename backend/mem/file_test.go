@@ -2,7 +2,6 @@ package mem
 
 import (
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -360,7 +359,7 @@ func (s *memFileTest) TestCopyToLocationOS() {
 	s.NoError(s.testFile.Close(), "unexpected error closing file")
 
 	var osFile vfs.File
-	dir, err := ioutil.TempDir("", "osDir")
+	dir, err := os.MkdirTemp("", "osDir")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -429,7 +428,7 @@ func (s *memFileTest) TestCopyToFileOS() {
 	expectedText := "Hello World!"
 	var osFile vfs.File
 	var err error
-	dir, err := ioutil.TempDir("", "osDir")
+	dir, err := os.MkdirTemp("", "osDir")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -595,7 +594,7 @@ func (s *memFileTest) TestMoveToFile2() {
 // TestWrite writes a string to a file and checks for success by comparing the number of bytes
 // written by "Write()" to the length of the slice it wrote from
 func (s *memFileTest) TestWrite() {
-	expectedText := "I'm fed up with this world" //-Tommy Wiseau
+	expectedText := "I'm fed up with this world" // -Tommy Wiseau
 	bSlice := []byte(expectedText)
 	length := len(bSlice)
 	num, err := s.testFile.Write(bSlice)
