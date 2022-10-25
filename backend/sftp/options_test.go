@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -30,7 +29,7 @@ type optionsSuite struct {
 }
 
 func (o *optionsSuite) SetupSuite() {
-	dir, err := ioutil.TempDir("", "sftp_options_test")
+	dir, err := os.MkdirTemp("", "sftp_options_test")
 	o.NoError(err, "setting up sftp_options_test temp dir")
 	o.tmpdir = dir
 

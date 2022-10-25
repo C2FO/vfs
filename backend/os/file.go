@@ -3,7 +3,6 @@ package os
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -424,7 +423,7 @@ func (f *File) getInternalFile() (*os.File, error) {
 }
 
 func (f *File) copyToLocalTempReader() (*os.File, error) {
-	tmpFile, err := ioutil.TempFile("", fmt.Sprintf("%s.%d", f.Name(), time.Now().UnixNano()))
+	tmpFile, err := os.CreateTemp("", fmt.Sprintf("%s.%d", f.Name(), time.Now().UnixNano()))
 	if err != nil {
 		return nil, err
 	}

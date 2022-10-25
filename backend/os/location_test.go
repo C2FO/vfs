@@ -1,7 +1,7 @@
 package os
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 	"testing"
@@ -26,7 +26,7 @@ type osLocationTest struct {
 
 func (s *osLocationTest) SetupSuite() {
 	fs := &FileSystem{}
-	dir, err := ioutil.TempDir("", "os_location_test")
+	dir, err := os.MkdirTemp("", "os_location_test")
 	dir = utils.EnsureTrailingSlash(dir)
 	s.NoError(err)
 	s.tmploc, err = fs.NewLocation("", dir)

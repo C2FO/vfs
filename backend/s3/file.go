@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path"
@@ -439,7 +438,7 @@ func (f *File) checkTempFile() error {
 
 func (f *File) copyToLocalTempReader() (*os.File, error) {
 	// Create temp file
-	tmpFile, err := ioutil.TempFile("", fmt.Sprintf("%s.%d", f.Name(), time.Now().UnixNano()))
+	tmpFile, err := os.CreateTemp("", fmt.Sprintf("%s.%d", f.Name(), time.Now().UnixNano()))
 	if err != nil {
 		return nil, err
 	}

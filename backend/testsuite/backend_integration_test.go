@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"regexp"
@@ -565,7 +564,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 	/*
 		io.Reader and io.Seeker
 	*/
-	str, err := ioutil.ReadAll(srcFile)
+	str, err := io.ReadAll(srcFile)
 	s.NoError(err)
 	s.Equal("this is a test\nand more text", string(str), "read was successful")
 
@@ -573,7 +572,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 	s.NoError(err)
 	s.EqualValues(3, offset, "seek was successful")
 
-	str, err = ioutil.ReadAll(srcFile)
+	str, err = io.ReadAll(srcFile)
 	s.NoError(err)
 	s.Equal("s is a test\nand more text", string(str), "read after seek")
 	err = srcFile.Close()
