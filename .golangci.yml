@@ -28,44 +28,6 @@ run:
   skip-dirs:
     - docs
     - mocks
-    - adjuster
-    - award_locator
-    - buyermanualupload
-    - cli
-    - configmigrator
-    - csvLinter
-    - deploy
-    - docker
-    - enigma
-    - eslap
-    - experiments
-    - feedbackfile
-    - filtered_snapshots
-    - frenzy
-    - githooks
-    - gpg_key_service
-    - httprpc
-    - invoice_sequencer
-    - invoiceFeedbackTest
-    - lib
-    - manager
-    - ofac_generator
-    - optimus/artifact
-    - optimus/award
-    - optimus/award_regression
-    - optimus/buyerutil
-    - optimus/encrypter
-    - optimus/exchanges
-    - optimus/incoming
-    - optimus/pdf
-    - optimus/status
-    - optimus/subscriber
-    - optimus/transform
-    - purgers
-    - ratedataingestion
-    - taker_importer
-    - the_purge
-    - transoformTest
 
   # default is true. Enables skipping of directories:
   #   vendor$, third_party$, testdata$, examples$, Godeps$, builtin$
@@ -240,9 +202,9 @@ linters-settings:
       elseif:
         # whether to skip balanced if-else pairs (default true)
         skipBalanced: true
-      hugeParam:
+#      hugeParam:
         # size in bytes that makes the warning trigger (default 80)
-        sizeThreshold: 80
+#        sizeThreshold: 80
       nestingReduce:
         # min number of statements inside a branch to trigger a warning (default 5)
         bodyWidth: 5
@@ -601,7 +563,7 @@ linters-settings:
 
   unused:
     # Select the Go version to target. The default is '1.13'.
-    go: "1.15"
+    go: "1.18"
 
 #  whitespace:
 #    multi-if: false   # Enforces newlines (or comments) after every multi-line if statement
@@ -652,7 +614,7 @@ linters:
   disable-all: true
   enable:
     - bodyclose
-    - deadcode
+#    - deadcode
 #    - depguard
 #    - dogsled
 #    - dupl **
@@ -682,13 +644,13 @@ linters:
 #    - rowserrcheck
     - revive
     - staticcheck
-    - structcheck
+#    - structcheck
     - stylecheck
 #    - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
+#    - varcheck
 #    - whitespace
 
   # don't enable:
