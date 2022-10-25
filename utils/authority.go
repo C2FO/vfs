@@ -14,8 +14,9 @@ type Authority struct {
 
 // String() returns a string representation of authority.  It does not include password per
 // https://tools.ietf.org/html/rfc3986#section-3.2.1:
-//   Applications should not render as clear text any data after the first colon (":") character found within a userinfo
-//   subcomponent unless the data after the colon is the empty string (indicating no password).
+//
+//	Applications should not render as clear text any data after the first colon (":") character found within a userinfo
+//	subcomponent unless the data after the colon is the empty string (indicating no password).
 func (a Authority) String() string {
 	if a.User != "" {
 		return fmt.Sprintf("%s@%s", a.User, a.Host)

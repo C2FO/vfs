@@ -1,10 +1,10 @@
 /*
 Package vfssimple provides a basic and easy to use set of functions to any supported backend file system by using full URI's:
-  * Local OS:             file:///some/path/to/file.txt
-  * Amazon S3:            s3://mybucket/path/to/file.txt
-  * Google Cloud Storage: gs://mybucket/path/to/file.txt
+  - Local OS:             file:///some/path/to/file.txt
+  - Amazon S3:            s3://mybucket/path/to/file.txt
+  - Google Cloud Storage: gs://mybucket/path/to/file.txt
 
-Usage
+# Usage
 
 Just import vfssimple.
 
@@ -35,7 +35,7 @@ Just import vfssimple.
 		fmt.Printf("moved %s to %s\n", myS3File, localFile)
 	}
 
-Authentication and Options
+# Authentication and Options
 
 vfssimple is largely an example of how to initialize a set of backend file systems.  It only provides a default
 initialization of the individual file systems.  See backend docs for specific authentication info for each backend but
@@ -80,7 +80,7 @@ file system.
 		fmt.Printf("copied %s to %s\n", secureFile, publicLocation)
 	}
 
-Registered Backend Resolution
+# Registered Backend Resolution
 
 Every backend type automatically registers itself as an available backend filesystem for vfssimple based on its scheme.  In this way,
 vfssimple is able to determine which backend to use for any related URI.  As mentioned above, you can register your own initialized
@@ -110,6 +110,5 @@ See the expected registered bucket name for each:
 	's3'                         - URI: 's3://other/'                        (scheme-level match, only)
 	's3'                         - URI: 's3://other/file.txt'                (scheme-level match, only)
 	's3'                         - URI: 's3://other/path/to/nowhere/'        (scheme-level match, only)
-
 */
 package vfssimple

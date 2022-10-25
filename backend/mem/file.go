@@ -14,17 +14,15 @@ import (
 	"github.com/c2fo/vfs/v6/utils"
 )
 
-//
-//	memFile with name "filename" is the single representation of the structure that
-//	all calls to "filename" will reference. The point of doing it this way is
-//	to allow multiple read threads, and locking up writing and deletion.
-//	Files referencing filename will check their own 'contents' slice against
-//	"filename's" and is updated accordingly. This allows multiple threads to have the most
-//	up-to-date file contents while also preserving the state of their own cursor that is
-//	used in Read() and Seek() calls. Calls to Write() all reference
-// 	"filename's" buffer, which is why it is locked. Data written into the writeBuffer
-//	does not appear in "filename's" 'contents' slice until a call to Close() is made
-//
+// memFile with name "filename" is the single representation of the structure that
+// all calls to "filename" will reference. The point of doing it this way is
+// to allow multiple read threads, and locking up writing and deletion.
+// Files referencing filename will check their own 'contents' slice against
+// "filename's" and is updated accordingly. This allows multiple threads to have the most
+// up-to-date file contents while also preserving the state of their own cursor that is
+// used in Read() and Seek() calls. Calls to Write() all reference
+// "filename's" buffer, which is why it is locked. Data written into the writeBuffer
+// does not appear in "filename's" 'contents' slice until a call to Close() is made
 type memFile struct {
 	sync.Mutex
 	writeBuffer  *bytes.Buffer
@@ -50,7 +48,7 @@ type File struct {
 
 }
 
-//		////// Error Functions ///////		//
+// ////// Error Functions ///////		//
 func doesNotExist() error {
 	return errors.New("this file does not exist")
 }

@@ -347,7 +347,7 @@ func (f *File) String() string {
 }
 
 /*
-	Private helper functions
+Private helper functions
 */
 func (f *File) getAllObjectVersions(client s3iface.S3API) (*s3.ListObjectVersionsOutput, error) {
 	prefix := utils.RemoveLeadingSlash(f.key)
