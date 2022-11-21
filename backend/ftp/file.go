@@ -1,6 +1,7 @@
 package ftp
 
 import (
+	"context"
 	"io"
 	"os"
 	"path"
@@ -35,7 +36,7 @@ type File struct {
 // LastModified returns the LastModified property of ftp file.
 func (f *File) LastModified() (*time.Time, error) {
 
-	entry, err := f.stat()
+	entry, err := f.stat(context.TODO())
 	if err != nil {
 		return nil, err
 	}
@@ -43,8 +44,8 @@ func (f *File) LastModified() (*time.Time, error) {
 	return &t, nil
 }
 
-func (f *File) stat() (*_ftp.Entry, error) {
-	client, err := f.fileSystem.Client(f.Authority)
+func (f *File) stat(ctx context.Context) (*_ftp.Entry, error) {
+	client, err := f.fileSystem.Client(ctx, f.Authority)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +69,7 @@ func (f *File) Path() string {
 // Exists returns a boolean of whether or not the file exists on the ftp server
 func (f *File) Exists() (bool, error) {
 
-	_, err := f.stat()
+	_, err := f.stat(context.TODO())
 	if err != nil && err == os.ErrNotExist {
 		return false, nil
 	} else if err != nil {
@@ -113,7 +114,7 @@ func (f *File) Touch() error {
 // Size returns the size of the remote file.
 func (f *File) Size() (uint64, error) {
 
-	entry, err := f.stat()
+	entry, err := f.stat(context.TODO())
 	if err != nil {
 		return 0, err
 	}
@@ -143,7 +144,7 @@ func (f *File) MoveToFile(t vfs.File) error {
 		f.Authority.User == t.(*File).Authority.User &&
 		f.Authority.Host == t.(*File).Authority.Host {
 
-		client, err := f.fileSystem.Client(f.Authority)
+		client, err := f.fileSystem.Client(context.TODO(), f.Authority)
 		if err != nil {
 			return err
 		}
@@ -218,7 +219,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 // Delete removes the remote file.  Error is returned, if any.
 func (f *File) Delete(_ ...options.DeleteOption) error {
-	client, err := f.fileSystem.Client(f.Authority)
+	client, err := f.fileSystem.Client(context.TODO(), f.Authority)
 	if err != nil {
 		return err
 	}
@@ -241,7 +242,7 @@ func (f *File) Close() error {
 
 // Read calls the underlying ftp.File Read.
 func (f *File) Read(p []byte) (n int, err error) {
-	dc, err := f.getDataConn(openRead)
+	dc, err := f.getDataConn(context.TODO(), openRead)
 	if err != nil {
 		return 0, err
 	}
@@ -279,7 +280,6 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 				return 0, err
 			}
 			f.dataconn = nil
-			break
 		case 2: // offset from end of the file
 			sz, err := f.Size()
 			if err != nil {
@@ -296,12 +296,11 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 				return 0, err
 			}
 			f.dataconn = nil
-			break
 		}
 	}
 
 	// now that f.offset has been adjusted and mode was captured, reinitialize file
-	_, err := f.getDataConn(mode)
+	_, err := f.getDataConn(context.TODO(), mode)
 	if err != nil {
 		return 0, err
 	}
@@ -313,7 +312,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 // Write calls the underlying ftp.File Write.
 func (f *File) Write(data []byte) (res int, err error) {
 
-	dc, err := f.getDataConn(openWrite)
+	dc, err := f.getDataConn(context.TODO(), openWrite)
 	if err != nil {
 		return 0, err
 	}
@@ -366,7 +365,7 @@ func (dc *dataConn) Close() error {
 	return nil
 }
 
-func (f *File) getDataConn(t OpenType) (*dataConn, error) {
+func (f *File) getDataConn(ctx context.Context, t OpenType) (*dataConn, error) {
 	if f.dataconn != nil {
 		if f.dataconn.Mode() != t {
 			// wrong session type ... close current session and unset it (so we can set a new one after)
@@ -379,7 +378,7 @@ func (f *File) getDataConn(t OpenType) (*dataConn, error) {
 	}
 
 	if f.dataconn == nil {
-		client, err := f.fileSystem.Client(f.Authority)
+		client, err := f.fileSystem.Client(ctx, f.Authority)
 		if err != nil {
 			return nil, err
 		}
@@ -394,7 +393,6 @@ func (f *File) getDataConn(t OpenType) (*dataConn, error) {
 				R:    resp,
 				mode: t,
 			}
-			break
 		case openWrite:
 			// create a pipewriter for writes.
 			pr, pw := io.Pipe()
@@ -406,7 +404,6 @@ func (f *File) getDataConn(t OpenType) (*dataConn, error) {
 				W:    pw,
 				mode: t,
 			}
-			break
 		}
 	}
 

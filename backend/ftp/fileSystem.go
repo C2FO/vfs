@@ -1,6 +1,7 @@
 package ftp
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -86,7 +87,7 @@ func (fs *FileSystem) Scheme() string {
 
 // Client returns the underlying ftp client, creating it, if necessary
 // See Overview for authentication resolution
-func (fs *FileSystem) Client(authority utils.Authority) (Client, error) {
+func (fs *FileSystem) Client(ctx context.Context, authority utils.Authority) (Client, error) {
 	if fs.ftpclient == nil {
 		if fs.options == nil {
 			fs.options = Options{}
@@ -94,7 +95,7 @@ func (fs *FileSystem) Client(authority utils.Authority) (Client, error) {
 
 		if opts, ok := fs.options.(Options); ok {
 			var err error
-			fs.ftpclient, err = fs.getClient(authority, opts)
+			fs.ftpclient, err = fs.getClient(ctx, authority, opts)
 			if err != nil {
 				return nil, err
 			}
@@ -135,11 +136,11 @@ func init() {
 	backend.Register(Scheme, NewFileSystem())
 }
 
-func (fs *FileSystem) getClient(authority utils.Authority, opts Options) (client Client, err error) {
+func (fs *FileSystem) getClient(ctx context.Context, authority utils.Authority, opts Options) (client Client, err error) {
 	if fs.ftpclient != nil {
 		return fs.ftpclient, nil
 	}
-	return getClient(authority, opts)
+	return getClient(ctx, authority, opts)
 }
 
 // Client is an interface to make it easier to test

@@ -1,6 +1,8 @@
 package ftp
 
 import (
+	"context"
+	"crypto/tls"
 	"fmt"
 	"strings"
 
@@ -10,24 +12,36 @@ import (
 	"github.com/c2fo/vfs/v6/utils"
 )
 
-const systemWideKnownHosts = "/etc/ssh/ssh_known_hosts"
-
 type Options struct {
-	UserName   string `json:"username,omitempty"` // env var VFS_FTP_USERNAME
-	Password   string `json:"password,omitempty"` // env var VFS_FTP_PASSWORD
-	Retry      vfs.Retry
-	MaxRetries int
-	protocol   string `json:"protocol,omitempty"` // env var VFS_FTP_PROTOCOL
+	UserName    string // env var VFS_FTP_USERNAME
+	Password    string // env var VFS_FTP_PASSWORD
+	Retry       vfs.Retry
+	MaxRetries  int
+	Protocol    string // env var VFS_FTP_PROTOCOL (ftp[default], ftps, ftpes)
+	DisableEPSV bool
 }
 
-func getClient(authority utils.Authority, opts Options) (Client, error) {
+func getClient(ctx context.Context, authority utils.Authority, opts Options) (Client, error) {
 
 	host := authority.Host
 	if !strings.Contains(host, ":") {
 		host = fmt.Sprintf("%s%s", host, ":21")
 	}
-	// TODO: DialWithContext(ctx), DialWithTLS(tlsConf), DialWithExplicitTLS(tlsConf), DialWithDebugOutput(io.Writer), DialWithDisabledEPSV
-	c, err := _ftp.Dial(host)
+
+	var dialOptions []_ftp.DialOption
+
+	// always use context, disable EPSV if opt is true
+	dialOptions = append(dialOptions, _ftp.DialWithContext(ctx), _ftp.DialWithDisabledEPSV(opts.DisableEPSV))
+
+	//
+	switch opts.Protocol {
+	case "ftps":
+		dialOptions = append(dialOptions, _ftp.DialWithTLS(&tls.Config{MinVersion: tls.VersionTLS12})) // TODO: figure this out
+	case "ftpes":
+		dialOptions = append(dialOptions, _ftp.DialWithExplicitTLS(&tls.Config{MinVersion: tls.VersionTLS12})) // TODO: figure this out
+	}
+	// TODO: DialWithDebugOutput(io.Writer)
+	c, err := _ftp.Dial(host, dialOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +50,7 @@ func getClient(authority utils.Authority, opts Options) (Client, error) {
 		return nil, err
 	}
 
-	return nil, nil
+	return c, nil
 }
 
 // ---part of uri
@@ -47,7 +61,8 @@ func getClient(authority utils.Authority, opts Options) (Client, error) {
 // username
 
 // password (env var, explicit)
-// protocol (ftp, ftpes(port 21, can encrypt only auth, or commands, or data, or all), ftps (990, encryption from start, consumes more resources))
+// protocol (ftp, ftpes(port 21, can encrypt only auth, or commands, or data, or all),
+//   ftps (990, encryption from start, consumes more resources))
 // debugging (io.writer)
 // mode (passive, extended passive)
 // anonymous?
