@@ -1,6 +1,7 @@
 package ftp
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -109,13 +110,13 @@ func (ts *fileSystemTestSuite) TestWithOptions() {
 
 func (ts *fileSystemTestSuite) TestClient() {
 	// client already set
-	client, err := ts.ftpfs.Client(utils.Authority{})
+	client, err := ts.ftpfs.Client(context.Background(), utils.Authority{})
 	ts.NoError(err, "no error")
 	ts.Equal(ts.ftpfs.ftpclient, client, "client was already set")
 
 	// cached client
 	ts.ftpfs.ftpclient = &mocks.Client{}
-	client, err = ts.ftpfs.getClient(utils.Authority{}, Options{})
+	client, err = ts.ftpfs.getClient(context.Background(), utils.Authority{}, Options{})
 	ts.NoError(err)
 	ts.IsType(&mocks.Client{}, client)
 
@@ -123,18 +124,18 @@ func (ts *fileSystemTestSuite) TestClient() {
 	badOpt := "not an ftp.Options"
 	ts.ftpfs.ftpclient = nil
 	ts.ftpfs.options = badOpt
-	_, err = ts.ftpfs.Client(utils.Authority{})
+	_, err = ts.ftpfs.Client(context.Background(), utils.Authority{})
 	ts.Error(err, "error found")
 	ts.Equal("unable to create client, vfs.Options must be an ftp.Options", err.Error(), "client was already set")
 
 	// no opts, no authority
 	ts.ftpfs.options = nil
 	ts.ftpfs.ftpclient = nil
-	_, err = ts.ftpfs.Client(utils.Authority{Host: "badhost"})
+	_, err = ts.ftpfs.Client(context.Background(), utils.Authority{Host: "badhost"})
 	// TODO: this was copied from sftp but seems to only check known_hosts... may not be valuable here
-	// if ts.Error(err, "error found") {
-	//	ts.Contains(err.Error(), "no such host", "error matches")
-	// }
+	if ts.Error(err, "error found") {
+		ts.Contains(err.Error(), "no such host", "error matches")
+	}
 
 }
 

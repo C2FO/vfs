@@ -161,10 +161,8 @@ func (lt *locationTestSuite) TestListByRegex() {
 	lt.client.On("List", locPath).Return(entries, nil).Once()
 	loc, err := lt.ftpfs.NewLocation(authority, locPath)
 	lt.NoError(err)
-	fileTypeRegex, err := regexp.Compile("txt$")
-	if err != nil {
-		lt.Fail("Failed to compile regex for test.")
-	}
+
+	fileTypeRegex := regexp.MustCompile("txt$")
 	fileList, err := loc.ListByRegex(fileTypeRegex)
 	lt.Nil(err, "Shouldn't return an error on successful call to ListByRegex")
 	lt.Len(fileList, len(expectedFileList), "Should return expected number of file keys.")

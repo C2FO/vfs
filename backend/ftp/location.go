@@ -1,8 +1,8 @@
 package ftp
 
 import (
+	"context"
 	"errors"
-	"fmt"
 	"os"
 	"path"
 	"regexp"
@@ -28,7 +28,7 @@ type Location struct {
 func (l *Location) List() ([]string, error) {
 
 	var filenames []string
-	client, err := l.fileSystem.Client(l.Authority)
+	client, err := l.fileSystem.Client(context.TODO(), l.Authority)
 	if err != nil {
 		return filenames, err
 	}
@@ -53,7 +53,7 @@ func (l *Location) List() ([]string, error) {
 func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 
 	var filenames []string
-	client, err := l.fileSystem.Client(l.Authority)
+	client, err := l.fileSystem.Client(context.TODO(), l.Authority)
 	if err != nil {
 		return filenames, err
 	}
@@ -62,7 +62,7 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 	// check if last char is not /, aka is not a dir, get base of path
 	baseprefix := ""
 	r, _ := utf8.DecodeLastRuneInString(fullpath)
-	if r != rune('/') {
+	if r != '/' {
 		baseprefix = path.Base(fullpath)
 	}
 	fullpath = utils.EnsureTrailingSlash(path.Dir(fullpath))
@@ -107,7 +107,7 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 
 // Volume returns the Authority the location is contained in.
 func (l *Location) Volume() string {
-	return fmt.Sprint(l.Authority)
+	return l.Authority.String()
 }
 
 // Path returns the path the location references in most FTP calls.
@@ -118,7 +118,7 @@ func (l *Location) Path() string {
 // Exists returns true if the remote FTP file exists.
 func (l *Location) Exists() (bool, error) {
 
-	client, err := l.fileSystem.Client(l.Authority)
+	client, err := l.fileSystem.Client(context.TODO(), l.Authority)
 	if err != nil {
 		return false, err
 	}
