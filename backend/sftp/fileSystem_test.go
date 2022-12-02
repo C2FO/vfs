@@ -127,7 +127,9 @@ func (ts *fileSystemTestSuite) TestClient() {
 
 	// no opts, no authority
 	ts.sftpfs.options = nil
-	_, err = ts.sftpfs.Client(utils.Authority{Host: "badhost"})
+	auth, err := utils.NewAuthority("someuser@badhost")
+	ts.NoError(err)
+	_, err = ts.sftpfs.Client(auth)
 	if ts.Error(err, "error found") {
 		ts.Regexp(regexp.MustCompile("(?:no such host|Temporary failure in name resolution)"), err.Error(), "no such host", "error matches")
 	}

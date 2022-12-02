@@ -15,21 +15,24 @@ type authoritySuite struct {
 }
 
 type authorityTest struct {
-	authorityString       string
-	host, user, pass, str string
-	hasError              bool
-	errMessage            string
-	message               string
+	authorityString                    string
+	host, user, pass, str, hostPortStr string
+	port                               uint16
+	hasError                           bool
+	errMessage                         string
+	message                            string
 }
 
-func (a *authoritySuite) TestEnsureTrailingSlash() {
+func (a *authoritySuite) TestAuthority() {
 	tests := []authorityTest{
 		{
 			authorityString: "",
 			host:            "",
+			port:            0,
 			user:            "",
 			pass:            "",
 			str:             "",
+			hostPortStr:     "",
 			hasError:        true,
 			errMessage:      "authority string may not be empty",
 			message:         "empty input",
@@ -37,49 +40,59 @@ func (a *authoritySuite) TestEnsureTrailingSlash() {
 		{
 			authorityString: "some.host.com",
 			host:            "some.host.com",
+			port:            0,
 			user:            "",
 			pass:            "",
 			str:             "some.host.com",
+			hostPortStr:     "some.host.com",
 			hasError:        false,
 			errMessage:      "",
 			message:         "host-only",
 		},
 		{
 			authorityString: "some.host.com:22",
-			host:            "some.host.com:22",
+			host:            "some.host.com",
+			port:            22,
 			user:            "",
 			pass:            "",
 			str:             "some.host.com:22",
+			hostPortStr:     "some.host.com:22",
 			hasError:        false,
 			errMessage:      "",
 			message:         "host-only (with port)",
 		},
 		{
 			authorityString: "some.host.com:",
-			host:            "some.host.com:",
+			host:            "some.host.com",
+			port:            0,
 			user:            "",
 			pass:            "",
-			str:             "some.host.com:",
+			str:             "some.host.com",
+			hostPortStr:     "some.host.com",
 			hasError:        false,
 			errMessage:      "",
 			message:         "host-only (colon, no port)",
 		},
 		{
 			authorityString: "me@some.host.com:22",
-			host:            "some.host.com:22",
+			host:            "some.host.com",
+			port:            22,
 			user:            "me",
 			pass:            "",
 			str:             "me@some.host.com:22",
+			hostPortStr:     "some.host.com:22",
 			hasError:        false,
 			errMessage:      "",
 			message:         "user and host",
 		},
 		{
 			authorityString: "me:secret@some.host.com:22",
-			host:            "some.host.com:22",
+			host:            "some.host.com",
+			port:            22,
 			user:            "me",
 			pass:            "secret",
 			str:             "me@some.host.com:22",
+			hostPortStr:     "some.host.com:22",
 			hasError:        false,
 			errMessage:      "",
 			message:         "user, pass, and host (pass shouldn't be shown in String()",
@@ -87,9 +100,11 @@ func (a *authoritySuite) TestEnsureTrailingSlash() {
 		{
 			authorityString: "me:@some.host.com",
 			host:            "some.host.com",
+			port:            0,
 			user:            "me",
 			pass:            "",
 			str:             "me@some.host.com",
+			hostPortStr:     "some.host.com",
 			hasError:        false,
 			errMessage:      "",
 			message:         "host and user, colon but no pass",
@@ -97,9 +112,11 @@ func (a *authoritySuite) TestEnsureTrailingSlash() {
 		{
 			authorityString: ":asdf@some.host.com",
 			host:            "some.host.com",
+			port:            0,
 			user:            "",
 			pass:            "asdf",
 			str:             "some.host.com",
+			hostPortStr:     "some.host.com",
 			hasError:        false,
 			errMessage:      "",
 			message:         "host and pass, no user",
@@ -107,9 +124,11 @@ func (a *authoritySuite) TestEnsureTrailingSlash() {
 		{
 			authorityString: "Bob2@some.host.com",
 			host:            "some.host.com",
+			port:            0,
 			user:            "Bob2",
 			pass:            "",
 			str:             "Bob2@some.host.com",
+			hostPortStr:     "some.host.com",
 			hasError:        false,
 			errMessage:      "",
 			message:         "user has upper and numeric",
@@ -117,9 +136,11 @@ func (a *authoritySuite) TestEnsureTrailingSlash() {
 		{
 			authorityString: "#blah@some.host.com",
 			host:            "",
+			port:            0,
 			user:            "",
 			pass:            "",
 			str:             "",
+			hostPortStr:     "",
 			hasError:        true,
 			errMessage:      "invalid userinfo",
 			message:         "user has bad character",
@@ -127,19 +148,23 @@ func (a *authoritySuite) TestEnsureTrailingSlash() {
 		{
 			authorityString: "127.0.0.1",
 			host:            "127.0.0.1",
+			port:            0,
 			user:            "",
 			pass:            "",
 			str:             "127.0.0.1",
+			hostPortStr:     "127.0.0.1",
 			hasError:        false,
 			errMessage:      "",
 			message:         "ipv4 host-only",
 		},
 		{
 			authorityString: "127.0.0.1:22",
-			host:            "127.0.0.1:22",
+			host:            "127.0.0.1",
+			port:            22,
 			user:            "",
 			pass:            "",
 			str:             "127.0.0.1:22",
+			hostPortStr:     "127.0.0.1:22",
 			hasError:        false,
 			errMessage:      "",
 			message:         "ipv4 host with port",
@@ -147,9 +172,11 @@ func (a *authoritySuite) TestEnsureTrailingSlash() {
 		{
 			authorityString: "[0:0:0:0:0:0:0:1]",
 			host:            "[0:0:0:0:0:0:0:1]",
+			port:            0,
 			user:            "",
 			pass:            "",
 			str:             "[0:0:0:0:0:0:0:1]",
+			hostPortStr:     "[0:0:0:0:0:0:0:1]",
 			hasError:        false,
 			errMessage:      "",
 			message:         "ipv6 host-only",
@@ -157,9 +184,11 @@ func (a *authoritySuite) TestEnsureTrailingSlash() {
 		{
 			authorityString: "[0:0:0:0:0:0:0:1",
 			host:            "[0:0:0:0:0:0:0:1",
+			port:            0,
 			user:            "",
 			pass:            "",
 			str:             "[0:0:0:0:0:0:0:1",
+			hostPortStr:     "[0:0:0:0:0:0:0:1",
 			hasError:        true,
 			errMessage:      "missing ']' in host",
 			message:         "ipv6 host-only malformed (missing bracket)",
@@ -167,19 +196,23 @@ func (a *authoritySuite) TestEnsureTrailingSlash() {
 		{
 			authorityString: "[:::::::1]",
 			host:            "[:::::::1]",
+			port:            0,
 			user:            "",
 			pass:            "",
 			str:             "[:::::::1]",
+			hostPortStr:     "[:::::::1]",
 			hasError:        false,
 			errMessage:      "",
 			message:         "ipv6 compress host-only",
 		},
 		{
 			authorityString: "[:::::::1]:3022",
-			host:            "[:::::::1]:3022",
+			host:            "[:::::::1]",
+			port:            3022,
 			user:            "",
 			pass:            "",
 			str:             "[:::::::1]:3022",
+			hostPortStr:     "[:::::::1]:3022",
 			hasError:        false,
 			errMessage:      "",
 			message:         "ipv6 compress host with port",
@@ -187,22 +220,26 @@ func (a *authoritySuite) TestEnsureTrailingSlash() {
 		{
 			authorityString: "[:::::::1]3022",
 			host:            "[:::::::1]3022",
+			port:            3022,
 			user:            "",
 			pass:            "",
 			str:             "[:::::::1]3022",
+			hostPortStr:     "[:::::::1]3022",
 			hasError:        true,
 			errMessage:      "invalid port \"3022\" after host",
 			message:         "ipv6 compress host with port, missing colon",
 		},
 		{
 			authorityString: "[:::::::1]:asdf",
-			host:            "[:::::::1]:asdf",
+			host:            "[:::::::1]",
+			port:            0,
 			user:            "",
 			pass:            "",
 			str:             "[:::::::1]:asdf",
+			hostPortStr:     "[:::::::1]:asdf",
 			hasError:        true,
 			errMessage:      "invalid port \":asdf\" after host",
-			message:         "host with invalid port (non-numeric ",
+			message:         "host with invalid port (non-numeric)",
 		},
 	}
 
@@ -212,9 +249,10 @@ func (a *authoritySuite) TestEnsureTrailingSlash() {
 			a.EqualError(err, t.errMessage, t.message)
 		} else {
 			a.NoError(err, t.message)
-			a.Equal(t.host, actual.Host, t.message)
-			a.Equal(t.user, actual.User, t.message)
-			a.Equal(t.pass, actual.Pass, t.message)
+			a.Equal(t.host, actual.Host(), t.message)
+			a.Equal(int(t.port), int(actual.Port()), t.message)
+			a.Equal(t.user, actual.UserInfo().Username(), t.message)
+			a.Equal(t.pass, actual.UserInfo().Password(), t.message)
 			a.Equal(t.str, actual.String(), t.message)
 		}
 	}

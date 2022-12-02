@@ -143,8 +143,8 @@ func (f *File) MoveToFile(t vfs.File) error {
 	// }
 	// sftp rename if vfs is sftp and for the same user/host
 	if f.fileSystem.Scheme() == t.Location().FileSystem().Scheme() &&
-		f.Authority.User == t.(*File).Authority.User &&
-		f.Authority.Host == t.(*File).Authority.Host {
+		f.Authority.UserInfo().Username() == t.(*File).Authority.UserInfo().Username() &&
+		f.Authority.Host() == t.(*File).Authority.Host() {
 		// ensure destination exists before moving
 		exists, err := t.Location().Exists()
 		if err != nil {

@@ -6,7 +6,6 @@ import (
 	"os"
 	"path"
 	"runtime"
-	"strings"
 
 	"github.com/mitchellh/go-homedir"
 	_sftp "github.com/pkg/sftp"
@@ -59,15 +58,15 @@ func getClient(authority utils.Authority, opts Options) (Client, io.Closer, erro
 
 	// Define the Client Config
 	config := &ssh.ClientConfig{
-		User:            authority.User,
+		User:            authority.UserInfo().Username(),
 		Auth:            authMethods,
 		HostKeyCallback: hostKeyCallback,
 		Config:          sshConfig,
 	}
 	// default to port 22
-	host := authority.Host
-	if !strings.Contains(host, ":") {
-		host = fmt.Sprintf("%s%s", host, ":22")
+	host := authority.Host()
+	if authority.Port() == 0 {
+		host = fmt.Sprintf("%s:%d", host, 22)
 	}
 
 	// TODO begin timeout until session is created
