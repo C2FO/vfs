@@ -2,14 +2,50 @@ package utils
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
 )
 
+/*
+   URI parlance (see https://www.rfc-editor.org/rfc/rfc3986.html#section-3.2):
+
+       foo://example.com:8042/over/there?name=ferret#nose
+       \_/   \______________/\_________/ \_________/ \__/
+        |           |            |            |        |
+     scheme     authority       path        query   fragment
+
+   Where:
+     authority   = [ userinfo "@" ] host [ ":" port ]
+     host        = IP-literal / IPv4address / reg-name
+     port        = *DIGIT
+*/
+
+// ------------------------------------ host    :port
+var portRegex = regexp.MustCompile(`(.*?)(?::(\d*))?$`)
+
 // Authority represents host, port and userinfo (user/pass) in a URI
 type Authority struct {
-	User, Pass, Host, raw string
+	userinfo UserInfo
+	host     string
+	port     uint16
+}
+
+// UserInfo represents user/pass portion of a URI
+type UserInfo struct {
+	username, password string
+}
+
+// Username returns the username of a URI UserInfo.  May be an empty string.
+func (u UserInfo) Username() string {
+	return u.username
+}
+
+// Password returns the password of a URI UserInfo.  May be an empty string.
+func (u UserInfo) Password() string {
+	return u.password
 }
 
 // String() returns a string representation of authority.  It does not include password per
@@ -18,10 +54,30 @@ type Authority struct {
 //	Applications should not render as clear text any data after the first colon (":") character found within a userinfo
 //	subcomponent unless the data after the colon is the empty string (indicating no password).
 func (a Authority) String() string {
-	if a.User != "" {
-		return fmt.Sprintf("%s@%s", a.User, a.Host)
+	authority := a.HostPortStr()
+	if a.userinfo.Username() != "" {
+		authority = fmt.Sprintf("%s@%s", a.userinfo.Username(), authority)
 	}
-	return a.Host
+	return authority
+}
+
+func (a Authority) UserInfo() UserInfo {
+	return a.userinfo
+}
+
+func (a Authority) Host() string {
+	return a.host
+}
+
+func (a Authority) Port() uint16 {
+	return a.port
+}
+
+func (a Authority) HostPortStr() string {
+	if a.Port() != 0 {
+		return fmt.Sprintf("%s:%d", a.Host(), a.Port())
+	}
+	return a.Host()
 }
 
 // NewAuthority initializes Authority struct by parsing authority string.
@@ -34,11 +90,26 @@ func NewAuthority(authority string) (Authority, error) {
 		return Authority{}, err
 	}
 
+	matches := portRegex.FindAllStringSubmatch(h, -1)
+	if len(matches) == 0 {
+		return Authority{}, errors.New("could not determine port")
+	}
+	var port uint16
+	if matches[0][2] != "" {
+		val, err := strconv.ParseUint(matches[0][2], 10, 16)
+		if err != nil {
+			return Authority{}, err
+		}
+		port = uint16(val)
+	}
+
 	return Authority{
-		User: u,
-		Pass: p,
-		Host: h,
-		raw:  authority,
+		userinfo: UserInfo{
+			username: u,
+			password: p,
+		},
+		host: matches[0][1],
+		port: port,
 	}, nil
 }
 
