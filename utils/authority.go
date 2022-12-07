@@ -115,7 +115,7 @@ func NewAuthority(authority string) (Authority, error) {
 
 /*
 	NOTE: Below was mostly taken line-for-line from the "url" package (https://github.com/golang/go/blob/master/src/net/url/url.go),
-	minus unencoding and some unused split logic.  Unfortunately none of it was exposed in a way that could be used for parsing Authority.
+	minus unencoding and some unused split logic.  Unfortunately none of it was exposed in a way that could be used for parsing authority.
 
 		Copyright (c) 2009 The Go Authors. All rights reserved.
 
