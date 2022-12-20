@@ -243,17 +243,17 @@ func (a *authoritySuite) TestAuthority() {
 		},
 	}
 
-	for _, t := range tests {
-		actual, err := NewAuthority(t.authorityString)
-		if t.hasError {
-			a.EqualError(err, t.errMessage, t.message)
+	for i := range tests {
+		actual, err := NewAuthority(tests[i].authorityString)
+		if tests[i].hasError {
+			a.EqualError(err, tests[i].errMessage, tests[i].message)
 		} else {
-			a.NoError(err, t.message)
-			a.Equal(t.host, actual.Host(), t.message)
-			a.Equal(int(t.port), int(actual.Port()), t.message)
-			a.Equal(t.user, actual.UserInfo().Username(), t.message)
-			a.Equal(t.pass, actual.UserInfo().Password(), t.message)
-			a.Equal(t.str, actual.String(), t.message)
+			a.NoError(err, tests[i].message)
+			a.Equal(tests[i].host, actual.Host(), tests[i].message)
+			a.Equal(int(tests[i].port), int(actual.Port()), tests[i].message)
+			a.Equal(tests[i].user, actual.UserInfo().Username(), tests[i].message)
+			a.Equal(tests[i].pass, actual.UserInfo().Password(), tests[i].message)
+			a.Equal(tests[i].str, actual.String(), tests[i].message)
 		}
 	}
 }
