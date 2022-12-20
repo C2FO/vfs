@@ -7,7 +7,6 @@ import (
 	"path"
 	"regexp"
 	"strings"
-	"unicode/utf8"
 
 	_ftp "github.com/jlaffaye/ftp"
 
@@ -26,7 +25,6 @@ type Location struct {
 // List calls FTP ReadDir to list all files in the location's path.
 // If you have many thousands of files at the given location, this could become quite expensive.
 func (l *Location) List() ([]string, error) {
-
 	var filenames []string
 	client, err := l.fileSystem.Client(context.TODO(), l.Authority)
 	if err != nil {
@@ -50,37 +48,60 @@ func (l *Location) List() ([]string, error) {
 }
 
 // ListByPrefix calls FTP ReadDir with the location's path modified relatively by the prefix arg passed to the function.
+//   - Returns ([]string{}, nil) in the case of a non-existent directory/prefix/location.
+//   - "relative" prefixes are allowed, ie, listByPrefix from "/some/path/" with prefix "to/somepattern" is the same as
+//     location "/some/path/to/" with prefix of "somepattern"
+//   - If the user cares about the distinction between an empty location and a non-existent one, Location.Exists() should
+//     be checked first.
 func (l *Location) ListByPrefix(prefix string) ([]string, error) {
+	var filenames = make([]string, 0)
 
-	var filenames []string
+	// validate prefix
+	if err := utils.ValidatePrefix(prefix); err != nil {
+		return filenames, err
+	}
+
+	// get absolute prefix path (in case prefix contains relative prefix, ie, some/path/to/myprefix)
+	fullpath := path.Join(l.Path(), prefix)
+
+	// get prefix and location path after any relative pathing is resolved
+	// For example, given:
+	//   loc, _ := fs.NewLocation("user@host:21", "/some/path/")
+	//   loc.ListByPrefix("subdir/prefix")
+	// the location fullpath should resolve to be "/some/path/subdir/" while the prefix would be "prefix".
+	baseprefix := ""
+	if prefix == "." {
+		// for prefix of ".", it is necessary to manually set baseprefix as "." and
+		// add trailing slash since path.Join thinks that "." is a directory
+		baseprefix = prefix
+		fullpath = utils.EnsureTrailingSlash(fullpath)
+	} else {
+		// get baseprefix fix from the fullpath
+		baseprefix = path.Base(fullpath)
+		// get absolute dir path of fullpath
+		fullpath = utils.EnsureTrailingSlash(path.Dir(fullpath))
+	}
+
+	// get client
 	client, err := l.fileSystem.Client(context.TODO(), l.Authority)
 	if err != nil {
 		return filenames, err
 	}
 
-	fullpath := path.Join(l.Path(), prefix)
-	// check if last char is not /, aka is not a dir, get base of path
-	baseprefix := ""
-	r, _ := utf8.DecodeLastRuneInString(fullpath)
-	if r != '/' {
-		baseprefix = path.Base(fullpath)
-	}
-	fullpath = utils.EnsureTrailingSlash(path.Dir(fullpath))
+	// list directory entries
 	entries, err := client.List(fullpath)
 	if err != nil {
+		// fullpath does not exist, is not an error here
+		if errors.Is(err, os.ErrNotExist) {
+			return []string{}, nil
+		}
 		return filenames, err
 	}
 
 	for _, entry := range entries {
-		if entry.Type == _ftp.EntryTypeFile {
-			name := entry.Name
-			if baseprefix != "" {
-				if strings.HasPrefix(name, baseprefix) {
-					filenames = append(filenames, name)
-				}
-			} else {
-				filenames = append(filenames, name)
-			}
+		// find entries that match prefix and are files
+		if entry.Type == _ftp.EntryTypeFile && strings.HasPrefix(entry.Name, baseprefix) {
+			filenames = append(filenames, entry.Name)
 		}
 	}
 
@@ -90,10 +111,9 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 // ListByRegex retrieves the filenames of all the files at the location's current path, then filters out all those
 // that don't match the given regex. The resource considerations of List() apply here as well.
 func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
-
 	filenames, err := l.List()
 	if err != nil {
-		return []string{}, err
+		return nil, err
 	}
 
 	var filteredFilenames []string
@@ -117,7 +137,6 @@ func (l *Location) Path() string {
 
 // Exists returns true if the remote FTP file exists.
 func (l *Location) Exists() (bool, error) {
-
 	client, err := l.fileSystem.Client(context.TODO(), l.Authority)
 	if err != nil {
 		return false, err
@@ -142,10 +161,6 @@ func (l *Location) Exists() (bool, error) {
 // relativePath argument, returning the resulting location. The only possible errors come from the call to
 // ChangeDir, which, for the FTP implementation doesn't ever result in an error.
 func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
-	if l == nil {
-		return nil, errors.New("non-nil ftp.Location pointer receiver is required")
-	}
-
 	// make a copy of the original location first, then ChangeDir, leaving the original location as-is
 	newLocation := &Location{}
 	*newLocation = *l
@@ -159,12 +174,6 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 // ChangeDir takes a relative path, and modifies the underlying Location's path. The caller is modified by this
 // so the only return is any error. For this implementation there are no errors.
 func (l *Location) ChangeDir(relativePath string) error {
-	if l == nil {
-		return errors.New("non-nil ftp.Location pointer receiver is required")
-	}
-	if relativePath == "" {
-		return errors.New("non-empty string relativePath is required")
-	}
 	err := utils.ValidateRelativeLocationPath(relativePath)
 	if err != nil {
 		return err
@@ -176,19 +185,13 @@ func (l *Location) ChangeDir(relativePath string) error {
 // NewFile uses the properties of the calling location to generate a vfs.File (backed by an ftp.File). The filePath
 // argument is expected to be a relative path to the location's current path.
 func (l *Location) NewFile(filePath string) (vfs.File, error) {
-	if l == nil {
-		return nil, errors.New("non-nil ftp.Location pointer receiver is required")
-	}
-	if filePath == "" {
-		return nil, errors.New("non-empty string filePath is required")
-	}
 	err := utils.ValidateRelativeFilePath(filePath)
 	if err != nil {
 		return nil, err
 	}
 	newFile := &File{
 		fileSystem: l.fileSystem,
-		Authority:  l.Authority,
+		authority:  l.Authority,
 		path:       utils.EnsureLeadingSlash(path.Join(l.path, filePath)),
 	}
 	return newFile, nil

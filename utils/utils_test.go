@@ -422,6 +422,94 @@ func (s *utilsTest) TestValidateRelLocationPath() {
 	}
 }
 
+func (s *utilsTest) TestValidatePrefix() {
+	tests := []struct {
+		prefix       string
+		passExpected bool
+		message      string
+	}{
+		{
+			prefix:       "/some/path/",
+			passExpected: false,
+			message:      "abs location path",
+		},
+		{
+			prefix:       "/some/./path/../",
+			passExpected: false,
+			message:      "abs location path with dot dirs",
+		},
+		{
+			prefix:       "/some/path/file.txt",
+			passExpected: false,
+			message:      "abs file path",
+		},
+		{
+			prefix:       "/some/path/../file.txt",
+			passExpected: false,
+			message:      "abs file path with dot dirs",
+		},
+		{
+			prefix:       "/",
+			passExpected: false,
+			message:      "slash only",
+		},
+		{
+			prefix:       "",
+			passExpected: false,
+			message:      "empty string",
+		},
+		{
+			prefix:       "foo",
+			passExpected: true,
+			message:      "prefix only",
+		},
+		{
+			prefix:       "some/path/",
+			passExpected: false,
+			message:      "rel location path",
+		},
+		{
+			prefix:       "some/./path/../",
+			passExpected: false,
+			message:      "rel location path with dot dirs",
+		},
+		{
+			prefix:       "some/path/foo",
+			passExpected: true,
+			message:      "rel prefix",
+		},
+		{
+			prefix:       "some/path/file.txt",
+			passExpected: true,
+			message:      "rel file-like prefix",
+		},
+		{
+			prefix:       "some/path/../file.txt",
+			passExpected: true,
+			message:      "rel prefix path with dot dirs",
+		},
+		{
+			prefix:       ".",
+			passExpected: true,
+			message:      "dot only",
+		},
+		{
+			prefix:       ".foo",
+			passExpected: true,
+			message:      "dot prefix",
+		},
+	}
+
+	for _, validationTest := range tests {
+		err := utils.ValidatePrefix(validationTest.prefix)
+		if !validationTest.passExpected {
+			s.EqualError(err, utils.ErrBadPrefix, validationTest.message)
+		} else {
+			s.NoError(err, validationTest.message)
+		}
+	}
+}
+
 type URITest struct {
 	path     string
 	expected string
