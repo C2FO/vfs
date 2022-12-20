@@ -4,24 +4,24 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"path"
-
-	_ftp "github.com/jlaffaye/ftp"
 
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/backend"
+	"github.com/c2fo/vfs/v6/backend/ftp/types"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
 // Scheme defines the filesystem type.
 const Scheme = "ftp"
-const name = "Secure File Transfer Protocol"
+const name = "File Transfer Protocol"
+
+var defaultClientGetter func(context.Context, utils.Authority, Options) (client types.Client, err error)
 
 // FileSystem implements vfs.Filesystem for the FTP filesystem.
 type FileSystem struct {
 	options   vfs.Options
-	ftpclient Client
+	ftpclient types.Client
 }
 
 // Retry will return the default no-op retrier. The FTP client provides its own retryer interface, and is available
@@ -49,7 +49,7 @@ func (fs *FileSystem) NewFile(authority, filePath string) (vfs.File, error) {
 
 	return &File{
 		fileSystem: fs,
-		Authority:  auth,
+		authority:  auth,
 		path:       path.Clean(filePath),
 	}, nil
 }
@@ -87,7 +87,7 @@ func (fs *FileSystem) Scheme() string {
 
 // Client returns the underlying ftp client, creating it, if necessary
 // See Overview for authentication resolution
-func (fs *FileSystem) Client(ctx context.Context, authority utils.Authority) (Client, error) {
+func (fs *FileSystem) Client(ctx context.Context, authority utils.Authority) (types.Client, error) {
 	if fs.ftpclient == nil {
 		if fs.options == nil {
 			fs.options = Options{}
@@ -95,7 +95,7 @@ func (fs *FileSystem) Client(ctx context.Context, authority utils.Authority) (Cl
 
 		if opts, ok := fs.options.(Options); ok {
 			var err error
-			fs.ftpclient, err = fs.getClient(ctx, authority, opts)
+			fs.ftpclient, err = defaultClientGetter(ctx, authority, opts)
 			if err != nil {
 				return nil, err
 			}
@@ -119,7 +119,7 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 }
 
 // WithClient passes in an ftp client and returns the filesystem (chainable)
-func (fs *FileSystem) WithClient(client Client) *FileSystem {
+func (fs *FileSystem) WithClient(client types.Client) *FileSystem {
 	fs.ftpclient = client
 	fs.options = nil
 
@@ -132,25 +132,7 @@ func NewFileSystem() *FileSystem {
 }
 
 func init() {
+	defaultClientGetter = getClient
 	// registers a default Filesystem
 	backend.Register(Scheme, NewFileSystem())
-}
-
-func (fs *FileSystem) getClient(ctx context.Context, authority utils.Authority, opts Options) (client Client, err error) {
-	if fs.ftpclient != nil {
-		return fs.ftpclient, nil
-	}
-	return getClient(ctx, authority, opts)
-}
-
-// Client is an interface to make it easier to test
-type Client interface {
-	Delete(path string) error
-	List(p string) ([]*_ftp.Entry, error) // NLST for just names
-	Login(user string, password string) error
-	MakeDir(path string) error
-	Quit() error
-	Rename(from, to string) error
-	RetrFrom(path string, offset uint64) (*_ftp.Response, error) // is a ReadCloser (with Deadline)
-	StorFrom(path string, r io.Reader, offset uint64) error      // hint use io.Pipe() if io.Writer is required.
 }

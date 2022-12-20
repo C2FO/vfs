@@ -2,7 +2,7 @@ package ftp
 
 import (
 	"context"
-	"io"
+	"errors"
 	"os"
 	"path"
 	"strconv"
@@ -11,24 +11,29 @@ import (
 	_ftp "github.com/jlaffaye/ftp"
 
 	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v6/backend/ftp/types"
 	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
-type OpenType int
+var dataConnGetterFunc func(context.Context, *File, types.OpenType) (types.DataConn, error)
+var tempFileNameGetter func(string) string
+var now = time.Now
 
-const (
-	openRead OpenType = iota
-	openWrite
-)
+func init() {
+	// this func is overridable for tests
+	dataConnGetterFunc = getDataConn
+	tempFileNameGetter = getTempFilename
+}
 
 // File implements vfs.File interface for FTP fs.
 type File struct {
 	fileSystem *FileSystem
-	Authority  utils.Authority
+	authority  utils.Authority
 	path       string
-	dataconn   *dataConn
+	dataconn   types.DataConn
 	offset     int64
+	resetConn  bool
 }
 
 // Info Functions
@@ -45,13 +50,16 @@ func (f *File) LastModified() (*time.Time, error) {
 }
 
 func (f *File) stat(ctx context.Context) (*_ftp.Entry, error) {
-	client, err := f.fileSystem.Client(ctx, f.Authority)
+	client, err := f.fileSystem.Client(ctx, f.authority)
 	if err != nil {
 		return nil, err
 	}
 	entries, err := client.List(f.Path())
 	if err != nil {
 		return nil, err
+	}
+	if len(entries) == 0 {
+		return nil, os.ErrNotExist
 	}
 	return entries[0], nil
 }
@@ -68,14 +76,17 @@ func (f *File) Path() string {
 
 // Exists returns a boolean of whether or not the file exists on the ftp server
 func (f *File) Exists() (bool, error) {
-
 	_, err := f.stat(context.TODO())
-	if err != nil && err == os.ErrNotExist {
-		return false, nil
-	} else if err != nil {
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			// file does not exist
+			return false, nil
+		}
+		// error calling stat
 		return false, err
 	}
 
+	// file exists
 	return true, nil
 }
 
@@ -95,10 +106,9 @@ func (f *File) Touch() error {
 		return f.Close()
 	}
 
-	// doing move and move back (rename)...TODO might need to do copy-delete - copy-delete
-
-	now := time.Now()
-	newFile, err := f.Location().NewFile(f.Name() + strconv.FormatInt(now.UnixNano(), 10))
+	// doing move and move back (to ensure last modified is updated)
+	// TODO: verify that this updates last modified (if not must do Copy-Delete (vs rename))
+	newFile, err := f.Location().NewFile(tempFileNameGetter(f.Name()))
 	if err != nil {
 		return err
 	}
@@ -109,6 +119,10 @@ func (f *File) Touch() error {
 	}
 
 	return newFile.MoveToFile(f)
+}
+
+func getTempFilename(origName string) string {
+	return origName + strconv.FormatInt(now().UnixNano(), 10)
 }
 
 // Size returns the size of the remote file.
@@ -127,7 +141,7 @@ func (f *File) Location() vfs.Location {
 	return &Location{
 		fileSystem: f.fileSystem,
 		path:       path.Dir(f.path),
-		Authority:  f.Authority,
+		Authority:  f.authority,
 	}
 }
 
@@ -141,16 +155,13 @@ func (f *File) Location() vfs.Location {
 func (f *File) MoveToFile(t vfs.File) error {
 	// ftp rename if vfs is ftp and for the same user/host
 	if f.fileSystem.Scheme() == t.Location().FileSystem().Scheme() &&
-		f.Authority.User == t.(*File).Authority.User &&
-		f.Authority.Host == t.(*File).Authority.Host {
+		f.authority.UserInfo().Username() == t.(*File).authority.UserInfo().Username() &&
+		f.authority.Host() == t.(*File).authority.Host() {
 
-		client, err := f.fileSystem.Client(context.TODO(), f.Authority)
+		client, err := f.fileSystem.Client(context.TODO(), f.authority)
 		if err != nil {
 			return err
 		}
-
-		// TODO ensure we have test for if renaming to new path that doesn't exist.
-		// If so, we don't need to check exists and do mkdir, just rename
 
 		// ensure destination exists before moving
 		exists, err := t.Location().Exists()
@@ -165,7 +176,7 @@ func (f *File) MoveToFile(t vfs.File) error {
 				return err
 			}
 		}
-		return client.Rename(t.Path(), f.Path())
+		return client.Rename(f.Path(), t.Path())
 	}
 
 	// otherwise do copy-delete
@@ -177,8 +188,7 @@ func (f *File) MoveToFile(t vfs.File) error {
 
 // MoveToLocation works by creating a new file on the target location then calling MoveToFile() on it.
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
-
-	newFile, err := location.FileSystem().NewFile(location.Volume(), path.Join(location.Path(), f.Name()))
+	newFile, err := location.NewFile(f.Name())
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +229,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 // Delete removes the remote file.  Error is returned, if any.
 func (f *File) Delete(_ ...options.DeleteOption) error {
-	client, err := f.fileSystem.Client(context.TODO(), f.Authority)
+	client, err := f.fileSystem.Client(context.TODO(), f.authority)
 	if err != nil {
 		return err
 	}
@@ -233,7 +243,7 @@ func (f *File) Close() error {
 		if err != nil {
 			return err
 		}
-		f.dataconn = nil
+		f.resetConn = true
 	}
 	// no op for unopened file
 	f.offset = 0
@@ -242,12 +252,12 @@ func (f *File) Close() error {
 
 // Read calls the underlying ftp.File Read.
 func (f *File) Read(p []byte) (n int, err error) {
-	dc, err := f.getDataConn(context.TODO(), openRead)
+	dc, err := dataConnGetterFunc(context.TODO(), f, types.OpenRead)
 	if err != nil {
 		return 0, err
 	}
 
-	read, err := dc.R.Read(p)
+	read, err := dc.Read(p)
 	if err != nil {
 		return read, err
 	}
@@ -260,7 +270,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 // Seek calls the underlying ftp.File Seek.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
 
-	mode := openRead
+	mode := types.OpenRead
 	// no file open yet - assume read (will get reset to write on a subsequent write)
 	if f.dataconn == nil {
 		f.offset = offset
@@ -274,33 +284,40 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 			if f.offset < 0 {
 				f.offset = 0
 			}
+			f.offset += offset
 
+			// close dataconn so that it reset the offset on next reopen (in StorFrom or RetrFrom)
 			err := f.dataconn.Close()
 			if err != nil {
 				return 0, err
 			}
-			f.dataconn = nil
+			f.resetConn = true
 		case 2: // offset from end of the file
 			sz, err := f.Size()
 			if err != nil {
-				// TODO: what if files doesn't exist yet... shouldn't we just use 0 as the offset
-				return 0, err
-			}
-			f.offset = int64(sz) - offset
-			if f.offset < 0 {
+				if !errors.Is(err, os.ErrNotExist) {
+					return 0, err
+				}
+				// file doesn't exist, just use 0 as offset
 				f.offset = 0
+			} else {
+				f.offset = int64(sz) - offset
+				if f.offset < 0 {
+					f.offset = 0
+				}
 			}
 
+			// close dataconn so that it reset the offset on next reopen (in StorFrom or RetrFrom)
 			err = f.dataconn.Close()
 			if err != nil {
 				return 0, err
 			}
-			f.dataconn = nil
+			f.resetConn = true
 		}
 	}
 
 	// now that f.offset has been adjusted and mode was captured, reinitialize file
-	_, err := f.getDataConn(context.TODO(), mode)
+	_, err := dataConnGetterFunc(context.TODO(), f, mode)
 	if err != nil {
 		return 0, err
 	}
@@ -312,12 +329,12 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 // Write calls the underlying ftp.File Write.
 func (f *File) Write(data []byte) (res int, err error) {
 
-	dc, err := f.getDataConn(context.TODO(), openWrite)
+	dc, err := dataConnGetterFunc(context.TODO(), f, types.OpenWrite)
 	if err != nil {
 		return 0, err
 	}
 
-	b, err := dc.W.Write(data)
+	b, err := dc.Write(data)
 	if err != nil {
 		return 0, err
 	}
@@ -336,76 +353,4 @@ func (f *File) URI() string {
 // String implement fmt.Stringer, returning the file's URI as the default string.
 func (f *File) String() string {
 	return f.URI()
-}
-
-/*
-	Private helper functions
-*/
-
-type dataConn struct {
-	R    *_ftp.Response
-	W    *io.PipeWriter
-	mode OpenType
-}
-
-func (dc *dataConn) Mode() OpenType {
-	return dc.mode
-}
-
-func (dc *dataConn) Close() error {
-	if dc == nil {
-		return nil
-	}
-	switch dc.Mode() {
-	case openRead:
-		return dc.R.Close()
-	case openWrite:
-		return dc.W.Close()
-	}
-	return nil
-}
-
-func (f *File) getDataConn(ctx context.Context, t OpenType) (*dataConn, error) {
-	if f.dataconn != nil {
-		if f.dataconn.Mode() != t {
-			// wrong session type ... close current session and unset it (so we can set a new one after)
-			err := f.dataconn.Close()
-			if err != nil {
-				return f.dataconn, err
-			}
-			f.dataconn = nil
-		}
-	}
-
-	if f.dataconn == nil {
-		client, err := f.fileSystem.Client(ctx, f.Authority)
-		if err != nil {
-			return nil, err
-		}
-
-		switch t {
-		case openRead:
-			resp, err := client.RetrFrom(f.Path(), uint64(f.offset))
-			if err != nil {
-				return nil, err
-			}
-			f.dataconn = &dataConn{
-				R:    resp,
-				mode: t,
-			}
-		case openWrite:
-			// create a pipewriter for writes.
-			pr, pw := io.Pipe()
-			err = client.StorFrom(f.Path(), pr, uint64(f.offset))
-			if err != nil {
-				return nil, err
-			}
-			f.dataconn = &dataConn{
-				W:    pw,
-				mode: t,
-			}
-		}
-	}
-
-	return f.dataconn, nil
 }

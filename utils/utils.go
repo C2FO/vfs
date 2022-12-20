@@ -22,6 +22,8 @@ const (
 	ErrBadAbsLocationPath = "absolute location path is invalid - must include leading and trailing slashes"
 	// ErrBadRelLocationPath constant is returned when a file path is not relative
 	ErrBadRelLocationPath = "relative location path is invalid - may not include leading slash but must include trailing slash"
+	// ErrBadPrefix constant is returned when a prefix is not relative or ends in / or is empty
+	ErrBadPrefix = "prefix is invalid - may not include leading or trailing slashes and may not be empty"
 	// TouchCopyMinBufferSize min buffer size used in TouchCopyBuffered in bytes
 	TouchCopyMinBufferSize = 262144
 )
@@ -52,7 +54,7 @@ func ValidateAbsoluteFilePath(name string) error {
 
 // ValidateRelativeFilePath ensures that a file path has neither leading nor trailing slashes
 func ValidateRelativeFilePath(name string) error {
-	if name == "" || strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") {
+	if name == "" || name == "." || strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") {
 		return errors.New(ErrBadRelFilePath)
 	}
 	return nil
@@ -70,6 +72,15 @@ func ValidateAbsoluteLocationPath(name string) error {
 func ValidateRelativeLocationPath(name string) error {
 	if strings.HasPrefix(name, "/") || !strings.HasSuffix(name, "/") {
 		return errors.New(ErrBadRelLocationPath)
+	}
+	return nil
+}
+
+// ValidatePrefix ensures that a prefix path has neither leading nor trailing slashes
+// may not be empty but unlike relative file path, *may* be simply "."
+func ValidatePrefix(prefix string) error {
+	if prefix == "" || strings.HasPrefix(prefix, "/") || strings.HasSuffix(prefix, "/") {
+		return errors.New(ErrBadPrefix)
 	}
 	return nil
 }

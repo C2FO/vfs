@@ -73,51 +73,179 @@ func (lt *locationTestSuite) TestList() {
 	lt.NoError(err, "Shouldn't return an error on file not found.")
 	lt.Len(fileList, 0, "Should return no files on file not found")
 
+	// error getting client
+	defaultClientGetter = clientGetterReturnsError
+	loc.(*Location).fileSystem.WithClient(nil)
+	fileList, err = loc.List()
+	lt.Error(err, "error expected")
+	lt.ErrorIs(err, errClientGetter, "err should be correct type")
+	lt.Nil(fileList, "fileList should be nil")
+
 	lt.client.AssertExpectations(lt.T())
 }
 
 func (lt *locationTestSuite) TestListByPrefix() {
-
-	expectedFileList := []string{"file1.txt", "file2.txt"}
-
 	entries := []*_ftp.Entry{
 		{
-			Name:   "file1.txt",
-			Target: "",
-			Type:   _ftp.EntryTypeFile,
-			Time:   time.Now().UTC(),
+			Name: "myFile1.txt",
+			Type: _ftp.EntryTypeFile,
 		},
 		{
-			Name:   "file2.txt",
-			Target: "",
-			Type:   _ftp.EntryTypeFile,
-			Time:   time.Now().UTC(),
+			Name: "myFile2.txt",
+			Type: _ftp.EntryTypeFile,
 		},
 		{
-			Name:   "my_file.txt",
-			Target: "",
-			Type:   _ftp.EntryTypeFile,
-			Time:   time.Now().UTC(),
+			Name: "mom.csv",
+			Type: _ftp.EntryTypeFile,
 		},
 		{
-			Name:   "filedir",
-			Target: "",
-			Type:   _ftp.EntryTypeFolder,
-			Time:   time.Now().UTC(),
+			Name: "NOTmyFiles.txt",
+			Type: _ftp.EntryTypeFile,
+		},
+		{
+			Name: ".config.json",
+			Type: _ftp.EntryTypeFile,
+		},
+		{
+			Name: "myDir",
+			Type: _ftp.EntryTypeFolder,
+		},
+		{
+			Name: "otherDir",
+			Type: _ftp.EntryTypeFolder,
+		},
+		{
+			Name: ".aws",
+			Type: _ftp.EntryTypeFolder,
 		},
 	}
-	authority := "host.com"
+	tests := []struct {
+		description   string
+		path          string
+		prefix        string
+		resolvedPath  string
+		allEntries    []*_ftp.Entry
+		expectedFiles []string
+	}{
+		{
+			description:  "standard prefix",
+			path:         "/some/path/",
+			prefix:       "my",
+			resolvedPath: "/some/path/",
+			allEntries:   entries,
+			expectedFiles: []string{
+				"myFile1.txt",
+				"myFile2.txt",
+			},
+		},
+		{
+			description:   "standard prefix - non found",
+			path:          "/some/path/",
+			prefix:        "blah",
+			resolvedPath:  "/some/path/",
+			allEntries:    entries,
+			expectedFiles: []string{},
+		},
+		{
+			description:  "relative prefix",
+			path:         "/some/path/",
+			prefix:       "to/my",
+			resolvedPath: "/some/path/to/",
+			allEntries:   entries,
+			expectedFiles: []string{
+				"myFile1.txt",
+				"myFile2.txt",
+			},
+		},
+		{
+			description:  "dot prefix",
+			path:         "/some/path/",
+			prefix:       ".con",
+			resolvedPath: "/some/path/",
+			allEntries:   entries,
+			expectedFiles: []string{
+				".config.json",
+			},
+		},
+		{
+			description:  "dot-only prefix",
+			path:         "/some/path/",
+			prefix:       ".",
+			resolvedPath: "/some/path/",
+			allEntries:   entries,
+			expectedFiles: []string{
+				".config.json",
+			},
+		},
+		{
+			description:   "standard prefix - directories should not match",
+			path:          "/some/path/",
+			prefix:        "other",
+			resolvedPath:  "/some/path/",
+			allEntries:    entries,
+			expectedFiles: []string{},
+		},
+	}
+
+	for _, test := range tests {
+		// setup location
+		loc, err := lt.ftpfs.NewLocation("host.com", test.path)
+		lt.NoError(err, test.description)
+
+		// setup mock List
+		lt.client.EXPECT().
+			List(test.resolvedPath).
+			Return(test.allEntries, nil).
+			Once()
+
+		// perform ListByPrefix
+		fileList, err := loc.ListByPrefix(test.prefix)
+		lt.NoError(err, test.description)
+		lt.Equal(test.expectedFiles, fileList, test.description)
+	}
+
+	// client.List returns no results, return empty string slice and nil (error)
 	locPath := "/dir1/"
-	lt.client.On("List", locPath).Return(entries, nil).Once()
-	loc, err := lt.ftpfs.NewLocation(authority, locPath)
-	lt.NoError(err)
 	prefix := "fil"
+	loc, err := lt.ftpfs.NewLocation("ftp.host.com", locPath)
+	lt.NoError(err)
+	lt.client.EXPECT().
+		List(locPath).
+		Return(nil, os.ErrNotExist).
+		Once()
+	expectedEmptyStringSlice := make([]string, 0)
 	fileList, err := loc.ListByPrefix(prefix)
-	lt.Nil(err, "Shouldn't return an error when successfully returning list.")
-	lt.Len(fileList, len(expectedFileList), "Should return expected number of file keys.")
-	for _, fileKey := range fileList {
-		lt.Contains(expectedFileList, fileKey, "All returned keys should be in the expected list.")
-	}
+	lt.NoError(err, "no error expected expected")
+	lt.Equal(expectedEmptyStringSlice, fileList, "fileList should be empty string slice")
+
+	// validation error
+	badprefix := ""
+	fileList, err = loc.ListByPrefix(badprefix)
+	lt.Error(err, "error expected")
+	lt.ErrorContains(err, utils.ErrBadPrefix, "err should be correct type")
+	lt.Equal(expectedEmptyStringSlice, fileList, "fileList should be empty string slice")
+
+	// error getting client
+	defaultClientGetter = clientGetterReturnsError
+	loc.(*Location).fileSystem.WithClient(nil)
+	fileList, err = loc.ListByPrefix(prefix)
+	lt.Error(err, "error expected")
+	lt.ErrorIs(err, errClientGetter, "err should be correct type")
+	lt.Equal(expectedEmptyStringSlice, fileList, "fileList should be empty string slice")
+	lt.client.AssertExpectations(lt.T())
+
+	// error calling client.List()
+	loc.(*Location).fileSystem.WithClient(lt.client)
+	listErr := errors.New("some error")
+	lt.client.EXPECT().
+		List(locPath).
+		Return([]*_ftp.Entry{}, listErr).
+		Once()
+	fileList, err = loc.ListByPrefix(prefix)
+	lt.Error(err, "error expected")
+	lt.ErrorIs(err, listErr, "err should be correct type")
+	lt.Equal(expectedEmptyStringSlice, fileList, "fileList should be empty string slice")
+
 	lt.client.AssertExpectations(lt.T())
 }
 
@@ -169,6 +297,15 @@ func (lt *locationTestSuite) TestListByRegex() {
 	for _, fileKey := range fileList {
 		lt.Contains(expectedFileList, fileKey, "All returned keys should be in the expected list.")
 	}
+
+	// ListByRegex Returns List error
+	listErr := errors.New("some list error")
+	lt.client.On("List", locPath).Return(nil, listErr).Once()
+	fileList, err = loc.ListByRegex(fileTypeRegex)
+	lt.Error(err, "error is expected")
+	lt.ErrorIs(err, listErr, "error is right kind of error")
+	lt.Nil(fileList)
+
 	lt.client.AssertExpectations(lt.T())
 }
 
@@ -236,7 +373,7 @@ func (lt *locationTestSuite) TestNewFile() {
 
 	// test empty path error
 	_, err = loc.NewFile("")
-	lt.EqualError(err, "non-empty string filePath is required", "errors returned by NewFile")
+	lt.EqualError(err, utils.ErrBadRelFilePath, "errors returned by NewFile")
 
 	// test validation error
 	_, err = loc.NewFile("/absolute/path/to/file.txt")
@@ -297,6 +434,14 @@ func (lt *locationTestSuite) TestExists() {
 	lt.Nil(err, "No error expected from Exists")
 	lt.True(!exists, "Call to Exists expected to return false.")
 
+	// error getting client
+	defaultClientGetter = clientGetterReturnsError
+	loc.(*Location).fileSystem.WithClient(nil)
+	exists, err = loc.Exists()
+	lt.Error(err, "error expected")
+	lt.ErrorIs(err, errClientGetter, "err should be correct type")
+	lt.False(exists, "exists should be false on error")
+
 	lt.client.AssertExpectations(lt.T())
 }
 
@@ -339,7 +484,7 @@ func (lt *locationTestSuite) TestNewLocation() {
 
 	// test empty path error
 	_, err = loc.NewLocation("")
-	lt.EqualError(err, "non-empty string relativePath is required", "errors returned by NewLocation")
+	lt.EqualError(err, utils.ErrBadRelLocationPath, "errors returned by NewLocation")
 
 	// test validation error
 	_, err = loc.NewLocation("/absolute/path/to/")
@@ -358,6 +503,12 @@ func (lt *locationTestSuite) TestDeleteFile() {
 	lt.client.On("Delete", "/old/filename.txt").Return(os.ErrNotExist).Once()
 	err = loc.DeleteFile("filename.txt")
 	lt.Error(err, "failed delete")
+	lt.ErrorIs(err, os.ErrNotExist, "error should be right kind of error")
+
+	// getting NewFile
+	err = loc.DeleteFile("")
+	lt.Error(err, "failed delete")
+	lt.ErrorContains(err, utils.ErrBadRelFilePath, "failed delete")
 
 	lt.client.AssertExpectations(lt.T())
 }

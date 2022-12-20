@@ -49,7 +49,7 @@ func (u UserInfo) Password() string {
 }
 
 // String() returns a string representation of authority.  It does not include password per
-// https://tools.ietf.org/html/rfc3986#section-3.2.1:
+// https://tools.ietf.org/html/rfc3986#section-3.2.1
 //
 //	Applications should not render as clear text any data after the first colon (":") character found within a userinfo
 //	subcomponent unless the data after the colon is the empty string (indicating no password).

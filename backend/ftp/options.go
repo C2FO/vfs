@@ -4,48 +4,54 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
+	"os"
 	"strings"
+	"time"
 
 	_ftp "github.com/jlaffaye/ftp"
 
 	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v6/backend/ftp/types"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
 type Options struct {
 	UserName    string // env var VFS_FTP_USERNAME
 	Password    string // env var VFS_FTP_PASSWORD
+	Protocol    string
+	DisableEPSV *bool // env var VFS_DISABLE_EPSV
+	DebugWriter io.Writer
+	TLSConfig   *tls.Config
+	DialTimeout time.Duration
 	Retry       vfs.Retry
 	MaxRetries  int
-	Protocol    string // env var VFS_FTP_PROTOCOL (ftp[default], ftps, ftpes)
-	DisableEPSV bool
 }
 
-func getClient(ctx context.Context, authority utils.Authority, opts Options) (Client, error) {
+const (
+	protocolFTP   = "FTP"
+	protocolFTPS  = "FTPS"
+	protocolFTPES = "FTPES"
 
-	host := authority.Host
-	if !strings.Contains(host, ":") {
-		host = fmt.Sprintf("%s%s", host, ":21")
-	}
+	defaultUsername        = "anonymous"
+	defaultPassword        = "anonymous"
+	defaultPort     uint16 = 21
 
-	var dialOptions []_ftp.DialOption
+	envDisableEPSV = "VFS_FTP_DISABLE_EPSV"
+	envProtocol    = "VFS_FTP_PROTOCOL"
+	envUsername    = "VFS_FTP_USERNAME"
+	envPassword    = "VFS_FTP_PASSWORD" //nolint:gosec
+)
 
-	// always use context, disable EPSV if opt is true
-	dialOptions = append(dialOptions, _ftp.DialWithContext(ctx), _ftp.DialWithDisabledEPSV(opts.DisableEPSV))
-
-	//
-	switch opts.Protocol {
-	case "ftps":
-		dialOptions = append(dialOptions, _ftp.DialWithTLS(&tls.Config{MinVersion: tls.VersionTLS12})) // TODO: figure this out
-	case "ftpes":
-		dialOptions = append(dialOptions, _ftp.DialWithExplicitTLS(&tls.Config{MinVersion: tls.VersionTLS12})) // TODO: figure this out
-	}
-	// TODO: DialWithDebugOutput(io.Writer)
-	c, err := _ftp.Dial(host, dialOptions...)
+func getClient(ctx context.Context, authority utils.Authority, opts Options) (types.Client, error) {
+	// dial connection
+	c, err := _ftp.Dial(fetchHostPortString(authority), fetchDialOptions(ctx, authority, opts)...)
 	if err != nil {
 		return nil, err
 	}
-	err = c.Login(opts.UserName, opts.UserName)
+
+	// login
+	err = c.Login(fetchUsername(authority, opts), fetchPassword(opts))
 	if err != nil {
 		return nil, err
 	}
@@ -53,54 +59,143 @@ func getClient(ctx context.Context, authority utils.Authority, opts Options) (Cl
 	return c, nil
 }
 
-// ---part of uri
-// host
-// ports
+func fetchUsername(auth utils.Authority, opts Options) string {
+	// set default username
+	username := defaultUsername
 
-// --- could be part of uri or not
-// username
-
-// password (env var, explicit)
-// protocol (ftp, ftpes(port 21, can encrypt only auth, or commands, or data, or all),
-//   ftps (990, encryption from start, consumes more resources))
-// debugging (io.writer)
-// mode (passive, extended passive)
-// anonymous?
-// client Certificates (or just let tls.Config handle that)
-
-// dataconn is automatically opened and closed when needed
-// command conn is used when Dial is used
-// Might open on each action... COULD cache conn with timeout. Enable timer when only when no file is open.  Reset timer
-//     after every command.  Close command conn when timer ends.  Timer on a channel on fs.  Starts after Login()
-
-/*
-	go func() {
-		count := 1
-		for {
-			count += 1
-			fmt.Printf("   secondCount: %d\n", count)
-			time.Sleep(time.Second)
-		}
-	}()
-
-	time.Sleep(time.Second)
-
-	timer := time.NewTimer(5 * time.Second)
-	go func() {
-		fmt.Println("conn timer started")
-		<-timer.C
-		fmt.Println("closing conn")
-	}()
-
-	time.Sleep(time.Second)
-
-	if !timer.Stop() {
-		fmt.Println("conn timer s stopped")
+	// override with env var, if any
+	if _, ok := os.LookupEnv(envUsername); ok {
+		username = os.Getenv(envUsername)
 	}
-	timer.Reset(5 * time.Second)
-	fmt.Println("conn timer reset to 5 sec")
 
-	time.Sleep(7 * time.Second)
+	// override with authority, if any
+	// TODO: should this be allowed since the URI will be "bob@acme.com" but an overridden value of "jim" would connect
+	//   to a complete different account??
+	if auth.UserInfo().Username() != "" {
+		username = auth.UserInfo().Username()
+	}
 
+	// override with options, if any
+	if opts.UserName != "" {
+		username = opts.UserName
+	}
 
-*/
+	return username
+}
+
+// note: since the format "user:pass" in the authority userinfo field is deprecated (per https://tools.ietf.org/html/rfc3986#section-3.2.1)
+// it is not used by fetchPassword and should never be included in a vfs URI
+func fetchPassword(opts Options) string {
+	// set default password
+	password := defaultPassword
+
+	// override with env var, if any
+	if _, ok := os.LookupEnv(envPassword); ok {
+		password = os.Getenv(envPassword)
+	}
+
+	// override with options, if any
+	if opts.Password != "" {
+		password = opts.Password
+	}
+
+	return password
+}
+
+func fetchHostPortString(auth utils.Authority) string {
+	// get host
+	host := auth.Host()
+
+	// get port
+	port := defaultPort
+	if auth.Port() > 0 {
+		port = auth.Port()
+	}
+
+	// return <host>:<port> string
+	return fmt.Sprintf("%s:%d", host, port)
+}
+
+func fetchDialOptions(ctx context.Context, auth utils.Authority, opts Options) []_ftp.DialOption {
+	// set context DialOption
+	dialOptions := []_ftp.DialOption{
+		_ftp.DialWithContext(ctx),
+	}
+
+	// determine DisableEPSV DialOption
+	dialOptions = append(dialOptions, _ftp.DialWithDisabledEPSV(isDisableOption(opts)))
+
+	// determine protocol-specific (FTPS/FTPeS) TLS DialOption, if any (defaults to plain FTP, no TLS)
+	switch protocol := fetchProtocol(opts); {
+	case strings.EqualFold(protocol, protocolFTPS):
+		dialOptions = append(dialOptions, _ftp.DialWithTLS(fetchTLSConfig(auth, opts)))
+	case strings.EqualFold(protocol, protocolFTPES):
+		dialOptions = append(dialOptions, _ftp.DialWithExplicitTLS(fetchTLSConfig(auth, opts)))
+	}
+
+	// determine debug writer DialOption, if any
+	if opts.DebugWriter != nil {
+		dialOptions = append(dialOptions, _ftp.DialWithDebugOutput(opts.DebugWriter))
+	}
+
+	// determine dial timeout DialOption
+	if opts.DialTimeout.Seconds() > 0 {
+		dialOptions = append(dialOptions, _ftp.DialWithTimeout(opts.DialTimeout))
+	}
+
+	return dialOptions
+}
+
+func isDisableOption(opts Options) bool {
+	// default to false, meaning EPSV stays enabled
+	disableEpsv := false
+
+	// override with env var, if any
+	if _, ok := os.LookupEnv(envDisableEPSV); ok {
+		setting := os.Getenv(envDisableEPSV)
+		if strings.EqualFold(setting, "true") || setting == "1" {
+			disableEpsv = true
+		}
+	}
+
+	// override with Options, if any
+	if opts.DisableEPSV != nil {
+		disableEpsv = *opts.DisableEPSV
+	}
+
+	return disableEpsv
+}
+
+func fetchTLSConfig(auth utils.Authority, opts Options) *tls.Config {
+	// setup basic TLS config for host
+	tlsConfig := &tls.Config{
+		MinVersion:         tls.VersionTLS12,
+		InsecureSkipVerify: true, //nolint:gosec
+		ClientSessionCache: tls.NewLRUClientSessionCache(0),
+		ServerName:         auth.Host(),
+	}
+
+	// override with Options, if any
+	if opts.TLSConfig != nil {
+		tlsConfig = opts.TLSConfig
+	}
+
+	return tlsConfig
+}
+
+func fetchProtocol(opts Options) string {
+	// set default protocol
+	protocol := protocolFTP
+
+	// override with env var
+	if _, ok := os.LookupEnv(envProtocol); ok {
+		protocol = os.Getenv(envProtocol)
+	}
+
+	// override with options value
+	if opts.Protocol != "" {
+		protocol = opts.Protocol
+	}
+
+	return protocol
+}

@@ -92,6 +92,94 @@ func (_c *DataConn_Mode_Call) Return(_a0 types.OpenType) *DataConn_Mode_Call {
 	return _c
 }
 
+// Read provides a mock function with given fields: p
+func (_m *DataConn) Read(p []byte) (int, error) {
+	ret := _m.Called(p)
+
+	var r0 int
+	if rf, ok := ret.Get(0).(func([]byte) int); ok {
+		r0 = rf(p)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func([]byte) error); ok {
+		r1 = rf(p)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// DataConn_Read_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Read'
+type DataConn_Read_Call struct {
+	*mock.Call
+}
+
+// Read is a helper method to define mock.On call
+//  - p []byte
+func (_e *DataConn_Expecter) Read(p interface{}) *DataConn_Read_Call {
+	return &DataConn_Read_Call{Call: _e.mock.On("Read", p)}
+}
+
+func (_c *DataConn_Read_Call) Run(run func(p []byte)) *DataConn_Read_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]byte))
+	})
+	return _c
+}
+
+func (_c *DataConn_Read_Call) Return(n int, err error) *DataConn_Read_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+// Write provides a mock function with given fields: p
+func (_m *DataConn) Write(p []byte) (int, error) {
+	ret := _m.Called(p)
+
+	var r0 int
+	if rf, ok := ret.Get(0).(func([]byte) int); ok {
+		r0 = rf(p)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func([]byte) error); ok {
+		r1 = rf(p)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// DataConn_Write_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Write'
+type DataConn_Write_Call struct {
+	*mock.Call
+}
+
+// Write is a helper method to define mock.On call
+//  - p []byte
+func (_e *DataConn_Expecter) Write(p interface{}) *DataConn_Write_Call {
+	return &DataConn_Write_Call{Call: _e.mock.On("Write", p)}
+}
+
+func (_c *DataConn_Write_Call) Run(run func(p []byte)) *DataConn_Write_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]byte))
+	})
+	return _c
+}
+
+func (_c *DataConn_Write_Call) Return(n int, err error) *DataConn_Write_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
 type mockConstructorTestingTNewDataConn interface {
 	mock.TestingT
 	Cleanup(func())

@@ -5,7 +5,8 @@ package mocks
 import (
 	io "io"
 
-	jlaffayeftp "github.com/jlaffaye/ftp"
+	ftp "github.com/jlaffaye/ftp"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -60,15 +61,15 @@ func (_c *Client_Delete_Call) Return(_a0 error) *Client_Delete_Call {
 }
 
 // List provides a mock function with given fields: p
-func (_m *Client) List(p string) ([]*jlaffayeftp.Entry, error) {
+func (_m *Client) List(p string) ([]*ftp.Entry, error) {
 	ret := _m.Called(p)
 
-	var r0 []*jlaffayeftp.Entry
-	if rf, ok := ret.Get(0).(func(string) []*jlaffayeftp.Entry); ok {
+	var r0 []*ftp.Entry
+	if rf, ok := ret.Get(0).(func(string) []*ftp.Entry); ok {
 		r0 = rf(p)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*jlaffayeftp.Entry)
+			r0 = ret.Get(0).([]*ftp.Entry)
 		}
 	}
 
@@ -100,7 +101,7 @@ func (_c *Client_List_Call) Run(run func(p string)) *Client_List_Call {
 	return _c
 }
 
-func (_c *Client_List_Call) Return(_a0 []*jlaffayeftp.Entry, _a1 error) *Client_List_Call {
+func (_c *Client_List_Call) Return(_a0 []*ftp.Entry, _a1 error) *Client_List_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
@@ -255,15 +256,15 @@ func (_c *Client_Rename_Call) Return(_a0 error) *Client_Rename_Call {
 }
 
 // RetrFrom provides a mock function with given fields: path, offset
-func (_m *Client) RetrFrom(path string, offset uint64) (*jlaffayeftp.Response, error) {
+func (_m *Client) RetrFrom(path string, offset uint64) (*ftp.Response, error) {
 	ret := _m.Called(path, offset)
 
-	var r0 *jlaffayeftp.Response
-	if rf, ok := ret.Get(0).(func(string, uint64) *jlaffayeftp.Response); ok {
+	var r0 *ftp.Response
+	if rf, ok := ret.Get(0).(func(string, uint64) *ftp.Response); ok {
 		r0 = rf(path, offset)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*jlaffayeftp.Response)
+			r0 = ret.Get(0).(*ftp.Response)
 		}
 	}
 
@@ -296,7 +297,7 @@ func (_c *Client_RetrFrom_Call) Run(run func(path string, offset uint64)) *Clien
 	return _c
 }
 
-func (_c *Client_RetrFrom_Call) Return(_a0 *jlaffayeftp.Response, _a1 error) *Client_RetrFrom_Call {
+func (_c *Client_RetrFrom_Call) Return(_a0 *ftp.Response, _a1 error) *Client_RetrFrom_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
