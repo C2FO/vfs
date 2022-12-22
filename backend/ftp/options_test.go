@@ -26,7 +26,6 @@ func (s *optionsSuite) TestFetchUsername() {
 		description string
 		authority   string
 		options     Options
-		envVar      *string
 		expected    string
 	}{
 		{
@@ -39,39 +38,13 @@ func (s *optionsSuite) TestFetchUsername() {
 			authority:   "bob@host.com",
 			expected:    "bob",
 		},
-		{
-			description: "env var is set but with empty value",
-			authority:   "bob@host.com",
-			expected:    "bob",
-			envVar:      ptrString(""),
-		},
-		{
-			description: "env var is set, value should override",
-			authority:   "host.com",
-			expected:    "bill",
-			envVar:      ptrString("bill"),
-		},
-		{
-			description: "option should override",
-			authority:   "bob@host.com",
-			expected:    "sam",
-			envVar:      ptrString("bill"),
-			options: Options{
-				UserName: "sam",
-			},
-		},
 	}
 
 	for i := range tests {
 		auth, err := utils.NewAuthority(tests[i].authority)
 		s.NoError(err, tests[i].description)
 
-		if tests[i].envVar != nil {
-			err := os.Setenv(envUsername, *tests[i].envVar)
-			s.NoError(err, tests[i].description)
-		}
-
-		username := fetchUsername(auth, tests[i].options)
+		username := fetchUsername(auth)
 		s.Equal(tests[i].expected, username, tests[i].description)
 	}
 }
@@ -261,7 +234,6 @@ func (s *optionsSuite) TestFetchTLSConfig() {
 			description: "authority has port specified",
 			authority:   "user@host.com:10000",
 			options: Options{
-				UserName:  "blah",
 				Password:  "xyz",
 				TLSConfig: cfg,
 			},
@@ -287,7 +259,7 @@ func (s *optionsSuite) TestFetchProtocol() {
 	}{
 		{
 			description: "check defaults",
-			expected:    protocolFTP,
+			expected:    ProtocolFTP,
 		},
 		{
 			description: "env var is set but empty",
@@ -297,12 +269,12 @@ func (s *optionsSuite) TestFetchProtocol() {
 		{
 			description: "env var is set to ftps",
 			envVar:      ptrString("FTPS"),
-			expected:    protocolFTPS,
+			expected:    ProtocolFTPS,
 		},
 		{
 			description: "env var is set to ftpes",
 			envVar:      ptrString("FTPES"),
-			expected:    protocolFTPES,
+			expected:    ProtocolFTPES,
 		},
 		{
 			description: "env var is set to garbage",
@@ -312,17 +284,17 @@ func (s *optionsSuite) TestFetchProtocol() {
 		{
 			description: "options set to garbage",
 			options: Options{
-				Protocol: protocolFTPS,
+				Protocol: ProtocolFTPS,
 			},
-			expected: protocolFTPS,
+			expected: ProtocolFTPS,
 		},
 		{
 			description: "options set to FTPES - overriding FTPS",
 			envVar:      ptrString("FTPS"),
 			options: Options{
-				Protocol: protocolFTPES,
+				Protocol: ProtocolFTPES,
 			},
-			expected: protocolFTPES,
+			expected: ProtocolFTPES,
 		},
 	}
 
@@ -354,13 +326,13 @@ func (s *optionsSuite) TestFetchDialOptions() {
 		{
 			description: "protocol env var is set to FTPS",
 			authority:   "user@host.com",
-			envVar:      ptrString(protocolFTPS),
+			envVar:      ptrString(ProtocolFTPS),
 			expected:    3,
 		},
 		{
 			description: "protocol env var is set to FTPES",
 			authority:   "user@host.com",
-			envVar:      ptrString(protocolFTPES),
+			envVar:      ptrString(ProtocolFTPES),
 			expected:    3,
 		},
 		{
@@ -373,7 +345,7 @@ func (s *optionsSuite) TestFetchDialOptions() {
 			description: "protocol Options is set to FTPS",
 			authority:   "user@host.com",
 			options: Options{
-				Protocol: protocolFTPS,
+				Protocol: ProtocolFTPS,
 			},
 			expected: 3,
 		},
@@ -407,7 +379,7 @@ func (s *optionsSuite) TestFetchDialOptions() {
 			options: Options{
 				DebugWriter: bytes.NewBuffer([]byte{}),
 				DialTimeout: 1 * time.Minute,
-				Protocol:    protocolFTPS,
+				Protocol:    ProtocolFTPS,
 			},
 			expected: 5,
 		},

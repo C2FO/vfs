@@ -1,8 +1,6 @@
 /*
 Package ftp - FTP VFS implementation.
 
-TODO: this needs a compete rewrite
-
 # Usage
 
 Rely on github.com/c2fo/vfs/v6/backend
@@ -24,7 +22,7 @@ Or call directly:
 	  func DoSomething() {
 		  fs := ftp.NewFilesystem()
 
-		  location, err := fs.NewLocation("myuser@server.com:22", "/some/path/")
+		  location, err := fs.NewLocation("myuser@server.com:21", "/some/path/")
 		  if err != nil {
 			 #handle error
 		  }
@@ -44,29 +42,23 @@ These methods are chainable:
 		  fs := backend.Backend(ftp.Scheme)
 		  fs = fs.(*ftp.Filesystem)
 
-		  // to pass specific client
-		  sshClient, err := ssh.Dial("tcp", "myuser@server.com:21", &ssh.ClientConfig{
-			  User:            "someuser",
-			  Auth:            []ssh.AuthMethod{ssh.Password("mypassword")},
-			  HostKeyCallback: ssh.InsecureIgnoreHostKey,
-		  })
-		  #handle error
-		  client, err := _ftp.NewClient(sshClient)
-		  #handle error
-
+		  // to pass specific client implementing types.Client interface (in this case, _ftp github.com/jlaffaye/ftp)
+		  client, _ := _ftp.Dial("server.com:21")
 		  fs = fs.WithClient(client)
 
 		  // to pass in client options. See Options for more info.  Note that changes to Options will make nil any client.
 		  // This behavior ensures that changes to settings will get applied to a newly created client.
 		  fs = fs.WithOptions(
 			  ftp.Options{
-				  KeyFilePath:   "/home/Bob/.ssh/id_rsa",
-				  KeyPassphrase: "s3cr3t",
-				  KnownHostsCallback: ssh.InsecureIgnoreHostKey,
+				  Password: "s3cr3t",
+				  DisableEPSV: true,
+				  Protocol: ftp.ProtocolFTPES,
+				  DialTimeout: 15 * time.Second
+				  DebugWriter: os.Stdout
 			  },
 		  )
 
-		  location, err := fs.NewLocation("myuser@server.com:22", "/some/path/")
+		  location, err := fs.NewLocation("myuser@server.com:21", "/some/path/")
 		  #handle error
 
 		  file := location.NewFile("myfile.txt")
@@ -83,13 +75,12 @@ These methods are chainable:
 # Authentication
 
 Authentication, by default, occurs automatically when Client() is called. Since user is part of the URI authority section
-(Volume), auth is handled slightly differently than other vfs backends.
+(Volume), auth is handled slightly differently than other vfs backends (except SFTP).
 
 A client is initialized lazily, meaning we only make a connection to the server at the last moment so we are free to modify
-options until then.  The authenticated session is closed any time WithOption(), WithClient(), or Close() occurs.  Currently,
-that means that closing a file belonging to an fs will break the connection of any other open file on the same fs.
+options until then.  The authenticated session is closed any time WithOption() or WithClient() occurs.
 
-# USERNAME
+## USERNAME
 
 User may only be set in the URI authority section (Volume in vfs parlance).
 
@@ -102,10 +93,26 @@ User may only be set in the URI authority section (Volume in vfs parlance).
 	           /     authority section    path
 	     username       (Volume)
 
-ftp vfs backend accepts either a password or an ssh key, with or without a passphrase.
+ftp vfs backend defaults to "anonymous" if no username is provided in the authority, ie "ftp://service.com/".
 
-# PASSWORD
+## PASSWORD
 
-Passwords may be passed via Options.Password or via the environmental variable VFS_FTP_PASSWORD.
+Passwords may be passed via Options.Password or via the environmental variable *VFS_FTP_PASSWORD*.  If not password is provided,
+default is "anonymous".  Password precedence is default, env var, Options.Password, such that env var, if set, overrides default
+and Options.Password, if set, overrides env var.
+
+# Protocol
+
+The ftp backend supports the following FTP protocols: FTP (unencrypted), FTPS (implicit TLS), and FTPES (explicit TLS).
+By default, FTPS and FTPS will use the following TLS configuration but can be overridden(recommended) with Options.TLSConfig:
+
+	tlsConfig := &tls.Config{
+		MinVersion:         tls.VersionTLS12,
+		InsecureSkipVerify: true,
+		ClientSessionCache: tls.NewLRUClientSessionCache(0),
+		ServerName:         hostname,
+	}
+
+See https://pkg.go.dev/crypto/tls#Config for all TLS configuration options.
 */
 package ftp

@@ -104,22 +104,12 @@ File's io.* interfaces may be used directly:
 Feel free to send a pull request if you want to add your backend to the list.
 
 # Ideas
+See https://github.com/C2FO/vfs/discussions
 
-Things to add:
-  - Add Azure storage backend
   - Provide better List() functionality with more abstracted filtering and paging (iterator?) Return File structs vs URIs?
   - Add better/any context.Context() support
-
-# Contributors
-
-Brought to you by the Enterprise Pipeline team at C2FO:
-
-* John Judd - john.judd@c2fo.com
-* Jason Coble - [@jasonkcoble](https://twitter.com/jasonkcoble) - jason@c2fo.com
-* Chris Roush – chris.roush@c2fo.com
-* Moe Zeid    - moe.zeid@c2fo.com
-
-https://github.com/c2fo/
+  - Standardize errors (sentinel errors?) and utilize error wrapping
+  - Implement (functional options)[https://dave.cheney.net/2014/10/17/functional-options-for-friendly-apis] vs empty interface vfs.Options
 
 Contributing
 
