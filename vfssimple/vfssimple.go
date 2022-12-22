@@ -91,7 +91,7 @@ func parseURI(uri string) (scheme, authority, path string, err error) {
 }
 
 // parseSupportedURI checks if URI matches any backend name as prefix, capturing the longest(most specific) match found.
-// See doc.go Registered Backend Resoltion seciton for examples.
+// See doc.go Registered Backend Resolution section for examples.
 func parseSupportedURI(uri string) (vfs.FileSystem, string, string, error) {
 	_, authority, path, err := parseURI(uri)
 	if err != nil {
