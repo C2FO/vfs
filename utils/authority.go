@@ -71,7 +71,7 @@ func (a Authority) Host() string {
 	return a.host
 }
 
-// Port returns teh port portion of an authority
+// Port returns the port portion of an authority
 func (a Authority) Port() uint16 {
 	return a.port
 }

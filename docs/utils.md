@@ -193,7 +193,7 @@ separated by a colon, ie "host.com:1234"
 ```go
 func (a Authority) Port() uint16
 ```
-Port returns teh port portion of an authority
+Port returns the port portion of an authority
 
 #### func (Authority) String
 
