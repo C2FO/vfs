@@ -15,10 +15,14 @@ import (
 )
 
 var (
+	// ErrMissingAuthority is return when authority is missing from a URI
 	ErrMissingAuthority = errors.New("unable to determine uri authority ([user@]host[:port]) for network-based scheme")
-	ErrMissingScheme    = errors.New("unable to determine uri scheme")
-	ErrRegFsNotFound    = errors.New("no matching registered filesystem found")
-	ErrBlankURI         = errors.New("uri is blank")
+	// ErrMissingScheme is returned when Scheme is missing from a URI
+	ErrMissingScheme = errors.New("unable to determine uri scheme")
+	// ErrRegFsNotFound is returned when no registered backend matches the URI
+	ErrRegFsNotFound = errors.New("no matching registered filesystem found")
+	// ErrBlankURI is returned when the URI is blank
+	ErrBlankURI = errors.New("uri is blank")
 )
 
 // NewLocation is a convenience function that allows for instantiating a location based on a uri string. Any

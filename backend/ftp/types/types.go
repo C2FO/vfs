@@ -6,14 +6,18 @@ import (
 	_ftp "github.com/jlaffaye/ftp"
 )
 
+// OpenType represents the mode(read or write) that we open a file for.
 type OpenType int
 
 const (
 	_ OpenType = iota
+	// OpenRead denotes Read mode
 	OpenRead
+	// OpenWrite denotes Write mode
 	OpenWrite
 )
 
+// DataConn represents a data connection
 type DataConn interface {
 	Mode() OpenType
 	io.ReadWriteCloser
