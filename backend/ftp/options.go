@@ -15,6 +15,7 @@ import (
 	"github.com/c2fo/vfs/v6/utils"
 )
 
+// Options  struct implements the vfs.Options interface, providing optional parameters for creating and ftp filesystem.
 type Options struct {
 	Password    string // env var VFS_FTP_PASSWORD
 	Protocol    string
@@ -25,8 +26,11 @@ type Options struct {
 }
 
 const (
-	ProtocolFTP   = "FTP"
-	ProtocolFTPS  = "FTPS"
+	// ProtocolFTP signifies plain, unencrypted FTP
+	ProtocolFTP = "FTP"
+	// ProtocolFTPS signifies FTP over implicit TLS
+	ProtocolFTPS = "FTPS"
+	// ProtocolFTPES signifies FTP over explicit TLS
 	ProtocolFTPES = "FTPES"
 
 	defaultUsername        = "anonymous"

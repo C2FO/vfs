@@ -61,18 +61,22 @@ func (a Authority) String() string {
 	return authority
 }
 
+// UserInfo returns the userinfo section of authority.  userinfo is username and password(deprecated).
 func (a Authority) UserInfo() UserInfo {
 	return a.userinfo
 }
 
+// Host returns the host portion of an authority
 func (a Authority) Host() string {
 	return a.host
 }
 
+// Port returns teh port portion of an authority
 func (a Authority) Port() uint16 {
 	return a.port
 }
 
+// HostPortStr returns a concatenated string of host and port from authority, separated by a colon, ie "host.com:1234"
 func (a Authority) HostPortStr() string {
 	if a.Port() != 0 {
 		return fmt.Sprintf("%s:%d", a.Host(), a.Port())
