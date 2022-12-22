@@ -95,7 +95,7 @@ func GetLocationURI(l vfs.Location) string {
 	return fmt.Sprintf("%s://%s%s", l.FileSystem().Scheme(), l.Volume(), l.Path())
 }
 
-// EnsureTrailingSlash is like AddTrailingSlash but will only ever use / since it's use for web uri's, never an Windows OS path.
+// EnsureTrailingSlash is like AddTrailingSlash but will only ever use / since it's use for web uri's, never a Windows OS path.
 func EnsureTrailingSlash(dir string) string {
 	if hasTrailingSlash.MatchString(dir) {
 		return dir

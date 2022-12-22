@@ -18,8 +18,8 @@ import (
 // Options  struct implements the vfs.Options interface, providing optional parameters for creating and ftp filesystem.
 type Options struct {
 	Password    string // env var VFS_FTP_PASSWORD
-	Protocol    string
-	DisableEPSV *bool // env var VFS_DISABLE_EPSV
+	Protocol    string // env var VFS_FTP_PROTOCOL
+	DisableEPSV *bool  // env var VFS_DISABLE_EPSV
 	DebugWriter io.Writer
 	TLSConfig   *tls.Config
 	DialTimeout time.Duration

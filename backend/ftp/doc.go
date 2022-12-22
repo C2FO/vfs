@@ -77,7 +77,7 @@ These methods are chainable:
 Authentication, by default, occurs automatically when Client() is called. Since user is part of the URI authority section
 (Volume), auth is handled slightly differently than other vfs backends (except SFTP).
 
-A client is initialized lazily, meaning we only make a connection to the server at the last moment so we are free to modify
+A client is initialized lazily, meaning we only make a connection to the server at the last moment, so we are free to modify
 options until then.  The authenticated session is closed any time WithOption() or WithClient() occurs.
 
 ## USERNAME
@@ -103,7 +103,9 @@ and Options.Password, if set, overrides env var.
 
 # Protocol
 
-The ftp backend supports the following FTP protocols: FTP (unencrypted), FTPS (implicit TLS), and FTPES (explicit TLS).
+The ftp backend supports the following FTP protocols: FTP (unencrypted), FTPS (implicit TLS), and FTPES (explicit TLS).  Protocol can be set
+by env var *VFS_FTP_PROTOCOL* or in Options.Protocol.  Options values take precedence over env vars.
+
 By default, FTPS and FTPS will use the following TLS configuration but can be overridden(recommended) with Options.TLSConfig:
 
 	tlsConfig := &tls.Config{
@@ -114,5 +116,13 @@ By default, FTPS and FTPS will use the following TLS configuration but can be ov
 	}
 
 See https://pkg.go.dev/crypto/tls#Config for all TLS configuration options.
+
+# Other Options
+
+DebugWriter *io.Writer* - captures FTP command details to any writer.
+
+DialTimeout *time.Duration - sets timeout for connecting only.
+
+DisableEPSV bool - Extended Passive mode (EPSV) is attempted by default. Set to true to use regular Passive mode (PASV).
 */
 package ftp
