@@ -65,7 +65,12 @@ github.com/aws/aws-sdk-go v1.44.152/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8
 =======
 github.com/aws/aws-sdk-go v1.44.162 h1:hKAd+X+/BLxVMzH+4zKxbQcQQGrk2UhFX0OTu1Mhon8=
 github.com/aws/aws-sdk-go v1.44.162/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8Phjh7fkwI=
+<<<<<<< HEAD
 >>>>>>> 99d3bb8 (Added list prefix validation to utils)
+=======
+github.com/aws/aws-sdk-go v1.44.165 h1:yaeKEU28EiSCp1T5XXinVA/qx9JFGbVZGUmj5COAMXI=
+github.com/aws/aws-sdk-go v1.44.165/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8Phjh7fkwI=
+>>>>>>> 7332be4 (update docs, remove overrides for username (which would mess up uri comparisons). Remove unimlemented options.)
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=

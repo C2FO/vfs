@@ -18,7 +18,7 @@ require (
 	github.com/Azure/azure-storage-blob-go v0.15.0
 	github.com/Azure/go-autorest/autorest v0.11.28
 	github.com/Azure/go-autorest/autorest/adal v0.9.21
-	github.com/aws/aws-sdk-go v1.44.162
+	github.com/aws/aws-sdk-go v1.44.165
 	github.com/dsoprea/go-utility/v2 v2.0.0-20221003172846-a3e1774ef349
 	github.com/fatih/color v1.13.0
 	github.com/fsouza/fake-gcs-server v1.42.2

@@ -87,7 +87,7 @@ func (ts *fileSystemTestSuite) TestNewLocation_Error() {
 }
 
 func (ts *fileSystemTestSuite) TestName() {
-	ts.Equal("Secure File Transfer Protocol", ts.ftpfs.Name(), "Name() is ftp.name const")
+	ts.Equal("File Transfer Protocol", ts.ftpfs.Name(), "Name() is ftp.name const")
 }
 
 func (ts *fileSystemTestSuite) TestScheme() {
@@ -121,18 +121,6 @@ func (ts *fileSystemTestSuite) TestClient() {
 	_, err = ts.ftpfs.Client(context.Background(), utils.Authority{})
 	ts.Error(err, "error found")
 	ts.Equal("unable to create client, vfs.Options must be an ftp.Options", err.Error(), "client was already set")
-
-	// no opts, no authority
-	// ts.ftpfs.options = nil
-	// ts.ftpfs.ftpclient = nil
-	// auth, err := utils.NewAuthority("someuser@badhost")
-	// ts.NoError(err)
-	// _, err = ts.ftpfs.Client(context.Background(), auth)
-	// // TODO: this was copied from sftp but seems to only check known_hosts... may not be valuable here
-	// if ts.Error(err, "error found") {
-	// 	ts.Contains(err.Error(), "no such host", "error matches")
-	// }
-
 }
 
 func TestFileSystem(t *testing.T) {

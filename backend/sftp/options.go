@@ -12,7 +12,6 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
 
-	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -28,9 +27,7 @@ type Options struct {
 	KeyExchanges       []string            `json:"keyExchanges,omitempty"`
 	AutoDisconnect     int                 `json:"autoDisconnect,omitempty"` // seconds before disconnecting. default: 10
 	KnownHostsCallback ssh.HostKeyCallback // env var VFS_SFTP_INSECURE_KNOWN_HOSTS
-	Retry              vfs.Retry
-	MaxRetries         int
-	FileBufferSize     int // Buffer Size In Bytes Used with utils.TouchCopyBuffered
+	FileBufferSize     int                 // Buffer Size In Bytes Used with utils.TouchCopyBuffered
 }
 
 // Note that as of 1.12, OPENSSH private key format is not supported when encrypt (with passphrase).

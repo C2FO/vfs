@@ -11,27 +11,23 @@ import (
 
 	_ftp "github.com/jlaffaye/ftp"
 
-	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/backend/ftp/types"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
 type Options struct {
-	UserName    string // env var VFS_FTP_USERNAME
 	Password    string // env var VFS_FTP_PASSWORD
 	Protocol    string
 	DisableEPSV *bool // env var VFS_DISABLE_EPSV
 	DebugWriter io.Writer
 	TLSConfig   *tls.Config
 	DialTimeout time.Duration
-	Retry       vfs.Retry
-	MaxRetries  int
 }
 
 const (
-	protocolFTP   = "FTP"
-	protocolFTPS  = "FTPS"
-	protocolFTPES = "FTPES"
+	ProtocolFTP   = "FTP"
+	ProtocolFTPS  = "FTPS"
+	ProtocolFTPES = "FTPES"
 
 	defaultUsername        = "anonymous"
 	defaultPassword        = "anonymous"
@@ -39,7 +35,6 @@ const (
 
 	envDisableEPSV = "VFS_FTP_DISABLE_EPSV"
 	envProtocol    = "VFS_FTP_PROTOCOL"
-	envUsername    = "VFS_FTP_USERNAME"
 	envPassword    = "VFS_FTP_PASSWORD" //nolint:gosec
 )
 
@@ -51,7 +46,7 @@ func getClient(ctx context.Context, authority utils.Authority, opts Options) (ty
 	}
 
 	// login
-	err = c.Login(fetchUsername(authority, opts), fetchPassword(opts))
+	err = c.Login(fetchUsername(authority), fetchPassword(opts))
 	if err != nil {
 		return nil, err
 	}
@@ -59,25 +54,13 @@ func getClient(ctx context.Context, authority utils.Authority, opts Options) (ty
 	return c, nil
 }
 
-func fetchUsername(auth utils.Authority, opts Options) string {
+func fetchUsername(auth utils.Authority) string {
 	// set default username
 	username := defaultUsername
 
-	// override with env var, if any
-	if _, ok := os.LookupEnv(envUsername); ok {
-		username = os.Getenv(envUsername)
-	}
-
 	// override with authority, if any
-	// TODO: should this be allowed since the URI will be "bob@acme.com" but an overridden value of "jim" would connect
-	//   to a complete different account??
 	if auth.UserInfo().Username() != "" {
 		username = auth.UserInfo().Username()
-	}
-
-	// override with options, if any
-	if opts.UserName != "" {
-		username = opts.UserName
 	}
 
 	return username
@@ -127,9 +110,9 @@ func fetchDialOptions(ctx context.Context, auth utils.Authority, opts Options) [
 
 	// determine protocol-specific (FTPS/FTPeS) TLS DialOption, if any (defaults to plain FTP, no TLS)
 	switch protocol := fetchProtocol(opts); {
-	case strings.EqualFold(protocol, protocolFTPS):
+	case strings.EqualFold(protocol, ProtocolFTPS):
 		dialOptions = append(dialOptions, _ftp.DialWithTLS(fetchTLSConfig(auth, opts)))
-	case strings.EqualFold(protocol, protocolFTPES):
+	case strings.EqualFold(protocol, ProtocolFTPES):
 		dialOptions = append(dialOptions, _ftp.DialWithExplicitTLS(fetchTLSConfig(auth, opts)))
 	}
 
@@ -185,7 +168,7 @@ func fetchTLSConfig(auth utils.Authority, opts Options) *tls.Config {
 
 func fetchProtocol(opts Options) string {
 	// set default protocol
-	protocol := protocolFTP
+	protocol := ProtocolFTP
 
 	// override with env var
 	if _, ok := os.LookupEnv(envProtocol); ok {
