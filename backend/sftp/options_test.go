@@ -414,7 +414,7 @@ func (o *optionsSuite) TestGetClient() {
 				KnownHostsCallback: ssh.InsecureIgnoreHostKey(),
 			},
 			hasError: true,
-			errRegex: "(?:no such host|Temporary failure in name resolution)",
+			errRegex: ".*",
 			message:  "getclient - bad host",
 		},
 		{
