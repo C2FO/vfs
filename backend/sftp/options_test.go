@@ -558,9 +558,7 @@ func generatePrivateKey(passphrase []byte) ([]byte, error) {
 	}
 
 	if len(passphrase) > 0 {
-		//nolint:staticcheck // SA1019
 		pemBlock, err = x509.EncryptPEMBlock(rand.Reader, pemBlock.Type, pemBlock.Bytes, passphrase, x509.PEMCipherAES256)
-		// uselint
 		if err != nil {
 			return nil, err
 		}
