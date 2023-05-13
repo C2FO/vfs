@@ -71,9 +71,7 @@ func (f *File) Close() error {
 	f.memFile.Lock()
 	if f.memFile.writeBuffer.Len() > 0 {
 		bufferContents := f.memFile.writeBuffer.Bytes()
-		for i := range bufferContents {
-			f.memFile.contents = append(f.memFile.contents, bufferContents[i])
-		}
+		f.memFile.contents = append(f.memFile.contents, bufferContents...)
 		f.memFile.lastModified = time.Now()
 		f.memFile.writeBuffer = new(bytes.Buffer)
 	}
