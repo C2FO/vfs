@@ -53,21 +53,21 @@ These methods are chainable:
 				  Password: "s3cr3t",
 				  DisableEPSV: true,
 				  Protocol: ftp.ProtocolFTPES,
-				  DialTimeout: 15 * time.Second
-				  DebugWriter: os.Stdout
+				  DialTimeout: 15 * time.Second,
+				  DebugWriter: os.Stdout,
 			  },
 		  )
 
 		  location, err := fs.NewLocation("myuser@server.com:21", "/some/path/")
 		  #handle error
 
-		  file := location.NewFile("myfile.txt")
+		  file, err := location.NewFile("myfile.txt")
 		  #handle error
 
-		  _, err := file.Write([]bytes("some text")
+		  _, err = file.Write([]byte("some text"))
 		  #handle error
 
-		  err := file.Close()
+		  err = file.Close()
 		  #handle error
 
 	  }

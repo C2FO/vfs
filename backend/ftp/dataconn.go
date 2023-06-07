@@ -8,9 +8,10 @@ import (
 )
 
 type dataConn struct {
-	R    io.ReadCloser
-	W    io.WriteCloser
-	mode types.OpenType
+	R      io.ReadCloser
+	mode   types.OpenType
+	client types.Client
+	f      *File
 }
 
 func (dc *dataConn) Mode() types.OpenType {
@@ -22,20 +23,45 @@ func (dc *dataConn) Read(buf []byte) (int, error) {
 }
 
 func (dc *dataConn) Write(data []byte) (int, error) {
-	return dc.W.Write(data)
+	// create a pipe writer for writes.
+	pr, pw := io.Pipe()
+
+	type writeResponse struct {
+		bytesWritten int
+		err          error
+	}
+
+	errChan := make(chan writeResponse, 1)
+	client, err := dc.f.fileSystem.Client(context.TODO(), dc.f.authority)
+	if err != nil {
+		return 0, err
+	}
+
+	go func() {
+		defer pw.Close()
+
+		bytesWritten, err := pw.Write(data)
+
+		errChan <- writeResponse{
+			bytesWritten: bytesWritten,
+			err:          err,
+		}
+	}()
+
+	if err := client.StorFrom(dc.f.Path(), pr, uint64(dc.f.offset)); err != nil {
+		return 0, err
+	}
+
+	resp := <-errChan
+	return resp.bytesWritten, resp.err
 }
 
 func (dc *dataConn) Close() error {
-	switch dc.Mode() {
-	case types.OpenRead:
-		if dc.R != nil {
-			return dc.R.Close()
-		}
-	case types.OpenWrite:
-		if dc.W != nil {
-			return dc.R.Close()
-		}
+
+	if dc.R != nil {
+		return dc.R.Close()
 	}
+
 	return nil
 }
 
@@ -63,20 +89,18 @@ func getDataConn(ctx context.Context, f *File, t types.OpenType) (types.DataConn
 			if err != nil {
 				return nil, err
 			}
+
 			f.dataconn = &dataConn{
-				R:    resp,
-				mode: t,
+				R:      resp,
+				mode:   t,
+				client: client,
+				f:      f,
 			}
 		case types.OpenWrite:
-			// create a pipe writer for writes.
-			pr, pw := io.Pipe()
-			err = client.StorFrom(f.Path(), pr, uint64(f.offset))
-			if err != nil {
-				return nil, err
-			}
 			f.dataconn = &dataConn{
-				W:    pw,
-				mode: t,
+				mode:   t,
+				client: client,
+				f:      f,
 			}
 		}
 	}

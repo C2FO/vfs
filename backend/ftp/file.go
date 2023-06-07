@@ -3,9 +3,11 @@ package ftp
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	_ftp "github.com/jlaffaye/ftp"
@@ -54,14 +56,14 @@ func (f *File) stat(ctx context.Context) (*_ftp.Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	entries, err := client.List(f.Path())
+	entry, err := client.GetEntry(f.Path())
 	if err != nil {
+		if strings.HasPrefix(err.Error(), fmt.Sprintf("%d", _ftp.StatusFileUnavailable)) {
+			return nil, os.ErrNotExist
+		}
 		return nil, err
 	}
-	if len(entries) == 0 {
-		return nil, os.ErrNotExist
-	}
-	return entries[0], nil
+	return entry, nil
 }
 
 // Name returns the path portion of the file's path property. IE: "file.txt" of "ftp://someuser@host.com/some/path/to/file.txt

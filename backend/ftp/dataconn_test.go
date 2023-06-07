@@ -82,16 +82,13 @@ func (s *dataConnSuite) TestGetDataConn() {
 		Return(someErr).
 		Once()
 	dc, err = getDataConn(context.Background(), ftpfile, types.OpenWrite)
+	s.NoError(err, "no error expected")
+	_, err = dc.Write([]byte{})
 	s.Error(err, "error is expected")
 	s.ErrorIs(err, someErr, "error is right kind of error")
-	s.Nil(dc, "dataconn should be nil on error")
 
 	// dataconn is nil - open for read - success
 	ftpfile.dataconn = nil
-	client.EXPECT().
-		StorFrom(ftpfile.Path(), mock.Anything, uint64(0)).
-		Return(nil).
-		Once()
 	dc, err = getDataConn(context.Background(), ftpfile, types.OpenWrite)
 	s.NoError(err, "no error expected")
 	s.IsTypef(&dataConn{}, dc, "dataconn returned")
@@ -111,10 +108,6 @@ func (s *dataConnSuite) TestGetDataConn() {
 		mode: types.OpenRead,
 		R:    io.NopCloser(strings.NewReader("")),
 	}
-	client.EXPECT().
-		StorFrom(ftpfile.Path(), mock.Anything, uint64(0)).
-		Return(nil).
-		Once()
 	dc, err = getDataConn(context.Background(), ftpfile, types.OpenWrite)
 	s.NoError(err, "no error expected")
 	s.IsTypef(&dataConn{}, dc, "dataconn returned")
@@ -140,38 +133,6 @@ func (s *dataConnSuite) TestRead() {
 	s.NoError(err, "error not expected")
 	s.EqualValues(len(contents), written, "byte count should equal contents of reader")
 	s.Equal(contents, w.String(), "read contents equals original contents")
-}
-
-func (s *dataConnSuite) TestWrite() {
-	contents := "some data"
-	w := &strings.Builder{}
-	dc := &dataConn{
-		W:    WriteNopCloser(w),
-		mode: types.OpenRead,
-	}
-	r := strings.NewReader(contents)
-	written, err := io.Copy(dc, r)
-	s.NoError(err, "error not expected")
-	s.EqualValues(len(contents), written, "byte count should equal contents of reader")
-	s.Equal(contents, w.String(), "read contents equals original contents")
-}
-
-func (s *dataConnSuite) TestClose() {
-	dc := &dataConn{
-		mode: types.OpenRead,
-	}
-
-	// Close when neither read no write is set (this may actually not be possible)
-	s.NoError(dc.Close(), "expect no error")
-
-	// Close when mode is read
-	dc.R = io.NopCloser(strings.NewReader(""))
-	s.NoError(dc.Close(), "expect no error")
-
-	// Close when mode is read
-	dc.mode = types.OpenWrite
-	dc.W = WriteNopCloser(&strings.Builder{})
-	s.NoError(dc.Close(), "expect no error")
 }
 
 type writeNopCloser struct {

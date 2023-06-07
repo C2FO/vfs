@@ -244,16 +244,14 @@ func (ts *fileTestSuite) TestSeek() {
 	ts.EqualValues(5, pos, "new offset should be 5")
 
 	// whence = 2 (seek from end)
-	entries := []*_ftp.Entry{
-		{
-			Name: ftpfile.Name(),
-			Type: _ftp.EntryTypeFile,
-			Size: uint64(len(contents)),
-		},
+	entry := &_ftp.Entry{
+		Name: ftpfile.Name(),
+		Type: _ftp.EntryTypeFile,
+		Size: uint64(len(contents)),
 	}
 	client.EXPECT().
-		List(ftpfile.Path()).
-		Return(entries, nil).
+		GetEntry(ftpfile.Path()).
+		Return(entry, nil).
 		Once()
 	pos, err = ftpfile.Seek(8, 2) // seek to some mid point
 	ts.NoError(err, "no error expected")
@@ -274,8 +272,8 @@ func (ts *fileTestSuite) TestSeek() {
 
 	// whence = 2, correction of offset to 0 when whence 2 and seek offset > len(contents)
 	client.EXPECT().
-		List(ftpfile.Path()).
-		Return(entries, nil).
+		GetEntry(ftpfile.Path()).
+		Return(entry, nil).
 		Once()
 	pos, err = ftpfile.Seek(15, 2)
 	ts.NoError(err, "no error expected")
@@ -283,8 +281,8 @@ func (ts *fileTestSuite) TestSeek() {
 
 	// whence = 2, file doesn't exist yet
 	client.EXPECT().
-		List(ftpfile.Path()).
-		Return(nil, os.ErrNotExist). // return os.ErrNotExist from Size()->stat()->List()
+		GetEntry(ftpfile.Path()).
+		Return(nil, os.ErrNotExist). // return os.ErrNotExist from Size()->stat()->GetEntry()
 		Once()
 	pos, err = ftpfile.Seek(15, 2)
 	ts.NoError(err, "no error expected")
@@ -338,10 +336,10 @@ func (ts *fileTestSuite) TestSeekError() {
 	ts.EqualValues(0, pos, "position should be 0 on error")
 	fakedconn.AssertCloseErr(nil)
 
-	// whence = 2, f.Size() error (client.List error)
+	// whence = 2, f.Size() error (client.GetEntry error)
 	sizeErr := errors.New("some Size error")
 	client.EXPECT().
-		List(ftpfile.Path()).
+		GetEntry(ftpfile.Path()).
 		Return(nil, sizeErr). // return non-ErrNotFound error when calling Size()
 		Once()
 	pos, err = ftpfile.Seek(3, 2)
@@ -350,16 +348,14 @@ func (ts *fileTestSuite) TestSeekError() {
 	ts.EqualValues(0, pos, "position should be 0 on error")
 
 	// whence = 2, f.dataconn.Close() error
-	entries := []*_ftp.Entry{
-		{
-			Name: ftpfile.Name(),
-			Type: _ftp.EntryTypeFile,
-			Size: uint64(len(contents)),
-		},
+	entry := &_ftp.Entry{
+		Name: ftpfile.Name(),
+		Type: _ftp.EntryTypeFile,
+		Size: uint64(len(contents)),
 	}
 	client.EXPECT().
-		List(ftpfile.Path()).
-		Return(entries, nil).
+		GetEntry(ftpfile.Path()).
+		Return(entry, nil).
 		Once()
 	fakedconn.AssertCloseErr(closeErr)
 	pos, err = ftpfile.Seek(3, 2)
@@ -374,15 +370,13 @@ func (ts *fileTestSuite) TestExists() {
 	ftpfile, err := ts.fs.NewFile("user@host.com", "/path/hello.txt")
 	ts.Require().NoError(err, "Shouldn't fail creating new file.")
 
-	entries := []*_ftp.Entry{
-		{
-			Name: ts.testFile.Name(),
-			Type: _ftp.EntryTypeFile,
-		},
+	entry := &_ftp.Entry{
+		Name: ts.testFile.Name(),
+		Type: _ftp.EntryTypeFile,
 	}
 	ts.ftpClientMock.EXPECT().
-		List(ftpfile.Path()).
-		Return(entries, nil).
+		GetEntry(ftpfile.Path()).
+		Return(entry, nil).
 		Once()
 
 	exists, err := ftpfile.Exists()
@@ -403,7 +397,7 @@ func (ts *fileTestSuite) TestNotExists() {
 	ts.Require().NoError(err, "Shouldn't fail creating new file.")
 
 	ts.ftpClientMock.EXPECT().
-		List(ftpfile.Path()).
+		GetEntry(ftpfile.Path()).
 		Return(nil, os.ErrNotExist).Once()
 	exists, err := ftpfile.Exists()
 	ts.False(exists, "Should return false for exists based on setup")
@@ -749,26 +743,29 @@ func (ts *fileTestSuite) TestTouch_exists() {
 		dataconn:  dconn,
 	}
 
+	entry := &_ftp.Entry{
+		Name: file.Name(),
+		Type: _ftp.EntryTypeFile,
+	}
 	entries := []*_ftp.Entry{
 		{
 			Name: file.Name(),
-			Type: _ftp.EntryTypeFile,
+			Type: _ftp.EntryTypeFolder,
 		},
 	}
 
 	// success calling Touch
 	p := file.Path()
 	client.EXPECT().
-		List(p). // initial exists check
+		List(file.Location().Path()).
 		Return(entries, nil).
+		Twice() // location should always exist for this test - no mkdir call
+
+	client.EXPECT().
+		GetEntry(p). // initial exists check
+		Return(entry, nil).
 		Once()
 
-	locEntries := []*_ftp.Entry{
-		{
-			Name: path.Base(file.Location().Path()),
-			Type: _ftp.EntryTypeFolder,
-		},
-	}
 	// Move to temp file (to update last modified)
 	n := time.Now()
 	now = func() time.Time { return n } // override global var 'now' for test
@@ -777,19 +774,11 @@ func (ts *fileTestSuite) TestTouch_exists() {
 	}()
 	tempFileName := file.Name() + strconv.FormatInt(now().UnixNano(), 10)
 	client.EXPECT().
-		List(file.Location().Path()). // MoveToFile exists check
-		Return(locEntries, nil).
-		Once()
-	client.EXPECT().
 		Rename(p, file.Location().Path()+tempFileName).
 		Return(nil).
 		Once()
 
 	// Move temp file back to original file (to update last modified)
-	client.EXPECT().
-		List(file.Location().Path()). // MoveToFile exists check
-		Return(locEntries, nil).
-		Once()
 	client.EXPECT().
 		Rename(file.Location().Path()+tempFileName, file.Path()).
 		Return(nil).
@@ -799,30 +788,19 @@ func (ts *fileTestSuite) TestTouch_exists() {
 	// failure calling Touch (exists check failed)
 	listErr := errors.New("some list error")
 	client.EXPECT().
-		List(file.Path()). // MoveToFile exists check
+		GetEntry(p). // MoveToFile exists check
 		Return(nil, listErr).
 		Once()
 	err = file.Touch()
 	ts.Error(err, "expected error")
 	ts.ErrorIs(err, listErr, "error is correct error type")
 
-	// NewFile failure in Touch func
-	// setup tempFileNameGetter to return "" which will fail the NewFile validation
-	tempFileNameGetter = func(_ string) string { return "" }
-	client.EXPECT().
-		List(file.Path()). // MoveToFile exists check
-		Return(locEntries, nil).
-		Once()
-	err = file.Touch()
-	ts.Error(err, "expected error")
-	ts.ErrorContains(err, utils.ErrBadRelFilePath, "error is correct error type")
-	tempFileNameGetter = getTempFilename
-
 	// failure calling MoveToFile in Touch func
 	client.EXPECT().
-		List(file.Path()). // MoveToFile exists check
-		Return(locEntries, nil).
+		GetEntry(p). // initial exists check
+		Return(entry, nil).
 		Once()
+
 	client.EXPECT().
 		List(file.Location().Path()).
 		Return(nil, listErr).
@@ -853,16 +831,16 @@ func (ts *fileTestSuite) TestTouch_notExists() {
 
 	// success calling Touch when file does not exist
 	client.EXPECT().
-		List(file.Path()). // initial exists check
-		Return([]*_ftp.Entry{}, nil).
+		GetEntry(file.Path()). // initial exists check
+		Return(&_ftp.Entry{}, errors.New("550")).
 		Once()
 	err = file.Touch()
 	ts.NoError(err, "no error expected")
 
 	// failure to Write in Touch func
 	client.EXPECT().
-		List(file.Path()). // initial exists check
-		Return([]*_ftp.Entry{}, nil).
+		GetEntry(file.Path()). // initial exists check
+		Return(&_ftp.Entry{}, errors.New("550")).
 		Once()
 	file.resetConn = false
 	wErr := errors.New("some write error")
@@ -918,18 +896,17 @@ func (ts *fileTestSuite) TestDelete() {
 
 func (ts *fileTestSuite) TestLastModified() {
 	now := time.Now()
-	entries := []*_ftp.Entry{
-		{
-			Name: ts.testFile.Name(),
-			Type: _ftp.EntryTypeFile,
-			Time: now,
-		},
+	entry := &_ftp.Entry{
+
+		Name: ts.testFile.Name(),
+		Type: _ftp.EntryTypeFile,
+		Time: now,
 	}
 
 	// successfully retrieved LastModified
 	ts.ftpClientMock.EXPECT().
-		List(ts.testFile.Path()).
-		Return(entries, nil).
+		GetEntry(ts.testFile.Path()).
+		Return(entry, nil).
 		Once()
 	modTime, err := ts.testFile.LastModified()
 	ts.NoError(err, "Error should be nil when correctly returning time of object.")
@@ -937,8 +914,8 @@ func (ts *fileTestSuite) TestLastModified() {
 
 	// file not found calling stat
 	ts.ftpClientMock.EXPECT().
-		List(ts.testFile.Path()).
-		Return([]*_ftp.Entry{}, nil).
+		GetEntry(ts.testFile.Path()).
+		Return(&_ftp.Entry{}, errors.New("550 file unavailable")).
 		Once()
 	modTime, err = ts.testFile.LastModified()
 	ts.Error(err, "error expected")
@@ -957,7 +934,7 @@ func (ts *fileTestSuite) TestLastModified() {
 func (ts *fileTestSuite) TestLastModifiedFail() {
 	myErr := errors.New("some error")
 	ts.ftpClientMock.EXPECT().
-		List(ts.testFile.Path()).
+		GetEntry(ts.testFile.Path()).
 		Return(nil, myErr)
 	m, e := ts.testFile.LastModified()
 	ts.Error(e, "got error as expected")
@@ -971,16 +948,15 @@ func (ts *fileTestSuite) TestName() {
 
 func (ts *fileTestSuite) TestSize() {
 	contentLength := uint64(100)
-	entries := []*_ftp.Entry{
-		{
-			Name: ts.testFile.Name(),
-			Type: _ftp.EntryTypeFile,
-			Size: contentLength,
-		},
+	entry := &_ftp.Entry{
+
+		Name: ts.testFile.Name(),
+		Type: _ftp.EntryTypeFile,
+		Size: contentLength,
 	}
 	ts.ftpClientMock.EXPECT().
-		List(ts.testFile.Path()).
-		Return(entries, nil).
+		GetEntry(ts.testFile.Path()).
+		Return(entry, nil).
 		Once()
 
 	size, err := ts.testFile.Size()
@@ -989,8 +965,8 @@ func (ts *fileTestSuite) TestSize() {
 
 	myErr := errors.New("some error")
 	ts.ftpClientMock.EXPECT().
-		List(ts.testFile.Path()).
-		Return([]*_ftp.Entry{}, myErr).
+		GetEntry(ts.testFile.Path()).
+		Return(&_ftp.Entry{}, myErr).
 		Once()
 	size, err = ts.testFile.Size()
 	ts.Error(err, "expect error")

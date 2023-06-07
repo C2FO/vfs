@@ -26,6 +26,7 @@ type DataConn interface {
 // Client is an interface to make it easier to test
 type Client interface {
 	Delete(path string) error
+	GetEntry(p string) (*_ftp.Entry, error)
 	List(p string) ([]*_ftp.Entry, error) // NLST for just names
 	Login(user string, password string) error
 	MakeDir(path string) error
