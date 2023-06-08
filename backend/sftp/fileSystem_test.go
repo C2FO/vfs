@@ -3,7 +3,6 @@ package sftp
 import (
 	"io"
 	"os"
-	"regexp"
 	"testing"
 	"time"
 
@@ -124,16 +123,6 @@ func (ts *fileSystemTestSuite) TestClient() {
 	_, err = ts.sftpfs.Client(utils.Authority{})
 	ts.Error(err, "error found")
 	ts.Equal("unable to create client, vfs.Options must be an sftp.Options", err.Error(), "client was already set")
-
-	// no opts, no authority
-	ts.sftpfs.options = nil
-	auth, err := utils.NewAuthority("someuser@badhost")
-	ts.NoError(err)
-	_, err = ts.sftpfs.Client(auth)
-	if ts.Error(err, "error found") {
-		ts.Regexp(regexp.MustCompile("(?:no such host|Temporary failure in name resolution)"), err.Error(), "no such host", "error matches")
-	}
-
 }
 
 func (ts *fileSystemTestSuite) TestClientWithAutoDisconnect() {

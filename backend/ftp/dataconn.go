@@ -80,6 +80,9 @@ func getDataConn(ctx context.Context, f *File, t types.OpenType) (types.DataConn
 			go func(errChan chan error) {
 				err := client.StorFrom(f.Path(), pr, uint64(f.offset))
 				errChan <- err
+				// close the pipe reader so that writes to the dataconn aren't blocking.
+				// error will occur when pipereader is already closed - nothing to do in that case.
+				//nolint:errcheck
 				pr.Close()
 			}(errChan)
 
