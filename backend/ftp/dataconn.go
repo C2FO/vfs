@@ -83,7 +83,7 @@ func getDataConn(ctx context.Context, f *File, t types.OpenType) (types.DataConn
 				// close the pipe reader so that writes to the dataconn aren't blocking.
 				// error will occur when pipereader is already closed - nothing to do in that case.
 				//nolint:errcheck
-				pr.Close()
+				pr.Close() // #nosec G104 if reader can't be closed there is no action to be taken
 			}(errChan)
 
 			f.dataconn = &dataConn{
