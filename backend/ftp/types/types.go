@@ -2,6 +2,7 @@ package types
 
 import (
 	"io"
+	"time"
 
 	_ftp "github.com/jlaffaye/ftp"
 )
@@ -34,4 +35,7 @@ type Client interface {
 	Rename(from, to string) error
 	RetrFrom(path string, offset uint64) (*_ftp.Response, error)
 	StorFrom(path string, r io.Reader, offset uint64) error
+	IsSetTimeSupported() bool
+	SetTime(path string, t time.Time) error
+	IsTimePreciseInList() bool
 }

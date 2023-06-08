@@ -56,14 +56,27 @@ func (f *File) stat(ctx context.Context) (*_ftp.Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	entry, err := client.GetEntry(f.Path())
-	if err != nil {
-		if strings.HasPrefix(err.Error(), fmt.Sprintf("%d", _ftp.StatusFileUnavailable)) {
+	// check if MLSD command is availalbe - if so we'll want to grab file info
+	// via MLST. otherwise we'll need to use LIST.
+	if client.IsTimePreciseInList() {
+		entry, err := client.GetEntry(f.Path())
+		if err != nil {
+			if strings.HasPrefix(err.Error(), fmt.Sprintf("%d", _ftp.StatusFileUnavailable)) {
+				return nil, os.ErrNotExist
+			}
+			return nil, err
+		}
+		return entry, nil
+	} else {
+		entries, err := client.List(f.Path())
+		if err != nil {
+			return nil, err
+		}
+		if len(entries) == 0 {
 			return nil, os.ErrNotExist
 		}
-		return nil, err
+		return entries[0], nil
 	}
-	return entry, nil
 }
 
 // Name returns the path portion of the file's path property. IE: "file.txt" of "ftp://someuser@host.com/some/path/to/file.txt
@@ -108,8 +121,17 @@ func (f *File) Touch() error {
 		return f.Close()
 	}
 
-	// doing move and move back (to ensure last modified is updated)
-	// TODO: verify that this updates last modified (if not must do Copy-Delete (vs rename))
+	client, err := f.fileSystem.Client(context.TODO(), f.authority)
+	if err != nil {
+		return err
+	}
+
+	// if a set time function is available use that to set last modified to now
+	if client.IsSetTimeSupported() {
+		return client.SetTime(f.path, time.Now())
+	}
+
+	// doing move and move back to ensure last modified is updated
 	newFile, err := f.Location().NewFile(tempFileNameGetter(f.Name()))
 	if err != nil {
 		return err

@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jlaffaye/ftp"
 	"github.com/stretchr/testify/mock"
@@ -75,7 +76,7 @@ func (s *dataConnSuite) TestGetDataConn() {
 	s.ErrorIs(err, someErr, "error is right kind of error")
 	s.Nil(dc, "dataconn should be nil on error")
 
-	// dataconn is nil - open for read - error calling client.StorFrom
+	// dataconn is nil - open for write - error calling client.StorFrom
 	ftpfile.dataconn = nil
 	client.EXPECT().
 		StorFrom(ftpfile.Path(), mock.Anything, uint64(0)).
@@ -83,12 +84,16 @@ func (s *dataConnSuite) TestGetDataConn() {
 		Once()
 	dc, err = getDataConn(context.Background(), ftpfile, types.OpenWrite)
 	s.NoError(err, "no error expected")
+	// error in getDataConn should close the PipeReader meaning Write errors
 	_, err = dc.Write([]byte{})
 	s.Error(err, "error is expected")
-	s.ErrorIs(err, someErr, "error is right kind of error")
 
-	// dataconn is nil - open for read - success
+	// dataconn is nil - open for write - success
 	ftpfile.dataconn = nil
+	client.EXPECT().
+		StorFrom(ftpfile.Path(), mock.Anything, uint64(0)).
+		Return(nil).
+		Once()
 	dc, err = getDataConn(context.Background(), ftpfile, types.OpenWrite)
 	s.NoError(err, "no error expected")
 	s.IsTypef(&dataConn{}, dc, "dataconn returned")
@@ -103,14 +108,21 @@ func (s *dataConnSuite) TestGetDataConn() {
 	s.ErrorIs(err, closeErr, "error is right kind of error")
 	s.Nil(dc, "dataconn should be nil on error")
 
-	// open dataconn for read after dataconn for write exists
+	// open dataconn for write after dataconn for read exists
 	ftpfile.dataconn = &dataConn{
 		mode: types.OpenRead,
 		R:    io.NopCloser(strings.NewReader("")),
 	}
+	client.EXPECT().
+		StorFrom(ftpfile.Path(), mock.Anything, uint64(0)).
+		Return(nil).
+		Once()
 	dc, err = getDataConn(context.Background(), ftpfile, types.OpenWrite)
 	s.NoError(err, "no error expected")
 	s.IsTypef(&dataConn{}, dc, "dataconn returned")
+
+	// brief sleep to ensure goroutines running StorFrom can all complete
+	time.Sleep(50 * time.Millisecond)
 
 	client.AssertExpectations(s.T())
 }

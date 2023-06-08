@@ -13,6 +13,7 @@ import (
 
 	fs "github.com/dsoprea/go-utility/v2/filesystem"
 	_ftp "github.com/jlaffaye/ftp"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v6"
@@ -250,6 +251,10 @@ func (ts *fileTestSuite) TestSeek() {
 		Size: uint64(len(contents)),
 	}
 	client.EXPECT().
+		IsTimePreciseInList().
+		Return(true).
+		Once()
+	client.EXPECT().
 		GetEntry(ftpfile.Path()).
 		Return(entry, nil).
 		Once()
@@ -272,6 +277,10 @@ func (ts *fileTestSuite) TestSeek() {
 
 	// whence = 2, correction of offset to 0 when whence 2 and seek offset > len(contents)
 	client.EXPECT().
+		IsTimePreciseInList().
+		Return(true).
+		Once()
+	client.EXPECT().
 		GetEntry(ftpfile.Path()).
 		Return(entry, nil).
 		Once()
@@ -280,6 +289,10 @@ func (ts *fileTestSuite) TestSeek() {
 	ts.EqualValues(0, pos, "new offset should be 5")
 
 	// whence = 2, file doesn't exist yet
+	client.EXPECT().
+		IsTimePreciseInList().
+		Return(true).
+		Once()
 	client.EXPECT().
 		GetEntry(ftpfile.Path()).
 		Return(nil, os.ErrNotExist). // return os.ErrNotExist from Size()->stat()->GetEntry()
@@ -338,6 +351,11 @@ func (ts *fileTestSuite) TestSeekError() {
 
 	// whence = 2, f.Size() error (client.GetEntry error)
 	sizeErr := errors.New("some Size error")
+
+	client.EXPECT().
+		IsTimePreciseInList().
+		Return(true).
+		Once()
 	client.EXPECT().
 		GetEntry(ftpfile.Path()).
 		Return(nil, sizeErr). // return non-ErrNotFound error when calling Size()
@@ -354,6 +372,10 @@ func (ts *fileTestSuite) TestSeekError() {
 		Size: uint64(len(contents)),
 	}
 	client.EXPECT().
+		IsTimePreciseInList().
+		Return(true).
+		Once()
+	client.EXPECT().
 		GetEntry(ftpfile.Path()).
 		Return(entry, nil).
 		Once()
@@ -366,7 +388,39 @@ func (ts *fileTestSuite) TestSeekError() {
 	client.AssertExpectations(ts.T())
 }
 
-func (ts *fileTestSuite) TestExists() {
+func (ts *fileTestSuite) TestExists_noMlst() {
+	ftpfile, err := ts.fs.NewFile("user@host.com", "/path/hello.txt")
+	ts.Require().NoError(err, "Shouldn't fail creating new file.")
+
+	entries := []*_ftp.Entry{
+		{
+			Name: ts.testFile.Name(),
+			Type: _ftp.EntryTypeFile,
+		},
+	}
+	ts.ftpClientMock.EXPECT().
+		IsTimePreciseInList().
+		Return(false).
+		Once()
+	ts.ftpClientMock.EXPECT().
+		List(ftpfile.Path()).
+		Return(entries, nil).
+		Once()
+
+	exists, err := ftpfile.Exists()
+	ts.True(exists, "Should return true for exists based on this setup")
+	ts.NoError(err, "Shouldn't return an error when exists is true")
+
+	// stat client error
+	defaultClientGetter = clientGetterReturnsError
+	ftpfile.(*File).fileSystem.WithClient(nil)
+	exists, err = ftpfile.Exists()
+	ts.Error(err, "error expected")
+	ts.ErrorIs(err, errClientGetter, "err should be correct type")
+	ts.False(exists, "exists should be false on error")
+}
+
+func (ts *fileTestSuite) TestExists_mlst() {
 	ftpfile, err := ts.fs.NewFile("user@host.com", "/path/hello.txt")
 	ts.Require().NoError(err, "Shouldn't fail creating new file.")
 
@@ -374,6 +428,10 @@ func (ts *fileTestSuite) TestExists() {
 		Name: ts.testFile.Name(),
 		Type: _ftp.EntryTypeFile,
 	}
+	ts.ftpClientMock.EXPECT().
+		IsTimePreciseInList().
+		Return(true).
+		Once()
 	ts.ftpClientMock.EXPECT().
 		GetEntry(ftpfile.Path()).
 		Return(entry, nil).
@@ -392,10 +450,30 @@ func (ts *fileTestSuite) TestExists() {
 	ts.False(exists, "exists should be false on error")
 }
 
-func (ts *fileTestSuite) TestNotExists() {
+func (ts *fileTestSuite) TestNotExists_noMlst() {
 	ftpfile, err := ts.fs.NewFile("user@host.com", "/path/hello.txt")
 	ts.Require().NoError(err, "Shouldn't fail creating new file.")
 
+	ts.ftpClientMock.EXPECT().
+		IsTimePreciseInList().
+		Return(false).
+		Once()
+	ts.ftpClientMock.EXPECT().
+		List(ftpfile.Path()).
+		Return(nil, os.ErrNotExist).Once()
+	exists, err := ftpfile.Exists()
+	ts.False(exists, "Should return false for exists based on setup")
+	ts.NoError(err, "Error from key not existing should be hidden since it just confirms it doesn't")
+}
+
+func (ts *fileTestSuite) TestNotExists_mlst() {
+	ftpfile, err := ts.fs.NewFile("user@host.com", "/path/hello.txt")
+	ts.Require().NoError(err, "Shouldn't fail creating new file.")
+
+	ts.ftpClientMock.EXPECT().
+		IsTimePreciseInList().
+		Return(true).
+		Once()
 	ts.ftpClientMock.EXPECT().
 		GetEntry(ftpfile.Path()).
 		Return(nil, os.ErrNotExist).Once()
@@ -760,10 +838,19 @@ func (ts *fileTestSuite) TestTouch_exists() {
 		List(file.Location().Path()).
 		Return(entries, nil).
 		Twice() // location should always exist for this test - no mkdir call
-
 	client.EXPECT().
-		GetEntry(p). // initial exists check
-		Return(entry, nil).
+		IsTimePreciseInList().
+		Return(false).
+		Once()
+	client.EXPECT().
+		List(p). // initial exists check
+		Return(entries, nil).
+		Once()
+
+	// reject set time method each time Touch is called
+	client.EXPECT().
+		IsSetTimeSupported().
+		Return(false).
 		Once()
 
 	// Move to temp file (to update last modified)
@@ -785,8 +872,56 @@ func (ts *fileTestSuite) TestTouch_exists() {
 		Once()
 	ts.NoError(file.Touch())
 
+	// success calling Touch when SetTime is suppported
+	client.EXPECT().
+		IsTimePreciseInList().
+		Return(true).
+		Once()
+	client.EXPECT().
+		GetEntry(p). // initial exists check
+		Return(entry, nil).
+		Once()
+	client.EXPECT().
+		IsSetTimeSupported().
+		Return(true).
+		Once()
+	client.EXPECT().
+		SetTime(p, mock.Anything).
+		Return(nil).
+		Once()
+
+	ts.NoError(file.Touch())
+
+	// error calling Touch when SetTime is called
+	setTimeErr := errors.New("some SetTime error")
+
+	client.EXPECT().
+		IsTimePreciseInList().
+		Return(true).
+		Once()
+	client.EXPECT().
+		GetEntry(p). // initial exists check
+		Return(entry, nil).
+		Once()
+	client.EXPECT().
+		IsSetTimeSupported().
+		Return(true).
+		Once()
+	client.EXPECT().
+		SetTime(p, mock.Anything).
+		Return(setTimeErr).
+		Once()
+
+	err = file.Touch()
+	ts.Error(err, "expected error")
+	ts.ErrorIs(err, setTimeErr, "error is correct error type")
+
 	// failure calling Touch (exists check failed)
 	listErr := errors.New("some list error")
+	client.EXPECT().
+		IsTimePreciseInList().
+		Return(true).
+		Once()
 	client.EXPECT().
 		GetEntry(p). // MoveToFile exists check
 		Return(nil, listErr).
@@ -797,14 +932,22 @@ func (ts *fileTestSuite) TestTouch_exists() {
 
 	// failure calling MoveToFile in Touch func
 	client.EXPECT().
+		IsTimePreciseInList().
+		Return(true).
+		Once()
+	client.EXPECT().
 		GetEntry(p). // initial exists check
 		Return(entry, nil).
 		Once()
-
+	client.EXPECT().
+		IsSetTimeSupported().
+		Return(false).
+		Once()
 	client.EXPECT().
 		List(file.Location().Path()).
 		Return(nil, listErr).
 		Once()
+
 	err = file.Touch()
 	ts.Error(err, "expected error")
 	ts.ErrorIs(err, listErr, "error is correct error type")
@@ -831,6 +974,10 @@ func (ts *fileTestSuite) TestTouch_notExists() {
 
 	// success calling Touch when file does not exist
 	client.EXPECT().
+		IsTimePreciseInList().
+		Return(true).
+		Once()
+	client.EXPECT().
 		GetEntry(file.Path()). // initial exists check
 		Return(&_ftp.Entry{}, errors.New("550")).
 		Once()
@@ -838,6 +985,10 @@ func (ts *fileTestSuite) TestTouch_notExists() {
 	ts.NoError(err, "no error expected")
 
 	// failure to Write in Touch func
+	client.EXPECT().
+		IsTimePreciseInList().
+		Return(true).
+		Once()
 	client.EXPECT().
 		GetEntry(file.Path()). // initial exists check
 		Return(&_ftp.Entry{}, errors.New("550")).
@@ -905,6 +1056,10 @@ func (ts *fileTestSuite) TestLastModified() {
 
 	// successfully retrieved LastModified
 	ts.ftpClientMock.EXPECT().
+		IsTimePreciseInList().
+		Return(true).
+		Once()
+	ts.ftpClientMock.EXPECT().
 		GetEntry(ts.testFile.Path()).
 		Return(entry, nil).
 		Once()
@@ -913,6 +1068,10 @@ func (ts *fileTestSuite) TestLastModified() {
 	ts.Equal(&now, modTime, "Returned time matches expected LastModified time.")
 
 	// file not found calling stat
+	ts.ftpClientMock.EXPECT().
+		IsTimePreciseInList().
+		Return(true).
+		Once()
 	ts.ftpClientMock.EXPECT().
 		GetEntry(ts.testFile.Path()).
 		Return(&_ftp.Entry{}, errors.New("550 file unavailable")).
@@ -933,6 +1092,10 @@ func (ts *fileTestSuite) TestLastModified() {
 
 func (ts *fileTestSuite) TestLastModifiedFail() {
 	myErr := errors.New("some error")
+	ts.ftpClientMock.EXPECT().
+		IsTimePreciseInList().
+		Return(true).
+		Once()
 	ts.ftpClientMock.EXPECT().
 		GetEntry(ts.testFile.Path()).
 		Return(nil, myErr)
@@ -955,6 +1118,10 @@ func (ts *fileTestSuite) TestSize() {
 		Size: contentLength,
 	}
 	ts.ftpClientMock.EXPECT().
+		IsTimePreciseInList().
+		Return(true).
+		Once()
+	ts.ftpClientMock.EXPECT().
 		GetEntry(ts.testFile.Path()).
 		Return(entry, nil).
 		Once()
@@ -964,6 +1131,10 @@ func (ts *fileTestSuite) TestSize() {
 	ts.Equal(contentLength, size, "Size should return the ContentLength value from s3 HEAD request.")
 
 	myErr := errors.New("some error")
+	ts.ftpClientMock.EXPECT().
+		IsTimePreciseInList().
+		Return(true).
+		Once()
 	ts.ftpClientMock.EXPECT().
 		GetEntry(ts.testFile.Path()).
 		Return(&_ftp.Entry{}, myErr).

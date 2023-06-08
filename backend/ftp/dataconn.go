@@ -8,11 +8,10 @@ import (
 )
 
 type dataConn struct {
-	R      io.ReadCloser
-	W      io.WriteCloser
-	mode   types.OpenType
-	client types.Client
-	f      *File
+	R       io.ReadCloser
+	W       io.WriteCloser
+	mode    types.OpenType
+	errChan chan error
 }
 
 func (dc *dataConn) Mode() types.OpenType {
@@ -35,7 +34,11 @@ func (dc *dataConn) Close() error {
 		}
 	case types.OpenWrite:
 		if dc.W != nil {
-			return dc.W.Close()
+			if err := dc.W.Close(); err != nil {
+				return err
+			}
+			// after writer is closed STOR shoud commit - check for error
+			return <-dc.errChan
 		}
 	}
 
@@ -68,21 +71,23 @@ func getDataConn(ctx context.Context, f *File, t types.OpenType) (types.DataConn
 				return nil, err
 			}
 			f.dataconn = &dataConn{
-				R:      resp,
-				mode:   t,
-				client: client,
-				f:      f,
+				R:    resp,
+				mode: t,
 			}
 		case types.OpenWrite:
 			pr, pw := io.Pipe()
-			go client.StorFrom(f.Path(), pr, uint64(f.offset))
+			errChan := make(chan error, 1)
+			go func(errChan chan error) {
+				err := client.StorFrom(f.Path(), pr, uint64(f.offset))
+				errChan <- err
+				pr.Close()
+			}(errChan)
 
 			f.dataconn = &dataConn{
-				mode:   t,
-				client: client,
-				f:      f,
-				R:      pr,
-				W:      pw,
+				mode:    t,
+				R:       pr,
+				W:       pw,
+				errChan: errChan,
 			}
 		}
 	}
