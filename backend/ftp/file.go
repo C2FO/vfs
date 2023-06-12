@@ -13,6 +13,7 @@ import (
 	_ftp "github.com/jlaffaye/ftp"
 
 	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v6/backend"
 	"github.com/c2fo/vfs/v6/backend/ftp/types"
 	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/utils"
@@ -70,6 +71,9 @@ func (f *File) stat(ctx context.Context) (*_ftp.Entry, error) {
 	} else {
 		entries, err := client.List(f.Path())
 		if err != nil {
+			if strings.HasPrefix(err.Error(), fmt.Sprintf("%d", _ftp.StatusFileUnavailable)) {
+				return nil, os.ErrNotExist
+			}
 			return nil, err
 		}
 		if len(entries) == 0 {
@@ -108,6 +112,22 @@ func (f *File) Exists() (bool, error) {
 // Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
 // Returns error if unable to touch File.
 func (f *File) Touch() error {
+	client, err := f.fileSystem.Client(context.TODO(), f.authority)
+	if err != nil {
+		return err
+	}
+
+	// ensure target directory exists before attempting to write file
+	locExists, err := f.locationExists()
+	if err != nil {
+		return err
+	}
+	if !locExists {
+		if err := client.MakeDir(f.Location().Path()); err != nil {
+			return err
+		}
+	}
+
 	exists, err := f.Exists()
 	if err != nil {
 		return err
@@ -119,11 +139,6 @@ func (f *File) Touch() error {
 			return err
 		}
 		return f.Close()
-	}
-
-	client, err := f.fileSystem.Client(context.TODO(), f.authority)
-	if err != nil {
-		return err
 	}
 
 	// if a set time function is available use that to set last modified to now
@@ -226,6 +241,9 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 
 // CopyToFile puts the contents of File into the targetFile passed.
 func (f *File) CopyToFile(file vfs.File) error {
+	if err := backend.ValidateCopySeekPosition(f); err != nil {
+		return err
+	}
 
 	if err := utils.TouchCopyBuffered(file, f, 0); err != nil {
 		return err
@@ -293,6 +311,14 @@ func (f *File) Read(p []byte) (n int, err error) {
 
 // Seek calls the underlying ftp.File Seek.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
+	// ensure file exists before seeking
+	exists, err := f.Exists()
+	if err != nil {
+		return 0, err
+	}
+	if !exists {
+		return 0, os.ErrNotExist
+	}
 
 	mode := types.OpenRead
 	// no file open yet - assume read (will get reset to write on a subsequent write)
@@ -341,7 +367,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	// now that f.offset has been adjusted and mode was captured, reinitialize file
-	_, err := dataConnGetterFunc(context.TODO(), f, mode)
+	_, err = dataConnGetterFunc(context.TODO(), f, mode)
 	if err != nil {
 		return 0, err
 	}
@@ -352,6 +378,20 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 
 // Write calls the underlying ftp.File Write.
 func (f *File) Write(data []byte) (res int, err error) {
+	// ensure target directory exists before attempting to write
+	locExists, err := f.locationExists()
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return 0, err
+	}
+	if !locExists {
+		client, err := f.fileSystem.Client(context.TODO(), f.authority)
+		if err != nil {
+			return 0, err
+		}
+		if err := client.MakeDir(f.Location().Path()); err != nil {
+			return 0, err
+		}
+	}
 
 	dc, err := dataConnGetterFunc(context.TODO(), f, types.OpenWrite)
 	if err != nil {
@@ -367,6 +407,32 @@ func (f *File) Write(data []byte) (res int, err error) {
 	f.offset += offset
 
 	return b, nil
+}
+
+func (f *File) locationExists() (bool, error) {
+	dc, err := dataConnGetterFunc(context.TODO(), f, types.SingleOp)
+	if err != nil {
+		return false, err
+	}
+
+	entries, err := dc.List(f.Location().Path())
+	if err != nil {
+		if strings.HasPrefix(err.Error(), fmt.Sprintf("%d", _ftp.StatusFileUnavailable)) {
+			// in this case the directory does not exist
+			return false, os.ErrNotExist
+		}
+		return false, err
+	}
+
+	if len(entries) == 0 {
+		return false, nil
+	}
+
+	if entries[0].Type != _ftp.EntryTypeFolder {
+		return false, err
+	}
+
+	return true, nil
 }
 
 // URI returns the File's URI as a string.

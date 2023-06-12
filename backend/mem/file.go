@@ -269,10 +269,6 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	// writing to existence. Whatever the underlying vfs implementation is will take care of this
-	if _, err := newFile.Write(make([]byte, 0)); err != nil {
-		return nil, err
-	}
 
 	if err := f.CopyToFile(newFile); err != nil {
 		return nil, err
@@ -281,10 +277,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 	return newFile, nil
 }
 
-// CopyToFile copies the receiver file into the target file.
-// The target file is deleted, so any references to it will
-// be nil.  In order to access the target after calling CopyToFile
-// use its previous path to call it using the fsMap.  Additionally,
+// CopyToFile copies the receiver file into the target file. Additionally,
 // after this is called, f's cursor will reset as if it had been closed.
 func (f *File) CopyToFile(target vfs.File) error {
 	if f == nil || target == nil {
@@ -304,23 +297,6 @@ func (f *File) CopyToFile(target vfs.File) error {
 		target.(*File).memFile.contents = make([]byte, 0)
 	}
 
-	if ex, err := target.Exists(); !ex {
-		if err == nil {
-
-			if _, err := target.Write(f.memFile.contents); err != nil {
-				return err
-			}
-			err = f.Close()
-			if err != nil {
-				return err
-			}
-			err = target.Close()
-			if err != nil {
-				return err
-			}
-		}
-
-	}
 	if _, err := target.Write(f.memFile.contents); err != nil {
 		return err
 	}
@@ -382,18 +358,8 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	// initialize the file
-	_, err = newFile.Write(make([]byte, 0))
-	if err != nil {
-		return nil, err
-	}
 	// copying over the data
-	err = f.CopyToFile(newFile)
-	if err != nil {
-		return nil, err
-	}
-	// delete the receiver
-	err = f.Delete()
+	err = f.MoveToFile(newFile)
 	if err != nil {
 		return nil, err
 	}

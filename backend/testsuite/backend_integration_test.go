@@ -18,6 +18,7 @@ import (
 
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/backend/azure"
+	"github.com/c2fo/vfs/v6/backend/ftp"
 	"github.com/c2fo/vfs/v6/backend/gs"
 	"github.com/c2fo/vfs/v6/backend/mem"
 	_os "github.com/c2fo/vfs/v6/backend/os"
@@ -66,6 +67,11 @@ func copySFTPLocation(loc vfs.Location) vfs.Location {
 	return &cp
 }
 
+func copyFTPLocation(loc vfs.Location) vfs.Location {
+	cp := *loc.(*ftp.Location)
+	return &cp
+}
+
 func copyGSLocation(loc vfs.Location) vfs.Location {
 	cp := *loc.(*gs.Location)
 	return &cp
@@ -103,6 +109,8 @@ func (s *vfsTestSuite) SetupSuite() {
 			s.testLocations[l.FileSystem().Scheme()] = copyMemLocation(l)
 		case "https":
 			s.testLocations[l.FileSystem().Scheme()] = copyAzureLocation(l)
+		case "ftp":
+			s.testLocations[l.FileSystem().Scheme()] = copyFTPLocation(l)
 		default:
 			panic(fmt.Sprintf("unknown scheme: %s", l.FileSystem().Scheme()))
 		}

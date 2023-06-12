@@ -30,7 +30,10 @@ func (dc *dataConn) Close() error {
 	switch dc.Mode() {
 	case types.OpenRead:
 		if dc.R != nil {
-			return dc.R.Close()
+			err := dc.R.Close()
+			dc.W = nil
+			dc.R = nil
+			return err
 		}
 	case types.OpenWrite:
 		if dc.W != nil {
@@ -38,7 +41,10 @@ func (dc *dataConn) Close() error {
 				return err
 			}
 			// after writer is closed STOR shoud commit - check for error
-			return <-dc.errChan
+			err := <-dc.errChan
+			dc.W = nil
+			dc.R = nil
+			return err
 		}
 	}
 

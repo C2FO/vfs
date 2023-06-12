@@ -2,8 +2,7 @@ package ftp
 
 import (
 	"context"
-	"errors"
-	"os"
+	"fmt"
 	"path"
 	"regexp"
 	"strings"
@@ -33,7 +32,8 @@ func (l *Location) List() ([]string, error) {
 
 	entries, err := client.List(l.Path())
 	if err != nil {
-		if err == os.ErrNotExist {
+		if strings.HasPrefix(err.Error(), fmt.Sprintf("%d", _ftp.StatusFileUnavailable)) {
+			// in this case the directory does not exist
 			return filenames, nil
 		}
 		return filenames, err
@@ -92,7 +92,8 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 	entries, err := client.List(fullpath)
 	if err != nil {
 		// fullpath does not exist, is not an error here
-		if errors.Is(err, os.ErrNotExist) {
+		if strings.HasPrefix(err.Error(), fmt.Sprintf("%d", _ftp.StatusFileUnavailable)) {
+			// in this case the directory does not exist
 			return []string{}, nil
 		}
 		return filenames, err
@@ -135,7 +136,7 @@ func (l *Location) Path() string {
 	return utils.EnsureLeadingSlash(utils.EnsureTrailingSlash(l.path))
 }
 
-// Exists returns true if the remote FTP file exists.
+// Exists returns true if the remote FTP directory exists.
 func (l *Location) Exists() (bool, error) {
 	client, err := l.fileSystem.Client(context.TODO(), l.Authority)
 	if err != nil {
@@ -143,6 +144,10 @@ func (l *Location) Exists() (bool, error) {
 	}
 	entries, err := client.List(l.Path())
 	if err != nil {
+		if strings.HasPrefix(err.Error(), fmt.Sprintf("%d", _ftp.StatusFileUnavailable)) {
+			// in this case the directory does not exist
+			return false, nil
+		}
 		return false, err
 	}
 
