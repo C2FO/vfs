@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jlaffaye/ftp"
+	_ftp "github.com/jlaffaye/ftp"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
@@ -76,8 +77,32 @@ func (s *dataConnSuite) TestGetDataConn() {
 	s.ErrorIs(err, someErr, "error is right kind of error")
 	s.Nil(dc, "dataconn should be nil on error")
 
+	// dataconn is nil - open for write - location doesnt exist - success
+	entries := []*_ftp.Entry{&_ftp.Entry{
+		Type: _ftp.EntryTypeFolder,
+	}}
+	ftpfile.dataconn = nil
+	client.EXPECT().
+		List(ftpfile.Location().Path()).
+		Return(nil, errors.New("550")).
+		Once()
+	client.EXPECT().
+		MakeDir(ftpfile.Location().Path()).
+		Return(nil).
+		Once()
+	client.EXPECT().
+		StorFrom(ftpfile.Path(), mock.Anything, uint64(0)).
+		Return(nil).
+		Once()
+	dc, err = getDataConn(context.Background(), ftpfile, types.OpenWrite)
+	s.NoError(err, "no error expected")
+
 	// dataconn is nil - open for write - error calling client.StorFrom
 	ftpfile.dataconn = nil
+	client.EXPECT().
+		List(ftpfile.Location().Path()).
+		Return(entries, nil).
+		Once()
 	client.EXPECT().
 		StorFrom(ftpfile.Path(), mock.Anything, uint64(0)).
 		Return(someErr).
@@ -90,6 +115,10 @@ func (s *dataConnSuite) TestGetDataConn() {
 
 	// dataconn is nil - open for write - success
 	ftpfile.dataconn = nil
+	client.EXPECT().
+		List(ftpfile.Location().Path()).
+		Return(entries, nil).
+		Once()
 	client.EXPECT().
 		StorFrom(ftpfile.Path(), mock.Anything, uint64(0)).
 		Return(nil).
@@ -113,6 +142,10 @@ func (s *dataConnSuite) TestGetDataConn() {
 		mode: types.OpenRead,
 		R:    io.NopCloser(strings.NewReader("")),
 	}
+	client.EXPECT().
+		List(ftpfile.Location().Path()).
+		Return(entries, nil).
+		Once()
 	client.EXPECT().
 		StorFrom(ftpfile.Path(), mock.Anything, uint64(0)).
 		Return(nil).

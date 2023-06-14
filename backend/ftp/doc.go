@@ -72,6 +72,11 @@ These methods are chainable:
 
 	  }
 
+Note - this vfs implementation can have issues conducting simultaneous reads and writes on files created from the same filesystem. This can
+cause issues when attempting to use those files with functions such as io.CopyBuffer.
+
+The provided CopyToFile and CopyToLocation functions should be used instead in these instances.
+
 # Authentication
 
 Authentication, by default, occurs automatically when Client() is called. Since user is part of the URI authority section

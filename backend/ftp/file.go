@@ -53,14 +53,14 @@ func (f *File) LastModified() (*time.Time, error) {
 }
 
 func (f *File) stat(ctx context.Context) (*_ftp.Entry, error) {
-	client, err := f.fileSystem.Client(ctx, f.authority)
+	dc, err := dataConnGetterFunc(context.TODO(), f, types.SingleOp)
 	if err != nil {
 		return nil, err
 	}
 	// check if MLSD command is availalbe - if so we'll want to grab file info
 	// via MLST. otherwise we'll need to use LIST.
-	if client.IsTimePreciseInList() {
-		entry, err := client.GetEntry(f.Path())
+	if dc.IsTimePreciseInList() {
+		entry, err := dc.GetEntry(f.Path())
 		if err != nil {
 			if strings.HasPrefix(err.Error(), fmt.Sprintf("%d", _ftp.StatusFileUnavailable)) {
 				return nil, os.ErrNotExist
@@ -69,7 +69,7 @@ func (f *File) stat(ctx context.Context) (*_ftp.Entry, error) {
 		}
 		return entry, nil
 	} else {
-		entries, err := client.List(f.Path())
+		entries, err := dc.List(f.Path())
 		if err != nil {
 			if strings.HasPrefix(err.Error(), fmt.Sprintf("%d", _ftp.StatusFileUnavailable)) {
 				return nil, os.ErrNotExist
@@ -112,22 +112,6 @@ func (f *File) Exists() (bool, error) {
 // Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
 // Returns error if unable to touch File.
 func (f *File) Touch() error {
-	client, err := f.fileSystem.Client(context.TODO(), f.authority)
-	if err != nil {
-		return err
-	}
-
-	// ensure target directory exists before attempting to write file
-	locExists, err := f.locationExists()
-	if err != nil {
-		return err
-	}
-	if !locExists {
-		if err := client.MakeDir(f.Location().Path()); err != nil {
-			return err
-		}
-	}
-
 	exists, err := f.Exists()
 	if err != nil {
 		return err
@@ -142,8 +126,12 @@ func (f *File) Touch() error {
 	}
 
 	// if a set time function is available use that to set last modified to now
-	if client.IsSetTimeSupported() {
-		return client.SetTime(f.path, time.Now())
+	dc, err := dataConnGetterFunc(context.TODO(), f, types.SingleOp)
+	if err != nil {
+		return err
+	}
+	if dc.IsSetTimeSupported() {
+		return dc.SetTime(f.path, time.Now())
 	}
 
 	// doing move and move back to ensure last modified is updated
@@ -197,25 +185,23 @@ func (f *File) MoveToFile(t vfs.File) error {
 		f.authority.UserInfo().Username() == t.(*File).authority.UserInfo().Username() &&
 		f.authority.Host() == t.(*File).authority.Host() {
 
-		client, err := f.fileSystem.Client(context.TODO(), f.authority)
-		if err != nil {
-			return err
-		}
-
 		// ensure destination exists before moving
 		exists, err := t.Location().Exists()
 		if err != nil {
 			return err
 		}
-
+		dc, err := dataConnGetterFunc(context.TODO(), f, types.SingleOp)
+		if err != nil {
+			return err
+		}
 		if !exists {
 			// it doesn't matter which client we use since they are effectively the same
-			err = client.MakeDir(t.Location().Path())
+			err = dc.MakeDir(t.Location().Path())
 			if err != nil {
 				return err
 			}
 		}
-		return client.Rename(f.Path(), t.Path())
+		return dc.Rename(f.Path(), t.Path())
 	}
 
 	// otherwise do copy-delete
@@ -245,15 +231,40 @@ func (f *File) CopyToFile(file vfs.File) error {
 		return err
 	}
 
-	if err := utils.TouchCopyBuffered(file, f, 0); err != nil {
-		return err
+	if f.fileSystem.Scheme() == file.Location().FileSystem().Scheme() &&
+		f.authority.UserInfo().Username() == file.(*File).authority.UserInfo().Username() &&
+		f.authority.Host() == file.(*File).authority.Host() {
+		// in the case that both files have the same authority we'll copy by writing a temporary
+		// file to mem and then writing it back to the ftp server
+		tempFile, err := f.createLocalTempFile()
+		if err != nil {
+			return err
+		}
+		if err := utils.TouchCopyBuffered(tempFile, f, 0); err != nil {
+			return err
+		}
+		if err := f.Close(); err != nil {
+			return err
+		}
+		if err := utils.TouchCopyBuffered(file, tempFile, 0); err != nil {
+			return err
+		}
+		if err := tempFile.Close(); err != nil {
+			return err
+		}
+		return file.Close()
+	} else {
+		if err := utils.TouchCopyBuffered(file, f, 0); err != nil {
+			return err
+		}
+		// Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
+		if cerr := file.Close(); cerr != nil {
+			return cerr
+		}
+		// Close file (f) reader
+		return f.Close()
 	}
-	// Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
-	if cerr := file.Close(); cerr != nil {
-		return cerr
-	}
-	// Close file (f) reader
-	return f.Close()
+
 }
 
 // CopyToLocation creates a copy of *File, using the file's current path as the new file's
@@ -271,11 +282,11 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 // Delete removes the remote file.  Error is returned, if any.
 func (f *File) Delete(_ ...options.DeleteOption) error {
-	client, err := f.fileSystem.Client(context.TODO(), f.authority)
+	dc, err := dataConnGetterFunc(context.TODO(), f, types.SingleOp)
 	if err != nil {
 		return err
 	}
-	return client.Delete(f.Path())
+	return dc.Delete(f.Path())
 }
 
 // Close calls the underlying ftp.Response Close, if opened, and clears the internal pointer
@@ -378,21 +389,6 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 
 // Write calls the underlying ftp.File Write.
 func (f *File) Write(data []byte) (res int, err error) {
-	// ensure target directory exists before attempting to write
-	locExists, err := f.locationExists()
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return 0, err
-	}
-	if !locExists {
-		client, err := f.fileSystem.Client(context.TODO(), f.authority)
-		if err != nil {
-			return 0, err
-		}
-		if err := client.MakeDir(f.Location().Path()); err != nil {
-			return 0, err
-		}
-	}
-
 	dc, err := dataConnGetterFunc(context.TODO(), f, types.OpenWrite)
 	if err != nil {
 		return 0, err
@@ -409,32 +405,6 @@ func (f *File) Write(data []byte) (res int, err error) {
 	return b, nil
 }
 
-func (f *File) locationExists() (bool, error) {
-	dc, err := dataConnGetterFunc(context.TODO(), f, types.SingleOp)
-	if err != nil {
-		return false, err
-	}
-
-	entries, err := dc.List(f.Location().Path())
-	if err != nil {
-		if strings.HasPrefix(err.Error(), fmt.Sprintf("%d", _ftp.StatusFileUnavailable)) {
-			// in this case the directory does not exist
-			return false, os.ErrNotExist
-		}
-		return false, err
-	}
-
-	if len(entries) == 0 {
-		return false, nil
-	}
-
-	if entries[0].Type != _ftp.EntryTypeFolder {
-		return false, err
-	}
-
-	return true, nil
-}
-
 // URI returns the File's URI as a string.
 func (f *File) URI() string {
 	return utils.GetFileURI(f)
@@ -443,4 +413,9 @@ func (f *File) URI() string {
 // String implement fmt.Stringer, returning the file's URI as the default string.
 func (f *File) String() string {
 	return f.URI()
+}
+
+func (f *File) createLocalTempFile() (*os.File, error) {
+	// Create temp file
+	return os.CreateTemp("", fmt.Sprintf("%s.%d", f.Name(), time.Now().UnixNano()))
 }

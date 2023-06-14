@@ -68,7 +68,7 @@ func (lt *locationTestSuite) TestList() {
 	lt.Len(fileList, 0, "Should return no files on error")
 
 	// file not found (location doesn't exist)
-	lt.client.On("List", locPath).Return([]*_ftp.Entry{}, os.ErrNotExist).Once()
+	lt.client.On("List", locPath).Return([]*_ftp.Entry{}, errors.New("550")).Once()
 	fileList, err = loc.List()
 	lt.NoError(err, "Shouldn't return an error on file not found.")
 	lt.Len(fileList, 0, "Should return no files on file not found")
@@ -211,7 +211,7 @@ func (lt *locationTestSuite) TestListByPrefix() {
 	lt.NoError(err)
 	lt.client.EXPECT().
 		List(locPath).
-		Return(nil, os.ErrNotExist).
+		Return(nil, errors.New("550")).
 		Once()
 	expectedEmptyStringSlice := make([]string, 0)
 	fileList, err := loc.ListByPrefix(prefix)
@@ -492,7 +492,7 @@ func (lt *locationTestSuite) TestNewLocation() {
 }
 
 func (lt *locationTestSuite) TestDeleteFile() {
-	lt.client.On("Delete", "/old/filename.txt").Return(nil).Once()
+	dataConnGetterFunc = getFakeDataConn
 	loc, err := lt.ftpfs.NewLocation("ftp.host.com:21", "/old/")
 	lt.NoError(err)
 
@@ -500,6 +500,7 @@ func (lt *locationTestSuite) TestDeleteFile() {
 	lt.NoError(err, "Successful delete should not return an error.")
 
 	// error deleting
+	dataConnGetterFunc = getDataConn
 	lt.client.On("Delete", "/old/filename.txt").Return(os.ErrNotExist).Once()
 	err = loc.DeleteFile("filename.txt")
 	lt.Error(err, "failed delete")

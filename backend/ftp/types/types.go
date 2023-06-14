@@ -16,11 +16,20 @@ const (
 	OpenRead
 	// OpenWrite denotes Write mode
 	OpenWrite
+	SingleOp
 )
 
 // DataConn represents a data connection
 type DataConn interface {
 	Mode() OpenType
+	Delete(path string) error
+	GetEntry(p string) (*_ftp.Entry, error)
+	List(p string) ([]*_ftp.Entry, error) // NLST for just names
+	MakeDir(path string) error
+	Rename(from, to string) error
+	IsSetTimeSupported() bool
+	SetTime(path string, t time.Time) error
+	IsTimePreciseInList() bool
 	io.ReadWriteCloser
 }
 
