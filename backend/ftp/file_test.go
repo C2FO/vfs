@@ -1176,7 +1176,7 @@ func (f *FakeDataConn) GetEntry(p string) (*_ftp.Entry, error) {
 func (f *FakeDataConn) List(p string) ([]*_ftp.Entry, error) {
 	if f.exists {
 		return []*_ftp.Entry{
-			&_ftp.Entry{
+			{
 				Type: _ftp.EntryTypeFolder,
 			},
 		}, f.singleOpErr
@@ -1201,7 +1201,7 @@ func (f *FakeDataConn) IsSetTimeSupported() bool {
 
 }
 
-func (f *FakeDataConn) SetTime(path string, t time.Time) error {
+func (f *FakeDataConn) SetTime(p string, t time.Time) error {
 	return f.singleOpErr
 
 }
