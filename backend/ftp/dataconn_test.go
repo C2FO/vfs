@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jlaffaye/ftp"
 	_ftp "github.com/jlaffaye/ftp"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -49,7 +48,7 @@ func (s *dataConnSuite) TestGetDataConn() {
 	ftpfile.dataconn = nil
 	client.EXPECT().
 		RetrFrom(ftpfile.Path(), uint64(0)).
-		Return(&ftp.Response{}, nil).
+		Return(&_ftp.Response{}, nil).
 		Once()
 	dc, err = getDataConn(context.Background(), ftpfile, types.OpenRead)
 	s.NoError(err, "no error expected")
@@ -78,7 +77,7 @@ func (s *dataConnSuite) TestGetDataConn() {
 	s.Nil(dc, "dataconn should be nil on error")
 
 	// dataconn is nil - open for write - location doesnt exist - success
-	entries := []*_ftp.Entry{&_ftp.Entry{
+	entries := []*_ftp.Entry{{
 		Type: _ftp.EntryTypeFolder,
 	}}
 	ftpfile.dataconn = nil
@@ -94,7 +93,7 @@ func (s *dataConnSuite) TestGetDataConn() {
 		StorFrom(ftpfile.Path(), mock.Anything, uint64(0)).
 		Return(nil).
 		Once()
-	dc, err = getDataConn(context.Background(), ftpfile, types.OpenWrite)
+	_, err = getDataConn(context.Background(), ftpfile, types.OpenWrite)
 	s.NoError(err, "no error expected")
 
 	// dataconn is nil - open for write - error calling client.StorFrom

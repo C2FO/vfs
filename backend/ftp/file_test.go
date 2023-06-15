@@ -270,7 +270,7 @@ func (ts *fileTestSuite) TestSeek() {
 
 	// whence = 2, file doesn't exist yet
 	ftpfile.dataconn.(*FakeDataConn).AssertExists(false)
-	pos, err = ftpfile.Seek(15, 2)
+	_, err = ftpfile.Seek(15, 2)
 	ts.Error(err, "error expected")
 	ts.ErrorIs(err, os.ErrNotExist, "os error not exist expected")
 
@@ -934,7 +934,7 @@ func (ts *fileTestSuite) TestTouch_notExists() {
 	client.EXPECT().
 		List(file.Location().Path()). // initial exists check
 		Return([]*_ftp.Entry{
-			&_ftp.Entry{
+			{
 				Type: _ftp.EntryTypeFolder,
 			},
 		}, nil).
@@ -1159,7 +1159,7 @@ type FakeDataConn struct {
 	closeCalledCount int
 }
 
-func (f *FakeDataConn) Delete(path string) error {
+func (f *FakeDataConn) Delete(p string) error {
 	return f.singleOpErr
 }
 
@@ -1186,7 +1186,7 @@ func (f *FakeDataConn) List(p string) ([]*_ftp.Entry, error) {
 
 }
 
-func (f *FakeDataConn) MakeDir(path string) error {
+func (f *FakeDataConn) MakeDir(p string) error {
 	return f.singleOpErr
 
 }

@@ -77,6 +77,25 @@ cause issues when attempting to use those files with functions such as io.CopyBu
 
 The provided CopyToFile and CopyToLocation functions should be used instead in these instances.
 
+	// initialize a location using bob@ftp.acme.com
+	_, _ := os.Setenv("VFS_FTP_PASSWORD", "somepass")
+	someLocation, _ := vfssimple.NewLocation("ftp://bob@ftp.acme.com/some/path/")
+
+	// open some existing file
+	oldFile, _ := someLocation.NewFile("someExistingFile.txt")
+
+	// open some new file using same filesystem (same auth/host, same client connection)
+	newFile, _ := someLocation.NewFile("someNonExistentFile.txt")
+
+	// can't read and write simultaneously from the same client connection - will result in
+	// an error
+	written, err := io.Copy(newFile, oldFile)
+
+	// CopyToFile/CopyToLocation, however, will work as expected because we copy to an
+	// intermediate local file, thereby making the Read / Write to the remote files sequential.
+	// MoveToFile/MoveToLocation are unaffected since they essentially just an FTP "RENAME".
+	err := oldFile.CopyToFile(newFile)
+
 # Authentication
 
 Authentication, by default, occurs automatically when Client() is called. Since user is part of the URI authority section

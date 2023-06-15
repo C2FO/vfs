@@ -53,7 +53,7 @@ func (f *File) LastModified() (*time.Time, error) {
 }
 
 func (f *File) stat(ctx context.Context) (*_ftp.Entry, error) {
-	dc, err := dataConnGetterFunc(context.TODO(), f, types.SingleOp)
+	dc, err := dataConnGetterFunc(ctx, f, types.SingleOp)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func (f *File) Name() string {
 	return path.Base(f.path)
 }
 
-// Path return the directory portion of the file's path. IE: "path/to" of "ftp://someuser@host.com/some/path/to/file.txt
+// Path return the directory portion of the file's path. IE: "/path/to/" of "ftp://someuser@host.com/some/path/to/file.txt
 func (f *File) Path() string {
 	return utils.EnsureLeadingSlash(f.path)
 }
@@ -240,6 +240,9 @@ func (f *File) CopyToFile(file vfs.File) error {
 		if err != nil {
 			return err
 		}
+		defer func() {
+			_ = os.Remove(tempFile.Name())
+		}()
 		if err := utils.TouchCopyBuffered(tempFile, f, 0); err != nil {
 			return err
 		}

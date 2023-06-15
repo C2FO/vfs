@@ -2,12 +2,12 @@ package ftp
 
 import (
 	"context"
-	"errors"
 	"io"
 	"time"
 
-	"github.com/c2fo/vfs/v6/backend/ftp/types"
 	_ftp "github.com/jlaffaye/ftp"
+
+	"github.com/c2fo/vfs/v6/backend/ftp/types"
 )
 
 type dataConn struct {
@@ -20,7 +20,7 @@ type dataConn struct {
 
 func (dc *dataConn) Delete(path string) error {
 	if dc.mode != types.SingleOp {
-		return errors.New("dataconn must be open for single op mode to single op")
+		return singleOpInvalidDataconnType
 	}
 	return dc.c.Delete(path)
 
@@ -28,28 +28,28 @@ func (dc *dataConn) Delete(path string) error {
 
 func (dc *dataConn) GetEntry(p string) (*_ftp.Entry, error) {
 	if dc.mode != types.SingleOp {
-		return nil, errors.New("dataconn must be open for single op mode to single op")
+		return nil, singleOpInvalidDataconnType
 	}
 	return dc.c.GetEntry(p)
 }
 
 func (dc *dataConn) List(p string) ([]*_ftp.Entry, error) {
 	if dc.mode != types.SingleOp {
-		return nil, errors.New("dataconn must be open for single op mode to single op")
+		return nil, singleOpInvalidDataconnType
 	}
 	return dc.c.List(p)
 }
 
 func (dc *dataConn) MakeDir(path string) error {
 	if dc.mode != types.SingleOp {
-		return errors.New("dataconn must be open for single op mode to single op")
+		return singleOpInvalidDataconnType
 	}
 	return dc.c.MakeDir(path)
 }
 
 func (dc *dataConn) Rename(from, to string) error {
 	if dc.mode != types.SingleOp {
-		return errors.New("dataconn must be open for single op mode to single op")
+		return singleOpInvalidDataconnType
 	}
 	return dc.c.Rename(from, to)
 }
@@ -60,7 +60,7 @@ func (dc *dataConn) IsSetTimeSupported() bool {
 
 func (dc *dataConn) SetTime(path string, t time.Time) error {
 	if dc.mode != types.SingleOp {
-		return errors.New("dataconn must be open for single op mode to single op")
+		return singleOpInvalidDataconnType
 	}
 	return dc.c.SetTime(path, t)
 }
@@ -75,14 +75,14 @@ func (dc *dataConn) Mode() types.OpenType {
 
 func (dc *dataConn) Read(buf []byte) (int, error) {
 	if dc.mode != types.OpenRead {
-		return 0, errors.New("dataconn must be open for read mode to read")
+		return 0, readInvalidDataconnType
 	}
 	return dc.R.Read(buf)
 }
 
 func (dc *dataConn) Write(data []byte) (int, error) {
 	if dc.mode != types.OpenWrite {
-		return 0, errors.New("dataconn must be open for write mode to write")
+		return 0, writeInvalidDataconnType
 	}
 	return dc.W.Write(data)
 }
@@ -159,8 +159,7 @@ func getDataConn(ctx context.Context, f *File, t types.OpenType) (types.DataConn
 				errChan <- err
 				// close the pipe reader so that writes to the dataconn aren't blocking.
 				// error will occur when pipereader is already closed - nothing to do in that case.
-				//nolint:errcheck
-				pr.Close() // #nosec G104 if reader can't be closed there is no action to be taken
+				_ = pr.Close()
 			}(errChan)
 
 			f.dataconn = &dataConn{
