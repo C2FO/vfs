@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"strconv"
@@ -246,6 +247,12 @@ func (f *File) CopyToFile(file vfs.File) error {
 		if err := utils.TouchCopyBuffered(tempFile, f, 0); err != nil {
 			return err
 		}
+		// validate seek is at 0,0 before doing copy
+		_, err = tempFile.Seek(0, io.SeekStart)
+		if err != nil {
+			return fmt.Errorf("failed to determine current cursor offset: %w", err)
+		}
+
 		if err := f.Close(); err != nil {
 			return err
 		}
