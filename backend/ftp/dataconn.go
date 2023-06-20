@@ -2,6 +2,7 @@ package ftp
 
 import (
 	"context"
+	"errors"
 	"io"
 	"time"
 
@@ -114,15 +115,15 @@ func (dc *dataConn) Close() error {
 }
 
 func getDataConn(ctx context.Context, authority utils.Authority, fs *FileSystem, f *File, t types.OpenType) (types.DataConn, error) {
-	if fs.dataconn != nil {
-		if fs.dataconn.Mode() != t {
-			// wrong session type ... close current session and unset it (ps so we can set a new one after)
-			err := fs.dataconn.Close()
-			if err != nil {
-				return nil, err
-			}
-			fs.dataconn = nil
+	if fs == nil {
+		return nil, errors.New("can not get a dataconn for a nil fileset")
+	}
+	if fs.dataconn != nil && fs.dataconn.Mode() != t {
+		// wrong session type ... close current session and unset it (ps so we can set a new one after)
+		if err := fs.dataconn.Close(); err != nil {
+			return nil, err
 		}
+		fs.dataconn = nil
 	}
 
 	if fs.dataconn == nil || (f != nil && f.resetConn) {
