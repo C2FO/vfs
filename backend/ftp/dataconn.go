@@ -144,32 +144,11 @@ func getDataConn(ctx context.Context, authority utils.Authority, fs *FileSystem,
 				mode: t,
 			}
 		case types.OpenWrite:
-			found, err := f.Location().Exists()
+			dc, err := openWriteConnection(client, f)
 			if err != nil {
 				return nil, err
 			}
-			if !found {
-				err := client.MakeDir(f.Location().Path())
-				if err != nil {
-					return nil, err
-				}
-			}
-			pr, pw := io.Pipe()
-			errChan := make(chan error, 1)
-			go func(errChan chan error) {
-				err := client.StorFrom(f.Path(), pr, uint64(f.offset))
-				errChan <- err
-				// close the pipe reader so that writes to the dataconn aren't blocking.
-				// error will occur when pipereader is already closed - nothing to do in that case.
-				_ = pr.Close()
-			}(errChan)
-
-			fs.dataconn = &dataConn{
-				mode:    t,
-				R:       pr,
-				W:       pw,
-				errChan: errChan,
-			}
+			fs.dataconn = dc
 		case types.SingleOp:
 			fs.dataconn = &dataConn{
 				mode: t,
@@ -183,4 +162,33 @@ func getDataConn(ctx context.Context, authority utils.Authority, fs *FileSystem,
 	}
 
 	return fs.dataconn, nil
+}
+
+func openWriteConnection(client types.Client, f *File) (types.DataConn, error) {
+	found, err := f.Location().Exists()
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		err := client.MakeDir(f.Location().Path())
+		if err != nil {
+			return nil, err
+		}
+	}
+	pr, pw := io.Pipe()
+	errChan := make(chan error, 1)
+	go func(errChan chan error) {
+		err := client.StorFrom(f.Path(), pr, uint64(f.offset))
+		errChan <- err
+		// close the pipe reader so that writes to the dataconn aren't blocking.
+		// error will occur when pipereader is already closed - nothing to do in that case.
+		_ = pr.Close()
+	}(errChan)
+
+	return &dataConn{
+		mode:    types.OpenWrite,
+		R:       pr,
+		W:       pw,
+		errChan: errChan,
+	}, nil
 }
