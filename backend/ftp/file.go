@@ -20,13 +20,11 @@ import (
 	"github.com/c2fo/vfs/v6/utils"
 )
 
-var dataConnGetterFunc func(context.Context, *File, types.OpenType) (types.DataConn, error)
 var tempFileNameGetter func(string) string
 var now = time.Now
 
 func init() {
 	// this func is overridable for tests
-	dataConnGetterFunc = getDataConn
 	tempFileNameGetter = getTempFilename
 }
 
@@ -35,7 +33,6 @@ type File struct {
 	fileSystem *FileSystem
 	authority  utils.Authority
 	path       string
-	dataconn   types.DataConn
 	offset     int64
 	resetConn  bool
 }
@@ -54,7 +51,7 @@ func (f *File) LastModified() (*time.Time, error) {
 }
 
 func (f *File) stat(ctx context.Context) (*_ftp.Entry, error) {
-	dc, err := dataConnGetterFunc(ctx, f, types.SingleOp)
+	dc, err := f.fileSystem.DataConn(ctx, f.authority, types.SingleOp, f)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +124,7 @@ func (f *File) Touch() error {
 	}
 
 	// if a set time function is available use that to set last modified to now
-	dc, err := dataConnGetterFunc(context.TODO(), f, types.SingleOp)
+	dc, err := f.fileSystem.DataConn(context.TODO(), f.authority, types.SingleOp, f)
 	if err != nil {
 		return err
 	}
@@ -191,7 +188,7 @@ func (f *File) MoveToFile(t vfs.File) error {
 		if err != nil {
 			return err
 		}
-		dc, err := dataConnGetterFunc(context.TODO(), f, types.SingleOp)
+		dc, err := f.fileSystem.DataConn(context.TODO(), f.authority, types.SingleOp, f)
 		if err != nil {
 			return err
 		}
@@ -292,7 +289,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 // Delete removes the remote file.  Error is returned, if any.
 func (f *File) Delete(_ ...options.DeleteOption) error {
-	dc, err := dataConnGetterFunc(context.TODO(), f, types.SingleOp)
+	dc, err := f.fileSystem.DataConn(context.TODO(), f.authority, types.SingleOp, f)
 	if err != nil {
 		return err
 	}
@@ -301,8 +298,8 @@ func (f *File) Delete(_ ...options.DeleteOption) error {
 
 // Close calls the underlying ftp.Response Close, if opened, and clears the internal pointer
 func (f *File) Close() error {
-	if f.dataconn != nil {
-		err := f.dataconn.Close()
+	if f.fileSystem.dataconn != nil {
+		err := f.fileSystem.dataconn.Close()
 		if err != nil {
 			return err
 		}
@@ -315,7 +312,7 @@ func (f *File) Close() error {
 
 // Read calls the underlying ftp.File Read.
 func (f *File) Read(p []byte) (n int, err error) {
-	dc, err := dataConnGetterFunc(context.TODO(), f, types.OpenRead)
+	dc, err := f.fileSystem.DataConn(context.TODO(), f.authority, types.OpenRead, f)
 	if err != nil {
 		return 0, err
 	}
@@ -343,10 +340,10 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 
 	mode := types.OpenRead
 	// no file open yet - assume read (will get reset to write on a subsequent write)
-	if f.dataconn == nil {
+	if f.fileSystem.dataconn == nil {
 		f.offset = offset
 	} else {
-		mode = f.dataconn.Mode()
+		mode = f.fileSystem.dataconn.Mode()
 
 		switch whence {
 		case 0: // offset from beginning of the file (position 0)
@@ -358,7 +355,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 			f.offset += offset
 
 			// close dataconn so that it reset the offset on next reopen (in StorFrom or RetrFrom)
-			err := f.dataconn.Close()
+			err := f.fileSystem.dataconn.Close()
 			if err != nil {
 				return 0, err
 			}
@@ -379,7 +376,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 			}
 
 			// close dataconn so that it reset the offset on next reopen (in StorFrom or RetrFrom)
-			err = f.dataconn.Close()
+			err = f.fileSystem.dataconn.Close()
 			if err != nil {
 				return 0, err
 			}
@@ -388,7 +385,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	// now that f.offset has been adjusted and mode was captured, reinitialize file
-	_, err = dataConnGetterFunc(context.TODO(), f, mode)
+	_, err = f.fileSystem.DataConn(context.TODO(), f.authority, mode, f)
 	if err != nil {
 		return 0, err
 	}
@@ -399,7 +396,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 
 // Write calls the underlying ftp.File Write.
 func (f *File) Write(data []byte) (res int, err error) {
-	dc, err := dataConnGetterFunc(context.TODO(), f, types.OpenWrite)
+	dc, err := f.fileSystem.DataConn(context.TODO(), f.authority, types.OpenWrite, f)
 	if err != nil {
 		return 0, err
 	}

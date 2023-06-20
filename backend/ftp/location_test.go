@@ -76,6 +76,8 @@ func (lt *locationTestSuite) TestList() {
 	// error getting client
 	defaultClientGetter = clientGetterReturnsError
 	loc.(*Location).fileSystem.WithClient(nil)
+	loc.(*Location).fileSystem.dataconn = nil
+
 	fileList, err = loc.List()
 	lt.Error(err, "error expected")
 	lt.ErrorIs(err, errClientGetter, "err should be correct type")
@@ -228,6 +230,7 @@ func (lt *locationTestSuite) TestListByPrefix() {
 	// error getting client
 	defaultClientGetter = clientGetterReturnsError
 	loc.(*Location).fileSystem.WithClient(nil)
+	loc.(*Location).fileSystem.dataconn = nil
 	fileList, err = loc.ListByPrefix(prefix)
 	lt.Error(err, "error expected")
 	lt.ErrorIs(err, errClientGetter, "err should be correct type")
@@ -437,6 +440,7 @@ func (lt *locationTestSuite) TestExists() {
 	// error getting client
 	defaultClientGetter = clientGetterReturnsError
 	loc.(*Location).fileSystem.WithClient(nil)
+	loc.(*Location).fileSystem.dataconn = nil
 	exists, err = loc.Exists()
 	lt.Error(err, "error expected")
 	lt.ErrorIs(err, errClientGetter, "err should be correct type")
@@ -501,6 +505,7 @@ func (lt *locationTestSuite) TestDeleteFile() {
 
 	// error deleting
 	dataConnGetterFunc = getDataConn
+	loc.(*Location).fileSystem.dataconn = nil
 	lt.client.On("Delete", "/old/filename.txt").Return(os.ErrNotExist).Once()
 	err = loc.DeleteFile("filename.txt")
 	lt.Error(err, "failed delete")

@@ -8,6 +8,7 @@ import (
 	_ftp "github.com/jlaffaye/ftp"
 
 	"github.com/c2fo/vfs/v6/backend/ftp/types"
+	"github.com/c2fo/vfs/v6/utils"
 )
 
 type dataConn struct {
@@ -112,20 +113,20 @@ func (dc *dataConn) Close() error {
 	return nil
 }
 
-func getDataConn(ctx context.Context, f *File, t types.OpenType) (types.DataConn, error) {
-	if f.dataconn != nil {
-		if f.dataconn.Mode() != t {
+func getDataConn(ctx context.Context, authority utils.Authority, fs *FileSystem, f *File, t types.OpenType) (types.DataConn, error) {
+	if fs.dataconn != nil {
+		if fs.dataconn.Mode() != t {
 			// wrong session type ... close current session and unset it (ps so we can set a new one after)
-			err := f.dataconn.Close()
+			err := fs.dataconn.Close()
 			if err != nil {
 				return nil, err
 			}
-			f.dataconn = nil
+			fs.dataconn = nil
 		}
 	}
 
-	if f.dataconn == nil || f.resetConn {
-		client, err := f.fileSystem.Client(ctx, f.authority)
+	if fs.dataconn == nil || (f != nil && f.resetConn) {
+		client, err := fs.Client(ctx, authority)
 		if err != nil {
 			return nil, err
 		}
@@ -137,7 +138,7 @@ func getDataConn(ctx context.Context, f *File, t types.OpenType) (types.DataConn
 			if err != nil {
 				return nil, err
 			}
-			f.dataconn = &dataConn{
+			fs.dataconn = &dataConn{
 				R:    resp,
 				mode: t,
 			}
@@ -162,21 +163,23 @@ func getDataConn(ctx context.Context, f *File, t types.OpenType) (types.DataConn
 				_ = pr.Close()
 			}(errChan)
 
-			f.dataconn = &dataConn{
+			fs.dataconn = &dataConn{
 				mode:    t,
 				R:       pr,
 				W:       pw,
 				errChan: errChan,
 			}
 		case types.SingleOp:
-			f.dataconn = &dataConn{
+			fs.dataconn = &dataConn{
 				mode: t,
 				c:    client,
 			}
 		}
 		// ensure resetConn is false since we've opened/reopened the file
-		f.resetConn = false
+		if f != nil {
+			f.resetConn = false
+		}
 	}
 
-	return f.dataconn, nil
+	return fs.dataconn, nil
 }

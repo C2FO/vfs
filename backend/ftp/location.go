@@ -10,6 +10,7 @@ import (
 	_ftp "github.com/jlaffaye/ftp"
 
 	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v6/backend/ftp/types"
 	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/utils"
 )
@@ -25,12 +26,12 @@ type Location struct {
 // If you have many thousands of files at the given location, this could become quite expensive.
 func (l *Location) List() ([]string, error) {
 	var filenames []string
-	client, err := l.fileSystem.Client(context.TODO(), l.Authority)
+	dc, err := l.fileSystem.DataConn(context.TODO(), l.Authority, types.SingleOp, nil)
 	if err != nil {
 		return filenames, err
 	}
 
-	entries, err := client.List(l.Path())
+	entries, err := dc.List(l.Path())
 	if err != nil {
 		if strings.HasPrefix(err.Error(), fmt.Sprintf("%d", _ftp.StatusFileUnavailable)) {
 			// in this case the directory does not exist
@@ -82,14 +83,14 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 		fullpath = utils.EnsureTrailingSlash(path.Dir(fullpath))
 	}
 
-	// get client
-	client, err := l.fileSystem.Client(context.TODO(), l.Authority)
+	// get dataconn
+	dc, err := l.fileSystem.DataConn(context.TODO(), l.Authority, types.SingleOp, nil)
 	if err != nil {
 		return filenames, err
 	}
 
 	// list directory entries
-	entries, err := client.List(fullpath)
+	entries, err := dc.List(fullpath)
 	if err != nil {
 		// fullpath does not exist, is not an error here
 		if strings.HasPrefix(err.Error(), fmt.Sprintf("%d", _ftp.StatusFileUnavailable)) {
@@ -138,11 +139,11 @@ func (l *Location) Path() string {
 
 // Exists returns true if the remote FTP directory exists.
 func (l *Location) Exists() (bool, error) {
-	client, err := l.fileSystem.Client(context.TODO(), l.Authority)
+	dc, err := l.fileSystem.DataConn(context.TODO(), l.Authority, types.SingleOp, nil)
 	if err != nil {
 		return false, err
 	}
-	entries, err := client.List(l.Path())
+	entries, err := dc.List(l.Path())
 	if err != nil {
 		if strings.HasPrefix(err.Error(), fmt.Sprintf("%d", _ftp.StatusFileUnavailable)) {
 			// in this case the directory does not exist
