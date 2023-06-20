@@ -1291,13 +1291,13 @@ func (f *FakeDataConn) GetCloseCalledCount() int {
 	return f.closeCalledCount
 }
 
-func getFakeDataConn(_ context.Context, a utils.Authority, fs *FileSystem, f *File, t types.OpenType) (types.DataConn, error) {
-	if fs.dataconn != nil {
-		if fs.dataconn.Mode() != t {
+func getFakeDataConn(_ context.Context, a utils.Authority, fileSystem *FileSystem, f *File, t types.OpenType) (types.DataConn, error) {
+	if fileSystem.dataconn != nil {
+		if fileSystem.dataconn.Mode() != t {
 			// wrong session type ... close current session and unset it (so we can set a new one after)
-			err := fs.dataconn.Close()
+			err := fileSystem.dataconn.Close()
 			if err != nil {
-				return fs.dataconn, err
+				return fileSystem.dataconn, err
 			}
 			if f != nil {
 				f.resetConn = true
@@ -1309,31 +1309,31 @@ func getFakeDataConn(_ context.Context, a utils.Authority, fs *FileSystem, f *Fi
 		if f != nil {
 			f.resetConn = false
 		}
-		contents := fs.dataconn.(*FakeDataConn).rw.Bytes()
-		fs.dataconn = NewFakeDataConn(t)
-		_, err := fs.dataconn.Write(contents)
+		contents := fileSystem.dataconn.(*FakeDataConn).rw.Bytes()
+		fileSystem.dataconn = NewFakeDataConn(t)
+		_, err := fileSystem.dataconn.Write(contents)
 		if err != nil {
 			return nil, err
 		}
-		_, err = fs.dataconn.(*FakeDataConn).rw.Seek(0, 0)
+		_, err = ffileSystems.dataconn.(*FakeDataConn).rw.Seek(0, 0)
 		if err != nil {
 			return nil, err
 		}
-		fs.dataconn.(*FakeDataConn).exists = true
-		fs.dataconn.(*FakeDataConn).mlst = true
+		fileSystem.dataconn.(*FakeDataConn).exists = true
+		fileSystem.dataconn.(*FakeDataConn).mlst = true
 	}
 
-	if fs.dataconn == nil {
-		fs.dataconn = NewFakeDataConn(t)
+	if fileSystem.dataconn == nil {
+		fileSystem.dataconn = NewFakeDataConn(t)
 	}
 
 	// Seek to offset (whence is always zero because of the way file.Seek calculates it for you
 	if f != nil {
-		_, err := fs.dataconn.(*FakeDataConn).rw.Seek(f.offset, 0)
+		_, err := fileSystem.dataconn.(*FakeDataConn).rw.Seek(f.offset, 0)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return fs.dataconn, nil
+	return fileSystem.dataconn, nil
 }
