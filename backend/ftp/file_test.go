@@ -1315,7 +1315,7 @@ func getFakeDataConn(_ context.Context, a utils.Authority, fileSystem *FileSyste
 		if err != nil {
 			return nil, err
 		}
-		_, err = ffileSystems.dataconn.(*FakeDataConn).rw.Seek(0, 0)
+		_, err = fileSystem.dataconn.(*FakeDataConn).rw.Seek(0, 0)
 		if err != nil {
 			return nil, err
 		}
