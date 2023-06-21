@@ -20,6 +20,8 @@ type dataConn struct {
 	errChan chan error
 }
 
+// Delete deletes the file at the given path. Only allowed
+// in a single op connection.
 func (dc *dataConn) Delete(path string) error {
 	if dc.mode != types.SingleOp {
 		return singleOpInvalidDataconnType
@@ -28,6 +30,9 @@ func (dc *dataConn) Delete(path string) error {
 
 }
 
+// GetEntry attempts to retrieve the ftp entry for
+// a file at the given path. Only allowed
+// in a single op connection.
 func (dc *dataConn) GetEntry(p string) (*_ftp.Entry, error) {
 	if dc.mode != types.SingleOp {
 		return nil, singleOpInvalidDataconnType
@@ -35,6 +40,9 @@ func (dc *dataConn) GetEntry(p string) (*_ftp.Entry, error) {
 	return dc.c.GetEntry(p)
 }
 
+// GetEntry conducts an FTP list for
+// the given path. Only allowed
+// in a single op connection.
 func (dc *dataConn) List(p string) ([]*_ftp.Entry, error) {
 	if dc.mode != types.SingleOp {
 		return nil, singleOpInvalidDataconnType
@@ -42,6 +50,8 @@ func (dc *dataConn) List(p string) ([]*_ftp.Entry, error) {
 	return dc.c.List(p)
 }
 
+// MakeDir creates a directory for the given path.
+// Only allowed in a single op connection.
 func (dc *dataConn) MakeDir(path string) error {
 	if dc.mode != types.SingleOp {
 		return singleOpInvalidDataconnType
@@ -49,6 +59,8 @@ func (dc *dataConn) MakeDir(path string) error {
 	return dc.c.MakeDir(path)
 }
 
+// Rename attempts to change the name of the file at from
+// to the name specified at to. Only allowed in a single op connection.
 func (dc *dataConn) Rename(from, to string) error {
 	if dc.mode != types.SingleOp {
 		return singleOpInvalidDataconnType
@@ -56,10 +68,15 @@ func (dc *dataConn) Rename(from, to string) error {
 	return dc.c.Rename(from, to)
 }
 
+// IsSetTimeSupported will specify whether the ftp
+// set time function is availalbe for the connection.
 func (dc *dataConn) IsSetTimeSupported() bool {
 	return dc.c.IsSetTimeSupported()
 }
 
+// SetTime will attempt to set the last modified time of
+// a file at the given path to the given time. Only allowed
+// in single op mode.
 func (dc *dataConn) SetTime(path string, t time.Time) error {
 	if dc.mode != types.SingleOp {
 		return singleOpInvalidDataconnType
@@ -67,14 +84,20 @@ func (dc *dataConn) SetTime(path string, t time.Time) error {
 	return dc.c.SetTime(path, t)
 }
 
+// IsTimPreciseInList will return true if MLST is
+// an available FTP action in the given dataconn.
 func (dc *dataConn) IsTimePreciseInList() bool {
 	return dc.c.IsTimePreciseInList()
 }
 
+// Mode will return the mode of the DataConn.
 func (dc *dataConn) Mode() types.OpenType {
 	return dc.mode
 }
 
+// Read will read bytes from the DataConn open file
+// to the given buffer. Only allowed in an open read
+// DataConn
 func (dc *dataConn) Read(buf []byte) (int, error) {
 	if dc.mode != types.OpenRead {
 		return 0, readInvalidDataconnType
@@ -82,6 +105,7 @@ func (dc *dataConn) Read(buf []byte) (int, error) {
 	return dc.R.Read(buf)
 }
 
+// Write will write bytes to the DataConn open file.
 func (dc *dataConn) Write(data []byte) (int, error) {
 	if dc.mode != types.OpenWrite {
 		return 0, writeInvalidDataconnType
@@ -89,6 +113,8 @@ func (dc *dataConn) Write(data []byte) (int, error) {
 	return dc.W.Write(data)
 }
 
+// Close will close the DataConnection for reading
+// and writing.
 func (dc *dataConn) Close() error {
 	switch dc.Mode() {
 	case types.OpenRead:
