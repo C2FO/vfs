@@ -3,6 +3,7 @@ package all
 
 import (
 	_ "github.com/c2fo/vfs/v6/backend/azure" // register azure backend
+	_ "github.com/c2fo/vfs/v6/backend/ftp"   // register sftp backend
 	_ "github.com/c2fo/vfs/v6/backend/gs"    // register gs backend
 	_ "github.com/c2fo/vfs/v6/backend/mem"   // register mem backend
 	_ "github.com/c2fo/vfs/v6/backend/os"    // register os backend

@@ -52,18 +52,16 @@ func (ts *fileTestSuite) TestRead() {
 	client := &mocks.Client{}
 
 	contents := "hello world!"
-
+	auth, err := utils.NewAuthority("user@host1.com:22")
+	ts.NoError(err)
 	sftpfile := &File{
 		fileSystem: &FileSystem{
 			sftpclient: client,
 			options:    Options{},
 		},
-		Authority: utils.Authority{
-			Host: "host1.com:22",
-			User: "user",
-		},
-		path:     filepath,
-		sftpfile: &nopWriteCloser{strings.NewReader(contents)},
+		Authority: auth,
+		path:      filepath,
+		sftpfile:  &nopWriteCloser{strings.NewReader(contents)},
 	}
 	// perform test
 	var localFile = bytes.NewBuffer([]byte{})
@@ -85,18 +83,17 @@ func (ts *fileTestSuite) TestSeek() {
 	client := &mocks.Client{}
 
 	contents := "hello world!"
+	auth, err := utils.NewAuthority("user@host1.com:22")
+	ts.NoError(err)
 
 	sftpfile := &File{
 		fileSystem: &FileSystem{
 			sftpclient: client,
 			options:    Options{},
 		},
-		Authority: utils.Authority{
-			Host: "host1.com:22",
-			User: "user",
-		},
-		path:     filepath,
-		sftpfile: &nopWriteCloser{strings.NewReader(contents)},
+		Authority: auth,
+		path:      filepath,
+		sftpfile:  &nopWriteCloser{strings.NewReader(contents)},
 	}
 	// perform test
 	_, seekErr := sftpfile.Seek(6, 0)
@@ -132,17 +129,17 @@ func (ts *fileTestSuite) Test_openFile() {
 
 	file1 := &nopWriteCloser{strings.NewReader("file 1")}
 
+	auth, err := utils.NewAuthority("user@host1.com:22")
+	ts.NoError(err)
+
 	file := &File{
 		fileSystem: &FileSystem{
 			sftpclient: client,
 			options:    Options{},
 		},
-		Authority: utils.Authority{
-			Host: "host1.com:22",
-			User: "user",
-		},
-		path:     filepath,
-		sftpfile: file1,
+		Authority: auth,
+		path:      filepath,
+		sftpfile:  file1,
 	}
 
 	// file already opened
@@ -225,17 +222,17 @@ func (ts *fileTestSuite) TestCopyToFile() {
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
 
+	auth, err := utils.NewAuthority("user@host1.com:22")
+	ts.NoError(err)
+
 	sourceFile := &File{
 		fileSystem: &FileSystem{
 			sftpclient: sourceClient,
 			options:    Options{},
 		},
-		Authority: utils.Authority{
-			Host: "host1.com:22",
-			User: "user",
-		},
-		path:     "/some/path.txt",
-		sftpfile: sourceSftpFile,
+		Authority: auth,
+		path:      "/some/path.txt",
+		sftpfile:  sourceSftpFile,
 	}
 
 	// set up target
@@ -245,21 +242,21 @@ func (ts *fileTestSuite) TestCopyToFile() {
 	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
 	targetSftpFile.On("Close").Return(nil).Once()
 
+	auth2, err := utils.NewAuthority("user@host2.com:22")
+	ts.NoError(err)
+
 	targetFile := &File{
 		fileSystem: &FileSystem{
 			sftpclient: targetClient,
 			options:    Options{},
 		},
-		Authority: utils.Authority{
-			Host: "host2.com:22",
-			User: "user",
-		},
-		path:     "/some/path.txt",
-		sftpfile: targetSftpFile,
+		Authority: auth2,
+		path:      "/some/path.txt",
+		sftpfile:  targetSftpFile,
 	}
 
 	// run tests
-	err := sourceFile.CopyToFile(targetFile)
+	err = sourceFile.CopyToFile(targetFile)
 	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
 
 	sourceClient.AssertExpectations(ts.T())
@@ -280,17 +277,17 @@ func (ts *fileTestSuite) TestCopyToFileBuffered() {
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
 
+	auth, err := utils.NewAuthority("user@host1.com:22")
+	ts.NoError(err)
+
 	sourceFile := &File{
 		fileSystem: &FileSystem{
 			sftpclient: sourceClient,
 			options:    Options{FileBufferSize: 2 * utils.TouchCopyMinBufferSize},
 		},
-		Authority: utils.Authority{
-			Host: "host1.com:22",
-			User: "user",
-		},
-		path:     "/some/path.txt",
-		sftpfile: sourceSftpFile,
+		Authority: auth,
+		path:      "/some/path.txt",
+		sftpfile:  sourceSftpFile,
 	}
 
 	// set up target
@@ -300,24 +297,24 @@ func (ts *fileTestSuite) TestCopyToFileBuffered() {
 	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
 	targetSftpFile.On("Close").Return(nil).Once()
 
+	auth2, err := utils.NewAuthority("user@host2.com:22")
+	ts.NoError(err)
+
 	targetFile := &File{
 		fileSystem: &FileSystem{
 			sftpclient: targetClient,
 			options:    Options{},
 		},
-		Authority: utils.Authority{
-			Host: "host2.com:22",
-			User: "user",
-		},
-		path:     "/some/path.txt",
-		sftpfile: targetSftpFile,
+		Authority: auth2,
+		path:      "/some/path.txt",
+		sftpfile:  targetSftpFile,
 	}
 
 	targetMockLocation := &_mocks.Location{}
 	targetMockLocation.On("NewFile", mock.Anything).Return(targetFile, nil)
 
 	// run tests
-	err := sourceFile.CopyToFile(targetFile)
+	err = sourceFile.CopyToFile(targetFile)
 	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
 
 	sourceClient.AssertExpectations(ts.T())
@@ -336,17 +333,17 @@ func (ts *fileTestSuite) TestCopyToFileEmpty() {
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
 
+	auth, err := utils.NewAuthority("user@host1.com:22")
+	ts.NoError(err)
+
 	sourceFile := &File{
 		fileSystem: &FileSystem{
 			sftpclient: sourceClient,
 			options:    Options{},
 		},
-		Authority: utils.Authority{
-			Host: "host1.com:22",
-			User: "user",
-		},
-		path:     "/some/path.txt",
-		sftpfile: sourceSftpFile,
+		Authority: auth,
+		path:      "/some/path.txt",
+		sftpfile:  sourceSftpFile,
 	}
 
 	// set up target
@@ -356,24 +353,24 @@ func (ts *fileTestSuite) TestCopyToFileEmpty() {
 	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
 	targetSftpFile.On("Close").Return(nil).Once()
 
+	auth2, err := utils.NewAuthority("user@host2.com:22")
+	ts.NoError(err)
+
 	targetFile := &File{
 		fileSystem: &FileSystem{
 			sftpclient: targetClient,
 			options:    Options{},
 		},
-		Authority: utils.Authority{
-			Host: "host2.com:22",
-			User: "user",
-		},
-		path:     "/some/path.txt",
-		sftpfile: targetSftpFile,
+		Authority: auth2,
+		path:      "/some/path.txt",
+		sftpfile:  targetSftpFile,
 	}
 
 	targetMockLocation := &_mocks.Location{}
 	targetMockLocation.On("NewFile", mock.Anything).Return(targetFile, nil)
 
 	// run tests
-	err := sourceFile.CopyToFile(targetFile)
+	err = sourceFile.CopyToFile(targetFile)
 	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
 
 	sourceClient.AssertExpectations(ts.T())
@@ -392,17 +389,17 @@ func (ts *fileTestSuite) TestCopyToFileEmptyBuffered() {
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
 
+	auth, err := utils.NewAuthority("user@host1.com:22")
+	ts.NoError(err)
+
 	sourceFile := &File{
 		fileSystem: &FileSystem{
 			sftpclient: sourceClient,
 			options:    Options{FileBufferSize: 2 * utils.TouchCopyMinBufferSize},
 		},
-		Authority: utils.Authority{
-			Host: "host1.com:22",
-			User: "user",
-		},
-		path:     "/some/path.txt",
-		sftpfile: sourceSftpFile,
+		Authority: auth,
+		path:      "/some/path.txt",
+		sftpfile:  sourceSftpFile,
 	}
 
 	// set up target
@@ -412,24 +409,24 @@ func (ts *fileTestSuite) TestCopyToFileEmptyBuffered() {
 	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
 	targetSftpFile.On("Close").Return(nil).Once()
 
+	auth2, err := utils.NewAuthority("user@host2.com:22")
+	ts.NoError(err)
+
 	targetFile := &File{
 		fileSystem: &FileSystem{
 			sftpclient: targetClient,
 			options:    Options{},
 		},
-		Authority: utils.Authority{
-			Host: "host2.com:22",
-			User: "user",
-		},
-		path:     "/some/path.txt",
-		sftpfile: targetSftpFile,
+		Authority: auth2,
+		path:      "/some/path.txt",
+		sftpfile:  targetSftpFile,
 	}
 
 	targetMockLocation := &_mocks.Location{}
 	targetMockLocation.On("NewFile", mock.Anything).Return(targetFile, nil)
 
 	// run tests
-	err := sourceFile.CopyToFile(targetFile)
+	err = sourceFile.CopyToFile(targetFile)
 	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
 
 	sourceClient.AssertExpectations(ts.T())
@@ -449,17 +446,17 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
 
+	auth, err := utils.NewAuthority("user@host1.com:22")
+	ts.NoError(err)
+
 	sourceFile := &File{
 		fileSystem: &FileSystem{
 			sftpclient: sourceClient,
 			options:    Options{},
 		},
-		Authority: utils.Authority{
-			Host: "host1.com:22",
-			User: "user",
-		},
-		path:     "/some/path.txt",
-		sftpfile: sourceSftpFile,
+		Authority: auth,
+		path:      "/some/path.txt",
+		sftpfile:  sourceSftpFile,
 	}
 
 	// set up target
@@ -469,17 +466,17 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
 	targetSftpFile.On("Close").Return(nil).Once()
 
+	auth2, err := utils.NewAuthority("user@host2.com:22")
+	ts.NoError(err)
+
 	targetFile := &File{
 		fileSystem: &FileSystem{
 			sftpclient: targetClient,
 			options:    Options{},
 		},
-		Authority: utils.Authority{
-			Host: "host2.com:22",
-			User: "user",
-		},
-		path:     "/some/path.txt",
-		sftpfile: targetSftpFile,
+		Authority: auth2,
+		path:      "/some/path.txt",
+		sftpfile:  targetSftpFile,
 	}
 
 	targetMockLocation := &_mocks.Location{}
@@ -509,17 +506,17 @@ func (ts *fileTestSuite) TestMoveToFile_differentAuthority() {
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
 
+	auth, err := utils.NewAuthority("user@host1.com:22")
+	ts.NoError(err)
+
 	sourceFile := &File{
 		fileSystem: &FileSystem{
 			sftpclient: sourceClient,
 			options:    Options{},
 		},
-		Authority: utils.Authority{
-			Host: "host1.com:22",
-			User: "user",
-		},
-		path:     "/some/path.txt",
-		sftpfile: sourceSftpFile,
+		Authority: auth,
+		path:      "/some/path.txt",
+		sftpfile:  sourceSftpFile,
 	}
 
 	// set up target
@@ -529,21 +526,21 @@ func (ts *fileTestSuite) TestMoveToFile_differentAuthority() {
 	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
 	targetSftpFile.On("Close").Return(nil).Once()
 
+	auth2, err := utils.NewAuthority("user@host2.com:22")
+	ts.NoError(err)
+
 	targetFile := &File{
 		fileSystem: &FileSystem{
 			sftpclient: targetClient,
 			options:    Options{},
 		},
-		Authority: utils.Authority{
-			Host: "host2.com:22",
-			User: "user",
-		},
-		path:     "/some/path.txt",
-		sftpfile: targetSftpFile,
+		Authority: auth2,
+		path:      "/some/path.txt",
+		sftpfile:  targetSftpFile,
 	}
 
 	// run tests
-	err := sourceFile.MoveToFile(targetFile)
+	err = sourceFile.MoveToFile(targetFile)
 	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
 
 	sourceClient.AssertExpectations(ts.T())
@@ -558,16 +555,16 @@ func (ts *fileTestSuite) TestMoveToFile_sameAuthority() {
 	sourceClient.On("Rename", mock.Anything, mock.Anything).Return(nil).Once()
 	sourceClient.On("MkdirAll", mock.Anything).Return(nil).Once()
 
+	auth, err := utils.NewAuthority("user@host1.com:22")
+	ts.NoError(err)
+
 	sourceFile := &File{
 		fileSystem: &FileSystem{
 			sftpclient: sourceClient,
 			options:    Options{},
 		},
-		Authority: utils.Authority{
-			Host: "host1.com:22",
-			User: "user",
-		},
-		path: "/some/path.txt",
+		Authority: auth,
+		path:      "/some/path.txt",
 	}
 
 	rws := &mocks.SFTPFile{}
@@ -581,20 +578,20 @@ func (ts *fileTestSuite) TestMoveToFile_sameAuthority() {
 	targetClient := &mocks.Client{}
 	targetClient.On("Stat", mock.Anything).Return(nil, os.ErrNotExist).Once()
 
+	auth2, err := utils.NewAuthority("user@host1.com:22")
+	ts.NoError(err)
+
 	targetFile := &File{
 		fileSystem: &FileSystem{
 			sftpclient: targetClient,
 			options:    Options{},
 		},
-		Authority: utils.Authority{
-			Host: "host1.com:22",
-			User: "user",
-		},
-		path: "/some/other/path.txt",
+		Authority: auth2,
+		path:      "/some/other/path.txt",
 	}
 
 	// run tests
-	err := sourceFile.MoveToFile(targetFile)
+	err = sourceFile.MoveToFile(targetFile)
 	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
 
 	sourceClient.AssertExpectations(ts.T())
@@ -613,17 +610,17 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
 
+	auth, err := utils.NewAuthority("user@host1.com:22")
+	ts.NoError(err)
+
 	sourceFile := &File{
 		fileSystem: &FileSystem{
 			sftpclient: sourceClient,
 			options:    Options{},
 		},
-		Authority: utils.Authority{
-			Host: "host1.com:22",
-			User: "user",
-		},
-		path:     "/some/path.txt",
-		sftpfile: sourceSftpFile,
+		Authority: auth,
+		path:      "/some/path.txt",
+		sftpfile:  sourceSftpFile,
 	}
 
 	// set up target
@@ -633,17 +630,17 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
 	targetSftpFile.On("Close").Return(nil).Once()
 
+	auth2, err := utils.NewAuthority("user@host2.com:22")
+	ts.NoError(err)
+
 	targetFile := &File{
 		fileSystem: &FileSystem{
 			sftpclient: targetClient,
 			options:    Options{},
 		},
-		Authority: utils.Authority{
-			Host: "host2.com:22",
-			User: "user",
-		},
-		path:     "/some/other/path.txt",
-		sftpfile: targetSftpFile,
+		Authority: auth2,
+		path:      "/some/other/path.txt",
+		sftpfile:  targetSftpFile,
 	}
 
 	targetMockLocation := &_mocks.Location{}
@@ -673,17 +670,17 @@ func (ts *fileTestSuite) TestTouch_exists() {
 
 	sftpFile := &mocks.SFTPFile{}
 
+	auth, err := utils.NewAuthority("user@host1.com:22")
+	ts.NoError(err)
+
 	file := &File{
 		fileSystem: &FileSystem{
 			sftpclient: client,
 			options:    Options{},
 		},
-		Authority: utils.Authority{
-			Host: "host1.com:22",
-			User: "user",
-		},
-		path:     filepath,
-		sftpfile: sftpFile,
+		Authority: auth,
+		path:      filepath,
+		sftpfile:  sftpFile,
 	}
 
 	ts.NoError(file.Touch())
@@ -704,17 +701,17 @@ func (ts *fileTestSuite) TestTouch_notExists() {
 	sftpFile := &mocks.SFTPFile{}
 	sftpFile.On("Close").Return(nil).Once()
 
+	auth, err := utils.NewAuthority("user@host1.com:22")
+	ts.NoError(err)
+
 	file := &File{
 		fileSystem: &FileSystem{
 			sftpclient: client,
 			options:    Options{},
 		},
-		Authority: utils.Authority{
-			Host: "host1.com:22",
-			User: "user",
-		},
-		path:     filepath,
-		sftpfile: sftpFile,
+		Authority: auth,
+		path:      filepath,
+		sftpfile:  sftpFile,
 	}
 
 	ts.NoError(file.Touch())

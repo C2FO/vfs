@@ -20,6 +20,8 @@ const (
 	// ErrBadRelLocationPath constant is returned when a file path is not relative
 	ErrBadRelLocationPath = "relative location path is invalid - may not include leading slash but must include trailing slash"
 	// TouchCopyMinBufferSize min buffer size used in TouchCopyBuffered in bytes
+	ErrBadPrefix = "prefix is invalid - may not include leading or trailing slashes and may not be empty"
+	// TouchCopyMinBufferSize min buffer size used in TouchCopyBuffered in bytes
 	TouchCopyMinBufferSize = 262144
 )
 ```
@@ -38,7 +40,7 @@ slash if needed.
 func EnsureTrailingSlash(dir string) string
 ```
 EnsureTrailingSlash is like AddTrailingSlash but will only ever use / since it's
-use for web uri's, never an Windows OS path.
+use for web uri's, never a Windows OS path.
 
 #### func  GetFileURI
 
@@ -60,12 +62,9 @@ GetLocationURI returns a Location URI
 func PathToURI(p string) (string, error)
 ```
 PathToURI takes a relative or absolute path and returns an OS URI. 
-* We assume
-non-scheme path is an OS File or Location. 
-* We assume volume(URI authority) is
-empty. 
-* We assume relative paths are relative to the pwd (program's working
-directory)
+* We assume non-scheme path is an OS File or Location. 
+* We assume volume(URI authority) is empty. 
+* We assume relative paths are relative to the pwd (program's working directory)
 * We assum an empty path is equal to the root path: "/"
 
 | original path | becomes URI |
@@ -134,6 +133,14 @@ func ValidateAbsoluteLocationPath(name string) error
 ValidateAbsoluteLocationPath ensure that a file path has both leading and
 trailing slashes
 
+#### func  ValidatePrefix
+
+```go
+func ValidatePrefix(prefix string) error
+```
+ValidatePrefix ensures that a prefix path has neither leading nor trailing
+slashes may not be empty but unlike relative file path, *may* be simply "."
+
 #### func  ValidateRelativeFilePath
 
 ```go
@@ -150,11 +157,10 @@ func ValidateRelativeLocationPath(name string) error
 ValidateRelativeLocationPath ensure that a file path has no leading slash but
 has a trailing slash
 
-### type Authority
+#### type Authority
 
 ```go
 type Authority struct {
-	User, Pass, Host string
 }
 ```
 
@@ -167,13 +173,66 @@ func NewAuthority(authority string) (Authority, error)
 ```
 NewAuthority initializes Authority struct by parsing authority string.
 
+#### func (Authority) Host
+
+```go
+func (a Authority) Host() string
+```
+Host returns the host portion of an authority
+
+#### func (Authority) HostPortStr
+
+```go
+func (a Authority) HostPortStr() string
+```
+HostPortStr returns a concatenated string of host and port from authority,
+separated by a colon, ie "host.com:1234"
+
+#### func (Authority) Port
+
+```go
+func (a Authority) Port() uint16
+```
+Port returns the port portion of an authority
+
 #### func (Authority) String
 
 ```go
 func (a Authority) String() string
 ```
 String() returns a string representation of authority. It does not include
-password per https://tools.ietf.org/html/rfc3986#section-3.2.1:
+password per https://tools.ietf.org/html/rfc3986#section-3.2.1
 
     Applications should not render as clear text any data after the first colon (":") character found within a userinfo
     subcomponent unless the data after the colon is the empty string (indicating no password).
+
+#### func (Authority) UserInfo
+
+```go
+func (a Authority) UserInfo() UserInfo
+```
+UserInfo returns the userinfo section of authority. userinfo is username and
+password(deprecated).
+
+#### type UserInfo
+
+```go
+type UserInfo struct {
+}
+```
+
+UserInfo represents user/pass portion of a URI
+
+#### func (UserInfo) Password
+
+```go
+func (u UserInfo) Password() string
+```
+Password returns the password of a URI UserInfo. May be an empty string.
+
+#### func (UserInfo) Username
+
+```go
+func (u UserInfo) Username() string
+```
+Username returns the username of a URI UserInfo. May be an empty string.

@@ -6,14 +6,12 @@ import (
 	"os"
 	"path"
 	"runtime"
-	"strings"
 
 	"github.com/mitchellh/go-homedir"
 	_sftp "github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
 
-	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -29,9 +27,7 @@ type Options struct {
 	KeyExchanges       []string            `json:"keyExchanges,omitempty"`
 	AutoDisconnect     int                 `json:"autoDisconnect,omitempty"` // seconds before disconnecting. default: 10
 	KnownHostsCallback ssh.HostKeyCallback // env var VFS_SFTP_INSECURE_KNOWN_HOSTS
-	Retry              vfs.Retry
-	MaxRetries         int
-	FileBufferSize     int // Buffer Size In Bytes Used with utils.TouchCopyBuffered
+	FileBufferSize     int                 // Buffer Size In Bytes Used with utils.TouchCopyBuffered
 }
 
 // Note that as of 1.12, OPENSSH private key format is not supported when encrypt (with passphrase).
@@ -59,15 +55,15 @@ func getClient(authority utils.Authority, opts Options) (Client, io.Closer, erro
 
 	// Define the Client Config
 	config := &ssh.ClientConfig{
-		User:            authority.User,
+		User:            authority.UserInfo().Username(),
 		Auth:            authMethods,
 		HostKeyCallback: hostKeyCallback,
 		Config:          sshConfig,
 	}
 	// default to port 22
-	host := authority.Host
-	if !strings.Contains(host, ":") {
-		host = fmt.Sprintf("%s%s", host, ":22")
+	host := authority.Host()
+	if authority.Port() == 0 {
+		host = fmt.Sprintf("%s:%d", host, 22)
 	}
 
 	// TODO begin timeout until session is created

@@ -403,12 +403,12 @@ type getClientTest struct {
 
 func (o *optionsSuite) TestGetClient() {
 
+	auth, err := utils.NewAuthority("someuser@badhost")
+	o.NoError(err)
+
 	tests := []getClientTest{
 		{
-			authority: utils.Authority{
-				User: "someuse",
-				Host: "badhost",
-			},
+			authority: auth,
 			options: Options{
 				Password:           "somepassword",
 				KnownHostsCallback: ssh.InsecureIgnoreHostKey(),
@@ -418,10 +418,7 @@ func (o *optionsSuite) TestGetClient() {
 			message:  "getclient - bad host",
 		},
 		{
-			authority: utils.Authority{
-				User: "someuser",
-				Host: "badhost",
-			},
+			authority: auth,
 			options: Options{
 				KeyFilePath:        "nonexistent.key",
 				KnownHostsCallback: ssh.InsecureIgnoreHostKey(),
@@ -431,10 +428,7 @@ func (o *optionsSuite) TestGetClient() {
 			message:  "getclient - bad auth key",
 		},
 		{
-			authority: utils.Authority{
-				User: "someuser",
-				Host: "badhost",
-			},
+			authority: auth,
 			options: Options{
 				Password:         "somepassword",
 				KnownHostsString: "badstring",

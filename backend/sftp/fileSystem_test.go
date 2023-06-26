@@ -123,12 +123,6 @@ func (ts *fileSystemTestSuite) TestClient() {
 	_, err = ts.sftpfs.Client(utils.Authority{})
 	ts.Error(err, "error found")
 	ts.Equal("unable to create client, vfs.Options must be an sftp.Options", err.Error(), "client was already set")
-
-	// no opts, no authority
-	ts.sftpfs.options = nil
-	_, err = ts.sftpfs.Client(utils.Authority{Host: "badhost"})
-	ts.Error(err, "error found")
-
 }
 
 func (ts *fileSystemTestSuite) TestClientWithAutoDisconnect() {

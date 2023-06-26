@@ -3,6 +3,7 @@ package vfs
 // Error is a type that allows for error constants below
 type Error string
 
+// Error returns a string representation of the error
 func (e Error) Error() string { return string(e) }
 
 // CopyToNotPossible - CopyTo/MoveTo operations are only possible when seek position is 0,0
