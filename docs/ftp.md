@@ -63,15 +63,15 @@ These methods are chainable: (*FileSystem) WithClient(client interface{})
     			  Password: "s3cr3t",
     			  DisableEPSV: true,
     			  Protocol: ftp.ProtocolFTPES,
-    			  DialTimeout: 15 * time.Second
-    			  DebugWriter: os.Stdout
+    			  DialTimeout: 15 * time.Second,
+    			  DebugWriter: os.Stdout,
     		  },
     	  )
 
     	  location, err := fs.NewLocation("myuser@server.com:21", "/some/path/")
     	  #handle error
 
-    	  file := location.NewFile("myfile.txt")
+    	  file, err := location.NewFile("myfile.txt")
     	  #handle error
 
     	  _, err := file.Write([]bytes("some text")
@@ -81,6 +81,49 @@ These methods are chainable: (*FileSystem) WithClient(client interface{})
     	  #handle error
 
       }
+```
+
+Note - this vfs implementation can have issues conducting simultaneous reads and writes on files created from the same filesystem. This can
+cause issues when attempting to use those files with functions such as io.CopyBuffer.
+
+The provided CopyToFile and CopyToLocation functions should be used instead in these instances.
+
+```go
+		func DoSomething() {
+
+		  // cast if fs was created using backend.Backend().  Not necessary if created directly from ftp.NewFilesystem().
+		  fs := backend.Backend(ftp.Scheme)
+		  fs = fs.(*ftp.Filesystem)
+
+		  // to pass specific client implementing types.Client interface (in this case, _ftp github.com/jlaffaye/ftp)
+		  client, _ := _ftp.Dial("server.com:21")
+		  fs = fs.WithClient(client)
+
+		  // to pass in client options. See Options for more info.  Note that changes to Options will make nil any client.
+		  // This behavior ensures that changes to settings will get applied to a newly created client.
+		  fs = fs.WithOptions(
+			  ftp.Options{
+				  Password: "s3cr3t",
+				  DisableEPSV: true,
+				  Protocol: ftp.ProtocolFTPES,
+				  DialTimeout: 15 * time.Second,
+				  DebugWriter: os.Stdout,
+			  },
+		  )
+
+		  location, err := fs.NewLocation("myuser@server.com:21", "/some/path/")
+		  #handle error
+
+		  file, err := location.NewFile("myfile.txt")
+		  #handle error
+
+		  _, err = file.Write([]byte("some text"))
+		  #handle error
+
+		  err = file.Close()
+		  #handle error
+
+	  }
 ```
 
 ### Authentication
