@@ -159,6 +159,7 @@ Feel free to send a pull request if you want to add your backend to the list.
   * [s3 backend](docs/s3.md)
   * [in-memory backend](docs/mem.md)
   * [sftp backend](docs/sftp.md)
+  * [ftp backend](docs/ftp.md)
   * [azure backend](docs/azure.md)  
 * [utils](docs/utils.md)
 
