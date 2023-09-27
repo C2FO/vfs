@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
+## [6.9.0] - 2023-09-27
+
+### Security
+- Update .gvmrc to 1.21.1. Fixes #143.
+- Update go.mod min version to Go 1.20.
+- Update actions to test only supported Go versions (1.20, 1.21)
+- Updated dependencies (ie, Google Cloud, Azure, AWS sdks)
+
 ## [6.8.0] - 2023-07-29
 ### Added
 - ftp backend to support connection via FTP, FTPS (implicit TLS), and FTPES (explicit TLS).
