@@ -61,7 +61,7 @@ func getClient(authority utils.Authority, opts Options) (Client, io.Closer, erro
 		Config:          sshConfig,
 	}
 	// default to port 22
-	host := authority.Host()
+	host := fmt.Sprintf("%s:%d", authority.Host(), authority.Port())
 	if authority.Port() == 0 {
 		host = fmt.Sprintf("%s:%d", host, 22)
 	}
