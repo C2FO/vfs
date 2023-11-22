@@ -2,10 +2,10 @@ package s3
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
-	"os"
 	"path"
 	"time"
 
@@ -16,7 +16,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
 	"github.com/c2fo/vfs/v6"
-	"github.com/c2fo/vfs/v6/backend"
 	"github.com/c2fo/vfs/v6/mocks"
 	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/options/delete"
@@ -28,7 +27,8 @@ type File struct {
 	fileSystem  *FileSystem
 	bucket      string
 	key         string
-	tempFile    *os.File
+	cursorPos   int64
+	reader      io.ReadCloser
 	writeBuffer *bytes.Buffer
 }
 
@@ -104,8 +104,8 @@ func (f *File) Location() vfs.Location {
 // method if the target file is also on S3, otherwise uses io.CopyBuffer.
 func (f *File) CopyToFile(file vfs.File) error {
 	// validate seek is at 0,0 before doing copy
-	if err := backend.ValidateCopySeekPosition(f); err != nil {
-		return err
+	if f.cursorPos != 0 {
+		return vfs.CopyToNotPossible
 	}
 
 	// if target is S3
@@ -235,18 +235,16 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 // Close cleans up underlying mechanisms for reading from and writing to the file. Closes and removes the
 // local temp file, and triggers a write to s3 of anything in the f.writeBuffer if it has been created.
 func (f *File) Close() error {
-	if f.tempFile != nil {
-		err := f.tempFile.Close()
+	f.cursorPos = 0
+
+	// invalidate reader
+	if f.reader != nil {
+		err := f.reader.Close()
 		if err != nil {
 			return err
 		}
 
-		err = os.Remove(f.tempFile.Name())
-		if err != nil && !os.IsNotExist(err) {
-			return err
-		}
-
-		f.tempFile = nil
+		f.reader = nil
 	}
 
 	if f.writeBuffer != nil {
@@ -273,19 +271,65 @@ func (f *File) Close() error {
 // Read implements the standard for io.Reader. For this to work with an s3 file, a temporary local copy of
 // the file is created, and reads work on that. This file is closed and removed upon calling f.Close()
 func (f *File) Read(p []byte) (n int, err error) {
-	if err := f.checkTempFile(); err != nil {
-		return 0, err
+	// check/initialize for reader
+	r, err := f.getReader()
+
+	read, err := r.Read(p)
+	if err != nil {
+		return read, err
 	}
-	return f.tempFile.Read(p)
+
+	f.cursorPos += int64(read)
+
+	return read, nil
 }
 
 // Seek implements the standard for io.Seeker. A temporary local copy of the s3 file is created (the same
 // one used for Reads) which Seek() acts on. This file is closed and removed upon calling f.Close()
 func (f *File) Seek(offset int64, whence int) (int64, error) {
-	if err := f.checkTempFile(); err != nil {
-		return 0, err
+	length, err := f.Size()
+	if err != nil {
+		return 0, handleExistsError(err)
 	}
-	return f.tempFile.Seek(offset, whence)
+
+	seekErr := fmt.Errorf("seek: %s invalid argument", f.URI())
+
+	switch whence {
+	case 0:
+		// cannot seek past beginning of file
+		if offset < 0 {
+			return 0, seekErr
+		}
+
+		f.cursorPos = offset
+	case 1:
+		// cannot seek past beginning of file
+		if f.cursorPos+offset < 0 {
+			return 0, seekErr
+		}
+
+		f.cursorPos += offset
+
+	case 2:
+		// cannot seek past beginning of file
+		if int64(length)+offset < 0 {
+			return 0, seekErr
+		}
+
+		f.cursorPos = int64(length) + offset
+	}
+
+	// invalidate reader
+	if f.reader != nil {
+		err := f.reader.Close()
+		if err != nil {
+			return 0, err
+		}
+
+		f.reader = nil
+	}
+
+	return f.cursorPos, nil
 }
 
 // Write implements the standard for io.Writer. A buffer is added to with each subsequent
@@ -305,7 +349,15 @@ func (f *File) Write(data []byte) (res int, err error) {
 
 		f.writeBuffer = bytes.NewBuffer([]byte{})
 	}
-	return f.writeBuffer.Write(data)
+
+	write, err := f.writeBuffer.Write(data)
+	if err != nil {
+		return 0, err
+	}
+	offset := int64(write)
+	f.cursorPos += offset
+
+	return write, err
 }
 
 // Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
@@ -424,48 +476,6 @@ func (f *File) getCopyObjectInput(targetFile *File) (*s3.CopyObjectInput, error)
 	return nil, nil
 }
 
-func (f *File) checkTempFile() error {
-	if f.tempFile == nil {
-		localTempFile, err := f.copyToLocalTempReader()
-		if err != nil {
-			return err
-		}
-		f.tempFile = localTempFile
-	}
-
-	return nil
-}
-
-func (f *File) copyToLocalTempReader() (*os.File, error) {
-	// Create temp file
-	tmpFile, err := os.CreateTemp("", fmt.Sprintf("%s.%d", f.Name(), time.Now().UnixNano()))
-	if err != nil {
-		return nil, err
-	}
-
-	// Create S3 Downloader, get client, and set partition size for multipart download
-	var partSize int64
-	if opts, ok := f.Location().FileSystem().(*FileSystem).options.(Options); ok {
-		if partSize = opts.DownloadPartitionSize; partSize == 0 {
-			partSize = 32 * 1024 * 1024 // 32 MB per partition default if opts.DownloadPartitionSize is 0
-		}
-	}
-
-	client, err := f.fileSystem.Client()
-	if err != nil {
-		return nil, err
-	}
-
-	// Download file
-	_, err = getDownloader(client, partSize).Download(tmpFile, f.getObjectInput())
-	if err != nil {
-		return nil, err
-	}
-
-	// Return temp file
-	return tmpFile, nil
-}
-
 func (f *File) getObjectInput() *s3.GetObjectInput {
 	return new(s3.GetObjectInput).SetBucket(f.bucket).SetKey(f.key)
 }
@@ -534,8 +544,42 @@ func waitUntilFileExists(file vfs.File, retries int) error {
 	return nil
 }
 
-var getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
-	return s3manager.NewDownloaderWithClient(client, func(d *s3manager.Downloader) {
-		d.PartSize = partSize
-	})
+func (f *File) getReader() (io.ReadCloser, error) {
+	if f.reader == nil {
+		// Create the request to get the object
+		input := new(s3.GetObjectInput).
+			SetBucket(f.bucket).
+			SetKey(f.key).
+			SetRange(fmt.Sprintf("bytes=%d-", f.cursorPos))
+
+		// Get the client
+		client, err := f.fileSystem.Client()
+		if err != nil {
+			return nil, err
+		}
+
+		// Request the object
+		result, err := client.GetObject(input)
+		if err != nil {
+			return nil, err
+		}
+
+		// Set the reader to the body of the object
+		f.reader = result.Body
+	}
+	return f.reader, nil
+}
+
+func handleExistsError(err error) error {
+	if err != nil {
+		var awsErr awserr.Error
+		if errors.As(err, &awsErr) {
+			switch awsErr.Code() {
+			case s3.ErrCodeNoSuchKey, s3.ErrCodeNoSuchBucket, "NotFound":
+				return vfs.ErrNotExist
+			}
+		}
+		return err
+	}
+	return nil
 }

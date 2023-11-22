@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -46,9 +47,6 @@ func (ts *fileTestSuite) SetupTest() {
 	testFileName = "/some/path/to/file.txt"
 	bucket = "bucket"
 	testFile, err = fs.NewFile(bucket, testFileName)
-	getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
-		return mocks.S3MockDownloader{}
-	}
 
 	if err != nil {
 		ts.Fail("Shouldn't return error creating test s3.File instance.")
@@ -56,17 +54,10 @@ func (ts *fileTestSuite) SetupTest() {
 }
 
 func (ts *fileTestSuite) TearDownTest() {
-	getDownloader = ts.getDownloader
 }
 
 func (ts *fileTestSuite) TestRead() {
 	contents := "hello world!"
-	downloader := mocks.S3MockDownloader{
-		ExpectedContents: contents,
-	}
-	getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
-		return downloader
-	}
 
 	file, err := fs.NewFile("bucket", "/some/path/file.txt")
 	if err != nil {
@@ -74,9 +65,11 @@ func (ts *fileTestSuite) TestRead() {
 	}
 
 	var localFile = bytes.NewBuffer([]byte{})
-
-	buffer := make([]byte, utils.TouchCopyMinBufferSize)
-	_, copyErr := io.CopyBuffer(localFile, file, buffer)
+	s3apiMock.
+		On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).
+		Return(&s3.GetObjectOutput{Body: io.NopCloser(strings.NewReader(contents))}, nil).
+		Once()
+	_, copyErr := io.Copy(localFile, file)
 	ts.NoError(copyErr, "no error expected")
 	closeErr := file.Close()
 	ts.NoError(closeErr, "no error expected")
@@ -99,36 +92,42 @@ func (ts *fileTestSuite) TestSeek() {
 	contents := "hello world!"
 	file, err := fs.NewFile("bucket", "/tmp/hello.txt")
 	ts.NoError(err, "Shouldn't fail creating new file")
-
-	downloader := mocks.S3MockDownloader{
-		ExpectedContents: contents,
+	headOutput := &s3.HeadObjectOutput{
+		ContentLength: aws.Int64(12),
 	}
-	getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
-		return downloader
-	}
-
-	_, seekErr := file.Seek(6, 0)
-	assert.NoError(ts.T(), seekErr, "no error expected")
+	s3apiMock.
+		On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).
+		Return(headOutput, nil).
+		Twice()
+	pos, seekErr := file.Seek(6, 0)
+	ts.NoError(seekErr, "no error expected")
+	ts.Equal(int64(6), pos, "Seeking to 6 should return 6 as expected")
 
 	var localFile = bytes.NewBuffer([]byte{})
 
-	buffer := make([]byte, utils.TouchCopyMinBufferSize)
-	_, copyErr := io.CopyBuffer(localFile, file, buffer)
-	assert.NoError(ts.T(), copyErr, "no error expected")
-
+	s3apiMock.
+		On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).
+		Return(&s3.GetObjectOutput{Body: io.NopCloser(strings.NewReader("world!"))}, nil).
+		Once()
+	_, copyErr := io.Copy(localFile, file)
+	ts.NoError(copyErr, "no error expected")
 	ts.Equal("world!", localFile.String(), "Seeking should download the file and move the cursor as expected")
 
 	localFile = bytes.NewBuffer([]byte{})
-	_, seekErr2 := file.Seek(0, 0)
-	assert.NoError(ts.T(), seekErr2, "no error expected")
+	pos, seekErr2 := file.Seek(0, 0)
+	ts.NoError(seekErr2, "no error expected")
+	ts.Equal(int64(0), pos, "Seeking to 0 should return 0 as expected")
 
-	buffer = make([]byte, utils.TouchCopyMinBufferSize)
-	_, copyErr2 := io.CopyBuffer(localFile, file, buffer)
-	assert.NoError(ts.T(), copyErr2, "no error expected")
+	s3apiMock.
+		On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).
+		Return(&s3.GetObjectOutput{Body: io.NopCloser(strings.NewReader(contents))}, nil).
+		Once()
+	_, copyErr2 := io.Copy(localFile, file)
+	ts.NoError(copyErr2, "no error expected")
 	ts.Equal(contents, localFile.String(), "Subsequent calls to seek work on temp file as expected")
 
 	closeErr := file.Close()
-	assert.NoError(ts.T(), closeErr, "no error expected")
+	ts.NoError(closeErr, "no error expected")
 }
 
 func (ts *fileTestSuite) TestGetLocation() {
@@ -205,18 +204,13 @@ func (ts *fileTestSuite) TestCopyToFile() {
 }
 
 func (ts *fileTestSuite) TestEmptyCopyToFile() {
-	contents := ""
-	downloader := mocks.S3MockDownloader{
-		ExpectedContents: contents,
-	}
-	getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
-		return downloader
-	}
-
 	targetFile := &mocks.File{}
 	targetFile.On("Write", mock.Anything).Return(0, nil)
 	targetFile.On("Close").Return(nil)
-
+	s3apiMock.
+		On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).
+		Return(&s3.GetObjectOutput{Body: io.NopCloser(strings.NewReader(""))}, nil).
+		Once()
 	err := testFile.CopyToFile(targetFile)
 	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
 
@@ -225,14 +219,6 @@ func (ts *fileTestSuite) TestEmptyCopyToFile() {
 }
 
 func (ts *fileTestSuite) TestMoveToFile() {
-	contents := "hello world!"
-	downloader := mocks.S3MockDownloader{
-		ExpectedContents: contents,
-	}
-	getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
-		return downloader
-	}
-
 	targetFile := &File{
 		fileSystem: &FileSystem{
 			client:  s3apiMock,
@@ -338,14 +324,6 @@ func (ts *fileTestSuite) TestGetCopyObject() {
 }
 
 func (ts *fileTestSuite) TestMoveToFile_CopyError() {
-	contents := "hello world!"
-	downloader := mocks.S3MockDownloader{
-		ExpectedContents: contents,
-	}
-	getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
-		return downloader
-	}
-
 	targetFile := &File{
 		fileSystem: &FileSystem{
 			client:  s3apiMock,
@@ -401,13 +379,6 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 func (ts *fileTestSuite) TestTouch() {
 	// Copy portion tested through CopyToLocation, just need to test whether or not Delete happens
 	// in addition to CopyToLocation
-	contents := "hello world!"
-	downloader := mocks.S3MockDownloader{
-		ExpectedContents: contents,
-	}
-	getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
-		return downloader
-	}
 
 	s3Mock1 := &mocks.S3API{}
 	s3Mock1.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
@@ -454,14 +425,6 @@ func (ts *fileTestSuite) TestTouch() {
 func (ts *fileTestSuite) TestMoveToLocation() {
 	// Copy portion tested through CopyToLocation, just need to test whether or not Delete happens
 	// in addition to CopyToLocation
-	contents := "hello world!"
-	downloader := mocks.S3MockDownloader{
-		ExpectedContents: contents,
-	}
-	getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
-		return downloader
-	}
-
 	s3Mock1 := &mocks.S3API{}
 	s3Mock1.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(nil, nil)
 	s3Mock1.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
@@ -515,13 +478,6 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 }
 
 func (ts *fileTestSuite) TestMoveToLocationFail() {
-	contents := "hello world!"
-	downloader := mocks.S3MockDownloader{
-		ExpectedContents: contents,
-	}
-	getDownloader = func(client s3iface.S3API, partSize int64) Downloader {
-		return downloader
-	}
 
 	// If CopyToLocation fails we need to ensure DeleteObject isn't called.
 	otherFs := new(mocks.FileSystem)
