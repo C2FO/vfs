@@ -480,10 +480,6 @@ func (f *File) getCopyObjectInput(targetFile *File) (*s3.CopyObjectInput, error)
 	return nil, nil
 }
 
-func (f *File) getObjectInput() *s3.GetObjectInput {
-	return new(s3.GetObjectInput).SetBucket(f.bucket).SetKey(f.key)
-}
-
 // TODO: need to provide an implementation-agnostic container for providing config options such as SSE
 func uploadInput(f *File) *s3manager.UploadInput {
 	sseType := "AES256"
