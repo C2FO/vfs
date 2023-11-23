@@ -283,7 +283,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	// update cursorPos
-	pos, err := seekTo(f.cursorPos, offset, whence, length, f.URI())
+	pos, err := seekTo(int64(length), f.cursorPos, offset, whence)
 	if err != nil {
 		return 0, err
 	}
@@ -302,35 +302,25 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	return f.cursorPos, nil
 }
 
-func seekTo(position, offset int64, whence int, length uint64, uri string) (int64, error) {
+// seekTo is a helper function for Seek. It takes the current position, offset, whence, and length of the file
+// and returns the new position. It also checks for invalid offsets and returns an error if one is found.
+func seekTo(length, position, offset int64, whence int) (int64, error) {
 
-	seekErr := fmt.Errorf("seek: %s invalid argument", uri)
 	switch whence {
+	default:
+		return 0, vfs.ErrSeekInvalidWhence
 	case io.SeekStart:
-		// cannot seek past beginning of file
-		if offset < 0 {
-			return 0, seekErr
-		}
-
-		position = offset
+		// this actually does nothing since the new position just becomes the offset but is here for completeness
 	case io.SeekCurrent:
-		// cannot seek past beginning of file
-		if position+offset < 0 {
-			return 0, seekErr
-		}
-
-		position += offset
-
+		offset += position
 	case io.SeekEnd:
-		// cannot seek past beginning of file
-		if int64(length)+offset < 0 {
-			return 0, seekErr
-		}
-
-		position = int64(length) + offset
+		offset += length
+	}
+	if offset < 0 {
+		return 0, vfs.ErrSeekInvalidOffset
 	}
 
-	return position, nil
+	return offset, nil
 }
 
 // Write implements the standard for io.Writer. A buffer is added to with each subsequent
