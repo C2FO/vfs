@@ -341,14 +341,13 @@ func (f *File) Write(data []byte) (res int, err error) {
 		f.writeBuffer = bytes.NewBuffer([]byte{})
 	}
 
-	write, err := f.writeBuffer.Write(data)
+	written, err := f.writeBuffer.Write(data)
 	if err != nil {
 		return 0, err
 	}
-	offset := int64(write)
-	f.cursorPos += offset
+	f.cursorPos += int64(written)
 
-	return write, err
+	return written, err
 }
 
 // Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
