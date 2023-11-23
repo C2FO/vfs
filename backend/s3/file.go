@@ -9,7 +9,6 @@ import (
 	"path"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
@@ -30,15 +29,6 @@ type File struct {
 	cursorPos   int64
 	reader      io.ReadCloser
 	writeBuffer *bytes.Buffer
-}
-
-// Downloader interface needed to mock S3 Downloader data access object in tests
-type Downloader interface {
-	Download(w io.WriterAt, input *s3.GetObjectInput, options ...func(downloader *s3manager.Downloader)) (n int64, err error)
-
-	DownloadWithContext(ctx aws.Context, w io.WriterAt, input *s3.GetObjectInput, options ...func(*s3manager.Downloader)) (n int64, err error)
-
-	DownloadWithIterator(ctx aws.Context, iter s3manager.BatchDownloadIterator, opts ...func(*s3manager.Downloader)) error
 }
 
 // Info Functions
@@ -66,13 +56,10 @@ func (f *File) Path() string {
 // the object's HEAD through the s3 API.
 func (f *File) Exists() (bool, error) {
 	_, err := f.getHeadObject()
-	code := ""
 	if err != nil {
-		code = err.(awserr.Error).Code()
-	}
-	if err != nil && (code == s3.ErrCodeNoSuchKey || code == "NotFound") {
-		return false, nil
-	} else if err != nil {
+		if errors.Is(err, vfs.ErrNotExist) {
+			return false, nil
+		}
 		return false, err
 	}
 
@@ -273,6 +260,9 @@ func (f *File) Close() error {
 func (f *File) Read(p []byte) (n int, err error) {
 	// check/initialize for reader
 	r, err := f.getReader()
+	if err != nil {
+		return 0, err
+	}
 
 	read, err := r.Read(p)
 	if err != nil {
@@ -289,35 +279,15 @@ func (f *File) Read(p []byte) (n int, err error) {
 func (f *File) Seek(offset int64, whence int) (int64, error) {
 	length, err := f.Size()
 	if err != nil {
-		return 0, handleExistsError(err)
+		return 0, err
 	}
 
-	seekErr := fmt.Errorf("seek: %s invalid argument", f.URI())
-
-	switch whence {
-	case 0:
-		// cannot seek past beginning of file
-		if offset < 0 {
-			return 0, seekErr
-		}
-
-		f.cursorPos = offset
-	case 1:
-		// cannot seek past beginning of file
-		if f.cursorPos+offset < 0 {
-			return 0, seekErr
-		}
-
-		f.cursorPos += offset
-
-	case 2:
-		// cannot seek past beginning of file
-		if int64(length)+offset < 0 {
-			return 0, seekErr
-		}
-
-		f.cursorPos = int64(length) + offset
+	// update cursorPos
+	pos, err := seekTo(f.cursorPos, offset, whence, length, f.URI())
+	if err != nil {
+		return 0, err
 	}
+	f.cursorPos = pos
 
 	// invalidate reader
 	if f.reader != nil {
@@ -330,6 +300,37 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	return f.cursorPos, nil
+}
+
+func seekTo(position, offset int64, whence int, length uint64, uri string) (int64, error) {
+
+	seekErr := fmt.Errorf("seek: %s invalid argument", uri)
+	switch whence {
+	case io.SeekStart:
+		// cannot seek past beginning of file
+		if offset < 0 {
+			return 0, seekErr
+		}
+
+		position = offset
+	case io.SeekCurrent:
+		// cannot seek past beginning of file
+		if position+offset < 0 {
+			return 0, seekErr
+		}
+
+		position += offset
+
+	case io.SeekEnd:
+		// cannot seek past beginning of file
+		if int64(length)+offset < 0 {
+			return 0, seekErr
+		}
+
+		position = int64(length) + offset
+	}
+
+	return position, nil
 }
 
 // Write implements the standard for io.Writer. A buffer is added to with each subsequent
@@ -415,7 +416,10 @@ func (f *File) getHeadObject() (*s3.HeadObjectOutput, error) {
 	if err != nil {
 		return nil, err
 	}
-	return client.HeadObject(headObjectInput)
+
+	head, err := client.HeadObject(headObjectInput)
+
+	return head, handleExistsError(err)
 }
 
 // For copy from S3-to-S3 when credentials are the same between source and target, return *s3.CopyObjectInput or error

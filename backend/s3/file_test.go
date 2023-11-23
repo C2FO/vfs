@@ -3,6 +3,7 @@ package s3
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -14,7 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -27,7 +27,6 @@ import (
 
 type fileTestSuite struct {
 	suite.Suite
-	getDownloader func(client s3iface.S3API, partSize int64) Downloader
 }
 
 var (
@@ -74,6 +73,18 @@ func (ts *fileTestSuite) TestRead() {
 	closeErr := file.Close()
 	ts.NoError(closeErr, "no error expected")
 	ts.Equal(contents, localFile.String(), "Copying an s3 file to a buffer should fill buffer with file's contents")
+
+	// test read with error
+	s3apiMock.
+		On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).
+		Return(nil, errors.New("some error")).
+		Once()
+	_, copyErr = io.Copy(localFile, file)
+	ts.Error(copyErr, "error expected")
+	ts.EqualError(copyErr, "some error", "error expected")
+	closeErr = file.Close()
+	ts.NoError(closeErr, "no error expected")
+
 }
 
 // TODO: Write on Close() (actual s3 calls wait until file is closed to be made.)
@@ -88,46 +99,140 @@ func (ts *fileTestSuite) TestWrite() {
 	ts.Nil(err, "Error should be nil when calling Write")
 }
 
-func (ts *fileTestSuite) TestSeek() {
+// func (ts *fileTestSuite) TestSeek() {
+// 	contents := "hello world!"
+// 	file, err := fs.NewFile("bucket", "/tmp/hello.txt")
+// 	ts.NoError(err, "Shouldn't fail creating new file")
+//
+// 	// setup mock for Size(getHeadObject)
+// 	headOutput := &s3.HeadObjectOutput{
+// 		ContentLength: aws.Int64(12),
+// 	}
+// 	s3apiMock.
+// 		On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).
+// 		Return(headOutput, nil).
+// 		Times(4)
+//
+// 	// test seek to 6,0
+// 	pos, err := file.Seek(6, 0)
+// 	ts.NoError(err, "no error expected")
+// 	ts.Equal(int64(6), pos, "Seeking to 6 should return 6 as expected")
+//
+// 	var localFile = bytes.NewBuffer([]byte{})
+//
+// 	s3apiMock.
+// 		On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).
+// 		Return(&s3.GetObjectOutput{Body: io.NopCloser(strings.NewReader("world!"))}, nil).
+// 		Once()
+// 	_, err = io.Copy(localFile, file)
+// 	ts.NoError(err, "no error expected")
+// 	ts.Equal("world!", localFile.String(), "Seeking should download the file and move the cursor as expected")
+//
+// 	// test seek back to 0,0
+// 	localFile = bytes.NewBuffer([]byte{})
+// 	pos, err = file.Seek(0, 0)
+// 	ts.NoError(err, "no error expected")
+// 	ts.Equal(int64(0), pos, "Seeking to 0 should return 0 as expected")
+//
+// 	s3apiMock.
+// 		On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).
+// 		Return(&s3.GetObjectOutput{Body: io.NopCloser(strings.NewReader(contents))}, nil).
+// 		Once()
+// 	_, err = io.Copy(localFile, file)
+// 	ts.NoError(err, "no error expected")
+// 	ts.Equal(contents, localFile.String(), "Subsequent calls to seek work on temp file as expected")
+//
+// 	// test seek to 3,1
+// 	localFile = bytes.NewBuffer([]byte{})
+// 	pos, err = file.Seek(6, 0)
+// 	ts.NoError(err, "no error expected")
+// 	pos, err = file.Seek(3, 1)
+// 	ts.NoError(err, "no error expected")
+// 	ts.Equal(int64(12), pos, "Seeking to 12 should return 12 as expected")
+//
+// 	s3apiMock.
+// 		On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).
+// 		Return(&s3.GetObjectOutput{Body: io.NopCloser(strings.NewReader(""))}, nil).
+// 		Once()
+// 	_, err = io.Copy(localFile, file)
+// 	ts.NoError(err, "no error expected")
+// 	ts.Equal("", localFile.String(), "Seeking to current position should return empty string")
+//
+// 	// test seek to 0,2
+// 	localFile = bytes.NewBuffer([]byte{})
+// 	pos, err = file.Seek(0, 2)
+// 	ts.NoError(err, "no error expected")
+// 	ts.Equal(int64(12), pos, "Seeking to 12 should return 12 as expected")
+//
+// 	s3apiMock.
+// 		On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).
+// 		Return(&s3.GetObjectOutput{Body: io.NopCloser(strings.NewReader(""))}, nil).
+// 		Once()
+// 	_, err = io.Copy(localFile, file)
+// 	ts.NoError(err, "no error expected")
+// 	ts.Equal("", localFile.String(), "Seeking to end of file should return empty string")
+//
+// 	err = file.Close()
+// 	ts.NoError(err, "no error expected")
+// }
+
+func (ts *fileTestSuite) TestSeek2() {
 	contents := "hello world!"
 	file, err := fs.NewFile("bucket", "/tmp/hello.txt")
 	ts.NoError(err, "Shouldn't fail creating new file")
-	headOutput := &s3.HeadObjectOutput{
-		ContentLength: aws.Int64(12),
+
+	// setup mock for Size(getHeadObject)
+	headOutput := &s3.HeadObjectOutput{ContentLength: aws.Int64(12)}
+
+	testCases := []struct {
+		seekOffset  int64
+		seekWhence  int
+		expectedPos int64
+		expectedErr bool
+		readContent string
+	}{
+		{6, 0, 6, false, "world!"},
+		{0, 0, 0, false, contents},
+		{0, 2, 12, false, ""},
+		{-1, 0, 0, true, ""}, // Seek before start
 	}
+
+	for _, tc := range testCases {
+		s3apiMock.
+			On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).
+			Return(headOutput, nil).
+			Once()
+		localFile := bytes.NewBuffer([]byte{})
+		pos, err := file.Seek(tc.seekOffset, tc.seekWhence)
+
+		if tc.expectedErr {
+			ts.Error(err, "Expected error for seek offset %d and whence %d", tc.seekOffset, tc.seekWhence)
+		} else {
+			ts.NoError(err, "No error expected for seek offset %d and whence %d", tc.seekOffset, tc.seekWhence)
+			ts.Equal(tc.expectedPos, pos, "Expected position does not match for seek offset %d and whence %d", tc.seekOffset, tc.seekWhence)
+
+			// Mock the GetObject call
+			s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).
+				Return(&s3.GetObjectOutput{Body: io.NopCloser(strings.NewReader(tc.readContent))}, nil).
+				Once()
+
+			_, err = io.Copy(localFile, file)
+			ts.NoError(err, "No error expected during io.Copy")
+			ts.Equal(tc.readContent, localFile.String(), "Content does not match after seek and read")
+		}
+	}
+
+	// test fails with Size error
 	s3apiMock.
 		On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).
-		Return(headOutput, nil).
-		Twice()
-	pos, seekErr := file.Seek(6, 0)
-	ts.NoError(seekErr, "no error expected")
-	ts.Equal(int64(6), pos, "Seeking to 6 should return 6 as expected")
-
-	var localFile = bytes.NewBuffer([]byte{})
-
-	s3apiMock.
-		On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).
-		Return(&s3.GetObjectOutput{Body: io.NopCloser(strings.NewReader("world!"))}, nil).
+		Return(nil, awserr.New("NotFound", "file does not exist", errors.New("file not found"))).
 		Once()
-	_, copyErr := io.Copy(localFile, file)
-	ts.NoError(copyErr, "no error expected")
-	ts.Equal("world!", localFile.String(), "Seeking should download the file and move the cursor as expected")
+	_, err = file.Seek(0, 0)
+	ts.Require().Error(err, "error expected")
+	ts.Require().ErrorIs(err, vfs.ErrNotExist, "error expected")
 
-	localFile = bytes.NewBuffer([]byte{})
-	pos, seekErr2 := file.Seek(0, 0)
-	ts.NoError(seekErr2, "no error expected")
-	ts.Equal(int64(0), pos, "Seeking to 0 should return 0 as expected")
-
-	s3apiMock.
-		On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).
-		Return(&s3.GetObjectOutput{Body: io.NopCloser(strings.NewReader(contents))}, nil).
-		Once()
-	_, copyErr2 := io.Copy(localFile, file)
-	ts.NoError(copyErr2, "no error expected")
-	ts.Equal(contents, localFile.String(), "Subsequent calls to seek work on temp file as expected")
-
-	closeErr := file.Close()
-	ts.NoError(closeErr, "no error expected")
+	err = file.Close()
+	ts.NoError(err, "Closing file should not produce an error")
 }
 
 func (ts *fileTestSuite) TestGetLocation() {
@@ -680,6 +785,53 @@ func (ts *fileTestSuite) TestCloseWithWrite() {
 	err = file.Close()
 	ts.Error(err, "file doesn't exists , retired 5 times ")
 
+}
+
+// TestSeekTo tests the seekTo function with various cases
+func (ts *fileTestSuite) TestSeekTo() {
+	uri := "s3://bucket/path/to/file.txt"
+	invalidErr := fmt.Errorf("seek: %s invalid argument", uri)
+	testCases := []struct {
+		position         int64
+		offset           int64
+		whence           int
+		length           uint64
+		uri              string
+		expectedPosition int64
+		expectError      error
+	}{
+		// Test seeking from start
+		{0, 10, io.SeekStart, 100, uri, 10, nil},
+		{0, -10, io.SeekStart, 100, uri, 0, invalidErr}, // Negative offset from start
+		{0, 110, io.SeekStart, 100, uri, 110, nil},      // Offset beyond length
+
+		// Test seeking from current position
+		{50, 10, io.SeekCurrent, 100, uri, 60, nil},
+		{50, -60, io.SeekCurrent, 100, uri, 0, invalidErr}, // Moving before start
+		{50, 60, io.SeekCurrent, 100, uri, 110, nil},       // Moving beyond length
+
+		// Test seeking from end
+		{0, -10, io.SeekEnd, 100, uri, 90, nil},
+		{0, -110, io.SeekEnd, 100, uri, 0, invalidErr}, // Moving before start
+		{0, 10, io.SeekEnd, 100, uri, 110, nil},        // Moving beyond length
+
+		// Additional edge cases
+		{0, 0, io.SeekStart, 100, uri, 0, nil},       // No movement from start
+		{100, 0, io.SeekCurrent, 100, uri, 100, nil}, // No movement from current
+		{0, 0, io.SeekEnd, 100, uri, 100, nil},       // No movement from end
+	}
+
+	for _, tc := range testCases {
+		result, err := seekTo(tc.position, tc.offset, tc.whence, tc.length, tc.uri)
+
+		if tc.expectError != nil {
+			ts.Error(err, "URI: %s", tc.uri)
+			ts.EqualError(err, tc.expectError.Error(), "URI: %s", tc.uri)
+		} else {
+			ts.NoError(err, "URI: %s", tc.uri)
+			ts.Equal(tc.expectedPosition, result, "URI: %s", tc.uri)
+		}
+	}
 }
 
 func TestFile(t *testing.T) {
