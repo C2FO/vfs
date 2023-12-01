@@ -17,9 +17,13 @@ import (
 const Scheme = "s3"
 const name = "AWS S3"
 
+type S3API interface {
+	s3iface.S3API
+}
+
 // FileSystem implements vfs.FileSystem for the S3 file system.
 type FileSystem struct {
-	client  s3iface.S3API
+	client  S3API
 	options vfs.Options
 }
 
@@ -79,7 +83,7 @@ func (fs *FileSystem) Scheme() string {
 
 // Client returns the underlying aws s3 client, creating it, if necessary
 // See Overview for authentication resolution
-func (fs *FileSystem) Client() (s3iface.S3API, error) {
+func (fs *FileSystem) Client() (S3API, error) {
 	if fs.client == nil {
 		if fs.options == nil {
 			fs.options = Options{}
@@ -112,14 +116,14 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 // WithClient passes in an s3 client and returns the file system (chainable)
 func (fs *FileSystem) WithClient(client interface{}) *FileSystem {
 	switch client.(type) {
-	case *s3.S3, s3iface.S3API:
-		fs.client = client.(s3iface.S3API)
+	case *s3.S3, S3API:
+		fs.client = client.(S3API)
 		fs.options = nil
 	}
 	return fs
 }
 
-// NewFileSystem initializer for FileSystem struct accepts aws-sdk s3iface.S3API client and returns Filesystem or error.
+// NewFileSystem initializer for FileSystem struct accepts aws-sdk S3API client and returns Filesystem or error.
 func NewFileSystem() *FileSystem {
 	return &FileSystem{}
 }

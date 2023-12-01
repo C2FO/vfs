@@ -13,7 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 )
 
 // Options holds s3-specific options.  Currently only client options are used.
@@ -33,7 +32,7 @@ type Options struct {
 }
 
 // getClient setup S3 client
-func getClient(opt Options) (s3iface.S3API, error) {
+func getClient(opt Options) (S3API, error) {
 
 	// setup default config
 	awsConfig := defaults.Config()

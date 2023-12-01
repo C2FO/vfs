@@ -19,7 +19,8 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v6"
-	"github.com/c2fo/vfs/v6/mocks"
+	"github.com/c2fo/vfs/v6/backend/s3/mocks"
+	vfsmocks "github.com/c2fo/vfs/v6/mocks"
 	"github.com/c2fo/vfs/v6/options/delete"
 	"github.com/c2fo/vfs/v6/utils"
 )
@@ -244,7 +245,7 @@ func (ts *fileTestSuite) TestCopyToFile() {
 }
 
 func (ts *fileTestSuite) TestEmptyCopyToFile() {
-	targetFile := &mocks.File{}
+	targetFile := &vfsmocks.File{}
 	targetFile.On("Write", mock.Anything).Return(0, nil)
 	targetFile.On("Close").Return(nil)
 	s3apiMock.
@@ -480,7 +481,7 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 		bucket: "newBucket",
 		key:    "/new/file/path/hello.txt",
 	}
-	location := new(mocks.Location)
+	location := new(vfsmocks.Location)
 	location.On("NewFile", mock.Anything).Return(f, nil)
 
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
@@ -500,7 +501,7 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	ts.NoError(err, "no error expected")
 
 	// test non-scheme MoveToLocation
-	mockLocation := new(mocks.Location)
+	mockLocation := new(vfsmocks.Location)
 	mockLocation.On("NewFile", mock.Anything).
 		Return(&File{fileSystem: &FileSystem{client: s3Mock1}, bucket: "bucket", key: "/new/hello.txt"}, nil)
 
@@ -524,8 +525,8 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 func (ts *fileTestSuite) TestMoveToLocationFail() {
 
 	// If CopyToLocation fails we need to ensure DeleteObject isn't called.
-	otherFs := new(mocks.FileSystem)
-	location := new(mocks.Location)
+	otherFs := new(vfsmocks.FileSystem)
+	location := new(vfsmocks.Location)
 	location.On("NewFile", mock.Anything).Return(&File{fileSystem: &fs, bucket: "bucket", key: "/new/hello.txt"}, nil)
 
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(nil, errors.New("didn't copy, oh noes"))
