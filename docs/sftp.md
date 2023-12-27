@@ -45,7 +45,7 @@ sftp can be augmented with some implementation-specific methods. Backend returns
 [vfs.FileSystem](../README.md#type-filesystem) interface so it would have to be cast as [sftp.FileSystem](#type-filesystem) to use
 them.
 
-These methods are chainable: 
+These methods are chainable:
 
 * `(*FileSystem) WithClient(client interface{})*FileSystem`
 * `(*FileSystem) WithOptions(opts vfs.Options) *FileSystem`
@@ -54,7 +54,7 @@ These methods are chainable:
       func DoSomething() {
 
     	  // cast if fs was created using backend.Backend().  Not necessary if created directly from sftp.NewFilesystem().
-    	  fs, err := backend.Backend(sftp.Scheme)
+    	  fs := backend.Backend(sftp.Scheme)
     	  fs = fs.(*sftp.Filesystem)
 
     	  // to pass specific client
@@ -63,9 +63,9 @@ These methods are chainable:
     		  Auth:            []ssh.AuthMethod{ssh.Password("mypassword")},
     		  HostKeyCallback: ssh.InsecureIgnoreHostKey,
     	  })
-    	  #handle error
+    	  // handle error
     	  client, err := _sftp.NewClient(sshClient)
-    	  #handle error
+    	  // handle error
 
     	  fs = fs.WithClient(client)
 
@@ -80,16 +80,16 @@ These methods are chainable:
     	  )
 
     	  location, err := fs.NewLocation("myuser@server.com:22", "/some/path/")
-    	  #handle error
+    	  // handle error
 
     	  file := location.NewFile("myfile.txt")
-    	  #handle error
+    	  // handle error
 
     	  _, err := file.Write([]bytes("some text")
-    	  #handle error
+    	  // handle error
 
     	  err := file.Close()
-    	  #handle error
+    	  // handle error
 
       }
 ```
@@ -154,9 +154,18 @@ testing but should not be used in production.
 
 ### Other Options
 
-Passing in multiple key exchange algorithms is supported - these are specified as a slice.
-```
-"keyExchanges":["diffie-hellman-group-a256", "ecdh-sha2-nistp256"]
+Passing in multiple host key algorithms, key exchange algorithms is supported -
+these are specified as string slices. Example:
+```go
+    fs = fs.WithOptions(
+    	sftp.Options{
+    		KeyExchanges: []string{ "diffie-hellman-group-a256", "ecdh-sha2-nistp256" },
+    		Ciphers: []string{ "aes256-ctr", "aes192-ctr", "aes128-ctr" },
+    		MACs: []string{ "hmac-sha2-256", "hmac-sha2-512" },
+    		HostKeyAlgorithms: []string{ "ssh-rsa", "ssh-ed25519" },
+    		// other settings
+    	},
+      )
 ```
 
 ### AutoDisconnect
@@ -176,29 +185,29 @@ Any server request action using the same underlying FileSystem (and therefore sf
 should be the most desirable behavior.
 
 ```go
-func doSFTPStuff() {
-    fs := sftp.NewFilesystem()
-    loc, err := fs.NewLocation("myuser@server.com:22", "/some/path/")
-    file1, _ := loc.NewFile("file1.txt")
-    file2, _ := loc.NewFile("file2.txt")
-    file1.Touch()                               // "touches" file and starts disconnect timer (default: 10sec)
-    _, _ := loc.List()                          // stops timer, does location listing, resets timer to 10 seconds
-    file2.Touch()                               // stops timer, "touches" file2, resets timer to 10 seconds
-    time.Sleep(time.Duration(15) * time.Second) // pause for 15 seconds, disconnects for server after 10 seconds
-    _, _ := loc.List()                          // reconnects, does location listing, starts new disconnect timer
-    return
-}
+    func doSFTPStuff() {
+    	fs := sftp.NewFilesystem()
+    	loc, err := fs.NewLocation("myuser@server.com:22", "/some/path/")
+    	file1, _ := loc.NewFile("file1.txt")
+    	file2, _ := loc.NewFile("file2.txt")
+    	file1.Touch()                               // "touches" file and starts disconnect timer (default: 10sec)
+    	_, _ := loc.List()                          // stops timer, does location listing, resets timer to 10 seconds
+    	file2.Touch()                               // stops timer, "touches" file2, resets timer to 10 seconds
+    	time.Sleep(time.Duration(15) * time.Second) // pause for 15 seconds, disconnects for server after 10 seconds
+    	_, _ := loc.List()                          // reconnects, does location listing, starts new disconnect timer
+    	return
+    }
 
-func main {
-	// call our sftp function
-	doSFTPStuff()
-	// even though the vfs sftp objects have fallen out of scope, our connection remains UNTIL the timer counts down
-	
-	// do more work (that take longer than 10 seconds
-	doOtherTimeConsumingStuff()
-	
-	// at some point during the above, the sftp connection will have closed
-}
+    func main {
+    	// call our sftp function
+    	doSFTPStuff()
+    	// even though the vfs sftp objects have fallen out of scope, our connection remains UNTIL the timer counts down
+
+    	// do more work (that take longer than 10 seconds
+    	doOtherTimeConsumingStuff()
+
+    	// at some point during the above, the sftp connection will have closed
+    }
 ```
 
 NOTE: AutoDisconnect has nothing to do with "keep alive".  Here we're only concerned with releasing resources, not keeping
@@ -224,6 +233,7 @@ type Client interface {
 	Remove(path string) error
 	Rename(oldname, newname string) error
 	Stat(p string) (os.FileInfo, error)
+	Close() error
 }
 ```
 
@@ -265,7 +275,7 @@ file's path at the given location.
 #### func (*File) Delete
 
 ```go
-func (f *File) Delete() error
+func (f *File) Delete(opts ...options.DeleteOption) error
 ```
 Delete removes the remote file. Error is returned, if any.
 
@@ -325,7 +335,7 @@ Name returns the path portion of the file's path property. IE: "file.txt" of
 func (f *File) Path() string
 ```
 Path return the directory portion of the file's path. IE: "path/to" of
-"sftp://someuser@host.com/some/path/to/file.txt
+"sftp://someuser@host.com/some/path/to/file.txt"
 
 #### func (*File) Read
 
@@ -411,14 +421,14 @@ Name returns "Secure File Transfer Protocol"
 #### func (*FileSystem) NewFile
 
 ```go
-func (fs *FileSystem) NewFile(authority string, filePath string) (vfs.File, error)
+func (fs *FileSystem) NewFile(authority, filePath string) (vfs.File, error)
 ```
 NewFile function returns the SFTP implementation of vfs.File.
 
 #### func (*FileSystem) NewLocation
 
 ```go
-func (fs *FileSystem) NewLocation(authority string, locPath string) (vfs.Location, error)
+func (fs *FileSystem) NewLocation(authority, locPath string) (vfs.Location, error)
 ```
 NewLocation function returns the SFTP implementation of [vfs.Location](../README.md#type-location).
 
@@ -474,7 +484,7 @@ implementation there are no errors.
 #### func (*Location) DeleteFile
 
 ```go
-func (l *Location) DeleteFile(fileName string) error
+func (l *Location) DeleteFile(fileName string, opts ...options.DeleteOption) error
 ```
 DeleteFile removes the file at fileName path.
 
@@ -577,9 +587,12 @@ type Options struct {
 	KnownHostsFile     string              `json:"knownHostsFile,omitempty"` // env var VFS_SFTP_KNOWN_HOSTS_FILE
 	KnownHostsString   string              `json:"knownHostsString,omitempty"`
 	KeyExchanges       []string            `json:"keyExchanges,omitempty"`
-	KnownHostsCallback ssh.HostKeyCallback //env var VFS_SFTP_INSECURE_KNOWN_HOSTS
-	Retry              vfs.Retry
-	MaxRetries         int
+	Ciphers            []string            `json:"cihers,omitempty"`
+	MACs               []string            `json:"macs,omitempty"`
+	HostKeyAlgorithms  []string            `json:"hostKeyAlgorithms,omitempty"`
+	AutoDisconnect     int                 `json:"autoDisconnect,omitempty"` // seconds before disconnecting. default: 10
+	KnownHostsCallback ssh.HostKeyCallback // env var VFS_SFTP_INSECURE_KNOWN_HOSTS
+	FileBufferSize     int                 // Buffer Size In Bytes Used with utils.TouchCopyBuffered
 }
 ```
 
@@ -593,4 +606,5 @@ type ReadWriteSeekCloser interface {
 	io.Closer
 }
 ```
+
 ReadWriteSeekCloser is a read write seek closer interface representing capabilities needed from std libs sftp File struct.
