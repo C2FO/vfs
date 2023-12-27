@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Fixed
 - fixed #145 - Remove use of local temp file when reading/seeking from s3 files.  This should improve performance by allowing streaming reads from s3 files.
+### Added
+- fixes #149 - Add overrideable default HostKeyAlgorithms, Ciphers, MACs, and KeyExchanges
 
 ## [6.9.1] - 2023-11-21
 ### Fixed
