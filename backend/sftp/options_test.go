@@ -473,6 +473,79 @@ func (o *optionsSuite) TestMarshalOptions() {
 	o.Equal(pw, optStruct.Password, "Password check")
 }
 
+func (o *optionsSuite) TestGetSSHConfig() {
+	tests := []struct {
+		name   string
+		opts   Options
+		expect *ssh.ClientConfig
+	}{
+		{
+			name:   "DefaultConfig",
+			opts:   Options{},
+			expect: defaultSSHConfig,
+		},
+		{
+			name: "CustomHostKeyAlgorithms",
+			opts: Options{
+				HostKeyAlgorithms: []string{"ssh-rsa", "ecdsa-sha2-nistp256"},
+			},
+			expect: &ssh.ClientConfig{
+				HostKeyAlgorithms: []string{"ssh-rsa", "ecdsa-sha2-nistp256"},
+				Config:            defaultSSHConfig.Config,
+			},
+		},
+		{
+			name: "CustomCiphers",
+			opts: Options{
+				Ciphers: []string{"aes128-ctr", "aes192-ctr", "aes256-ctr"},
+			},
+			expect: &ssh.ClientConfig{
+				HostKeyAlgorithms: defaultSSHConfig.HostKeyAlgorithms,
+				Config: ssh.Config{
+					Ciphers:      []string{"aes128-ctr", "aes192-ctr", "aes256-ctr"},
+					MACs:         defaultSSHConfig.Config.MACs,
+					KeyExchanges: defaultSSHConfig.Config.KeyExchanges,
+				},
+			},
+		},
+		{
+			name: "CustomMACs",
+			opts: Options{
+				MACs: []string{""},
+			},
+			expect: &ssh.ClientConfig{
+				HostKeyAlgorithms: defaultSSHConfig.HostKeyAlgorithms,
+				Config: ssh.Config{
+					Ciphers:      defaultSSHConfig.Config.Ciphers,
+					MACs:         []string{""},
+					KeyExchanges: defaultSSHConfig.Config.KeyExchanges,
+				},
+			},
+		},
+		{
+			name: "CustomKeyExchanges",
+			opts: Options{
+				KeyExchanges: []string{"diffie-hellman-group-exchange-sha256", "ecdh-sha2-nistp256"},
+			},
+			expect: &ssh.ClientConfig{
+				HostKeyAlgorithms: defaultSSHConfig.HostKeyAlgorithms,
+				Config: ssh.Config{
+					Ciphers:      defaultSSHConfig.Config.Ciphers,
+					MACs:         defaultSSHConfig.Config.MACs,
+					KeyExchanges: []string{"diffie-hellman-group-exchange-sha256", "ecdh-sha2-nistp256"},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tests { //nolint:gocritic // rangeValCopy
+		o.Run(tc.name, func() {
+			result := getSShConfig(tc.opts)
+			o.Equal(tc.expect, result)
+		})
+	}
+}
+
 func TestUtils(t *testing.T) {
 	suite.Run(t, new(optionsSuite))
 }

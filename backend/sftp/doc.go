@@ -129,9 +129,18 @@ your info (man-in-the-middle attack).  Handling for this can be accomplished via
 
 # OTHER OPTIONS
 
-Passing in multiple key exchange algorithms is supported - these are specified as a slice.
+Passing in multiple host key algorithms, key exchange algorithms is supported - these are specified as string slices.
 Example:
-`"keyExchanges":["diffie-hellman-group-a256", "ecdh-sha2-nistp256"]`
+
+	fs = fs.WithOptions(
+		sftp.Options{
+			KeyExchanges: []string{ "diffie-hellman-group-a256", "ecdh-sha2-nistp256" },
+			Ciphers: []string{ "aes256-ctr", "aes192-ctr", "aes128-ctr" },
+			MACs: []string{ "hmac-sha2-256", "hmac-sha2-512" },
+			HostKeyAlgorithms: []string{ "ssh-rsa", "ssh-ed25519" },
+			// other settings
+		},
+	  )
 
 # AutoDisconnect
 

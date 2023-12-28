@@ -25,9 +25,59 @@ type Options struct {
 	KnownHostsFile     string              `json:"knownHostsFile,omitempty"` // env var VFS_SFTP_KNOWN_HOSTS_FILE
 	KnownHostsString   string              `json:"knownHostsString,omitempty"`
 	KeyExchanges       []string            `json:"keyExchanges,omitempty"`
+	Ciphers            []string            `json:"cihers,omitempty"`
+	MACs               []string            `json:"macs,omitempty"`
+	HostKeyAlgorithms  []string            `json:"hostKeyAlgorithms,omitempty"`
 	AutoDisconnect     int                 `json:"autoDisconnect,omitempty"` // seconds before disconnecting. default: 10
 	KnownHostsCallback ssh.HostKeyCallback // env var VFS_SFTP_INSECURE_KNOWN_HOSTS
 	FileBufferSize     int                 // Buffer Size In Bytes Used with utils.TouchCopyBuffered
+}
+
+var defaultSSHConfig = &ssh.ClientConfig{
+	HostKeyAlgorithms: []string{
+		"ssh-ed25519",
+		"ecdsa-sha2-nistp256",
+		"ecdsa-sha2-nistp384",
+		"ecdsa-sha2-nistp521",
+		"ssh-rsa",
+		"rsa-sha2-256",
+		"rsa-sha2-512",
+		"sk-ssh-ed25519@openssh.com",
+		"sk-ecdsa-sha2-nistp256@openssh.com",
+	},
+	Config: ssh.Config{
+		KeyExchanges: []string{
+			"curve25519-sha256",
+			"curve25519-sha256@libssh.org",
+			"ecdh-sha2-nistp256",
+			"ecdh-sha2-nistp384",
+			"ecdh-sha2-nistp521",
+			"diffie-hellman-group-exchange-sha256",
+			"diffie-hellman-group16-sha512",
+			"diffie-hellman-group18-sha512",
+			"diffie-hellman-group14-sha256",
+			"diffie-hellman-group14-sha1",
+		},
+		Ciphers: []string{
+			"aes128-gcm@openssh.com",
+			"aes256-gcm@openssh.com",
+			"chacha20-poly1305@openssh.com",
+			"aes256-ctr",
+			"aes192-ctr",
+			"aes128-ctr",
+			"aes256-cbc",
+			"aes192-cbc",
+			"aes128-cbc",
+			"3des-cbc",
+		},
+		MACs: []string{
+			"hmac-sha2-256-etm@openssh.com",
+			"hmac-sha2-512-etm@openssh.com",
+			"hmac-sha2-256",
+			"hmac-sha2-512",
+			"hmac-ripemd160",
+		},
+	},
 }
 
 // Note that as of 1.12, OPENSSH private key format is not supported when encrypt (with passphrase).
@@ -47,19 +97,13 @@ func getClient(authority utils.Authority, opts Options) (Client, io.Closer, erro
 	if err != nil {
 		return nil, nil, err
 	}
-	// To avoid ssh: handshake failed: ssh: no common algorithm for key exchange;
-	// client offered: [curve25519-sha256@libssh.org ecdh-sha2-nistp256 ecdh-sha2-nistp384 ecdh-sha2-	nistp521 diffie-hellman-group14-sha1],
-	// server offered: [diffie-hellman-group-exchange-sha256 ]
-	// Now receive KeyExchange algorithm as an option
-	sshConfig := ssh.Config{KeyExchanges: opts.KeyExchanges}
 
 	// Define the Client Config
-	config := &ssh.ClientConfig{
-		User:            authority.UserInfo().Username(),
-		Auth:            authMethods,
-		HostKeyCallback: hostKeyCallback,
-		Config:          sshConfig,
-	}
+	config := getSShConfig(opts)
+	config.User = authority.UserInfo().Username()
+	config.Auth = authMethods
+	config.HostKeyCallback = hostKeyCallback
+
 	// default to port 22
 	host := fmt.Sprintf("%s:%d", authority.Host(), authority.Port())
 	if authority.Port() == 0 {
@@ -78,6 +122,28 @@ func getClient(authority utils.Authority, opts Options) (Client, io.Closer, erro
 	}
 
 	return sftpClient, sshConn, nil
+}
+
+// getSShConfig gets ssh config from Options
+func getSShConfig(opts Options) *ssh.ClientConfig {
+	// copy default config
+	config := *defaultSSHConfig
+
+	// override default config with any user-defined config
+	if opts.HostKeyAlgorithms != nil {
+		config.HostKeyAlgorithms = opts.HostKeyAlgorithms
+	}
+	if opts.Ciphers != nil {
+		config.Config.Ciphers = opts.Ciphers
+	}
+	if opts.KeyExchanges != nil {
+		config.Config.KeyExchanges = opts.KeyExchanges
+	}
+	if opts.MACs != nil {
+		config.Config.MACs = opts.MACs
+	}
+
+	return &config
 }
 
 // getHostKeyCallback gets host key callback for all known_hosts files
