@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ## [6.11.0] - 2024-01-22
+### Fixed
+- Fixed #152 bug where s3 backend failed to read empty files
+
+## [6.11.0] - 2024-01-22
 ### Added
 - Added support for hmac-sha1 and hmac-sha1-96 and removed hmac-ripemd160 
 

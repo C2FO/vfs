@@ -64,6 +64,10 @@ func (ts *fileTestSuite) TestRead() {
 
 	var localFile = bytes.NewBuffer([]byte{})
 	s3apiMock.
+		On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).
+		Return(&s3.HeadObjectOutput{ContentLength: aws.Int64(12)}, nil).
+		Once()
+	s3apiMock.
 		On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).
 		Return(&s3.GetObjectOutput{Body: io.NopCloser(strings.NewReader(contents))}, nil).
 		Once()
@@ -74,6 +78,10 @@ func (ts *fileTestSuite) TestRead() {
 	ts.Equal(contents, localFile.String(), "Copying an s3 file to a buffer should fill buffer with file's contents")
 
 	// test read with error
+	s3apiMock.
+		On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).
+		Return(&s3.HeadObjectOutput{ContentLength: aws.Int64(12)}, nil).
+		Once()
 	s3apiMock.
 		On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).
 		Return(nil, errors.New("some error")).
@@ -135,6 +143,10 @@ func (ts *fileTestSuite) TestSeek() {
 			ts.Equal(tc.expectedPos, pos, "Expected position does not match for seek offset %d and whence %d", tc.seekOffset, tc.seekWhence)
 
 			// Mock the GetObject call
+			s3apiMock.
+				On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).
+				Return(headOutput, nil).
+				Once()
 			s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).
 				Return(&s3.GetObjectOutput{Body: io.NopCloser(strings.NewReader(tc.readContent))}, nil).
 				Once()
@@ -235,6 +247,10 @@ func (ts *fileTestSuite) TestEmptyCopyToFile() {
 	targetFile := &mocks.File{}
 	targetFile.On("Write", mock.Anything).Return(0, nil)
 	targetFile.On("Close").Return(nil)
+	s3apiMock.
+		On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).
+		Return(&s3.HeadObjectOutput{ContentLength: aws.Int64(0)}, nil).
+		Once()
 	s3apiMock.
 		On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).
 		Return(&s3.GetObjectOutput{Body: io.NopCloser(strings.NewReader(""))}, nil).

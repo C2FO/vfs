@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/url"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -535,26 +536,35 @@ func waitUntilFileExists(file vfs.File, retries int) error {
 
 func (f *File) getReader() (io.ReadCloser, error) {
 	if f.reader == nil {
-		// Create the request to get the object
-		input := new(s3.GetObjectInput).
-			SetBucket(f.bucket).
-			SetKey(f.key).
-			SetRange(fmt.Sprintf("bytes=%d-", f.cursorPos))
-
-		// Get the client
-		client, err := f.fileSystem.Client()
+		sz, err := f.Size()
 		if err != nil {
 			return nil, err
 		}
+		if sz == 0 {
+			f.reader = io.NopCloser(strings.NewReader(""))
+		} else {
 
-		// Request the object
-		result, err := client.GetObject(input)
-		if err != nil {
-			return nil, err
+			// Create the request to get the object
+			input := new(s3.GetObjectInput).
+				SetBucket(f.bucket).
+				SetKey(f.key).
+				SetRange(fmt.Sprintf("bytes=%d-", f.cursorPos))
+
+			// Get the client
+			client, err := f.fileSystem.Client()
+			if err != nil {
+				return nil, err
+			}
+
+			// Request the object
+			result, err := client.GetObject(input)
+			if err != nil {
+				return nil, err
+			}
+
+			// Set the reader to the body of the object
+			f.reader = result.Body
 		}
-
-		// Set the reader to the body of the object
-		f.reader = result.Body
 	}
 	return f.reader, nil
 }
