@@ -18,6 +18,8 @@ type File struct {
 	path       string
 	sftpfile   ReadWriteSeekCloser
 	opener     fileOpener
+	seekCalled bool
+	readCalled bool
 }
 
 // this type allow for injecting a mock fileOpener function
@@ -243,6 +245,9 @@ func (f *File) Close() error {
 	f.fileSystem.connTimerStop()
 	defer f.fileSystem.connTimerStart()
 
+	f.seekCalled = false
+	f.readCalled = false
+
 	if f.sftpfile != nil {
 		err := f.sftpfile.Close()
 		if err != nil {
@@ -260,10 +265,12 @@ func (f *File) Read(p []byte) (n int, err error) {
 	f.fileSystem.connTimerStop()
 	defer f.fileSystem.connTimerStart()
 
-	sftpfile, err := f.openFile(os.O_RDONLY)
+	sftpfile, err := f.openFile(os.O_RDWR)
 	if err != nil {
 		return 0, err
 	}
+
+	f.readCalled = true
 
 	return sftpfile.Read(p)
 }
@@ -279,6 +286,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		return 0, err
 	}
 
+	f.seekCalled = true
 	return sftpfile.Seek(offset, whence)
 }
 
@@ -288,7 +296,12 @@ func (f *File) Write(data []byte) (res int, err error) {
 	f.fileSystem.connTimerStop()
 	defer f.fileSystem.connTimerStart()
 
-	sftpfile, err := f.openFile(os.O_WRONLY | os.O_CREATE)
+	flags := os.O_RDWR | os.O_CREATE
+	if !f.readCalled || f.seekCalled {
+		flags |= os.O_TRUNC
+	}
+
+	sftpfile, err := f.openFile(flags)
 	if err != nil {
 		return 0, err
 	}
