@@ -126,19 +126,25 @@ type ioTestSuite struct {
 	localDir      string
 }
 
+/*
+The following example shows how to setup the test suite to run against a local directory for unix file baseline
+
+// setup local tests
+osTemp, err := os.MkdirTemp("", "vfs-io-test")
+s.Require().NoError(err)
+
+// add baseline OS test
+loc := osTemp + "/"
+uris = append(uris, loc)
+
+// add vfs os test
+loc = "file://" + loc
+uris = append(uris, loc)
+
+*/
+
 func (s *ioTestSuite) SetupSuite() {
 	uris := make([]string, 0)
-	// // setup local tests
-	// osTemp, err := os.MkdirTemp("", "vfs-io-test")
-	// s.Require().NoError(err)
-	//
-	// // add baseline OS test
-	// loc := osTemp + "/"
-	// uris = append(uris, loc)
-	//
-	// // add vfs os test
-	// loc = "file://" + loc
-	// uris = append(uris, loc)
 
 	// add VFS_INTEGRATION_LOCATIONS tests
 	locs := os.Getenv("VFS_INTEGRATION_LOCATIONS")
@@ -382,6 +388,7 @@ func (s *ioTestSuite) testFileOperations(testPath string) {
 	}
 }
 
+//nolint:gocyclo
 func executeSequence(t *testing.T, file ReadWriteSeekCloseURINamer, sequence string) (string, error) {
 	// split sequence by semicolon
 	commands := strings.Split(sequence, ";")
@@ -452,16 +459,17 @@ SEQ:
 	}
 
 	var f io.ReadCloser
-	if osfile, ok := file.(*OSWrapper); ok {
+
+	switch assertedFile := file.(type) {
+	case *OSWrapper:
 		var err error
-		f, err = os.Open(osfile.URI())
+		f, err = os.Open(assertedFile.URI())
 		if err != nil {
 			t.Fatalf("error opening file: %s", err.Error())
 		}
-	} else if vfsFile, ok := file.(vfs.File); ok {
-		// open new file
+	case vfs.File:
 		var err error
-		f, err = vfsFile.Location().NewFile(file.Name())
+		f, err = assertedFile.Location().NewFile(assertedFile.Name())
 		if err != nil {
 			t.Fatalf("error opening file: %s", err.Error())
 		}
