@@ -295,7 +295,7 @@ func (s *ioTestSuite) testFileOperations(testPath string) {
 			"",
 		},
 		{
-			"Seek, Read, Close, file exists", // this ends up being effectively a no-op to the test results but does in-fact work
+			"Seek, Read, Close, file exists",
 			"S(5,0);R(4);C()",
 			true,
 			false,
