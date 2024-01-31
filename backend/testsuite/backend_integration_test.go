@@ -18,11 +18,7 @@ import (
 
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/backend/azure"
-	"github.com/c2fo/vfs/v6/backend/ftp"
 	"github.com/c2fo/vfs/v6/backend/gs"
-	"github.com/c2fo/vfs/v6/backend/mem"
-	_os "github.com/c2fo/vfs/v6/backend/os"
-	"github.com/c2fo/vfs/v6/backend/s3"
 	"github.com/c2fo/vfs/v6/backend/sftp"
 	"github.com/c2fo/vfs/v6/utils"
 	"github.com/c2fo/vfs/v6/vfssimple"
@@ -31,55 +27,6 @@ import (
 type vfsTestSuite struct {
 	suite.Suite
 	testLocations map[string]vfs.Location
-}
-
-func copyOsLocation(loc vfs.Location) vfs.Location {
-	cp := *loc.(*_os.Location)
-	ret := &cp
-
-	// setup os location
-	exists, err := ret.Exists()
-	if err != nil {
-		panic(err)
-	}
-	if !exists {
-		err := os.Mkdir(ret.Path(), 0755)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	return ret
-}
-
-func copyMemLocation(loc vfs.Location) vfs.Location {
-	cp := *loc.(*mem.Location)
-	return &cp
-}
-
-func copyS3Location(loc vfs.Location) vfs.Location {
-	cp := *loc.(*s3.Location)
-	return &cp
-}
-
-func copySFTPLocation(loc vfs.Location) vfs.Location {
-	cp := *loc.(*sftp.Location)
-	return &cp
-}
-
-func copyFTPLocation(loc vfs.Location) vfs.Location {
-	cp := *loc.(*ftp.Location)
-	return &cp
-}
-
-func copyGSLocation(loc vfs.Location) vfs.Location {
-	cp := *loc.(*gs.Location)
-	return &cp
-}
-
-func copyAzureLocation(loc vfs.Location) vfs.Location {
-	cp := *loc.(*azure.Location)
-	return &cp
 }
 
 func buildExpectedURI(fs vfs.FileSystem, volume, path string) string {
@@ -98,19 +45,19 @@ func (s *vfsTestSuite) SetupSuite() {
 		s.NoError(err)
 		switch l.FileSystem().Scheme() {
 		case "file":
-			s.testLocations[l.FileSystem().Scheme()] = copyOsLocation(l)
+			s.testLocations[l.FileSystem().Scheme()] = CopyOsLocation(l)
 		case "s3":
-			s.testLocations[l.FileSystem().Scheme()] = copyS3Location(l)
+			s.testLocations[l.FileSystem().Scheme()] = CopyS3Location(l)
 		case "sftp":
-			s.testLocations[l.FileSystem().Scheme()] = copySFTPLocation(l)
+			s.testLocations[l.FileSystem().Scheme()] = CopySFTPLocation(l)
 		case "gs":
-			s.testLocations[l.FileSystem().Scheme()] = copyGSLocation(l)
+			s.testLocations[l.FileSystem().Scheme()] = CopyGSLocation(l)
 		case "mem":
-			s.testLocations[l.FileSystem().Scheme()] = copyMemLocation(l)
+			s.testLocations[l.FileSystem().Scheme()] = CopyMemLocation(l)
 		case "https":
-			s.testLocations[l.FileSystem().Scheme()] = copyAzureLocation(l)
+			s.testLocations[l.FileSystem().Scheme()] = CopyAzureLocation(l)
 		case "ftp":
-			s.testLocations[l.FileSystem().Scheme()] = copyFTPLocation(l)
+			s.testLocations[l.FileSystem().Scheme()] = CopyFTPLocation(l)
 		default:
 			panic(fmt.Sprintf("unknown scheme: %s", l.FileSystem().Scheme()))
 		}
@@ -914,7 +861,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 // gs-specific test cases
 func (s *vfsTestSuite) gsList(baseLoc vfs.Location) {
 	/*
-			test scenario:
+			test description:
 				When a persistent "folder" is created through the UI, it simply creates a zero length object
 		        with a trailing "/". The UI or gsutil knows to interpret these objects as folders but they are
 		        still just objects.  List(), in its current state, should ignore these objects.

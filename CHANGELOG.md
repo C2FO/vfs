@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
+## [6.11.2] - 2024-01-30
+### Fixed
+- Fixed 154 bug. Updated sftp backend to overwrite except after read/seek.
+
 ## [6.11.1] - 2024-01-22
 ### Fixed
 - Fixed #152 bug where s3 backend failed to read empty files
