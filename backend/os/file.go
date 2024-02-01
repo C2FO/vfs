@@ -449,6 +449,14 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// If file exists AND we've called Seek or Read first, any subsequent writes should edit the file (temp),
+	// so we copy the original file to the temp file then set the cursor position on the temp file to the current position.
+	// If we're opening because Write is called first, we always overwrite the file, so no need to copy the original contents.
+	//
+	// So imagine we have a file with content "hello world" and we call Seek(6, 0) and then Write([]byte("there")), the
+	// temp file should have "hello there" and not "there".  Then finally when Close is called, the temp file is renamed
+	// to the original file.  This code ensures that scenario works as expected.
 	if exists {
 		openFunc := openOSFile
 		if f.fileOpener != nil {
