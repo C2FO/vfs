@@ -143,6 +143,8 @@ func (f *File) Read(p []byte) (int, error) {
 // the file, 1 means relative to the current offset, and 2 means relative to the end.  It returns the new offset and
 // an error, if any.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
+	// when writing, we first write to a temp file which ensures a file isn't created before we call clase.
+	// However, if we've never written AND the original file doesn't exist, we can't seek.
 	exists, err := f.Exists()
 	if err != nil {
 		return 0, fmt.Errorf("unable to Seek: %w", err)
