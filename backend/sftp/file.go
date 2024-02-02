@@ -20,6 +20,7 @@ type File struct {
 	opener     fileOpener
 	seekCalled bool
 	readCalled bool
+	flagsUsed  int
 }
 
 // this type allow for injecting a mock fileOpener function
@@ -265,7 +266,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 	f.fileSystem.connTimerStop()
 	defer f.fileSystem.connTimerStart()
 
-	sftpfile, err := f.openFile(os.O_RDWR)
+	sftpfile, err := f.openFile(os.O_RDONLY)
 	if err != nil {
 		return 0, err
 	}
@@ -281,7 +282,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	f.fileSystem.connTimerStop()
 	defer f.fileSystem.connTimerStart()
 
-	sftpfile, err := f.openFile(os.O_RDWR)
+	sftpfile, err := f.openFile(os.O_RDONLY)
 	if err != nil {
 		return 0, err
 	}
@@ -296,8 +297,10 @@ func (f *File) Write(data []byte) (res int, err error) {
 	f.fileSystem.connTimerStop()
 	defer f.fileSystem.connTimerStart()
 
+	// unless seek or read is called first, writes should replace a file (not edit)
+	// writes should edit a file if seek or read is called first
 	flags := os.O_RDWR | os.O_CREATE
-	if !f.readCalled || f.seekCalled {
+	if !f.readCalled && !f.seekCalled {
 		flags |= os.O_TRUNC
 	}
 
@@ -324,18 +327,70 @@ func (f *File) String() string {
 */
 
 // openFile wrapper allows us to inject a file opener (for mocking) vs the defaultOpenFile.
-func (f *File) openFile(flag int) (ReadWriteSeekCloser, error) {
+func (f *File) openFile(flags int) (ReadWriteSeekCloser, error) {
 	if f.sftpfile != nil {
+		FlagsUsedContainsReadOnly := f.flagsUsed&(os.O_WRONLY|os.O_RDWR) == 0
+		flagsContainsReadWrite := flags&os.O_RDWR != 0
+
+		// if we're trying to open a file for writing and it's already open for read, repoen it for read/write and
+		// seek to current position
+		if FlagsUsedContainsReadOnly && flagsContainsReadWrite {
+			var pos int64
+
+			// capture current position if file is open for read (only in edit mode)
+			if f.readCalled || f.seekCalled {
+				var err error
+				// get current position
+				pos, err = f.sftpfile.Seek(0, io.SeekCurrent)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			// close file
+			if err := f.sftpfile.Close(); err != nil {
+				return nil, err
+			}
+
+			// reopen file for read/write
+			file, err := f._open(flags)
+			if err != nil {
+				return nil, err
+			}
+
+			// seek to current position (only in edit mode)
+			if f.readCalled || f.seekCalled {
+				if _, err := file.Seek(pos, io.SeekStart); err != nil {
+					return nil, err
+				}
+			}
+
+			f.flagsUsed = flags
+			f.sftpfile = file
+
+		}
 		return f.sftpfile, nil
 	}
 
+	file, err := f._open(flags)
+	if err != nil {
+		return nil, err
+	}
+
+	f.flagsUsed = flags
+	f.sftpfile = file
+
+	return file, nil
+}
+
+func (f *File) _open(flags int) (ReadWriteSeekCloser, error) {
 	client, err := f.fileSystem.Client(f.Authority)
 	if err != nil {
 		return nil, err
 	}
 	// normally we'd do a defer of fs connTimerStart() here but not necessary since we handle it in the openFile caller
 
-	if flag&os.O_CREATE != 0 {
+	if flags&os.O_CREATE != 0 {
 		// vfs specifies that all implementations make dir path if it doesn't exist
 		err = client.MkdirAll(path.Dir(f.path))
 		if err != nil {
@@ -350,13 +405,8 @@ func (f *File) openFile(flag int) (ReadWriteSeekCloser, error) {
 		opener = defaultOpenFile
 	}
 
-	file, err := opener(client, f.Path(), flag)
-	if err != nil {
-		return nil, err
-	}
+	return opener(client, f.Path(), flags)
 
-	f.sftpfile = file
-	return file, nil
 }
 
 // defaultOpenFile uses sftp.Client to open a file and returns an sftp.File

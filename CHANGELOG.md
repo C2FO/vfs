@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
+## [6.11.3] - 2024-02-02
+### Fixed
+- Fixed #158 bug. Updated sftp backend to to fix issue where some servers return a generic error message when a file is opened for RW on Read().
+
 ## [6.11.2] - 2024-01-30
 ### Fixed
 - Fixed 154 bug. Updated sftp backend to overwrite except after read/seek.
