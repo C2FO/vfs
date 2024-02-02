@@ -52,12 +52,19 @@ func (f *File) LastModified() (*time.Time, error) {
 	return &statsTime, err
 }
 
-// Name returns the full name of the File relative to Location.Name().
+// Name returns the base name of the file path.
+//
+// For `file:///some/path/to/file.txt`, it would return `file.txt`
 func (f *File) Name() string {
 	return path.Base(f.name)
 }
 
-// Path returns the the path of the File relative to Location.Name().
+// Path returns absolute path, including filename,
+// For `file:///some/path/to/file.txt`, it would return `/some/path/to/file.txt`
+//
+// If the directory portion of a file is desired, call
+//
+//	someFile.Location().Path()
 func (f *File) Path() string {
 	return filepath.Join(f.Location().Path(), f.Name())
 }
@@ -143,7 +150,7 @@ func (f *File) Read(p []byte) (int, error) {
 // the file, 1 means relative to the current offset, and 2 means relative to the end.  It returns the new offset and
 // an error, if any.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
-	// when writing, we first write to a temp file which ensures a file isn't created before we call clase.
+	// when writing, we first write to a temp file which ensures a file isn't created before we call close.
 	// However, if we've never written AND the original file doesn't exist, we can't seek.
 	exists, err := f.Exists()
 	if err != nil {
@@ -386,7 +393,7 @@ func openOSFile(filePath string) (*os.File, error) {
 
 	// Ensure the path exists before opening the file, NoOp if dir already exists.
 	var fileMode os.FileMode = 0666
-	if err := os.MkdirAll(path.Dir(filePath), os.ModeDir|0777); err != nil {
+	if err := os.MkdirAll(path.Dir(filePath), os.ModeDir|0750); err != nil {
 		return nil, err
 	}
 
@@ -457,7 +464,7 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 	// So imagine we have a file with content "hello world" and we call Seek(6, 0) and then Write([]byte("there")), the
 	// temp file should have "hello there" and not "there".  Then finally when Close is called, the temp file is renamed
 	// to the original file.  This code ensures that scenario works as expected.
-	if exists {
+	if exists && (f.seekCalled || f.readCalled) {
 		openFunc := openOSFile
 		if f.fileOpener != nil {
 			openFunc = f.fileOpener
@@ -467,10 +474,8 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 		if err != nil {
 			return nil, err
 		}
-		if f.seekCalled || f.readCalled {
-			if _, err := io.Copy(tmpFile, actualFile); err != nil {
-				return nil, err
-			}
+		if _, err := io.Copy(tmpFile, actualFile); err != nil {
+			return nil, err
 		}
 
 		if f.cursorPos > 0 {

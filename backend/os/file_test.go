@@ -507,7 +507,8 @@ func (s *osFileTest) TestWrite() {
 	f, err := s.tmploc.NewFile("test_files/writeFileFail.txt")
 	s.NoError(err)
 	s.NoError(f.Touch())
-	f.(*File).useTempFile = true
+	_, err = f.Seek(0, 0)
+	s.NoError(err)
 	f.(*File).fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("bad opener") }
 	data = make([]byte, 4)
 	_, err = f.Write(data)
@@ -545,7 +546,7 @@ func (s *osFileTest) TestCursor() {
 	s.Equal(int64(8), file.(*File).cursorPos)
 	s.Equal(3, sz)
 
-	_, serr = file.Seek(5, 0) // cursor 0 - in temp file
+	_, serr = file.Seek(5, 0) // cursor 5 - in temp file
 	s.Equal(int64(5), file.(*File).cursorPos)
 	s.NoError(serr)
 

@@ -258,6 +258,6 @@ func (a *authoritySuite) TestAuthority() {
 	}
 }
 
-func TestUtils(t *testing.T) {
+func TestAuthority(t *testing.T) {
 	suite.Run(t, new(authoritySuite))
 }

@@ -19,7 +19,7 @@ import (
  ************TESTS*****************
  **********************************/
 
-type utilsTest struct {
+type utilsSuite struct {
 	suite.Suite
 }
 
@@ -29,7 +29,7 @@ type slashTest struct {
 	message  string
 }
 
-func (s *utilsTest) TestEnsureTrailingSlash() {
+func (s *utilsSuite) TestEnsureTrailingSlash() {
 	tests := []slashTest{
 		{
 			path:     "/some/path",
@@ -59,11 +59,13 @@ func (s *utilsTest) TestEnsureTrailingSlash() {
 	}
 
 	for _, slashtest := range tests {
-		s.Equal(slashtest.expected, utils.EnsureTrailingSlash(slashtest.path), slashtest.message)
+		s.Run(slashtest.message, func() {
+			s.Equal(slashtest.expected, utils.EnsureTrailingSlash(slashtest.path), slashtest.message)
+		})
 	}
 }
 
-func (s *utilsTest) TestEnsureLeadingSlash() {
+func (s *utilsSuite) TestEnsureLeadingSlash() {
 	tests := []slashTest{
 		{
 			path:     "some/path/",
@@ -88,11 +90,13 @@ func (s *utilsTest) TestEnsureLeadingSlash() {
 	}
 
 	for _, slashtest := range tests {
-		s.Equal(slashtest.expected, utils.EnsureLeadingSlash(slashtest.path), slashtest.message)
+		s.Run(slashtest.message, func() {
+			s.Equal(slashtest.expected, utils.EnsureLeadingSlash(slashtest.path), slashtest.message)
+		})
 	}
 }
 
-func (s *utilsTest) TestRemoveTrailingSlash() {
+func (s *utilsSuite) TestRemoveTrailingSlash() {
 	tests := []slashTest{
 		{
 			path:     "/some/path",
@@ -122,11 +126,13 @@ func (s *utilsTest) TestRemoveTrailingSlash() {
 	}
 
 	for _, slashtest := range tests {
-		s.Equal(slashtest.expected, utils.RemoveTrailingSlash(slashtest.path), slashtest.message)
+		s.Run(slashtest.message, func() {
+			s.Equal(slashtest.expected, utils.RemoveTrailingSlash(slashtest.path), slashtest.message)
+		})
 	}
 }
 
-func (s *utilsTest) TestRemoveLeadingSlash() {
+func (s *utilsSuite) TestRemoveLeadingSlash() {
 	tests := []slashTest{
 		{
 			path:     "some/path/",
@@ -156,7 +162,9 @@ func (s *utilsTest) TestRemoveLeadingSlash() {
 	}
 
 	for _, slashtest := range tests {
-		s.Equal(slashtest.expected, utils.RemoveLeadingSlash(slashtest.path), slashtest.message)
+		s.Run(slashtest.message, func() {
+			s.Equal(slashtest.expected, utils.RemoveLeadingSlash(slashtest.path), slashtest.message)
+		})
 	}
 }
 
@@ -166,7 +174,7 @@ type pathValidationTest struct {
 	message      string
 }
 
-func (s *utilsTest) TestValidateAbsFilePath() {
+func (s *utilsSuite) TestValidateAbsFilePath() {
 	tests := []pathValidationTest{
 		{
 			path:         "/some/path/",
@@ -221,16 +229,18 @@ func (s *utilsTest) TestValidateAbsFilePath() {
 	}
 
 	for _, validationTest := range tests {
-		err := utils.ValidateAbsoluteFilePath(validationTest.path)
-		if !validationTest.passExpected {
-			s.EqualError(err, utils.ErrBadAbsFilePath, validationTest.message)
-		} else {
-			s.NoError(err, validationTest.message)
-		}
+		s.Run(validationTest.message, func() {
+			err := utils.ValidateAbsoluteFilePath(validationTest.path)
+			if !validationTest.passExpected {
+				s.EqualError(err, utils.ErrBadAbsFilePath, validationTest.message)
+			} else {
+				s.NoError(err, validationTest.message)
+			}
+		})
 	}
 }
 
-func (s *utilsTest) TestValidateAbsLocationPath() {
+func (s *utilsSuite) TestValidateAbsLocationPath() {
 	tests := []pathValidationTest{
 		{
 			path:         "/some/path/",
@@ -285,16 +295,18 @@ func (s *utilsTest) TestValidateAbsLocationPath() {
 	}
 
 	for _, validationTest := range tests {
-		err := utils.ValidateAbsoluteLocationPath(validationTest.path)
-		if !validationTest.passExpected {
-			s.EqualError(err, utils.ErrBadAbsLocationPath, validationTest.message)
-		} else {
-			s.NoError(err, validationTest.message)
-		}
+		s.Run(validationTest.message, func() {
+			err := utils.ValidateAbsoluteLocationPath(validationTest.path)
+			if !validationTest.passExpected {
+				s.EqualError(err, utils.ErrBadAbsLocationPath, validationTest.message)
+			} else {
+				s.NoError(err, validationTest.message)
+			}
+		})
 	}
 }
 
-func (s *utilsTest) TestValidateRelFilePath() {
+func (s *utilsSuite) TestValidateRelFilePath() {
 	tests := []pathValidationTest{
 		{
 			path:         "/some/path/",
@@ -349,16 +361,18 @@ func (s *utilsTest) TestValidateRelFilePath() {
 	}
 
 	for _, validationTest := range tests {
-		err := utils.ValidateRelativeFilePath(validationTest.path)
-		if !validationTest.passExpected {
-			s.EqualError(err, utils.ErrBadRelFilePath, validationTest.message)
-		} else {
-			s.NoError(err, validationTest.message)
-		}
+		s.Run(validationTest.message, func() {
+			err := utils.ValidateRelativeFilePath(validationTest.path)
+			if !validationTest.passExpected {
+				s.EqualError(err, utils.ErrBadRelFilePath, validationTest.message)
+			} else {
+				s.NoError(err, validationTest.message)
+			}
+		})
 	}
 }
 
-func (s *utilsTest) TestValidateRelLocationPath() {
+func (s *utilsSuite) TestValidateRelLocationPath() {
 	tests := []pathValidationTest{
 		{
 			path:         "/some/path/",
@@ -413,16 +427,18 @@ func (s *utilsTest) TestValidateRelLocationPath() {
 	}
 
 	for _, validationTest := range tests {
-		err := utils.ValidateRelativeLocationPath(validationTest.path)
-		if !validationTest.passExpected {
-			s.EqualError(err, utils.ErrBadRelLocationPath, validationTest.message)
-		} else {
-			s.NoError(err, validationTest.message)
-		}
+		s.Run(validationTest.message, func() {
+			err := utils.ValidateRelativeLocationPath(validationTest.path)
+			if !validationTest.passExpected {
+				s.EqualError(err, utils.ErrBadRelLocationPath, validationTest.message)
+			} else {
+				s.NoError(err, validationTest.message)
+			}
+		})
 	}
 }
 
-func (s *utilsTest) TestValidatePrefix() {
+func (s *utilsSuite) TestValidatePrefix() {
 	tests := []struct {
 		prefix       string
 		passExpected bool
@@ -501,12 +517,14 @@ func (s *utilsTest) TestValidatePrefix() {
 	}
 
 	for _, validationTest := range tests {
-		err := utils.ValidatePrefix(validationTest.prefix)
-		if !validationTest.passExpected {
-			s.EqualError(err, utils.ErrBadPrefix, validationTest.message)
-		} else {
-			s.NoError(err, validationTest.message)
-		}
+		s.Run(validationTest.message, func() {
+			err := utils.ValidatePrefix(validationTest.prefix)
+			if !validationTest.passExpected {
+				s.EqualError(err, utils.ErrBadPrefix, validationTest.message)
+			} else {
+				s.NoError(err, validationTest.message)
+			}
+		})
 	}
 }
 
@@ -517,7 +535,7 @@ type URITest struct {
 	isRegex  bool
 }
 
-func (s *utilsTest) TestPathToURI() {
+func (s *utilsSuite) TestPathToURI() {
 	tests := []URITest{
 		{
 			path:     "/absolute/path/",
@@ -575,24 +593,27 @@ func (s *utilsTest) TestPathToURI() {
 	}
 
 	for _, slashtest := range tests {
-		uri, err := utils.PathToURI(slashtest.path)
-		s.Require().NoError(err, "no error expected")
-		if slashtest.isRegex {
-			s.Regexp(slashtest.expected, uri, slashtest.message)
-		} else {
-			s.Equal(slashtest.expected, uri, slashtest.message)
-		}
+		s.Run(slashtest.message, func() {
+			uri, err := utils.PathToURI(slashtest.path)
+			s.Require().NoError(err, "no error expected")
+			if slashtest.isRegex {
+				s.Regexp(slashtest.expected, uri, slashtest.message)
+			} else {
+				s.Equal(slashtest.expected, uri, slashtest.message)
+			}
+		})
 	}
 
 	// test error return from bad uri.parse
 	const nullChar = '\u0000'
+
 	// parse path with null character
 	_, err := utils.PathToURI(fmt.Sprintf("/some%s/path/", string(nullChar)))
 	s.Error(err, "expected error on ctrl char in path")
 	s.EqualError(err, "parse \"/some\\x00/path/\": net/url: invalid control character in URL")
 }
 
-func (s *utilsTest) TestGetURI() {
+func (s *utilsSuite) TestGetURI() {
 
 	// set up mocks
 	mockFs1 := new(mocks.FileSystem)
@@ -628,7 +649,7 @@ func (s *utilsTest) TestGetURI() {
 	s.Equal("s3://mybucket/this/path/to/", utils.GetLocationURI(mockLoc2), "s3 location uri matches ")
 }
 
-func (s *utilsTest) TestTouchCopy() {
+func (s *utilsSuite) TestTouchCopy() {
 
 	// write out blank file
 	tmpfile, err := os.CreateTemp("", "utils_test")
@@ -679,6 +700,7 @@ func (s *utilsTest) TestTouchCopy() {
 			panic(err)
 		}
 	}()
+	s.NoError(writer.Close())
 
 	// writer file should exist
 	fi, err := os.Stat(writer.Path())
@@ -708,7 +730,7 @@ func (s *utilsTest) TestTouchCopy() {
 
 }
 
-func (s *utilsTest) TestTouchCopyBufferedDefaultBufferSize() {
+func (s *utilsSuite) TestTouchCopyBufferedDefaultBufferSize() {
 
 	// write out blank file
 	tmpfile, err := os.CreateTemp("", "utils_test")
@@ -759,6 +781,7 @@ func (s *utilsTest) TestTouchCopyBufferedDefaultBufferSize() {
 			panic(err)
 		}
 	}()
+	s.NoError(writer.Close())
 
 	// writer file should exist
 	fi, err := os.Stat(writer.Path())
@@ -788,7 +811,7 @@ func (s *utilsTest) TestTouchCopyBufferedDefaultBufferSize() {
 
 }
 
-func (s *utilsTest) TestTouchCopyBufferedNonDefaultBufferSize() {
+func (s *utilsSuite) TestTouchCopyBufferedNonDefaultBufferSize() {
 
 	// write out blank file
 	tmpfile, err := os.CreateTemp("", "utils_test")
@@ -839,6 +862,7 @@ func (s *utilsTest) TestTouchCopyBufferedNonDefaultBufferSize() {
 			panic(err)
 		}
 	}()
+	s.NoError(writer.Close())
 
 	// writer file should exist
 	fi, err := os.Stat(writer.Path())
@@ -869,5 +893,5 @@ func (s *utilsTest) TestTouchCopyBufferedNonDefaultBufferSize() {
 }
 
 func TestUtils(t *testing.T) {
-	suite.Run(t, new(utilsTest))
+	suite.Run(t, new(utilsSuite))
 }
