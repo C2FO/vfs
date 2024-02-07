@@ -369,6 +369,7 @@ func (s *memFileTest) TestCopyToLocationOS() {
 	s.NoError(err, "unexpected error creating osFile")
 	_, err = osFile.Write(make([]byte, 0))
 	s.NoError(err, "unexpected error writing zero bytes to osFile")
+	s.NoError(osFile.Close())
 
 	exists, err := osFile.Exists()
 	s.NoError(err, "unexpected existence error")

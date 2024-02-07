@@ -158,6 +158,8 @@ func (s *osLocationTest) TestDeleteFile() {
 	_, err = file.Write([]byte(expectedText))
 	s.NoError(err, "Shouldn't fail to write text to file.")
 
+	s.NoError(file.Close())
+
 	exists, err := file.Exists()
 	s.NoError(err, "Exists shouldn't throw error.")
 	s.True(exists, "Exists should return true for test file.")

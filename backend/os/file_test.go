@@ -506,7 +506,9 @@ func (s *osFileTest) TestWrite() {
 	// setup file for err out of opening
 	f, err := s.tmploc.NewFile("test_files/writeFileFail.txt")
 	s.NoError(err)
-	f.(*File).useTempFile = true
+	s.NoError(f.Touch())
+	_, err = f.Seek(0, 0)
+	s.NoError(err)
 	f.(*File).fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("bad opener") }
 	data = make([]byte, 4)
 	_, err = f.Write(data)
@@ -538,29 +540,30 @@ func (s *osFileTest) TestCursor() {
 	s.Equal(int64(5), file.(*File).cursorPos)
 	s.NoError(serr2)
 
+	// because seek and/or read were called before write, write is now in in-place edit mode (not truncate-write)
 	sz, werr = file.Write([]byte("has")) // cursor 8 - tempfile copy of orig - write on tempfile has occurred
 	s.NoError(werr)
 	s.Equal(int64(8), file.(*File).cursorPos)
 	s.Equal(3, sz)
 
-	_, serr = file.Seek(0, 0) // cursor 0 - in temp file
-	s.Equal(int64(0), file.(*File).cursorPos)
+	_, serr = file.Seek(5, 0) // cursor 5 - in temp file
+	s.Equal(int64(5), file.(*File).cursorPos)
 	s.NoError(serr)
 
 	data = make([]byte, 3)
 	sz, rerr = file.Read(data)
 	s.NoError(rerr)
-	s.Equal(int64(3), file.(*File).cursorPos)
+	s.Equal(int64(8), file.(*File).cursorPos)
 	s.Equal("has", string(data)) // tempFile contents = "has"
 	s.Equal(3, sz)
 
 	s.NoError(file.Close()) // moves tempfile containing "has" over original file
 
-	final := make([]byte, 3)
+	final := make([]byte, 8)
 	rd, err := file.Read(final)
 	s.NoError(err)
-	s.Equal(3, rd)
-	s.Equal("has", string(final))
+	s.Equal(8, rd)
+	s.Equal("mary has", string(final))
 	s.NoError(file.Close())
 
 	// if a file exists and we overwrite with a smaller # of text, then it isn't completely overwritten

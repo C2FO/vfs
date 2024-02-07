@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
+### Added
+- Fixes #156 - Update os backend to comply with new io integration test suite
 
 ## [6.11.3] - 2024-02-02
 ### Fixed
@@ -11,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [6.11.2] - 2024-01-30
 ### Fixed
-- Fixed 154 bug. Updated sftp backend to overwrite except after read/seek.
+- Fixed #154 bug. Updated sftp backend to overwrite except after read/seek.
 
 ## [6.11.1] - 2024-01-22
 ### Fixed

@@ -3,6 +3,7 @@ package os
 import (
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -27,6 +28,8 @@ type File struct {
 	tempFile    *os.File
 	useTempFile bool
 	fileOpener  opener
+	seekCalled  bool
+	readCalled  bool
 }
 
 // Delete unlinks the file returning any error or nil.
@@ -49,12 +52,19 @@ func (f *File) LastModified() (*time.Time, error) {
 	return &statsTime, err
 }
 
-// Name returns the full name of the File relative to Location.Name().
+// Name returns the base name of the file path.
+//
+// For `file:///some/path/to/file.txt`, it would return `file.txt`
 func (f *File) Name() string {
 	return path.Base(f.name)
 }
 
-// Path returns the the path of the File relative to Location.Name().
+// Path returns absolute path, including filename,
+// For `file:///some/path/to/file.txt`, it would return `/some/path/to/file.txt`
+//
+// If the directory portion of a file is desired, call
+//
+//	someFile.Location().Path()
 func (f *File) Path() string {
 	return filepath.Join(f.Location().Path(), f.Name())
 }
@@ -73,6 +83,8 @@ func (f *File) Size() (uint64, error) {
 func (f *File) Close() error {
 	f.useTempFile = false
 	f.cursorPos = 0
+	f.seekCalled = false
+	f.readCalled = false
 
 	// check if temp file
 	if f.tempFile != nil {
@@ -128,6 +140,7 @@ func (f *File) Read(p []byte) (int, error) {
 		return read, err
 	}
 
+	f.readCalled = true
 	f.cursorPos += int64(read)
 
 	return read, nil
@@ -137,6 +150,15 @@ func (f *File) Read(p []byte) (int, error) {
 // the file, 1 means relative to the current offset, and 2 means relative to the end.  It returns the new offset and
 // an error, if any.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
+	// when writing, we first write to a temp file which ensures a file isn't created before we call close.
+	// However, if we've never written AND the original file doesn't exist, we can't seek.
+	exists, err := f.Exists()
+	if err != nil {
+		return 0, fmt.Errorf("unable to Seek: %w", err)
+	}
+	if !exists && !f.useTempFile {
+		return 0, fmt.Errorf("unable to Seek: %w", fs.ErrNotExist)
+	}
 	useFile, err := f.getInternalFile()
 	if err != nil {
 		return 0, err
@@ -147,6 +169,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		return 0, err
 	}
 
+	f.seekCalled = true
 	return f.cursorPos, err
 }
 
@@ -167,6 +190,7 @@ func (f *File) Exists() (bool, error) {
 
 // Write implements the io.Writer interface.  It accepts a slice of bytes and returns the number of bytes written and an error, if any.
 func (f *File) Write(p []byte) (n int, err error) {
+	// useTempFile prevents the immediate update of the file until we Close()
 	f.useTempFile = true
 
 	useFile, err := f.getInternalFile()
@@ -369,7 +393,7 @@ func openOSFile(filePath string) (*os.File, error) {
 
 	// Ensure the path exists before opening the file, NoOp if dir already exists.
 	var fileMode os.FileMode = 0666
-	if err := os.MkdirAll(path.Dir(filePath), os.ModeDir|0777); err != nil {
+	if err := os.MkdirAll(path.Dir(filePath), os.ModeDir|0750); err != nil {
 		return nil, err
 	}
 
@@ -428,23 +452,39 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 		return nil, err
 	}
 
-	openFunc := openOSFile
-	if f.fileOpener != nil {
-		openFunc = f.fileOpener
-	}
-
-	if _, err = openFunc(f.Path()); err != nil {
+	exists, err := f.Exists()
+	if err != nil {
 		return nil, err
 	}
-	// todo: editing in place logic/appending logic (see issue #42)
-	// if _, err := io.Copy(tmpFile, f.file); err != nil {
-	//	return nil, err
-	// }
+
+	// If file exists AND we've called Seek or Read first, any subsequent writes should edit the file (temp),
+	// so we copy the original file to the temp file then set the cursor position on the temp file to the current position.
+	// If we're opening because Write is called first, we always overwrite the file, so no need to copy the original contents.
 	//
-	// // Return cursor to the beginning of the new temp file
-	// if _, err := tmpFile.Seek(f.cursorPos, 0); err != nil {
-	//	return nil, err
-	// }
+	// So imagine we have a file with content "hello world" and we call Seek(6, 0) and then Write([]byte("there")), the
+	// temp file should have "hello there" and not "there".  Then finally when Close is called, the temp file is renamed
+	// to the original file.  This code ensures that scenario works as expected.
+	if exists && (f.seekCalled || f.readCalled) {
+		openFunc := openOSFile
+		if f.fileOpener != nil {
+			openFunc = f.fileOpener
+		}
+
+		actualFile, err := openFunc(f.Path())
+		if err != nil {
+			return nil, err
+		}
+		if _, err := io.Copy(tmpFile, actualFile); err != nil {
+			return nil, err
+		}
+
+		if f.cursorPos > 0 {
+			// match cursor position in tmep file
+			if _, err := tmpFile.Seek(f.cursorPos, 0); err != nil {
+				return nil, err
+			}
+		}
+	}
 
 	return tmpFile, nil
 }
