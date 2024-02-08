@@ -49,15 +49,18 @@ func (fs *FileSystem) NewFile(volume, absFilePath string) (vfs.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	mapRef := location.(*Location).fileSystem.fsMap
-	if _, ok := mapRef[volume]; ok {
-		fileList := mapRef[volume].filesHere(location.Path())
-		for _, file := range fileList {
-			if file.name == path.Base(absFilePath) {
-				fileCopy := deepCopy(file)
-				file.location = location
-				fileCopy.(*File).memFile = file
-				return fileCopy, nil
+
+	if _, ok := fs.fsMap[volume]; ok {
+		for _, obj := range fs.fsMap[volume] {
+			if obj.isFile && obj.i.(*memFile).location.Path() == location.Path() {
+				if obj.i.(*memFile).name == path.Base(absFilePath) {
+					vfsFile := &File{
+						name:            obj.i.(*memFile).name,
+						memFile:         obj.i.(*memFile),
+						readWriteSeeker: NewReadWriteSeekerWithData(obj.i.(*memFile).contents),
+					}
+					return vfsFile, nil
+				}
 			}
 		}
 	}
@@ -66,7 +69,7 @@ func (fs *FileSystem) NewFile(volume, absFilePath string) (vfs.File, error) {
 		name: path.Base(absFilePath),
 	}
 
-	memFile := newMemFile(file, location)
+	memFile := newMemFile(file, location.(*Location))
 	file.memFile = memFile
 	return file, nil
 }
@@ -165,12 +168,12 @@ func (o objMap) fileNamesHere(absLocPath string) []string {
 
 func deepCopy(srcFile *memFile) vfs.File {
 	destination := &File{
-		name: srcFile.name,
+		name:            srcFile.name,
+		memFile:         srcFile,
+		readWriteSeeker: NewReadWriteSeekerWithData(srcFile.contents),
 	}
 
 	destination.memFile = srcFile
-	destination.exists = srcFile.exists
-	destination.isOpen = srcFile.isOpen
-	destination.contents = srcFile.contents
+	destination.readWriteSeeker = NewReadWriteSeekerWithData(srcFile.contents)
 	return destination
 }
