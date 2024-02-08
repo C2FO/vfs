@@ -75,6 +75,7 @@ func (rws *ReadWriteSeeker) Seek(offset int64, whence int) (int64, error) {
 	return position, nil
 }
 
+// Bytes returns a byte slice of the data.
 func (rws *ReadWriteSeeker) Bytes() []byte {
 	return rws.data
 }
