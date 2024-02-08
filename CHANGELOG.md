@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Fixes #156 - Update os backend to comply with new io integration test suite
-- Fixes #160 - Update os backend to comply with new io integration test suite
+- Fixes #160 - Update mem backend to comply with new io integration test suite
 
 ## [6.11.3] - 2024-02-02
 ### Fixed

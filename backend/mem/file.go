@@ -25,7 +25,7 @@ const (
 type memFile struct {
 	sync.Mutex
 	exists       bool
-	contents     []byte
+	contents     []byte // the file's contents at rest
 	location     *Location
 	lastModified time.Time
 	name         string
@@ -40,7 +40,7 @@ type File struct {
 	readWriteSeeker *ReadWriteSeeker
 	name            string // the base name of the file
 	cursor          int
-	writeMode       mode // unless seek or read is called first, writes should replace a file (not edit)
+	writeMode       mode
 	isOpen          bool
 	readCalled      bool
 	seekCalled      bool
@@ -53,25 +53,28 @@ func nilReference() error {
 // Close imitates io.Closer by resetting the cursor and setting a boolean
 func (f *File) Close() error {
 	if f.isOpen {
+		// update the contents of the memFile
 		f.memFile.Lock()
 		defer f.memFile.Unlock()
-		// update the contents of the memFile
 		f.memFile.contents = f.readWriteSeeker.Bytes()
 		f.memFile.lastModified = time.Now()
 		f.memFile.exists = true
 		f.memFile.location.exists = true
-		f.Location().FileSystem().(*FileSystem).mu.Lock()
-		defer f.Location().FileSystem().(*FileSystem).mu.Unlock()
 
 		// update the fsMap
+		f.Location().FileSystem().(*FileSystem).mu.Lock()
+		defer f.Location().FileSystem().(*FileSystem).mu.Unlock()
 		mapRef := f.Location().FileSystem().(*FileSystem).fsMap
 		if _, ok := mapRef[f.Location().Volume()]; ok {
 			if _, ok := mapRef[f.Location().Volume()][f.Path()]; ok {
+				// memfile exists, so we update it
 				mapRef[f.Location().Volume()][f.Path()].i = f.memFile
 			} else {
+				// memfile does not exist, so we create it
 				mapRef[f.Location().Volume()][f.Path()] = &fsObject{true, f.memFile}
 			}
 		} else {
+			// volume does not exist, so we create it with the memfile
 			mapRef[f.Location().Volume()] = make(objMap)
 			mapRef[f.Location().Volume()][f.Path()] = &fsObject{true, f.memFile}
 		}
@@ -110,6 +113,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 			}
 		}
 
+		// update the file's readWriteSeeker contents and set the cursor to the current position
 		f.readWriteSeeker = NewReadWriteSeekerWithData(f.memFile.contents)
 		_, err = f.readWriteSeeker.Seek(int64(f.cursor), 0)
 		if err != nil {
@@ -117,13 +121,13 @@ func (f *File) Read(p []byte) (n int, err error) {
 		}
 	}
 
-	// Read file
+	// read file
 	read, err := f.readWriteSeeker.Read(p)
 	if err != nil {
 		return 0, err
 	}
 
-	// update cursor position
+	// update open file's state
 	f.readCalled = true
 	f.isOpen = true
 	f.cursor += read
@@ -154,6 +158,8 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 				}
 			}
 		}
+
+		// update the file's readWriteSeeker contents and set the cursor to the current position
 		f.readWriteSeeker = NewReadWriteSeekerWithData(f.memFile.contents)
 		_, err := f.readWriteSeeker.Seek(int64(f.cursor), 0)
 		if err != nil {
@@ -161,12 +167,13 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		}
 	}
 
-	// update cursorPos
+	// seek file
 	pos, err := f.readWriteSeeker.Seek(offset, whence)
 	if err != nil {
 		return 0, err
 	}
 
+	// update open file's state
 	f.isOpen = true
 	f.seekCalled = true
 	f.cursor = int(pos)
@@ -174,26 +181,38 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	return pos, nil
 }
 
-// Write implements the io.Writer interface. Returns number of bytes written and any errors
+// Write implements the io.Writer interface. Returns number of bytes written and any errors.
+// Unless Seek or Read is called first, Write's should overwrite any existing file.  Otherwise, it should edit the file
+// in place.
 func (f *File) Write(p []byte) (int, error) {
+	// if the file has not yet been opened for writing, set the writeMode and readWriteSeeker
 	if f.writeMode == none {
-		// unless seek or read is called first, writes should replace a file (not edit)
 		if f.readCalled || f.seekCalled {
+			// file has been read or seeked first, so we are in edit mode
+			f.writeMode = edit
 			f.readWriteSeeker = NewReadWriteSeekerWithData(f.memFile.contents)
 			_, err := f.readWriteSeeker.Seek(int64(f.cursor), 0)
 			if err != nil {
 				return 0, err
 			}
-			f.writeMode = edit
 		} else {
+			// file has not been read or seeked first, so we are in truncate(overwrite) mode
 			f.readWriteSeeker = NewReadWriteSeeker()
 			f.writeMode = truncate
 		}
 		f.isOpen = true
 	}
 
-	f.cursor += len(p)
-	return f.readWriteSeeker.Write(p)
+	// write to file buffer (writes aren't committed to the filesystem file until Close is called)
+	written, err := f.readWriteSeeker.Write(p)
+	if err != nil {
+		return 0, err
+	}
+
+	// update the file's cursor
+	f.cursor += written
+
+	return written, nil
 }
 
 // String implements the io.Stringer interface. It returns a string representation of the file's URI
