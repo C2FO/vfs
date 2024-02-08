@@ -169,8 +169,8 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 	// after validating the path, we check to see if the
 	// file already exists. if it does, return a reference to it
 	mapRef := l.fileSystem.fsMap
+	relativeLocationPath := utils.EnsureTrailingSlash(path.Dir(path.Join(l.Path(), relFilePath)))
 	if _, ok := mapRef[l.volume]; ok {
-		relativeLocationPath := utils.EnsureTrailingSlash(path.Dir(path.Join(l.Path(), relFilePath)))
 		fileList := mapRef[l.volume].filesHere(relativeLocationPath)
 		for _, file := range fileList {
 			if file.name == path.Base(relFilePath) {
@@ -186,14 +186,12 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 	str := relFilePath
 	nameStr := path.Join(pref, str)
 
-	loc, err := l.fileSystem.NewLocation(l.Volume(), utils.EnsureTrailingSlash(path.Dir(nameStr)))
-	if err != nil {
-		return nil, err
-	}
 	file := &File{
 		name: path.Base(nameStr),
 	}
-	file.memFile = newMemFile(file, loc)
+	newLoc := *l
+	newLoc.name = relativeLocationPath
+	file.memFile = newMemFile(file, &newLoc)
 	return file, nil
 }
 

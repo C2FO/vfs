@@ -2,6 +2,7 @@ package mem
 
 import (
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"path"
@@ -48,7 +49,7 @@ func (s *memFileTest) TestZBR() {
 
 	byteSlice := make([]byte, 0)
 	_, err := s.testFile.Read(byteSlice)
-	s.NoError(err, "read of 0 bytes failed")
+	s.ErrorIs(err, io.EOF, "read of 0 bytes failed")
 
 }
 
@@ -210,6 +211,22 @@ func (s *memFileTest) TestSeek2() {
 
 	_, err = newFile.Seek(1, 1)
 	s.NoError(err, "unexpected seek error")
+
+	// test for seek with whence of '2'
+	pos, err := newFile.Seek(-2, 2)
+	s.NoError(err, "unexpected seek error")
+	s.Equal(int64(len(initText)-2), pos)
+
+	// test for invalid whence
+	_, err = newFile.Seek(0, 3)
+	s.ErrorIs(err, vfs.ErrSeekInvalidWhence, "expected Seek error")
+
+	// test for seeking on non-existent file
+	f, err := s.fileSystem.NewFile("", "/some/non-existent/file.txt")
+	s.NoError(err, "unexpected error creating a new file")
+	_, err = f.Seek(0, 0)
+	s.ErrorIs(err, fs.ErrNotExist, "expected Seek error")
+
 }
 
 // TestNameToURI creates a file then pulls it out of the fsMap using its name and ensures its file and location URIs are correct
@@ -482,7 +499,7 @@ func (s *memFileTest) TestEmptyCopyToFile() {
 	s.NoError(emptyFile.CopyToFile(otherFile), "CopyToFile failed unexpectedly")
 
 	_, err = otherFile.Read(expectedSlice)
-	s.NoError(err, "unexpected Read error")
+	s.ErrorIs(err, io.EOF, "expected EOF error")
 	s.Equal(expectedText, string(expectedSlice))
 
 }
@@ -601,7 +618,17 @@ func (s *memFileTest) TestWrite() {
 	num, err := s.testFile.Write(bSlice)
 	s.NoError(err, "unexpected write error")
 	s.EqualValues(length, num)
+	s.NoError(s.testFile.Close(), "unexpected close error")
 
+	// test write after Seek (edit mode)
+	_, err = s.testFile.Seek(0, 0)
+	s.NoError(err, "unexpected seek error")
+	_, err = s.testFile.Write([]byte("Hello World!"))
+	s.NoError(err, "unexpected write error")
+	s.NoError(s.testFile.Close(), "unexpected close error")
+	actualText, err := io.ReadAll(s.testFile)
+	s.NoError(err, "unexpected read error")
+	s.EqualValues("Hello World!ith this world", string(actualText))
 }
 
 // TestRead ensures read can be called successively to get an entire file's contents in chunks
@@ -615,23 +642,16 @@ func (s *memFileTest) TestRead() {
 	s.EqualValues(length, num)
 	s.NoError(fileToRead.Close(), "close error not expected")
 
-	chunk1 := make([]byte, 5)
-	num, err = fileToRead.Read(chunk1)
-	s.NoError(err, "unexpected read error")
-	s.EqualValues(5, num)
-	s.EqualValues(expectedSlice[:5], chunk1)
+	b, err := io.ReadAll(fileToRead)
+	s.NoError(err, "read error not expected")
+	s.EqualValues(12, len(b))
+	s.Equal(expectedSlice, b)
 
-	chunk2 := make([]byte, 5)
-	num, err = fileToRead.Read(chunk2)
-	s.NoError(err, "unexpected read error")
-	s.EqualValues(5, num)
-	s.EqualValues(expectedSlice[5:10], chunk2)
-
-	chunk3 := make([]byte, 5)
-	num, err = fileToRead.Read(chunk3)
-	s.EqualValues(io.EOF, err)
-	s.EqualValues(2, num)
-	s.EqualValues(expectedSlice[10:], chunk3[:2])
+	// test for reading from a non-existent file
+	f, err := s.fileSystem.NewFile("", "/some/non-existent/file.txt")
+	s.NoError(err, "unexpected error creating a new file")
+	_, err = f.Read(make([]byte, 1))
+	s.ErrorIs(err, fs.ErrNotExist, "expected Read error")
 }
 
 // TestWriteThenReadNoClose writes to a file, and reads from it without closing it by seeking to the start
@@ -647,7 +667,7 @@ func (s *memFileTest) TestWriteThenReadNoClose() {
 	_, err = file.Seek(0, 0)
 	s.NoError(err, "seek error not expected")
 	_, err = file.Read(data)
-	s.Error(err, "read error  expected")
+	s.NoError(err, "no error expected")
 
 	s.NoError(file.Close(), "close error not expected")
 	_, err = file.Read(data)
@@ -669,16 +689,16 @@ func (s *memFileTest) TestWriteThenReadNoClose() {
 // TestLastModified Writes to a file then retrives the value that LastModified() returns and the lastModified value
 // stored in the File struct and compares them against eachother.  Successful if they are equal.
 func (s *memFileTest) TestLastModified() {
-	data := "Hello World!"
-	sliceData := []byte(data)
-	_, err := s.testFile.Write(sliceData)
+	_, err := s.testFile.Write([]byte("Hello World!"))
 	s.NoError(err, "write did not work as expected!")
+	s.NoError(s.testFile.Close(), "close error not expected")
 
 	t, _ := s.testFile.LastModified()
 	firstTime := *t
 	time.Sleep(1 * time.Second)
 	_, err = s.testFile.Write([]byte("hey!"))
 	s.NoError(err, "unexpected write error")
+	s.NoError(s.testFile.Close(), "close error not expected")
 
 	secondTime := *t
 
@@ -763,6 +783,7 @@ func (s *memFileTest) TestFileNewWrite() {
 	data, err := io.ReadAll(file)
 	s.Require().NoError(err)
 	s.Equal("hello world", string(data))
+	s.Require().NoError(file.Close())
 
 	// Re-write the same data should not append
 	_, err = file.Write([]byte("hello world"))
