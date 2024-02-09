@@ -28,13 +28,13 @@ type memFileTest struct {
 }
 
 func (s *memFileTest) SetupTest() {
-	fs := NewFileSystem()
-	file, nerr := fs.NewFile("C", "/test_files/test.txt")
+	memfs := NewFileSystem()
+	file, nerr := memfs.NewFile("C", "/test_files/test.txt")
 	s.NoError(nerr, "unexpected error creating file")
 
 	// initializing our test file. casting it, and bringing it into existence by calling Touch() on it
 	s.testFile = file.(*File)
-	s.fileSystem = fs
+	s.fileSystem = memfs
 	s.NoError(s.testFile.Touch(), "unexpected error touching file")
 }
 
