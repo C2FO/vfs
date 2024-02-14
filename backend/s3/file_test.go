@@ -473,7 +473,8 @@ func (ts *fileTestSuite) TestTouch() {
 		u := mocks.NewUploaderAPI(ts.T())
 		u.EXPECT().
 			UploadWithContext(mock.Anything, mock.AnythingOfType("*s3manager.UploadInput"), mock.Anything).
-			RunAndReturn(func(ctx context.Context, input *s3manager.UploadInput, opts ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
+			RunAndReturn(func(ctx context.Context,
+				input *s3manager.UploadInput, opts ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
 				// Read from the input.Body (which is a PipeReader) to simulate actual upload
 				_, readErr := io.ReadAll(input.Body)
 				if readErr != nil {
@@ -733,7 +734,8 @@ func (ts *fileTestSuite) TestCloseWithWrite() {
 		u := mocks.NewUploaderAPI(ts.T())
 		u.EXPECT().
 			UploadWithContext(mock.Anything, mock.AnythingOfType("*s3manager.UploadInput"), mock.Anything).
-			RunAndReturn(func(ctx context.Context, input *s3manager.UploadInput, opts ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
+			RunAndReturn(func(ctx context.Context,
+				input *s3manager.UploadInput, opts ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
 				// Read from the input.Body (which is a PipeReader) to simulate actual upload
 				_, readErr := io.ReadAll(input.Body)
 				if readErr != nil {
@@ -830,7 +832,8 @@ func (ts *fileTestSuite) TestWriteOperations() {
 		u := mocks.NewUploaderAPI(ts.T())
 		u.EXPECT().
 			UploadWithContext(mock.Anything, mock.AnythingOfType("*s3manager.UploadInput"), mock.Anything).
-			RunAndReturn(func(ctx context.Context, input *s3manager.UploadInput, opts ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
+			RunAndReturn(func(ctx context.Context,
+				input *s3manager.UploadInput, opts ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
 				// Read from the input.Body (which is a PipeReader) to simulate actual upload
 				b, readErr := io.ReadAll(input.Body)
 				if readErr != nil {

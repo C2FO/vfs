@@ -238,7 +238,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 
 // Close cleans up underlying mechanisms for reading from and writing to the file. Closes and removes the
 // local temp file, and triggers a Write to S3 of anything in the f.writeBuffer if it has been created.
-func (f *File) Close() error {
+func (f *File) Close() error { //nolint:gocyclo
 	defer func() {
 		f.reader = nil
 		f.cancelFunc = nil
