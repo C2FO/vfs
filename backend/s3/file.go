@@ -289,8 +289,18 @@ func (f *File) Close() error {
 		if f.writeCalled && f.s3Writer != nil && f.s3WriterCompleteCh != nil {
 			// wait for s3Writer to complete
 			<-f.s3WriterCompleteCh
+			// close s3WriterCompleteCh channel
+			close(f.s3WriterCompleteCh)
 		}
 		err := waitUntilFileExists(f, 5)
+		if err != nil {
+			return err
+		}
+	}
+
+	// close reader
+	if f.reader != nil && !f.writeCalled {
+		err := f.reader.Close()
 		if err != nil {
 			return err
 		}
@@ -512,7 +522,7 @@ func (f *File) Touch() error {
 		}
 	} else {
 		// file already exists so update its last modified date
-		return utils.UpdateLastModifiedByMoving(f) // TODO: we should simply use CopyObject to copy the file to itself
+		return utils.UpdateLastModifiedByMoving(f)
 	}
 
 	return nil
@@ -692,6 +702,8 @@ func waitUntilFileExists(file vfs.File, retries int) error {
 func (f *File) getReader() (io.ReadCloser, error) {
 	if f.reader == nil {
 		if f.writeCalled && f.tempFileWriter != nil {
+			// we've edited or truncated the file, so we need to read from the temp file which should already be at the
+			// current cursor position
 			f.reader = f.tempFileWriter
 		} else {
 			sz, err := f.Size()
