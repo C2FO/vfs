@@ -28,7 +28,8 @@ type Options struct {
 	Retry                       request.Retryer
 	MaxRetries                  int
 	FileBufferSize              int   // Buffer size in bytes used with utils.TouchCopyBuffered
-	DownloadPartitionSize       int64 // Partition size in bytes used to multipart download large files using S3 Downloader
+	DownloadPartitionSize       int64 // Partition size in bytes used to multipart download of large files using s3manager.Downloader
+	UploadPartitionSize         int64 // Partition size in bytes used to multipart upload of large files using s3manager.Uploader
 }
 
 // getClient setup S3 client
