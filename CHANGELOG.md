@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixes #146 - Update S3 backend to comply with new io integration test suite. Update to no longer write to memory.
 - Fixes #156 - Update os backend to comply with new io integration test suite
 - Fixes #160 - Update mem backend to comply with new io integration test suite
+### Security
+- Fixes #165 - Update to latest go and dependencies
+  - Update .gvmrc to 1.22.0.
+  - Update go.mod min version to Go 1.22.
+  - Update actions to test only supported Go versions (1.21, 1.22)
+  - Updated dependencies (ie, Google Cloud, Azure, AWS sdks)
 
 ## [6.11.3] - 2024-02-02
 ### Fixed
