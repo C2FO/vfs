@@ -11,7 +11,7 @@ require (
 	github.com/aws/aws-sdk-go v1.50.20
 	github.com/dsoprea/go-utility/v2 v2.0.0-20221003172846-a3e1774ef349
 	github.com/fatih/color v1.16.0
-	github.com/fsouza/fake-gcs-server v1.47.8
+	github.com/fsouza/fake-gcs-server v1.47.7
 	github.com/jlaffaye/ftp v0.2.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/errors v0.9.1
