@@ -8,7 +8,7 @@ import (
 
 	"github.com/c2fo/vfs/v6/backend"
 	"github.com/c2fo/vfs/v6/backend/s3"
-	"github.com/c2fo/vfs/v6/mocks"
+	"github.com/c2fo/vfs/v6/backend/s3/mocks"
 )
 
 func TestVFSSimple(t *testing.T) {

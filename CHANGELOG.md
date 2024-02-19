@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 ### Added
+- Fixes #146 - Update S3 backend to comply with new io integration test suite. Update to no longer write to memory.
 - Fixes #156 - Update os backend to comply with new io integration test suite
 - Fixes #160 - Update mem backend to comply with new io integration test suite
 
