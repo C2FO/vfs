@@ -17,6 +17,7 @@ import (
 const Scheme = "s3"
 const name = "AWS S3"
 
+// S3API is the interface that defines the methods required to implement the s3 client.
 type S3API interface {
 	s3iface.S3API
 }
