@@ -365,7 +365,7 @@ linters-settings:
 
   gosimple:
     # Select the Go version to target. The default is '1.13'.
-    go: "1.15"
+    go: "1.21"
     # https://staticcheck.io/docs/options#checks
     checks: [ "all", "-ST1003" ]
 
@@ -502,13 +502,13 @@ linters-settings:
 
   staticcheck:
     # Select the Go version to target. The default is '1.13'.
-    go: "1.15"
+    go: "1.21"
     # https://staticcheck.io/docs/options#checks
     checks: [ "all", "-ST1003" ]
 
   stylecheck:
     # Select the Go version to target. The default is '1.13'.
-    go: "1.15"
+    go: "1.21"
     # https://staticcheck.io/docs/options#checks
     checks: [ "all", "-ST1000", "-ST1003", "-ST1016", "-ST1020", "-ST1021", "-ST1022" ]
 #    # https://staticcheck.io/docs/options#dot_import_whitelist
@@ -563,7 +563,7 @@ linters-settings:
 
   unused:
     # Select the Go version to target. The default is '1.13'.
-    go: "1.20"
+    go: "1.21"
 
 #  whitespace:
 #    multi-if: false   # Enforces newlines (or comments) after every multi-line if statement

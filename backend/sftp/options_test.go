@@ -625,7 +625,7 @@ func generatePrivateKey(passphrase []byte) ([]byte, error) {
 	}
 
 	if len(passphrase) > 0 {
-		pemBlock, err = x509.EncryptPEMBlock(rand.Reader, pemBlock.Type, pemBlock.Bytes, passphrase, x509.PEMCipherAES256)
+		pemBlock, err = ssh.MarshalPrivateKeyWithPassphrase(privateKey, "", passphrase)
 		if err != nil {
 			return nil, err
 		}

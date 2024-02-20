@@ -133,10 +133,6 @@ SSH keys may be passed via [Options](#type-options).KeyFilePath and (optionally)
 [Options](#type-options).KeyPassphrase. They can also be passed via environmental variables
 `VFS_SFTP_KEYFILE` and `VFS_SFTP_KEYFILE_PASSPHRASE`, respectively.
 
-Note that as of Go 1.12, OpenSSH private key format is not supported when encrypted
-(with passphrase). See https://github.com/golang/go/issues/18692 To force
-creation of PEM format(instead of OPENSSH format), use `ssh-keygen -m PEM`_
-
 
 ### Known Hosts
 

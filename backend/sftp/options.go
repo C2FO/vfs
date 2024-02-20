@@ -81,10 +81,6 @@ var defaultSSHConfig = &ssh.ClientConfig{
 	},
 }
 
-// Note that as of 1.12, OPENSSH private key format is not supported when encrypt (with passphrase).
-// See https://github.com/golang/go/issues/18692
-// To force creation of PEM format(instead of OPENSSH format), use ssh-keygen -m PEM
-
 func getClient(authority utils.Authority, opts Options) (Client, io.Closer, error) {
 
 	// setup Authentication
