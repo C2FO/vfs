@@ -196,6 +196,9 @@ func (f *File) CopyToFile(file vfs.File) error {
 	//  	return err
 	// }
 
+	// Close file (f) reader regardless of an error
+	defer f.Close()
+
 	fileBufferSize := 0
 
 	if opts, ok := f.Location().FileSystem().(*FileSystem).options.(Options); ok {
@@ -210,8 +213,8 @@ func (f *File) CopyToFile(file vfs.File) error {
 	if cerr := file.Close(); cerr != nil {
 		return cerr
 	}
-	// Close file (f) reader
-	return f.Close()
+
+	return nil
 }
 
 // CopyToLocation creates a copy of *File, using the file's current path as the new file's

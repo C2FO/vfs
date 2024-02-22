@@ -176,11 +176,17 @@ Brought to you by the Enterprise Pipeline team at C2FO:
 
 * John Judd - john.judd@c2fo.com
 
-* Jason Coble - [@jasonkcoble](https://twitter.com/jasonkcoble) - jason@c2fo.com
+* Dustin Schnee - dustin.schnee@c2fo.com
+
+* Katie Hrenchir Shields - katie.shields@c2fo.com
+
+* Grant Higgins - grant.higgins@c2fo.com
+
+* Pooja Dhondge - pooja.dhondge@c2fo.com
 
 * Chris Roush – chris.roush@c2fo.com
 
-* Moe Zeid    - moe.zeid@c2fo.com
+* Anthony Ross - anthony.ross@c2fo.com
 
 https://github.com/c2fo/
 
