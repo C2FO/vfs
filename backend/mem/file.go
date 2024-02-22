@@ -295,7 +295,6 @@ func (f *File) CopyToFile(target vfs.File) error {
 	if f == nil || target == nil {
 		return nilReference()
 	}
-	
 	// Close file (f) reader regardless of an error
 	defer func() {
 		_ = f.Close()
