@@ -151,7 +151,10 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 // This method should be called on a closed file or a file with 0 cursor position to avoid errors.
 func (f *File) CopyToFile(file vfs.File) error {
 	// Close file (f) reader regardless of an error
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+		_ = file.Close()
+	}()
 
 	// validate seek is at 0,0 before doing copy
 	if err := backend.ValidateCopySeekPosition(f); err != nil {

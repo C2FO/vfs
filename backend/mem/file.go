@@ -293,7 +293,10 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 // after this is called, f's cursor will reset as if it had been closed.
 func (f *File) CopyToFile(target vfs.File) error {
 	// Close file (f) reader regardless of an error
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+		_ = file.Close()
+	}()
 
 	if f == nil || target == nil {
 		return nilReference()

@@ -197,7 +197,10 @@ func (f *File) CopyToFile(file vfs.File) error {
 	// }
 
 	// Close file (f) reader regardless of an error
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+		_ = file.Close()
+	}()
 
 	fileBufferSize := 0
 

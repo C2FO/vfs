@@ -226,7 +226,10 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 // CopyToFile puts the contents of File into the targetFile passed.
 func (f *File) CopyToFile(file vfs.File) error {
 	// Close file (f) reader regardless of an error
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+		_ = file.Close()
+	}()
 
 	if err := backend.ValidateCopySeekPosition(f); err != nil {
 		return err

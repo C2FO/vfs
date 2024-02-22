@@ -109,7 +109,10 @@ func (f *File) Location() vfs.Location {
 // method if the target file is also on S3, otherwise uses io.CopyBuffer.
 func (f *File) CopyToFile(file vfs.File) error {
 	// Close file (f) reader regardless of an error
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+		_ = file.Close()
+	}()
 	// validate seek is at 0,0 before doing copy
 	if f.cursorPos != 0 {
 		return vfs.CopyToNotPossible

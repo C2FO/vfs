@@ -140,7 +140,10 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 // CopyToFile puts the contents of the receiver (f *File) into the passed vfs.File parameter.
 func (f *File) CopyToFile(file vfs.File) error {
 	// Close file (f) reader regardless of an error
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+		_ = file.Close()
+	}()
 
 	// validate seek is at 0,0 before doing copy
 	if err := backend.ValidateCopySeekPosition(f); err != nil {
