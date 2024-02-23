@@ -2,6 +2,8 @@ package mem
 
 import (
 	"errors"
+	"fmt"
+	"os"
 	"path"
 	"regexp"
 	"sort"
@@ -197,14 +199,15 @@ func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
 
 // DeleteFile locates the file given the fileName and calls delete on it
 func (l *Location) DeleteFile(relFilePath string, _ ...options.DeleteOption) error {
-	l.fileSystem.mu.Lock()
-	defer l.fileSystem.mu.Unlock()
 	err := utils.ValidateRelativeFilePath(relFilePath)
 	if err != nil {
 		return err
 	}
 	vol := l.Volume()
 	fullPath := path.Join(l.Path(), relFilePath)
+
+	l.fileSystem.mu.Lock()
+	defer l.fileSystem.mu.Unlock()
 	mapRef := l.fileSystem.fsMap
 	if _, ok := mapRef[vol]; ok {
 		if thisObj, ok2 := mapRef[vol][fullPath]; ok2 {
@@ -214,10 +217,12 @@ func (l *Location) DeleteFile(relFilePath string, _ ...options.DeleteOption) err
 			thisObj.i = nil
 			thisObj = nil
 			mapRef[vol][fullPath] = nil // setting that key to nil so it truly no longer lives on this system
+			delete(mapRef[vol], fullPath)
 			return nil
 		}
 	}
-	return errors.New("this file does not exist")
+
+	return fmt.Errorf("unable to delete file: %w", os.ErrNotExist)
 }
 
 // URI returns the URI of the location if the location exists
