@@ -224,7 +224,7 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 }
 
 // CopyToFile puts the contents of File into the targetFile passed.
-func (f *File) CopyToFile(file vfs.File) (err error) {
+func (f *File) CopyToFile(file vfs.File) (err error) { //nolint:gocyclo
 	// Close file (f) reader regardless of an error
 	defer func() {
 		// close writer
