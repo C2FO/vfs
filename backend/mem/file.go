@@ -291,10 +291,25 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 // CopyToFile copies the receiver file into the target file. Additionally,
 // after this is called, f's cursor will reset as if it had been closed.
-func (f *File) CopyToFile(target vfs.File) error {
+func (f *File) CopyToFile(target vfs.File) (err error) {
 	if f == nil || target == nil {
 		return nilReference()
 	}
+	// Close file (f) reader regardless of an error
+	defer func() {
+		// close writer
+		wErr := target.Close()
+		// close reader
+		rErr := f.Close()
+		//
+		if err == nil {
+			if wErr != nil {
+				err = wErr
+			} else if rErr != nil {
+				err = rErr
+			}
+		}
+	}()
 
 	if exists, err := f.Exists(); !exists {
 		if err != nil {
@@ -315,11 +330,11 @@ func (f *File) CopyToFile(target vfs.File) error {
 	if _, err := target.Write(f.memFile.contents); err != nil {
 		return err
 	}
-	err := target.Close()
-	if err != nil {
-		return err
+	cerr := target.Close()
+	if cerr != nil {
+		return cerr
 	}
-	return f.Close()
+	return err
 }
 
 // MoveToLocation moves the receiver file to the passed in location. It does so by

@@ -149,7 +149,23 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 // CopyToFile puts the contents of File into the target vfs.File passed in. Uses the GCS CopierFrom
 // method if the target file is also on GCS, otherwise uses io.CopyBuffer.
 // This method should be called on a closed file or a file with 0 cursor position to avoid errors.
-func (f *File) CopyToFile(file vfs.File) error {
+func (f *File) CopyToFile(file vfs.File) (err error) {
+	// Close file (f) reader regardless of an error
+	defer func() {
+		// close writer
+		wErr := file.Close()
+		// close reader
+		rErr := f.Close()
+		//
+		if err == nil {
+			if wErr != nil {
+				err = wErr
+			} else if rErr != nil {
+				err = rErr
+			}
+		}
+	}()
+
 	// validate seek is at 0,0 before doing copy
 	if err := backend.ValidateCopySeekPosition(f); err != nil {
 		return err
@@ -180,7 +196,7 @@ func (f *File) CopyToFile(file vfs.File) error {
 		return cerr
 	}
 	// Close file (f) reader
-	return f.Close()
+	return err
 }
 
 // MoveToLocation works by first calling File.CopyToLocation(vfs.Location) then, if that

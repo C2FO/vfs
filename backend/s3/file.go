@@ -107,7 +107,22 @@ func (f *File) Location() vfs.Location {
 
 // CopyToFile puts the contents of File into the targetFile passed. Uses the S3 CopyObject
 // method if the target file is also on S3, otherwise uses io.CopyBuffer.
-func (f *File) CopyToFile(file vfs.File) error {
+func (f *File) CopyToFile(file vfs.File) (err error) {
+	// Close file (f) reader regardless of an error
+	defer func() {
+		// close writer
+		wErr := file.Close()
+		// close reader
+		rErr := f.Close()
+		//
+		if err == nil {
+			if wErr != nil {
+				err = wErr
+			} else if rErr != nil {
+				err = rErr
+			}
+		}
+	}()
 	// validate seek is at 0,0 before doing copy
 	if f.cursorPos != 0 {
 		return vfs.CopyToNotPossible
@@ -144,8 +159,8 @@ func (f *File) CopyToFile(file vfs.File) error {
 	if err := file.Close(); err != nil {
 		return err
 	}
-	// Close file (f) reader
-	return f.Close()
+
+	return err
 }
 
 // MoveToFile puts the contents of File into the targetFile passed using File.CopyToFile.

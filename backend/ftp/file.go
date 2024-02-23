@@ -224,7 +224,23 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 }
 
 // CopyToFile puts the contents of File into the targetFile passed.
-func (f *File) CopyToFile(file vfs.File) error {
+func (f *File) CopyToFile(file vfs.File) (err error) { //nolint:gocyclo
+	// Close file (f) reader regardless of an error
+	defer func() {
+		// close writer
+		wErr := file.Close()
+		// close reader
+		rErr := f.Close()
+		//
+		if err == nil {
+			if wErr != nil {
+				err = wErr
+			} else if rErr != nil {
+				err = rErr
+			}
+		}
+	}()
+
 	if err := backend.ValidateCopySeekPosition(f); err != nil {
 		return err
 	}
@@ -259,7 +275,8 @@ func (f *File) CopyToFile(file vfs.File) error {
 		if err := tempFile.Close(); err != nil {
 			return err
 		}
-		return file.Close()
+
+		return nil
 	} else {
 		if err := utils.TouchCopyBuffered(file, f, 0); err != nil {
 			return err
@@ -268,8 +285,8 @@ func (f *File) CopyToFile(file vfs.File) error {
 		if cerr := file.Close(); cerr != nil {
 			return cerr
 		}
-		// Close file (f) reader
-		return f.Close()
+
+		return err
 	}
 
 }

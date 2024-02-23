@@ -138,10 +138,26 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 }
 
 // CopyToFile puts the contents of the receiver (f *File) into the passed vfs.File parameter.
-func (f *File) CopyToFile(file vfs.File) error {
+func (f *File) CopyToFile(file vfs.File) (err error) {
+	// Close file (f) reader regardless of an error
+	defer func() {
+		// close writer
+		wErr := file.Close()
+		// close reader
+		rErr := f.Close()
+		//
+		if err == nil {
+			if wErr != nil {
+				err = wErr
+			} else if rErr != nil {
+				err = rErr
+			}
+		}
+	}()
+
 	// validate seek is at 0,0 before doing copy
-	if err := backend.ValidateCopySeekPosition(f); err != nil {
-		return err
+	if verr := backend.ValidateCopySeekPosition(f); verr != nil {
+		return verr
 	}
 
 	azFile, ok := file.(*File)
@@ -162,15 +178,15 @@ func (f *File) CopyToFile(file vfs.File) error {
 		fileBufferSize = fs.options.FileBufferSize
 	}
 
-	if err := utils.TouchCopyBuffered(file, f, fileBufferSize); err != nil {
-		return err
+	if terr := utils.TouchCopyBuffered(file, f, fileBufferSize); terr != nil {
+		return terr
 	}
 
-	if err := file.Close(); err != nil {
-		return err
+	if cerr := file.Close(); cerr != nil {
+		return cerr
 	}
 
-	return f.Close()
+	return err
 }
 
 // MoveToLocation copies the receiver to the passed location.  After the copy succeeds, the original is deleted.

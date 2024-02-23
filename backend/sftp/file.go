@@ -189,12 +189,28 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 }
 
 // CopyToFile puts the contents of File into the targetFile passed.
-func (f *File) CopyToFile(file vfs.File) error {
+func (f *File) CopyToFile(file vfs.File) (err error) {
 	// validate seek is at 0,0 before doing copy
 	// TODO: Fix this later
 	// if err := backend.ValidateCopySeekPosition(f); err != nil {
 	//  	return err
 	// }
+
+	// Close file (f) reader regardless of an error
+	defer func() {
+		// close writer
+		wErr := file.Close()
+		// close reader
+		rErr := f.Close()
+		//
+		if err == nil {
+			if wErr != nil {
+				err = wErr
+			} else if rErr != nil {
+				err = rErr
+			}
+		}
+	}()
 
 	fileBufferSize := 0
 
@@ -210,8 +226,8 @@ func (f *File) CopyToFile(file vfs.File) error {
 	if cerr := file.Close(); cerr != nil {
 		return cerr
 	}
-	// Close file (f) reader
-	return f.Close()
+
+	return err
 }
 
 // CopyToLocation creates a copy of *File, using the file's current path as the new file's
