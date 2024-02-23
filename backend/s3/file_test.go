@@ -934,6 +934,11 @@ func (ts *fileTestSuite) TestWriteOperations() {
 					return err
 				},
 				func(f *File) error {
+					// sleep 1 sec
+					time.Sleep(1 * time.Second)
+					return nil
+				},
+				func(f *File) error {
 					return f.Close()
 				},
 			},
