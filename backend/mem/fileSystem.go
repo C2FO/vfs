@@ -50,6 +50,8 @@ func (fs *FileSystem) NewFile(volume, absFilePath string) (vfs.File, error) {
 		return nil, err
 	}
 
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
 	if _, ok := fs.fsMap[volume]; ok {
 		for _, obj := range fs.fsMap[volume] {
 			if obj.isFile && obj.i.(*memFile).location.Path() == location.Path() {
