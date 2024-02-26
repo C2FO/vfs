@@ -2,6 +2,7 @@ package gs
 
 import (
 	"context"
+	"errors"
 
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
@@ -144,7 +145,7 @@ func (c *Copier) Run(ctx context.Context) (*storage.ObjectAttrs, error) {
 func objectAttributeRetry(retry vfs.Retry, attrFunc func() (*storage.ObjectAttrs, error)) (*storage.ObjectAttrs, error) {
 	var attrs *storage.ObjectAttrs
 	attrs, err := attrFunc()
-	if err != nil && err != iterator.Done {
+	if err != nil && !errors.Is(err, iterator.Done) {
 		if err := retry(func() error {
 			var retryErr error
 			attrs, retryErr = attrFunc()
