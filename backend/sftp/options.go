@@ -1,6 +1,7 @@
 package sftp
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -214,7 +215,7 @@ func findHomeSystemKnownHosts(knownHostsFiles []string) ([]string, error) {
 
 	// check file existence first to prevent auto-vivification of file
 	found, err := foundFile(homeKnonwHostsPath)
-	if err != nil && err != os.ErrNotExist {
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, err
 	}
 	if found {
@@ -226,7 +227,7 @@ func findHomeSystemKnownHosts(knownHostsFiles []string) ([]string, error) {
 	if runtime.GOOS != "windows" {
 		// check file existence first to prevent auto-vivification of file
 		found, err := foundFile(systemWideKnownHosts)
-		if err != nil && err != os.ErrNotExist {
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return nil, err
 		}
 		if found {

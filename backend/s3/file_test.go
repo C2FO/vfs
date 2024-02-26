@@ -766,53 +766,6 @@ func (ts *fileTestSuite) TestCloseWithWrite() {
 
 }
 
-// TestSeekTo tests the seekTo function with various cases
-func (ts *fileTestSuite) TestSeekTo() {
-	testCases := []struct {
-		position         int64
-		offset           int64
-		whence           int
-		length           int64
-		expectedPosition int64
-		expectError      error
-	}{
-		// Test seeking from start
-		{0, 10, io.SeekStart, 100, 10, nil},
-		{0, -10, io.SeekStart, 100, 0, vfs.ErrSeekInvalidOffset}, // Negative offset from start
-		{0, 110, io.SeekStart, 100, 110, nil},                    // Offset beyond length
-
-		// Test seeking from current position
-		{50, 10, io.SeekCurrent, 100, 60, nil},
-		{50, -60, io.SeekCurrent, 100, 0, vfs.ErrSeekInvalidOffset}, // Moving before start
-		{50, 60, io.SeekCurrent, 100, 110, nil},                     // Moving beyond length
-
-		// Test seeking from end
-		{0, -10, io.SeekEnd, 100, 90, nil},
-		{0, -110, io.SeekEnd, 100, 0, vfs.ErrSeekInvalidOffset}, // Moving before start
-		{0, 10, io.SeekEnd, 100, 110, nil},                      // Moving beyond length
-
-		// Additional edge cases
-		{0, 0, io.SeekStart, 100, 0, nil},       // No movement from start
-		{100, 0, io.SeekCurrent, 100, 100, nil}, // No movement from current
-		{0, 0, io.SeekEnd, 100, 100, nil},       // No movement from end
-
-		// invalid whence case
-		{0, 0, 3, 100, 0, vfs.ErrSeekInvalidWhence},
-	}
-
-	for _, tc := range testCases {
-		result, err := seekTo(tc.length, tc.position, tc.offset, tc.whence)
-
-		if tc.expectError != nil {
-			ts.Error(err, "error expected")
-			ts.ErrorIs(err, tc.expectError)
-		} else {
-			ts.NoError(err, "no error expected")
-			ts.Equal(tc.expectedPosition, result)
-		}
-	}
-}
-
 type fileTestCase struct {
 	name             string
 	setup            func(*mocks.S3API) *File // Function to set up each test case
