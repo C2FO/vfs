@@ -45,7 +45,7 @@ type File struct {
 }
 
 // Close cleans up underlying mechanisms for reading from and writing to the file. Closes and removes the
-// local temp file, and triggers a Write to S3 of anything in the f.writeBuffer if it has been created.
+// local temp file, and triggers a Write to GCS of anything in the f.writeBuffer if it has been created.
 func (f *File) Close() error {
 	defer func() {
 		f.reader = nil
@@ -241,7 +241,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	return f.cursorPos, nil
 }
 
-// Write implements the standard for io.Writer.  Note that writes are not committed to S3 until CLose() is called.
+// Write implements the standard for io.Writer.  Note that writes are not committed to GCS until CLose() is called.
 func (f *File) Write(data []byte) (int, error) {
 	// check/initialize for writer
 	err := f.initWriters()
