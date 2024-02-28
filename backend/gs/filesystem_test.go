@@ -154,6 +154,13 @@ type mockClientCreatorWithError struct{}
 func (c *mockClientCreatorWithError) NewClient(ctx context.Context, opts ...option.ClientOption) (*storage.Client, error) {
 	return nil, errors.New("mock error")
 }
+
+type mockClientCreator struct{}
+
+func (c *mockClientCreator) NewClient(ctx context.Context, opts ...option.ClientOption) (*storage.Client, error) {
+	return &storage.Client{}, nil
+}
+
 func (s *fileysystemSuite) TestClient() {
 	testCases := []struct {
 		name         string
@@ -162,14 +169,22 @@ func (s *fileysystemSuite) TestClient() {
 		expectNotNil bool
 	}{
 		{
-			name:         "With predefined client",
-			setup:        NewFileSystem,
+			name: "With predefined client",
+			setup: func() *FileSystem {
+				return &FileSystem{
+					client: &storage.Client{},
+				}
+			},
 			expectError:  false,
 			expectNotNil: true,
 		},
 		{
-			name:         "New FileSystem without predefined client",
-			setup:        NewFileSystem,
+			name: "New FileSystem without predefined client",
+			setup: func() *FileSystem {
+				return &FileSystem{
+					clientCreator: &mockClientCreator{},
+				}
+			},
 			expectError:  false,
 			expectNotNil: true,
 		},
