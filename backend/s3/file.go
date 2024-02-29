@@ -450,7 +450,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	// update cursorPos
-	pos, err := seekTo(int64(length), f.cursorPos, offset, whence)
+	pos, err := utils.SeekTo(int64(length), f.cursorPos, offset, whence)
 	if err != nil {
 		return 0, err
 	}
@@ -458,27 +458,6 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 
 	f.seekCalled = true
 	return f.cursorPos, nil
-}
-
-// seekTo is a helper function for Seek. It takes the current position, offset, whence, and length of the file
-// and returns the new position. It also checks for invalid offsets and returns an error if one is found.
-func seekTo(length, position, offset int64, whence int) (int64, error) {
-
-	switch whence {
-	default:
-		return 0, vfs.ErrSeekInvalidWhence
-	case io.SeekStart:
-		// this actually does nothing since the new position just becomes the offset but is here for completeness
-	case io.SeekCurrent:
-		offset += position
-	case io.SeekEnd:
-		offset += length
-	}
-	if offset < 0 {
-		return 0, vfs.ErrSeekInvalidOffset
-	}
-
-	return offset, nil
 }
 
 // Write implements the standard for io.Writer.  Note that writes are not committed to S3 until CLose() is called.

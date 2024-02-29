@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/c2fo/vfs/v6"
 	_os "github.com/c2fo/vfs/v6/backend/os"
 	"github.com/c2fo/vfs/v6/mocks"
 	"github.com/c2fo/vfs/v6/utils"
@@ -890,6 +891,53 @@ func (s *utilsSuite) TestTouchCopyBufferedNonDefaultBufferSize() {
 	err = utils.TouchCopyBuffered(writer, noFile, 1048576)
 	s.Error(err, "expected error running TouchCopyBuffered() using non-existent reader")
 
+}
+
+// TestSeekTo tests the seekTo function with various cases
+func (s *utilsSuite) TestSeekTo() {
+	testCases := []struct {
+		position         int64
+		offset           int64
+		whence           int
+		length           int64
+		expectedPosition int64
+		expectError      error
+	}{
+		// Test seeking from start
+		{0, 10, io.SeekStart, 100, 10, nil},
+		{0, -10, io.SeekStart, 100, 0, vfs.ErrSeekInvalidOffset}, // Negative offset from start
+		{0, 110, io.SeekStart, 100, 110, nil},                    // Offset beyond length
+
+		// Test seeking from current position
+		{50, 10, io.SeekCurrent, 100, 60, nil},
+		{50, -60, io.SeekCurrent, 100, 0, vfs.ErrSeekInvalidOffset}, // Moving before start
+		{50, 60, io.SeekCurrent, 100, 110, nil},                     // Moving beyond length
+
+		// Test seeking from end
+		{0, -10, io.SeekEnd, 100, 90, nil},
+		{0, -110, io.SeekEnd, 100, 0, vfs.ErrSeekInvalidOffset}, // Moving before start
+		{0, 10, io.SeekEnd, 100, 110, nil},                      // Moving beyond length
+
+		// Additional edge cases
+		{0, 0, io.SeekStart, 100, 0, nil},       // No movement from start
+		{100, 0, io.SeekCurrent, 100, 100, nil}, // No movement from current
+		{0, 0, io.SeekEnd, 100, 100, nil},       // No movement from end
+
+		// invalid whence case
+		{0, 0, 3, 100, 0, vfs.ErrSeekInvalidWhence},
+	}
+
+	for _, tc := range testCases {
+		result, err := utils.SeekTo(tc.length, tc.position, tc.offset, tc.whence)
+
+		if tc.expectError != nil {
+			s.Error(err, "error expected")
+			s.ErrorIs(err, tc.expectError)
+		} else {
+			s.NoError(err, "no error expected")
+			s.Equal(tc.expectedPosition, result)
+		}
+	}
 }
 
 func TestUtils(t *testing.T) {

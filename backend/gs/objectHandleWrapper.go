@@ -2,6 +2,7 @@ package gs
 
 import (
 	"context"
+	"errors"
 
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
@@ -16,6 +17,7 @@ import (
 type ObjectHandleWrapper interface {
 	NewWriter(ctx context.Context) *storage.Writer
 	NewReader(ctx context.Context) (*storage.Reader, error)
+	NewRangeReader(ctx context.Context, offset, length int64) (*storage.Reader, error)
 	Attrs(ctx context.Context) (*storage.ObjectAttrs, error)
 	Delete(ctx context.Context) error
 	Update(ctx context.Context, attrs storage.ObjectAttrsToUpdate) (*storage.ObjectAttrs, error)
@@ -55,6 +57,23 @@ func (r *RetryObjectHandler) NewReader(ctx context.Context) (*storage.Reader, er
 	if err := r.Retry(func() error {
 		var retryErr error
 		reader, retryErr = r.handler.NewReader(ctx)
+		if retryErr != nil {
+			return retryErr
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return reader, nil
+}
+
+// NewRangeReader creates a new Reader to read the contents of the object starting at an offset, wrapped in a retry.
+// ErrObjectNotExist will be returned if the object is not found.
+func (r *RetryObjectHandler) NewRangeReader(ctx context.Context, offset, length int64) (*storage.Reader, error) {
+	var reader *storage.Reader
+	if err := r.Retry(func() error {
+		var retryErr error
+		reader, retryErr = r.handler.NewRangeReader(ctx, offset, length)
 		if retryErr != nil {
 			return retryErr
 		}
@@ -126,7 +145,7 @@ func (c *Copier) Run(ctx context.Context) (*storage.ObjectAttrs, error) {
 func objectAttributeRetry(retry vfs.Retry, attrFunc func() (*storage.ObjectAttrs, error)) (*storage.ObjectAttrs, error) {
 	var attrs *storage.ObjectAttrs
 	attrs, err := attrFunc()
-	if err != nil && err != iterator.Done {
+	if err != nil && !errors.Is(err, iterator.Done) {
 		if err := retry(func() error {
 			var retryErr error
 			attrs, retryErr = attrFunc()
