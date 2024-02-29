@@ -44,15 +44,14 @@ type File struct {
 	writeCalled    bool
 }
 
-// Close cleans up underlying mechanisms for reading from and writing to the file. Closes and removes the
-// local temp file, and triggers a Write to GCS of anything in the f.writeBuffer if it has been created.
+// Close commits any writes, either from the GCS writer stream or from a tempfile (in the case where Seek or Read are
+// called after Write).  It then cleans up any open resources and resets the file's state.
 func (f *File) Close() error {
 	defer func() {
+		// reset state
 		f.reader = nil
 		f.cancelFunc = nil
 		f.gcsWriter = nil
-
-		// reset state
 		f.cursorPos = 0
 		f.seekCalled = false
 		f.readCalled = false
