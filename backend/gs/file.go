@@ -69,12 +69,12 @@ func (f *File) Close() error {
 
 	// finalize writer
 	if f.gcsWriter != nil {
-		// close s3Writer
+		// close gcsWriter
 		if err := f.gcsWriter.Close(); err != nil {
 			return utils.WrapCloseError(err)
 		}
-	} else if f.tempFileWriter != nil { // s3Writer is nil but tempFileWriter is not nil (seek after write, write after seek)
-		// write tempFileWriter to s3
+	} else if f.tempFileWriter != nil { // gcsWriter is nil but tempFileWriter is not nil (seek after write, write after seek)
+		// write tempFileWriter to gcs
 		if err := f.tempToGCS(); err != nil {
 			return utils.WrapCloseError(err)
 		}
@@ -212,9 +212,9 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		f.reader = nil
 	}
 
-	// invalidate s3Writer
+	// invalidate gcsWriter
 	if f.gcsWriter != nil {
-		// cancel s3Writer
+		// cancel gcsWriter
 		f.cancelFunc()
 		f.cancelFunc = nil
 
@@ -243,6 +243,15 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 
 // Write implements the standard for io.Writer.  Note that writes are not committed to GCS until CLose() is called.
 func (f *File) Write(data []byte) (int, error) {
+	// Here, we initialize both a tempFileWriter and a gcsWriter if they haven't been initialized yet.
+	// Then write to both the local tempFileWriter and the gcsWriter stream.  We do this on the unlikely chance
+	// that the file is being written to is later Seek()'d to or Read() from before Close() is called.
+	// That would necessarily mean that the cursor for any later writes would change. Since we can't alter the current
+	// GCS stream, we cancel it and would need to write to the tempFileWriter only.  Any later Close() would then write
+	// the tempFileWriter to GCS.
+	// This is a rare case, but is meant to emulate the behavior of a standard POSIX file system.
+	// We might consider placing each write in a goroutine with a WaitGroup if this becomes a performance issue.
+
 	// check/initialize for writer
 	err := f.initWriters()
 	if err != nil {
@@ -257,7 +266,7 @@ func (f *File) Write(data []byte) (int, error) {
 
 	// write to gcs
 	if f.gcsWriter != nil {
-		// write to s3
+		// write to gcs
 		gcsWritten, err := f.gcsWriter.Write(data)
 		if err != nil {
 			return 0, utils.WrapWriteError(err)
@@ -285,7 +294,7 @@ func (f *File) initWriters() error {
 		}
 		f.tempFileWriter = tmpFile
 		if f.cursorPos != 0 {
-			// if file exists(because cursor position is non-zero), we need to copy the existing s3 file to temp
+			// if file exists(because cursor position is non-zero), we need to copy the existing gcsWriter file to temp
 			err := f.copyToLocalTempReader(tmpFile)
 			if err != nil {
 				return err
@@ -298,7 +307,7 @@ func (f *File) initWriters() error {
 		}
 	}
 
-	// if we haven't seeked yet, we need to get the s3Writer
+	// if we haven't seeked yet, we need to get the gcsWriter
 	if f.gcsWriter == nil {
 		if !f.seekCalled && !f.readCalled {
 			// setup cancelable context
@@ -311,7 +320,7 @@ func (f *File) initWriters() error {
 				return err
 			}
 
-			// get s3Writer
+			// get gcsWriter
 			w := handle.NewWriter(ctx)
 			if err != nil {
 				return err
