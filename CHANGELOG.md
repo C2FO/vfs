@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 ### Added
+- Updated all backends to use error wrapping for Read, Write, Close, Seek. #174
 - Update GS backend to comply with new io integration test suite. #172
 
 ## [6.12.1] - 2024-02-23

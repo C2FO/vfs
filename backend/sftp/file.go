@@ -1,6 +1,7 @@
 package sftp
 
 import (
+	"errors"
 	"io"
 	"os"
 	"path"
@@ -55,7 +56,7 @@ func (f *File) Path() string {
 	return utils.EnsureLeadingSlash(f.path)
 }
 
-// Exists returns a boolean of whether or not the file exists on the sftp server
+// Exists returns a boolean of whether the file exists on the sftp server
 func (f *File) Exists() (bool, error) {
 	client, err := f.fileSystem.Client(f.Authority)
 	if err != nil {
@@ -268,7 +269,7 @@ func (f *File) Close() error {
 	if f.sftpfile != nil {
 		err := f.sftpfile.Close()
 		if err != nil {
-			return err
+			return utils.WrapCloseError(err)
 		}
 		f.sftpfile = nil
 	}
@@ -284,12 +285,23 @@ func (f *File) Read(p []byte) (n int, err error) {
 
 	sftpfile, err := f.openFile(os.O_RDONLY)
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapReadError(err)
 	}
 
 	f.readCalled = true
 
-	return sftpfile.Read(p)
+	read, err := sftpfile.Read(p)
+	if err != nil {
+		// if we got io.EOF, we'll return the read and the EOF error
+		// because io.Copy looks for EOF to determine if it's done
+		// and doesn't support error wrapping
+		if errors.Is(err, io.EOF) {
+			return read, io.EOF
+		}
+		return read, utils.WrapReadError(err)
+	}
+
+	return read, nil
 }
 
 // Seek calls the underlying sftp.File Seek.
@@ -300,11 +312,16 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 
 	sftpfile, err := f.openFile(os.O_RDONLY)
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapSeekError(err)
 	}
 
 	f.seekCalled = true
-	return sftpfile.Seek(offset, whence)
+	pos, err := sftpfile.Seek(offset, whence)
+	if err != nil {
+		return pos, utils.WrapSeekError(err)
+	}
+
+	return pos, nil
 }
 
 // Write calls the underlying sftp.File Write.
@@ -322,10 +339,14 @@ func (f *File) Write(data []byte) (res int, err error) {
 
 	sftpfile, err := f.openFile(flags)
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapWriteError(err)
 	}
 
-	return sftpfile.Write(data)
+	b, err := sftpfile.Write(data)
+	if err != nil {
+		return b, utils.WrapWriteError(err)
+	}
+	return b, nil
 }
 
 // URI returns the File's URI as a string.

@@ -2,6 +2,7 @@ package mem
 
 import (
 	"errors"
+	"io"
 	"io/fs"
 	"path"
 	"sync"
@@ -95,9 +96,9 @@ func (f *File) Read(p []byte) (n int, err error) {
 	var existsOnFS bool
 	if existsOnFS, err = f.Exists(); !existsOnFS && !f.isOpen {
 		if err != nil {
-			return 0, err
+			return 0, utils.WrapReadError(err)
 		}
-		return 0, fs.ErrNotExist
+		return 0, utils.WrapReadError(fs.ErrNotExist)
 	}
 
 	// in case the file contents have changed
@@ -117,14 +118,20 @@ func (f *File) Read(p []byte) (n int, err error) {
 		f.readWriteSeeker = NewReadWriteSeekerWithData(f.memFile.contents)
 		_, err = f.readWriteSeeker.Seek(int64(f.cursor), 0)
 		if err != nil {
-			return 0, err
+			return 0, utils.WrapReadError(err)
 		}
 	}
 
 	// read file
 	read, err := f.readWriteSeeker.Read(p)
 	if err != nil {
-		return 0, err
+		// if we got io.EOF, we'll return the read and the EOF error
+		// because io.Copy looks for EOF to determine if it's done
+		// and doesn't support error wrapping
+		if errors.Is(err, io.EOF) {
+			return read, io.EOF
+		}
+		return read, utils.WrapReadError(err)
 	}
 
 	// update open file's state
@@ -141,9 +148,9 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	var err error
 	if existsOnFS, err = f.Exists(); !existsOnFS && !f.isOpen {
 		if err != nil {
-			return 0, err
+			return 0, utils.WrapSeekError(err)
 		}
-		return 0, fs.ErrNotExist
+		return 0, utils.WrapSeekError(fs.ErrNotExist)
 	}
 
 	// in case the file contents have changed
@@ -163,14 +170,14 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		f.readWriteSeeker = NewReadWriteSeekerWithData(f.memFile.contents)
 		_, err := f.readWriteSeeker.Seek(int64(f.cursor), 0)
 		if err != nil {
-			return 0, err
+			return 0, utils.WrapSeekError(err)
 		}
 	}
 
 	// seek file
 	pos, err := f.readWriteSeeker.Seek(offset, whence)
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapSeekError(err)
 	}
 
 	// update open file's state
@@ -193,7 +200,7 @@ func (f *File) Write(p []byte) (int, error) {
 			f.readWriteSeeker = NewReadWriteSeekerWithData(f.memFile.contents)
 			_, err := f.readWriteSeeker.Seek(int64(f.cursor), 0)
 			if err != nil {
-				return 0, err
+				return 0, utils.WrapWriteError(err)
 			}
 		} else {
 			// file has not been read or seeked first, so we are in truncate(overwrite) mode
@@ -206,7 +213,7 @@ func (f *File) Write(p []byte) (int, error) {
 	// write to file buffer (writes aren't committed to the filesystem file until Close is called)
 	written, err := f.readWriteSeeker.Write(p)
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapWriteError(err)
 	}
 
 	// update the file's cursor

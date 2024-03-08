@@ -148,6 +148,9 @@ func (f *File) Read(p []byte) (n int, err error) {
 
 	read, err := r.Read(p)
 	if err != nil {
+		// if we got io.EOF, we'll return the read and the EOF error
+		// because io.Copy looks for EOF to determine if it's done
+		// and doesn't support error wrapping
 		if errors.Is(err, io.EOF) {
 			return read, io.EOF
 		}
