@@ -318,7 +318,7 @@ func (f *File) Close() error {
 	if f.fileSystem.dataconn != nil {
 		err := f.fileSystem.dataconn.Close()
 		if err != nil {
-			return err
+			return utils.WrapCloseError(err)
 		}
 		f.resetConn = true
 	}
@@ -331,12 +331,18 @@ func (f *File) Close() error {
 func (f *File) Read(p []byte) (n int, err error) {
 	dc, err := f.fileSystem.DataConn(context.TODO(), f.authority, types.OpenRead, f)
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapReadError(err)
 	}
 
 	read, err := dc.Read(p)
 	if err != nil {
-		return read, err
+		// if we got io.EOF, we'll return the read and the EOF error
+		// because io.Copy looks for EOF to determine if it's done
+		// and doesn't support error wrapping
+		if errors.Is(err, io.EOF) {
+			return read, io.EOF
+		}
+		return read, utils.WrapReadError(err)
 	}
 
 	f.offset += int64(read)
@@ -349,10 +355,10 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	// ensure file exists before seeking
 	exists, err := f.Exists()
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapSeekError(err)
 	}
 	if !exists {
-		return 0, os.ErrNotExist
+		return 0, utils.WrapSeekError(os.ErrNotExist)
 	}
 
 	mode := types.OpenRead
@@ -363,7 +369,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		mode = f.fileSystem.dataconn.Mode()
 
 		switch whence {
-		case 0: // offset from beginning of the file (position 0)
+		case 0: // offset from the beginning of the file (position 0)
 			f.offset = offset
 		case 1: // offset relative to current position
 			if f.offset < 0 {
@@ -374,14 +380,14 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 			// close dataconn so that it reset the offset on next reopen (in StorFrom or RetrFrom)
 			err := f.fileSystem.dataconn.Close()
 			if err != nil {
-				return 0, err
+				return 0, utils.WrapSeekError(err)
 			}
 			f.resetConn = true
 		case 2: // offset from end of the file
 			sz, err := f.Size()
 			if err != nil {
 				if !errors.Is(err, os.ErrNotExist) {
-					return 0, err
+					return 0, utils.WrapSeekError(err)
 				}
 				// file doesn't exist, just use 0 as offset
 				f.offset = 0
@@ -395,7 +401,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 			// close dataconn so that it reset the offset on next reopen (in StorFrom or RetrFrom)
 			err = f.fileSystem.dataconn.Close()
 			if err != nil {
-				return 0, err
+				return 0, utils.WrapSeekError(err)
 			}
 			f.resetConn = true
 		}
@@ -404,7 +410,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	// now that f.offset has been adjusted and mode was captured, reinitialize file
 	_, err = f.fileSystem.DataConn(context.TODO(), f.authority, mode, f)
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapSeekError(err)
 	}
 
 	// return new offset from beginning of file
@@ -415,12 +421,12 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 func (f *File) Write(data []byte) (res int, err error) {
 	dc, err := f.fileSystem.DataConn(context.TODO(), f.authority, types.OpenWrite, f)
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapWriteError(err)
 	}
 
 	b, err := dc.Write(data)
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapWriteError(err)
 	}
 
 	offset := int64(b)

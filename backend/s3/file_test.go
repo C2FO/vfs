@@ -82,20 +82,20 @@ func (ts *fileTestSuite) TestRead() {
 	ts.Equal(contents, localFile.String(), "Copying an s3 file to a buffer should fill buffer with file's contents")
 
 	// test read with error
+	someErr := errors.New("some error")
 	s3apiMock.
 		On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).
 		Return(&s3.HeadObjectOutput{ContentLength: aws.Int64(12)}, nil).
 		Once()
 	s3apiMock.
 		On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).
-		Return(nil, errors.New("some error")).
+		Return(nil, someErr).
 		Once()
 	_, copyErr = io.Copy(localFile, file)
 	ts.Error(copyErr, "error expected")
-	ts.EqualError(copyErr, "some error", "error expected")
+	ts.ErrorIs(copyErr, someErr, "error expected")
 	closeErr = file.Close()
 	ts.NoError(closeErr, "no error expected")
-
 }
 
 func (ts *fileTestSuite) TestWrite() {

@@ -24,14 +24,21 @@ import (
 
 type optionsSuite struct {
 	suite.Suite
-	tmpdir   string
-	keyFiles keyFiles
+	tmpdir    string
+	keyFiles  keyFiles
+	publicKey ssh.PublicKey
 }
 
 func (o *optionsSuite) SetupSuite() {
 	dir, err := os.MkdirTemp("", "sftp_options_test")
 	o.NoError(err, "setting up sftp_options_test temp dir")
 	o.tmpdir = dir
+
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	o.NoError(err)
+	publicKey, err := ssh.NewPublicKey(&privateKey.PublicKey)
+	o.NoError(err)
+	o.publicKey = publicKey
 
 	keyFiles, err := setupKeyFiles(o.tmpdir)
 	if !o.NoError(err) {
@@ -172,7 +179,7 @@ func (o *optionsSuite) TestGetHostKeyCallback() {
 	tests := []hostkeyTest{
 		{
 			options: Options{
-				KnownHostsCallback: ssh.InsecureIgnoreHostKey(),
+				KnownHostsCallback: ssh.FixedHostKey(o.publicKey),
 			},
 			hasError:   false,
 			errMessage: "",
@@ -411,7 +418,7 @@ func (o *optionsSuite) TestGetClient() {
 			authority: auth,
 			options: Options{
 				Password:           "somepassword",
-				KnownHostsCallback: ssh.InsecureIgnoreHostKey(),
+				KnownHostsCallback: ssh.FixedHostKey(o.publicKey),
 			},
 			hasError: true,
 			errRegex: ".*",
@@ -421,7 +428,7 @@ func (o *optionsSuite) TestGetClient() {
 			authority: auth,
 			options: Options{
 				KeyFilePath:        "nonexistent.key",
-				KnownHostsCallback: ssh.InsecureIgnoreHostKey(),
+				KnownHostsCallback: ssh.FixedHostKey(o.publicKey),
 			},
 			hasError: true,
 			errRegex: "open nonexistent.key: no such file or directory",

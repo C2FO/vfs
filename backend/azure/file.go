@@ -1,6 +1,7 @@
 package azure
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -38,16 +39,16 @@ func (f *File) Close() error {
 
 		client, err := f.fileSystem.Client()
 		if err != nil {
-			return err
+			return utils.WrapCloseError(err)
 		}
 
 		if _, err := f.Seek(0, 0); err != nil {
-			return err
+			return utils.WrapCloseError(err)
 		}
 
 		if f.isDirty {
 			if err := client.Upload(f, f.tempFile); err != nil {
-				return err
+				return utils.WrapCloseError(err)
 			}
 		}
 	}
@@ -59,9 +60,20 @@ func (f *File) Close() error {
 // when f.Close() is called.
 func (f *File) Read(p []byte) (n int, err error) {
 	if err := f.checkTempFile(); err != nil {
-		return 0, err
+		return 0, utils.WrapReadError(err)
 	}
-	return f.tempFile.Read(p)
+	read, err := f.tempFile.Read(p)
+	if err != nil {
+		// if we got io.EOF, we'll return the read and the EOF error
+		// because io.Copy looks for EOF to determine if it's done
+		// and doesn't support error wrapping
+		if errors.Is(err, io.EOF) {
+			return read, io.EOF
+		}
+		return read, utils.WrapReadError(err)
+	}
+
+	return read, nil
 }
 
 // Seek implements the io.Seeker interface.  For this to work with Azure Blob Storage, a temporary local copy of
@@ -69,21 +81,25 @@ func (f *File) Read(p []byte) (n int, err error) {
 // when f.Close() is called.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
 	if err := f.checkTempFile(); err != nil {
-		return 0, nil
+		return 0, utils.WrapSeekError(err)
 	}
-	return f.tempFile.Seek(offset, whence)
+	pos, err := f.tempFile.Seek(offset, whence)
+	if err != nil {
+		return 0, utils.WrapSeekError(err)
+	}
+	return pos, nil
 }
 
 // Write implements the io.Writer interface.  Writes are performed against a temporary local file.  The temp file is
 // closed and flushed to Azure with f.Close() is called.
 func (f *File) Write(p []byte) (int, error) {
 	if err := f.checkTempFile(); err != nil {
-		return 0, err
+		return 0, utils.WrapWriteError(err)
 	}
 
 	n, err := f.tempFile.Write(p)
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapWriteError(err)
 	}
 
 	f.isDirty = true

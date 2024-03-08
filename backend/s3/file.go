@@ -271,7 +271,7 @@ func (f *File) Close() error { //nolint:gocyclo
 	if f.reader != nil && !f.writeCalled {
 		// close reader
 		if err := f.reader.Close(); err != nil {
-			return err
+			return utils.WrapCloseError(err)
 		}
 	}
 
@@ -280,13 +280,13 @@ func (f *File) Close() error { //nolint:gocyclo
 	if f.s3Writer != nil {
 		// close s3Writer
 		if err := f.s3Writer.Close(); err != nil {
-			return err
+			return utils.WrapCloseError(err)
 		}
 		wroteFile = true
 	} else if f.tempFileWriter != nil { // s3Writer is nil but tempFileWriter is not nil (seek after write, write after seek)
 		// write tempFileWriter to s3
 		if err := f.tempToS3(); err != nil {
-			return err
+			return utils.WrapCloseError(err)
 		}
 		wroteFile = true
 	}
@@ -294,7 +294,7 @@ func (f *File) Close() error { //nolint:gocyclo
 	// cleanup tempFileWriter
 	if f.tempFileWriter != nil {
 		if err := f.cleanupTempFile(); err != nil {
-			return err
+			return utils.WrapCloseError(err)
 		}
 	}
 
@@ -309,7 +309,7 @@ func (f *File) Close() error { //nolint:gocyclo
 		}
 		err := waitUntilFileExists(f, 5)
 		if err != nil {
-			return err
+			return utils.WrapCloseError(err)
 		}
 	}
 
@@ -317,7 +317,7 @@ func (f *File) Close() error { //nolint:gocyclo
 	if f.reader != nil && !f.writeCalled {
 		err := f.reader.Close()
 		if err != nil {
-			return err
+			return utils.WrapCloseError(err)
 		}
 	}
 
@@ -353,13 +353,13 @@ func (f *File) Read(p []byte) (n int, err error) {
 	// check/initialize for reader
 	r, err := f.getReader()
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapReadError(err)
 	}
 
 	read, err := r.Read(p)
 	if err != nil {
 		if !errors.Is(err, io.EOF) {
-			return 0, err
+			return 0, utils.WrapReadError(err)
 		}
 		// s3 reader returns io.EOF when reading the last byte (but not past the last byte) to save on bandwidth,
 		// but we want to return io.EOF only when reading past the last byte
@@ -368,10 +368,10 @@ func (f *File) Read(p []byte) (n int, err error) {
 		}
 		sz, err := f.Size()
 		if err != nil {
-			return 0, err
+			return 0, utils.WrapReadError(err)
 		}
 		if f.cursorPos+int64(read) > int64(sz) {
-			return read, err
+			return read, utils.WrapReadError(err)
 		}
 		f.readEOFSeen = true
 	}
@@ -411,7 +411,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		var err error
 		length, err = f.Size()
 		if err != nil {
-			return 0, fmt.Errorf("seek error: %w", err)
+			return 0, utils.WrapSeekError(err)
 		}
 	}
 
@@ -419,7 +419,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	if f.reader != nil {
 		err := f.reader.Close()
 		if err != nil {
-			return 0, err
+			return 0, utils.WrapSeekError(err)
 		}
 
 		f.reader = nil
@@ -434,7 +434,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		// close s3Writer
 		err := f.s3Writer.Close()
 		if err != nil {
-			return 0, err
+			return 0, utils.WrapSeekError(err)
 		}
 
 		f.s3Writer = nil
@@ -445,14 +445,14 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		// seek tempFileWriter
 		_, err := f.tempFileWriter.Seek(offset, whence)
 		if err != nil {
-			return 0, err
+			return 0, utils.WrapSeekError(err)
 		}
 	}
 
 	// update cursorPos
 	pos, err := utils.SeekTo(int64(length), f.cursorPos, offset, whence)
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapSeekError(err)
 	}
 	f.cursorPos = pos
 
@@ -465,13 +465,13 @@ func (f *File) Write(data []byte) (int, error) {
 	// check/initialize for writer
 	err := f.initWriters()
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapWriteError(err)
 	}
 
 	// write to tempfile
 	written, err := f.tempFileWriter.Write(data)
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapWriteError(err)
 	}
 
 	// write to s3
@@ -479,12 +479,14 @@ func (f *File) Write(data []byte) (int, error) {
 		// write to s3
 		s3written, err := f.s3Writer.Write(data)
 		if err != nil {
-			return 0, err
+			return 0, utils.WrapWriteError(err)
 		}
 
 		// ensure both writes are the same
 		if written != s3written {
-			return 0, fmt.Errorf("unable to write to s3")
+			return 0, utils.WrapWriteError(
+				fmt.Errorf("local write and s3 write are different sizes: local=%d, s3=%d", written, s3written),
+			)
 		}
 	}
 

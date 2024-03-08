@@ -1,9 +1,9 @@
 package os
 
 import (
+	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -91,18 +91,18 @@ func (f *File) Close() error {
 		// close temp (os) file
 		err := f.tempFile.Close()
 		if err != nil {
-			return err
+			return utils.WrapCloseError(err)
 		}
 
 		// get original (os) file, open it if it has not been opened
 		finalFile, err := f.getInternalFile()
 		if err != nil {
-			return err
+			return utils.WrapCloseError(err)
 		}
 		// rename temp file to actual file
 		err = safeOsRename(f.tempFile.Name(), finalFile.Name())
 		if err != nil && !os.IsNotExist(err) {
-			return err
+			return utils.WrapCloseError(err)
 		}
 		f.tempFile = nil
 	}
@@ -112,10 +112,11 @@ func (f *File) Close() error {
 	}
 
 	err := f.file.Close()
-	if err == nil {
-		f.file = nil
+	if err != nil {
+		return utils.WrapCloseError(err)
 	}
-	return err
+	f.file = nil
+	return nil
 }
 
 // Read implements the io.Reader interface.  It returns the bytes read and an error, if any.
@@ -124,20 +125,26 @@ func (f *File) Read(p []byte) (int, error) {
 	// if we have not written to this file, ensure the original file exists
 	if !f.useTempFile {
 		if exists, err := f.Exists(); err != nil {
-			return 0, err
+			return 0, utils.WrapReadError(err)
 		} else if !exists {
-			return 0, fmt.Errorf("failed to read. File does not exist at %s", f)
+			return 0, utils.WrapReadError(fmt.Errorf("failed to read. File does not exist at %s", f))
 		}
 	}
 	// get the file we need, either tempFile or original file
 	useFile, err := f.getInternalFile()
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapReadError(err)
 	}
 
 	read, err := useFile.Read(p)
 	if err != nil {
-		return read, err
+		// if we got io.EOF, we'll return the read and the EOF error
+		// because io.Copy looks for EOF to determine if it's done
+		// and doesn't support error wrapping
+		if errors.Is(err, io.EOF) {
+			return read, io.EOF
+		}
+		return read, utils.WrapReadError(err)
 	}
 
 	f.readCalled = true
@@ -154,19 +161,19 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	// However, if we've never written AND the original file doesn't exist, we can't seek.
 	exists, err := f.Exists()
 	if err != nil {
-		return 0, fmt.Errorf("unable to Seek: %w", err)
+		return 0, utils.WrapSeekError(err)
 	}
 	if !exists && !f.useTempFile {
-		return 0, fmt.Errorf("unable to Seek: %w", fs.ErrNotExist)
+		return 0, utils.WrapSeekError(err)
 	}
 	useFile, err := f.getInternalFile()
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapSeekError(err)
 	}
 
 	f.cursorPos, err = useFile.Seek(offset, whence)
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapSeekError(err)
 	}
 
 	f.seekCalled = true
@@ -195,11 +202,11 @@ func (f *File) Write(p []byte) (n int, err error) {
 
 	useFile, err := f.getInternalFile()
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapWriteError(err)
 	}
 	write, err := useFile.Write(p)
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapWriteError(err)
 	}
 	offset := int64(write)
 	f.cursorPos += offset
