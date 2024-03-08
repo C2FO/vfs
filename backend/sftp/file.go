@@ -168,6 +168,19 @@ func (f *File) MoveToFile(t vfs.File) error {
 				return err
 			}
 		}
+
+		// check if file already exists in the destination and delete if exists
+		exists, err = t.Exists()
+		if err != nil {
+			return err
+		}
+		if exists {
+			err := t.Delete()
+			if err != nil {
+				return err
+			}
+		}
+
 		return f.sftpRename(t.(*File))
 	}
 
