@@ -588,7 +588,7 @@ func (ts *fileTestSuite) TestMoveToFile_sameAuthority() {
 	targetFileInfo.On("IsDir").Return(true).Once()
 
 	targetClient := &mocks.Client{}
-	targetClient.On("Stat", mock.Anything).Return(nil, os.ErrNotExist).Once()
+	targetClient.On("Stat", mock.Anything).Return(nil, os.ErrNotExist).Twice()
 
 	auth2, err := utils.NewAuthority("user@host1.com:22")
 	ts.NoError(err)
