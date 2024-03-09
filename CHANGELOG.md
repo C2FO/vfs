@@ -29,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Update actions to test only supported Go versions (1.21, 1.22)
   - Updated dependencies (ie, Google Cloud, Azure, AWS sdks)
 
+## [6.11.4] - 2024-03-08
+### Fixed
+- Fixed #177 - SFTP MoveToFile fails if destination file already exists
+
 ## [6.11.3] - 2024-02-02
 ### Fixed
 - Fixed #158 bug. Updated sftp backend to to fix issue where some servers return a generic error message when a file is opened for RW on Read().
