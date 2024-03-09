@@ -576,7 +576,7 @@ func (ts *fileTestSuite) TestMoveToFile_sameAuthority() {
 	targetFileInfo.On("IsDir").Return(true).Once()
 
 	targetClient := &mocks.Client{}
-	targetClient.On("Stat", mock.Anything).Return(nil, os.ErrNotExist).Once()
+	targetClient.On("Stat", mock.Anything).Return(nil, os.ErrNotExist).Twice()
 
 	auth2, err := utils.NewAuthority("user@host1.com:22")
 	ts.NoError(err)
@@ -589,6 +589,58 @@ func (ts *fileTestSuite) TestMoveToFile_sameAuthority() {
 		Authority: auth2,
 		path:      "/some/other/path.txt",
 	}
+
+	// run tests
+	err = sourceFile.MoveToFile(targetFile)
+	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
+
+	sourceClient.AssertExpectations(ts.T())
+	targetClient.AssertExpectations(ts.T())
+}
+
+func (ts *fileTestSuite) TestMoveToFile_fileExists() {
+	// set up source
+	sourceClient := &mocks.Client{}
+
+	sourceClient.On("Rename", mock.Anything, mock.Anything).Return(nil).Once()
+	sourceClient.On("MkdirAll", mock.Anything).Return(nil).Once()
+
+	auth, err := utils.NewAuthority("user@host1.com:22")
+	ts.NoError(err)
+
+	sourceFile := &File{
+		fileSystem: &FileSystem{
+			sftpclient: sourceClient,
+			options:    Options{},
+		},
+		Authority: auth,
+		path:      "/some/path.txt",
+	}
+
+	rws := &mocks.SFTPFile{}
+	rws.On("Seek", int64(0), 1).Return(int64(0), nil)
+	sourceFile.opener = func(c Client, p string, f int) (ReadWriteSeekCloser, error) { return rws, nil }
+
+	// set up target
+	targetFileInfo := &mocks.FileInfo{}
+	targetFileInfo.On("IsDir").Return(true).Once()
+
+	targetClient := &mocks.Client{}
+
+	auth2, err := utils.NewAuthority("user@host1.com:22")
+	ts.NoError(err)
+
+	targetFile := &File{
+		fileSystem: &FileSystem{
+			sftpclient: targetClient,
+			options:    Options{},
+		},
+		Authority: auth2,
+		path:      "/some/other/path.txt",
+	}
+	targetClient.On("Stat", targetFile.Location().Path()).Return(nil, os.ErrNotExist).Once()
+	targetClient.On("Stat", targetFile.path).Return(targetFileInfo, nil).Once()
+	targetClient.On("Remove", targetFile.path).Return(nil).Once()
 
 	// run tests
 	err = sourceFile.MoveToFile(targetFile)
