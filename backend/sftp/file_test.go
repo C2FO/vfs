@@ -237,11 +237,10 @@ func (ts *fileTestSuite) TestCopyToFile() {
 
 	// set up target
 	targetClient := &mocks.Client{}
-	targetClient.On("MkdirAll", "/some").Return(nil).Once()
 
 	targetSftpFile := &mocks.SFTPFile{}
 	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
-	targetSftpFile.On("Close").Return(nil).Twice()
+	targetSftpFile.On("Close").Return(nil).Once()
 
 	auth2, err := utils.NewAuthority("user@host2.com:22")
 	ts.NoError(err)
@@ -294,11 +293,10 @@ func (ts *fileTestSuite) TestCopyToFileBuffered() {
 
 	// set up target
 	targetClient := &mocks.Client{}
-	targetClient.On("MkdirAll", "/some").Return(nil).Once()
 
 	targetSftpFile := &mocks.SFTPFile{}
 	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
-	targetSftpFile.On("Close").Return(nil).Twice()
+	targetSftpFile.On("Close").Return(nil).Once()
 
 	auth2, err := utils.NewAuthority("user@host2.com:22")
 	ts.NoError(err)
@@ -352,11 +350,10 @@ func (ts *fileTestSuite) TestCopyToFileEmpty() {
 
 	// set up target
 	targetClient := &mocks.Client{}
-	targetClient.On("MkdirAll", "/some").Return(nil).Once()
 
 	targetSftpFile := &mocks.SFTPFile{}
 	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
-	targetSftpFile.On("Close").Return(nil).Twice()
+	targetSftpFile.On("Close").Return(nil).Once()
 
 	auth2, err := utils.NewAuthority("user@host2.com:22")
 	ts.NoError(err)
@@ -410,11 +407,10 @@ func (ts *fileTestSuite) TestCopyToFileEmptyBuffered() {
 
 	// set up target
 	targetClient := &mocks.Client{}
-	targetClient.On("MkdirAll", "/some").Return(nil).Once()
 
 	targetSftpFile := &mocks.SFTPFile{}
 	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
-	targetSftpFile.On("Close").Return(nil).Twice()
+	targetSftpFile.On("Close").Return(nil).Once()
 
 	auth2, err := utils.NewAuthority("user@host2.com:22")
 	ts.NoError(err)
@@ -469,11 +465,10 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 
 	// set up target
 	targetClient := &mocks.Client{}
-	targetClient.On("MkdirAll", "/some").Return(nil).Once()
 
 	targetSftpFile := &mocks.SFTPFile{}
 	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
-	targetSftpFile.On("Close").Return(nil).Twice()
+	targetSftpFile.On("Close").Return(nil).Once()
 
 	auth2, err := utils.NewAuthority("user@host2.com:22")
 	ts.NoError(err)
@@ -531,11 +526,10 @@ func (ts *fileTestSuite) TestMoveToFile_differentAuthority() {
 
 	// set up target
 	targetClient := &mocks.Client{}
-	targetClient.On("MkdirAll", "/some").Return(nil).Once()
 
 	targetSftpFile := &mocks.SFTPFile{}
 	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
-	targetSftpFile.On("Close").Return(nil).Twice()
+	targetSftpFile.On("Close").Return(nil).Once()
 
 	auth2, err := utils.NewAuthority("user@host2.com:22")
 	ts.NoError(err)
@@ -689,11 +683,10 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 
 	// set up target
 	targetClient := &mocks.Client{}
-	targetClient.On("MkdirAll", "/some/other").Return(nil).Once()
 
 	targetSftpFile := &mocks.SFTPFile{}
 	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
-	targetSftpFile.On("Close").Return(nil).Twice()
+	targetSftpFile.On("Close").Return(nil).Once()
 
 	auth2, err := utils.NewAuthority("user@host2.com:22")
 	ts.NoError(err)
