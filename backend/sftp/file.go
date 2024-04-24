@@ -24,7 +24,7 @@ type File struct {
 	flagsUsed  int
 }
 
-// this type allow for injecting a mock fileOpener function
+// this type allows for injecting a mock fileOpener function
 type fileOpener func(c Client, p string, f int) (ReadWriteSeekCloser, error)
 
 // Info Functions
@@ -51,7 +51,7 @@ func (f *File) Name() string {
 	return path.Base(f.path)
 }
 
-// Path return the directory portion of the file's path. IE: "path/to" of "sftp://someuser@host.com/some/path/to/file.txt
+// Path returns the directory portion of the file's path. IE: "path/to" of "sftp://someuser@host.com/some/path/to/file.txt
 func (f *File) Path() string {
 	return utils.EnsureLeadingSlash(f.path)
 }
@@ -66,7 +66,7 @@ func (f *File) Exists() (bool, error) {
 	defer f.fileSystem.connTimerStart()
 
 	_, err = client.Stat(f.Path())
-	if err != nil && err == os.ErrNotExist {
+	if err != nil && errors.Is(err, os.ErrNotExist) {
 		return false, nil
 	} else if err != nil {
 		return false, err
@@ -345,7 +345,7 @@ func (f *File) Write(data []byte) (res int, err error) {
 
 	// unless seek or read is called first, writes should replace a file (not edit)
 	// writes should edit a file if seek or read is called first
-	flags := os.O_RDWR | os.O_CREATE
+	flags := os.O_WRONLY | os.O_CREATE
 	if !f.readCalled && !f.seekCalled {
 		flags |= os.O_TRUNC
 	}
@@ -379,12 +379,41 @@ func (f *File) String() string {
 // openFile wrapper allows us to inject a file opener (for mocking) vs the defaultOpenFile.
 func (f *File) openFile(flags int) (ReadWriteSeekCloser, error) {
 	if f.sftpfile != nil {
-		FlagsUsedContainsReadOnly := f.flagsUsed&(os.O_WRONLY|os.O_RDWR) == 0
-		flagsContainsReadWrite := flags&os.O_RDWR != 0
+
+		// this case shouldn't normally exist except when we've set our own ReadWriteSeekCloser in tests
+		if f.flagsUsed == 0 && !f.readCalled && !f.seekCalled {
+			return f.sftpfile, nil
+		}
+
+		needRw := false
+		// check if the file is not already open in read-write mode
+		if (f.flagsUsed & os.O_RDWR) == 0 {
+
+			// check if currently open for read only but now need write
+			if f.flagsUsed == os.O_RDONLY && (flags&(os.O_WRONLY|os.O_RDWR)) != 0 {
+				needRw = true
+			}
+
+			// check if currently open for write only but now need read
+			if (f.flagsUsed&(os.O_WRONLY|os.O_RDWR)) != 0 && flags == os.O_RDONLY {
+				needRw = true
+			}
+
+			// set up new flags
+			newFlags := os.O_RDWR
+			if flags&os.O_CREATE != 0 {
+				newFlags |= os.O_CREATE
+			}
+			if flags&os.O_TRUNC != 0 {
+				newFlags |= os.O_TRUNC
+			}
+
+			flags = newFlags
+		}
 
 		// if we're trying to open a file for writing and it's already open for read, repoen it for read/write and
 		// seek to current position
-		if FlagsUsedContainsReadOnly && flagsContainsReadWrite {
+		if needRw {
 			var pos int64
 
 			// capture current position if file is open for read (only in edit mode)
