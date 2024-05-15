@@ -145,9 +145,9 @@ func (l *Location) Exists() (bool, error) {
 	}
 
 	// get parent directory by removing the last part of the path
-	paranetDir := strings.TrimSuffix(l.Path(), path.Base(l.Path())+"/")
+	parentDir := strings.TrimSuffix(l.Path(), path.Base(l.Path())+"/")
 
-	entries, err := dc.List(paranetDir)
+	entries, err := dc.List(parentDir)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), fmt.Sprintf("%d", _ftp.StatusFileUnavailable)) {
 			// in this case the directory does not exist
