@@ -19,145 +19,184 @@ import (
 
 type dataConnSuite struct {
 	suite.Suite
+	ftpFile *File
+	client  *mocks.Client
 }
 
 func TestDataConn(t *testing.T) {
 	suite.Run(t, new(dataConnSuite))
 }
 
-func (s *dataConnSuite) TestGetDataConn() {
+// test setup
+func (s *dataConnSuite) SetupTest() {
 	// set up ftpfile
-	fp := "/some/path.txt"
-	client := mocks.NewClient(s.T())
-	ftpfile := &File{
+	filepath := "/some/path.txt"
+	s.client = mocks.NewClient(s.T())
+	s.ftpFile = &File{
 		fileSystem: &FileSystem{
-			ftpclient: client,
+			ftpclient: s.client,
 			options:   Options{},
-			dataconn: &dataConn{
-				mode: types.OpenRead,
-			},
 		},
-		path: fp,
+		path: filepath,
 	}
 
+}
+
+func (s *dataConnSuite) TestGetDataConn_alreadyExists() {
+
 	// dataconn already exists
-	dc, err := getDataConn(context.Background(), utils.Authority{}, ftpfile.fileSystem, ftpfile, types.OpenRead)
+	s.ftpFile.fileSystem.dataconn = &dataConn{
+		mode: types.OpenRead,
+	}
+	dc, err := getDataConn(context.Background(), utils.Authority{}, s.ftpFile.fileSystem, s.ftpFile, types.OpenRead)
 	s.NoError(err, "no error expected")
 	s.IsTypef(&dataConn{}, dc, "dataconn returned")
+}
+
+func (s *dataConnSuite) TestGetDataConn_openForRead() {
 
 	// dataconn is nil - open for read
-	ftpfile.fileSystem.dataconn = nil
-	client.EXPECT().
-		RetrFrom(ftpfile.Path(), uint64(0)).
+	s.client.EXPECT().
+		RetrFrom(s.ftpFile.Path(), uint64(0)).
 		Return(&_ftp.Response{}, nil).
 		Once()
-	dc, err = getDataConn(context.Background(), utils.Authority{}, ftpfile.fileSystem, ftpfile, types.OpenRead)
+	dc, err := getDataConn(context.Background(), utils.Authority{}, s.ftpFile.fileSystem, s.ftpFile, types.OpenRead)
 	s.NoError(err, "no error expected")
 	s.IsTypef(&dataConn{}, dc, "dataconn returned")
+}
 
+func (s *dataConnSuite) TestGetDataConn_errorClientSetup() {
 	// dataconn is nil - error getting client
-	ftpfile.fileSystem.dataconn = nil
 	defaultClientGetter = clientGetterReturnsError
-	ftpfile.fileSystem.ftpclient = nil
-	dc, err = getDataConn(context.Background(), utils.Authority{}, ftpfile.fileSystem, ftpfile, types.OpenRead)
+	s.ftpFile.fileSystem.ftpclient = nil
+	dc, err := getDataConn(context.Background(), utils.Authority{}, s.ftpFile.fileSystem, s.ftpFile, types.OpenRead)
 	s.Error(err, "error is expected")
 	s.ErrorIs(err, errClientGetter, "error is right kind of error")
 	s.Nil(dc, "dataconn should be nil on error")
 	defaultClientGetter = getClient
-	ftpfile.fileSystem.ftpclient = client
+	// s.ftpFile.fileSystem.ftpclient = client
+}
+
+func (s *dataConnSuite) TestGetDataConn_ReadError() {
 
 	// dataconn is nil - error calling client.RetrFrom
 	someErr := errors.New("some error")
-	client.EXPECT().
-		RetrFrom(ftpfile.Path(), uint64(0)).
+
+	s.client.EXPECT().
+		RetrFrom(s.ftpFile.Path(), uint64(0)).
 		Return(nil, someErr).
 		Once()
-	dc, err = getDataConn(context.Background(), utils.Authority{}, ftpfile.fileSystem, ftpfile, types.OpenRead)
+	dc, err := getDataConn(context.Background(), utils.Authority{}, s.ftpFile.fileSystem, s.ftpFile, types.OpenRead)
 	s.Error(err, "error is expected")
 	s.ErrorIs(err, someErr, "error is right kind of error")
 	s.Nil(dc, "dataconn should be nil on error")
+}
+
+func (s *dataConnSuite) TestGetDataConn_WriteLocationNotExists() {
 
 	// dataconn is nil - open for write - location doesnt exist - success
-	entries := []*_ftp.Entry{{
-		Type: _ftp.EntryTypeFolder,
-	}}
-	ftpfile.fileSystem.dataconn = nil
-	client.EXPECT().
-		List(ftpfile.Location().Path()).
+	s.client.EXPECT().
+		List("/").
 		Return(nil, errors.New("550")).
 		Once()
-	client.EXPECT().
-		MakeDir(ftpfile.Location().Path()).
+	s.client.EXPECT().
+		MakeDir(s.ftpFile.Location().Path()).
 		Return(nil).
 		Once()
-	client.EXPECT().
-		StorFrom(ftpfile.Path(), mock.Anything, uint64(0)).
+	s.client.EXPECT().
+		StorFrom(s.ftpFile.Path(), mock.Anything, uint64(0)).
 		Return(nil).
 		Once()
-	_, err = getDataConn(context.Background(), utils.Authority{}, ftpfile.fileSystem, ftpfile, types.OpenWrite)
+	_, err := getDataConn(context.Background(), utils.Authority{}, s.ftpFile.fileSystem, s.ftpFile, types.OpenWrite)
 	s.NoError(err, "no error expected")
 
+	// brief sleep to ensure goroutines running StorFrom can all complete
+	time.Sleep(50 * time.Millisecond)
+}
+
+func (s *dataConnSuite) TestGetDataConn_errorWriting() {
+	entries := []*_ftp.Entry{{
+		Name: "some",
+		Type: _ftp.EntryTypeFolder,
+	}}
+	someErr := errors.New("some error")
+
 	// dataconn is nil - open for write - error calling client.StorFrom
-	ftpfile.fileSystem.dataconn = nil
-	client.EXPECT().
-		List(ftpfile.Location().Path()).
+	s.client.EXPECT().
+		List("/").
 		Return(entries, nil).
 		Once()
-	client.EXPECT().
-		StorFrom(ftpfile.Path(), mock.Anything, uint64(0)).
+	s.client.EXPECT().
+		StorFrom(s.ftpFile.Path(), mock.Anything, uint64(0)).
 		Return(someErr).
 		Once()
-	dc, err = getDataConn(context.Background(), utils.Authority{}, ftpfile.fileSystem, ftpfile, types.OpenWrite)
+	dc, err := getDataConn(context.Background(), utils.Authority{}, s.ftpFile.fileSystem, s.ftpFile, types.OpenWrite)
 	s.NoError(err, "no error expected")
 	// error in getDataConn should close the PipeReader meaning Write errors
 	_, err = dc.Write([]byte{})
 	s.Error(err, "error is expected")
+}
+
+func (s *dataConnSuite) TestGetDataConn_writeSuccess() {
+	entries := []*_ftp.Entry{{
+		Name: "some",
+		Type: _ftp.EntryTypeFolder,
+	}}
 
 	// dataconn is nil - open for write - success
-	ftpfile.fileSystem.dataconn = nil
-	client.EXPECT().
-		List(ftpfile.Location().Path()).
+	s.client.EXPECT().
+		List("/").
 		Return(entries, nil).
 		Once()
-	client.EXPECT().
-		StorFrom(ftpfile.Path(), mock.Anything, uint64(0)).
+	s.client.EXPECT().
+		StorFrom(s.ftpFile.Path(), mock.Anything, uint64(0)).
 		Return(nil).
 		Once()
-	dc, err = getDataConn(context.Background(), utils.Authority{}, ftpfile.fileSystem, ftpfile, types.OpenWrite)
-	s.NoError(err, "no error expected")
-	s.IsTypef(&dataConn{}, dc, "dataconn returned")
-
-	// open dataconn for read after dataconn for write exists - error on dataconn.Close
-	fakedconn := NewFakeDataConn(types.OpenWrite)
-	closeErr := errors.New("some close err")
-	fakedconn.AssertCloseErr(closeErr)
-	ftpfile.fileSystem.dataconn = fakedconn
-	dc, err = getDataConn(context.Background(), utils.Authority{}, ftpfile.fileSystem, ftpfile, types.OpenRead)
-	s.Error(err, "error is expected")
-	s.ErrorIs(err, closeErr, "error is right kind of error")
-	s.Nil(dc, "dataconn should be nil on error")
-
-	// open dataconn for write after dataconn for read exists
-	ftpfile.fileSystem.dataconn = &dataConn{
-		mode: types.OpenRead,
-		R:    io.NopCloser(strings.NewReader("")),
-	}
-	client.EXPECT().
-		List(ftpfile.Location().Path()).
-		Return(entries, nil).
-		Once()
-	client.EXPECT().
-		StorFrom(ftpfile.Path(), mock.Anything, uint64(0)).
-		Return(nil).
-		Once()
-	dc, err = getDataConn(context.Background(), utils.Authority{}, ftpfile.fileSystem, ftpfile, types.OpenWrite)
+	dc, err := getDataConn(context.Background(), utils.Authority{}, s.ftpFile.fileSystem, s.ftpFile, types.OpenWrite)
 	s.NoError(err, "no error expected")
 	s.IsTypef(&dataConn{}, dc, "dataconn returned")
 
 	// brief sleep to ensure goroutines running StorFrom can all complete
 	time.Sleep(50 * time.Millisecond)
+}
 
-	client.AssertExpectations(s.T())
+func (s *dataConnSuite) TestGetDataConn_reaedAfterWriteError() {
+
+	// open dataconn for read after dataconn for write exists - error on dataconn.Close
+	fakedconn := NewFakeDataConn(types.OpenWrite)
+	closeErr := errors.New("some close err")
+	fakedconn.AssertCloseErr(closeErr)
+	s.ftpFile.fileSystem.dataconn = fakedconn
+	dc, err := getDataConn(context.Background(), utils.Authority{}, s.ftpFile.fileSystem, s.ftpFile, types.OpenRead)
+	s.Error(err, "error is expected")
+	s.ErrorIs(err, closeErr, "error is right kind of error")
+	s.Nil(dc, "dataconn should be nil on error")
+}
+
+func (s *dataConnSuite) TestGetDataConn_writeAfterReadSuccess() {
+	// open dataconn for write after dataconn for read exists
+	entries := []*_ftp.Entry{{
+		Name: "some",
+		Type: _ftp.EntryTypeFolder,
+	}}
+	s.ftpFile.fileSystem.dataconn = &dataConn{
+		mode: types.OpenRead,
+		R:    io.NopCloser(strings.NewReader("")),
+	}
+	s.client.EXPECT().
+		List("/").
+		Return(entries, nil).
+		Once()
+	s.client.EXPECT().
+		StorFrom(s.ftpFile.Path(), mock.Anything, uint64(0)).
+		Return(nil).
+		Once()
+	dc, err := getDataConn(context.Background(), utils.Authority{}, s.ftpFile.fileSystem, s.ftpFile, types.OpenWrite)
+	s.NoError(err, "no error expected")
+	s.IsTypef(&dataConn{}, dc, "dataconn returned")
+
+	// brief sleep to ensure goroutines running StorFrom can all complete
+	time.Sleep(50 * time.Millisecond)
 }
 
 func (s *dataConnSuite) TestMode() {

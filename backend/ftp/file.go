@@ -34,7 +34,6 @@ type File struct {
 	authority  utils.Authority
 	path       string
 	offset     int64
-	resetConn  bool
 }
 
 // Info Functions
@@ -320,7 +319,7 @@ func (f *File) Close() error {
 		if err != nil {
 			return utils.WrapCloseError(err)
 		}
-		f.resetConn = true
+		f.fileSystem.resetConn = true
 	}
 	// no op for unopened file
 	f.offset = 0
@@ -382,7 +381,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 			if err != nil {
 				return 0, utils.WrapSeekError(err)
 			}
-			f.resetConn = true
+			f.fileSystem.resetConn = true
 		case 2: // offset from end of the file
 			sz, err := f.Size()
 			if err != nil {
@@ -403,7 +402,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 			if err != nil {
 				return 0, utils.WrapSeekError(err)
 			}
-			f.resetConn = true
+			f.fileSystem.resetConn = true
 		}
 	}
 

@@ -24,6 +24,7 @@ type FileSystem struct {
 	options   vfs.Options
 	ftpclient types.Client
 	dataconn  types.DataConn
+	resetConn bool
 }
 
 // Retry will return the default no-op retrier. The FTP client provides its own retryer interface, and is available
@@ -87,7 +88,7 @@ func (fs *FileSystem) Scheme() string {
 	return Scheme
 }
 
-// Client returns the underlying ftp data connection, creating it, if necessary
+// DataConn returns the underlying ftp data connection, creating it, if necessary
 // See Overview for authentication resolution
 func (fs *FileSystem) DataConn(ctx context.Context, authority utils.Authority, t types.OpenType, f *File) (types.DataConn, error) {
 	if t != types.SingleOp && f == nil {

@@ -143,7 +143,11 @@ func (l *Location) Exists() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	entries, err := dc.List(l.Path())
+
+	// get parent directory by removing the last part of the path
+	paranetDir := strings.TrimSuffix(l.Path(), path.Base(l.Path())+"/")
+
+	entries, err := dc.List(paranetDir)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), fmt.Sprintf("%d", _ftp.StatusFileUnavailable)) {
 			// in this case the directory does not exist
@@ -152,15 +156,13 @@ func (l *Location) Exists() (bool, error) {
 		return false, err
 	}
 
-	if len(entries) == 0 {
-		return false, nil
+	for _, entry := range entries {
+		if entry.Name == path.Base(l.Path()) && entries[0].Type == _ftp.EntryTypeFolder {
+			return true, nil
+		}
 	}
 
-	if entries[0].Type != _ftp.EntryTypeFolder {
-		return false, err
-	}
-
-	return true, nil
+	return false, nil
 }
 
 // NewLocation makes a copy of the underlying Location, then modifies its path by calling ChangeDir with the
