@@ -377,7 +377,7 @@ func (f *File) String() string {
 */
 
 // openFile wrapper allows us to inject a file opener (for mocking) vs the defaultOpenFile.
-func (f *File) openFile(flags int) (ReadWriteSeekCloser, error) {
+func (f *File) openFile(flags int) (ReadWriteSeekCloser, error) { //nolint:gocyclo // this function is complex by nature
 	if f.sftpfile != nil {
 
 		// this case shouldn't normally exist except when we've set our own ReadWriteSeekCloser in tests

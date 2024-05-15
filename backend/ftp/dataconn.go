@@ -40,9 +40,7 @@ func (dc *dataConn) GetEntry(p string) (*_ftp.Entry, error) {
 	return dc.c.GetEntry(p)
 }
 
-// GetEntry conducts an FTP list for
-// the given path. Only allowed
-// in a single op connection.
+// List conducts an FTP list for the given path. Only allowed in a single op connection.
 func (dc *dataConn) List(p string) ([]*_ftp.Entry, error) {
 	if dc.mode != types.SingleOp {
 		return nil, singleOpInvalidDataconnType
@@ -84,8 +82,7 @@ func (dc *dataConn) SetTime(path string, t time.Time) error {
 	return dc.c.SetTime(path, t)
 }
 
-// IsTimPreciseInList will return true if MLST is
-// an available FTP action in the given dataconn.
+// IsTimePreciseInList will return true if MLST is an available FTP action in the given dataconn.
 func (dc *dataConn) IsTimePreciseInList() bool {
 	return dc.c.IsTimePreciseInList()
 }
@@ -95,9 +92,7 @@ func (dc *dataConn) Mode() types.OpenType {
 	return dc.mode
 }
 
-// Read will read bytes from the DataConn open file
-// to the given buffer. Only allowed in an open read
-// DataConn
+// Read will read bytes from the DataConn open file to the given buffer. Only allowed in an open read DataConn
 func (dc *dataConn) Read(buf []byte) (int, error) {
 	if dc.mode != types.OpenRead {
 		return 0, readInvalidDataconnType
@@ -152,7 +147,7 @@ func getDataConn(ctx context.Context, authority utils.Authority, fs *FileSystem,
 		fs.dataconn = nil
 	}
 
-	if fs.dataconn == nil || (f != nil && f.resetConn) {
+	if fs.dataconn == nil || fs.resetConn {
 		client, err := fs.Client(ctx, authority)
 		if err != nil {
 			return nil, err
@@ -183,7 +178,7 @@ func getDataConn(ctx context.Context, authority utils.Authority, fs *FileSystem,
 		}
 		// ensure resetConn is false since we've opened/reopened the file
 		if f != nil {
-			f.resetConn = false
+			fs.resetConn = false
 		}
 	}
 
