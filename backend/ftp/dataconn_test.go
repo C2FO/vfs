@@ -74,7 +74,6 @@ func (s *dataConnSuite) TestGetDataConn_errorClientSetup() {
 	s.ErrorIs(err, errClientGetter, "error is right kind of error")
 	s.Nil(dc, "dataconn should be nil on error")
 	defaultClientGetter = getClient
-	// s.ftpFile.fileSystem.ftpclient = client
 }
 
 func (s *dataConnSuite) TestGetDataConn_ReadError() {
@@ -94,7 +93,7 @@ func (s *dataConnSuite) TestGetDataConn_ReadError() {
 
 func (s *dataConnSuite) TestGetDataConn_WriteLocationNotExists() {
 
-	// dataconn is nil - open for write - location doesnt exist - success
+	// dataconn is nil - opebrewn for write - location doesnt exist - success
 	s.client.EXPECT().
 		List("/").
 		Return(nil, errors.New("550")).
