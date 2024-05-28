@@ -195,7 +195,7 @@ func (f *File) MoveToFile(t vfs.File) error {
 			// it doesn't matter which client we use since they are effectively the same
 			err = dc.MakeDir(t.Location().Path())
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to create directory: %w", err)
 			}
 		}
 		return dc.Rename(f.Path(), t.Path())

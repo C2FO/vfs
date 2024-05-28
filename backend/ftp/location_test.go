@@ -388,7 +388,13 @@ func (lt *locationTestSuite) TestExists() {
 
 	// location exists
 	locPath := "/"
-	dirs := []*_ftp.Entry{
+	entries := []*_ftp.Entry{
+		{
+			Name:   "file.txt",
+			Target: "",
+			Type:   _ftp.EntryTypeFile,
+			Time:   time.Now().UTC(),
+		},
 		{
 			Name:   locPath,
 			Target: "",
@@ -396,7 +402,7 @@ func (lt *locationTestSuite) TestExists() {
 			Time:   time.Now().UTC(),
 		},
 	}
-	lt.client.On("List", locPath).Return(dirs, nil).Once()
+	lt.client.On("List", locPath).Return(entries, nil).Once()
 	loc, err := lt.ftpfs.NewLocation(authority, locPath)
 	lt.NoError(err)
 	exists, err := loc.Exists()
@@ -405,8 +411,15 @@ func (lt *locationTestSuite) TestExists() {
 
 	// locations does not exist
 	locPath = "/my/dir/"
-	dirs = []*_ftp.Entry{}
-	lt.client.On("List", "/my/").Return(dirs, nil).Once()
+	entries = []*_ftp.Entry{
+		{
+			Name:   "file.txt",
+			Target: "",
+			Type:   _ftp.EntryTypeFile,
+			Time:   time.Now().UTC(),
+		},
+	}
+	lt.client.On("List", "/my/").Return(entries, nil).Once()
 	loc, err = lt.ftpfs.NewLocation(authority, locPath)
 	lt.NoError(err)
 	exists, err = loc.Exists()
@@ -414,15 +427,21 @@ func (lt *locationTestSuite) TestExists() {
 	lt.True(!exists, "Call to Exists expected to return false.")
 
 	// some error calling list
-	lt.client.On("List", "/my/").Return(dirs, errors.New("some error")).Once()
+	lt.client.On("List", "/my/").Return(entries, errors.New("some error")).Once()
 	loc, err = lt.ftpfs.NewLocation(authority, locPath)
 	lt.NoError(err)
 	exists, err = loc.Exists()
 	lt.Error(err, "from Exists")
 	lt.True(!exists, "Call to Exists expected to return false.")
 
-	// check for not dir -- this shoudln't be possible since NewLocation won't accept non-absolute directories
-	dirs = []*_ftp.Entry{
+	// check for not dir -- this shouldn't be possible since NewLocation won't accept non-absolute directories
+	entries = []*_ftp.Entry{
+		{
+			Name:   "file.txt",
+			Target: "",
+			Type:   _ftp.EntryTypeFile,
+			Time:   time.Now().UTC(),
+		},
 		{
 			Name:   locPath,
 			Target: "",
@@ -430,7 +449,7 @@ func (lt *locationTestSuite) TestExists() {
 			Time:   time.Now().UTC(),
 		},
 	}
-	lt.client.On("List", "/my/").Return(dirs, nil).Once()
+	lt.client.On("List", "/my/").Return(entries, nil).Once()
 	loc, err = lt.ftpfs.NewLocation(authority, locPath)
 	lt.NoError(err)
 	exists, err = loc.Exists()

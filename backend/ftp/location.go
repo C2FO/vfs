@@ -144,8 +144,9 @@ func (l *Location) Exists() (bool, error) {
 		return false, err
 	}
 
+	locBasename := path.Base(l.Path())
 	// get parent directory by removing the last part of the path
-	parentDir := strings.TrimSuffix(l.Path(), path.Base(l.Path())+"/")
+	parentDir := strings.TrimSuffix(l.Path(), locBasename+"/")
 
 	entries, err := dc.List(parentDir)
 	if err != nil {
@@ -156,8 +157,8 @@ func (l *Location) Exists() (bool, error) {
 		return false, err
 	}
 
-	for _, entry := range entries {
-		if entry.Name == path.Base(l.Path()) && entries[0].Type == _ftp.EntryTypeFolder {
+	for i := range entries {
+		if entries[i].Name == locBasename && entries[i].Type == _ftp.EntryTypeFolder {
 			return true, nil
 		}
 	}
