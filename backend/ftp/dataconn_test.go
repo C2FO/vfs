@@ -113,6 +113,24 @@ func (s *dataConnSuite) TestGetDataConn_WriteLocationNotExists() {
 	time.Sleep(50 * time.Millisecond)
 }
 
+func (s *dataConnSuite) TestGetDataConn_WriteLocationNotExistsFails() {
+	someerr := errors.New("some error")
+	// dataconn is nil - opebrewn for write - location doesnt exist - success
+	s.client.EXPECT().
+		List("/").
+		Return(nil, errors.New("550")).
+		Once()
+	s.client.EXPECT().
+		MakeDir(s.ftpFile.Location().Path()).
+		Return(someerr).
+		Once()
+	_, err := getDataConn(context.Background(), utils.Authority{}, s.ftpFile.fileSystem, s.ftpFile, types.OpenWrite)
+	s.ErrorIs(err, someerr, "error expected")
+
+	// brief sleep to ensure goroutines running StorFrom can all complete
+	time.Sleep(50 * time.Millisecond)
+}
+
 func (s *dataConnSuite) TestGetDataConn_errorWriting() {
 	entries := []*_ftp.Entry{{
 		Name: "some",
