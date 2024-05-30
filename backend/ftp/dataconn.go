@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net/textproto"
 	"time"
 
 	_ftp "github.com/jlaffaye/ftp"
@@ -193,7 +194,11 @@ func openWriteConnection(client types.Client, f *File) (types.DataConn, error) {
 	if !found {
 		err := client.MakeDir(f.Location().Path())
 		if err != nil {
-			return nil, err
+			var e *textproto.Error
+			if !(errors.As(err, &e) && e.Code == _ftp.StatusFileUnavailable) {
+				// Return if the error is not because the directory already exists
+				return nil, err
+			}
 		}
 	}
 	pr, pw := io.Pipe()
