@@ -13,7 +13,6 @@ require (
 	github.com/fatih/color v1.17.0
 	github.com/fsouza/fake-gcs-server v1.49.0
 	github.com/jlaffaye/ftp v0.2.1-0.20240214224549-4edb16bfcd0f
-	github.com/kr/pretty v0.3.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/sftp v1.13.6
 	github.com/stretchr/testify v1.9.0
@@ -53,7 +52,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kr/fs v0.1.0 // indirect
-	github.com/kr/text v0.2.0 // indirect
+	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-ieproxy v0.0.12 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
