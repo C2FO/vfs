@@ -155,6 +155,16 @@ func (lt *locationTestSuite) TestURI() {
 	file, err := lt.sftpfs.NewFile(authority, "/blah/file.txt")
 	lt.NoError(err)
 	lt.Equal("sftp://user@host.com/blah/file.txt", file.URI(), "file uri with user, pass, host")
+
+	authority = `domain.com\user@host.com`
+	file, err = lt.sftpfs.NewFile(authority, "/blah/file.txt")
+	lt.Error(err)
+	lt.ErrorContains(err, "net/url: invalid userinfo", "file uri with bad user")
+
+	authority = `domain.com%5Cuser@host.com`
+	file, err = lt.sftpfs.NewFile(authority, "/blah/file.txt")
+	lt.NoError(err)
+	lt.Equal(`sftp://domain.com%5Cuser@host.com/blah/file.txt`, file.URI(), "file uri with percent-encoded character in user")
 }
 
 func (lt *locationTestSuite) TestString() {

@@ -148,7 +148,7 @@ func (f *File) MoveToFile(t vfs.File) error {
 	// sftp rename if vfs is sftp and for the same user/host
 	if f.fileSystem.Scheme() == t.Location().FileSystem().Scheme() &&
 		f.Authority.UserInfo().Username() == t.(*File).Authority.UserInfo().Username() &&
-		f.Authority.Host() == t.(*File).Authority.Host() {
+		f.Authority.HostPortStr() == t.(*File).Authority.HostPortStr() {
 		// ensure destination exists before moving
 		exists, err := t.Location().Exists()
 		if err != nil {
@@ -364,7 +364,13 @@ func (f *File) Write(data []byte) (res int, err error) {
 
 // URI returns the File's URI as a string.
 func (f *File) URI() string {
-	return utils.GetFileURI(f)
+	loc := f.Location().(*Location)
+	return utils.EncodeURI(
+		f.fileSystem.Scheme(),
+		loc.Authority.UserInfo().Username(),
+		loc.Authority.HostPortStr(),
+		f.Path(),
+	)
 }
 
 // String implement fmt.Stringer, returning the file's URI as the default string.

@@ -134,7 +134,7 @@ func (a *authoritySuite) TestAuthority() {
 			message:         "user has upper and numeric",
 		},
 		{
-			authorityString: "#blah@some.host.com",
+			authorityString: "{blah@some.host.com",
 			host:            "",
 			port:            0,
 			user:            "",
@@ -144,6 +144,54 @@ func (a *authoritySuite) TestAuthority() {
 			hasError:        true,
 			errMessage:      "invalid userinfo",
 			message:         "user has bad character",
+		},
+		{
+			authorityString: "!c2fo@some.host.com",
+			host:            "some.host.com",
+			port:            0,
+			user:            "!c2fo",
+			pass:            "",
+			str:             "!c2fo@some.host.com",
+			hostPortStr:     "some.host.com",
+			hasError:        false,
+			errMessage:      "",
+			message:         "user has raw ! character",
+		},
+		{
+			authorityString: "%21c2fo@some.host.com",
+			host:            "some.host.com",
+			port:            0,
+			user:            "!c2fo",
+			pass:            "",
+			str:             "!c2fo@some.host.com",
+			hostPortStr:     "some.host.com",
+			hasError:        false,
+			errMessage:      "",
+			message:         "user has pct-encoded ! character",
+		},
+		{
+			authorityString: `domain.com%5cuser@some.host.com`,
+			host:            "some.host.com",
+			port:            0,
+			user:            `domain.com\user`,
+			pass:            "",
+			str:             `domain.com\user@some.host.com`,
+			hostPortStr:     "some.host.com",
+			hasError:        false,
+			errMessage:      "",
+			message:         `user has pct-encoded \ character`,
+		},
+		{
+			authorityString: `domain.com\user@some.host.com`,
+			host:            "",
+			port:            0,
+			user:            "",
+			pass:            "",
+			str:             "",
+			hostPortStr:     "",
+			hasError:        true,
+			errMessage:      "invalid userinfo",
+			message:         "raw backslash not allowed",
 		},
 		{
 			authorityString: "127.0.0.1",
@@ -171,11 +219,11 @@ func (a *authoritySuite) TestAuthority() {
 		},
 		{
 			authorityString: "[0:0:0:0:0:0:0:1]",
-			host:            "[0:0:0:0:0:0:0:1]",
+			host:            "0:0:0:0:0:0:0:1",
 			port:            0,
 			user:            "",
 			pass:            "",
-			str:             "[0:0:0:0:0:0:0:1]",
+			str:             "0:0:0:0:0:0:0:1",
 			hostPortStr:     "[0:0:0:0:0:0:0:1]",
 			hasError:        false,
 			errMessage:      "",
@@ -195,11 +243,11 @@ func (a *authoritySuite) TestAuthority() {
 		},
 		{
 			authorityString: "[:::::::1]",
-			host:            "[:::::::1]",
+			host:            ":::::::1",
 			port:            0,
 			user:            "",
 			pass:            "",
-			str:             "[:::::::1]",
+			str:             ":::::::1",
 			hostPortStr:     "[:::::::1]",
 			hasError:        false,
 			errMessage:      "",
@@ -207,11 +255,11 @@ func (a *authoritySuite) TestAuthority() {
 		},
 		{
 			authorityString: "[:::::::1]:3022",
-			host:            "[:::::::1]",
+			host:            ":::::::1",
 			port:            3022,
 			user:            "",
 			pass:            "",
-			str:             "[:::::::1]:3022",
+			str:             ":::::::1:3022",
 			hostPortStr:     "[:::::::1]:3022",
 			hasError:        false,
 			errMessage:      "",
@@ -243,18 +291,20 @@ func (a *authoritySuite) TestAuthority() {
 		},
 	}
 
-	for i := range tests {
-		actual, err := NewAuthority(tests[i].authorityString)
-		if tests[i].hasError {
-			a.EqualError(err, tests[i].errMessage, tests[i].message)
-		} else {
-			a.NoError(err, tests[i].message)
-			a.Equal(tests[i].host, actual.Host(), tests[i].message)
-			a.Equal(int(tests[i].port), int(actual.Port()), tests[i].message)
-			a.Equal(tests[i].user, actual.UserInfo().Username(), tests[i].message)
-			a.Equal(tests[i].pass, actual.UserInfo().Password(), tests[i].message)
-			a.Equal(tests[i].str, actual.String(), tests[i].message)
-		}
+	for _, t := range tests {
+		a.Run(t.message, func() {
+			actual, err := NewAuthority(t.authorityString)
+			if t.hasError {
+				a.ErrorContains(err, t.errMessage, t.message)
+			} else {
+				a.NoError(err, t.message)
+				a.Equal(t.host, actual.Host(), t.message)
+				a.Equal(int(t.port), int(actual.Port()), t.message)
+				a.Equal(t.user, actual.UserInfo().Username(), t.message)
+				a.Equal(t.pass, actual.UserInfo().Password(), t.message)
+				a.Equal(t.str, actual.String(), t.message)
+			}
+		})
 	}
 }
 

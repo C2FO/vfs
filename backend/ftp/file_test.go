@@ -1125,6 +1125,12 @@ func (ts *fileTestSuite) TestPath() {
 func (ts *fileTestSuite) TestURI() {
 	expected := "ftp://user@host.com:22/some/path/to/file.txt"
 	ts.Equal(expected, ts.testFile.URI(), "URI test")
+
+	expected = "ftp://domain.com%5Cuser@host.com:22/some/path/to/file.txt"
+	fs := NewFileSystem()
+	f, err := fs.NewFile("domain.com%5Cuser@host.com:22", "/some/path/to/file.txt")
+	ts.NoError(err)
+	ts.Equal(expected, f.URI(), "URI test")
 }
 
 func (ts *fileTestSuite) TestStringer() {

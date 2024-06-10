@@ -213,7 +213,7 @@ func (l *Location) FileSystem() vfs.FileSystem {
 
 // URI returns the Location's URI as a string.
 func (l *Location) URI() string {
-	return utils.GetLocationURI(l)
+	return utils.EncodeURI(l.FileSystem().Scheme(), l.Authority.UserInfo().Username(), l.Authority.HostPortStr(), l.Path())
 }
 
 // String implement fmt.Stringer, returning the location's URI as the default string.
