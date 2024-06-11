@@ -324,7 +324,7 @@ func (lt *locationTestSuite) TestURI() {
 	lt.Equal("ftp://user@host.com/blah/file.txt", file.URI(), "file uri with user, pass, host")
 
 	authority = `domain.com\user@host.com`
-	file, err = lt.ftpfs.NewFile(authority, "/blah/file.txt")
+	_, err = lt.ftpfs.NewFile(authority, "/blah/file.txt")
 	lt.Error(err)
 	lt.ErrorContains(err, "net/url: invalid userinfo", "file uri with bad user")
 

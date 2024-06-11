@@ -24,7 +24,7 @@ type authorityTest struct {
 }
 
 func (a *authoritySuite) TestAuthority() {
-	tests := []authorityTest{
+	tests := []*authorityTest{
 		{
 			authorityString: "",
 			host:            "",

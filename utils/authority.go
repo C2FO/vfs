@@ -28,15 +28,11 @@ import (
      pct-encoded = "%" HEXDIG HEXDIG
 */
 
-// ------------------------------------ host    :port
-var portRegex = regexp.MustCompile(`(.*?)(?::(\d*))?$`)
-
 // Authority represents host, port and userinfo (user/pass) in a URI
 type Authority struct {
-	userinfo UserInfo
-	host     string
-	port     uint16
-	url      *url.URL
+	host string
+	port uint16
+	url  *url.URL
 }
 
 // UserInfo represents user/pass portion of a URI

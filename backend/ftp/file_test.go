@@ -1127,8 +1127,8 @@ func (ts *fileTestSuite) TestURI() {
 	ts.Equal(expected, ts.testFile.URI(), "URI test")
 
 	expected = "ftp://domain.com%5Cuser@host.com:22/some/path/to/file.txt"
-	fs := NewFileSystem()
-	f, err := fs.NewFile("domain.com%5Cuser@host.com:22", "/some/path/to/file.txt")
+	fsys := NewFileSystem()
+	f, err := fsys.NewFile("domain.com%5Cuser@host.com:22", "/some/path/to/file.txt")
 	ts.NoError(err)
 	ts.Equal(expected, f.URI(), "URI test")
 }
