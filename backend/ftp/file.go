@@ -180,7 +180,7 @@ func (f *File) MoveToFile(t vfs.File) error {
 	// ftp rename if vfs is ftp and for the same user/host
 	if f.fileSystem.Scheme() == t.Location().FileSystem().Scheme() &&
 		f.authority.UserInfo().Username() == t.(*File).authority.UserInfo().Username() &&
-		f.authority.Host() == t.(*File).authority.Host() {
+		f.authority.HostPortStr() == t.(*File).authority.HostPortStr() {
 
 		// ensure destination exists before moving
 		exists, err := t.Location().Exists()
@@ -246,7 +246,7 @@ func (f *File) CopyToFile(file vfs.File) (err error) { //nolint:gocyclo
 
 	if f.fileSystem.Scheme() == file.Location().FileSystem().Scheme() &&
 		f.authority.UserInfo().Username() == file.(*File).authority.UserInfo().Username() &&
-		f.authority.Host() == file.(*File).authority.Host() {
+		f.authority.HostPortStr() == file.(*File).authority.HostPortStr() {
 		// in the case that both files have the same authority we'll copy by writing a temporary
 		// file to mem and then writing it back to the ftp server
 		tempFile, err := f.createLocalTempFile()
@@ -436,7 +436,13 @@ func (f *File) Write(data []byte) (res int, err error) {
 
 // URI returns the File's URI as a string.
 func (f *File) URI() string {
-	return utils.GetFileURI(f)
+	loc := f.Location().(*Location)
+	return utils.EncodeURI(
+		f.fileSystem.Scheme(),
+		loc.Authority.UserInfo().Username(),
+		loc.Authority.HostPortStr(),
+		f.Path(),
+	)
 }
 
 // String implement fmt.Stringer, returning the file's URI as the default string.

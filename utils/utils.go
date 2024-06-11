@@ -92,6 +92,7 @@ func GetFileURI(f vfs.File) string {
 
 // GetLocationURI returns a Location URI
 func GetLocationURI(l vfs.Location) string {
+
 	return fmt.Sprintf("%s://%s%s", l.FileSystem().Scheme(), l.Volume(), l.Path())
 }
 
@@ -243,4 +244,16 @@ func SeekTo(length, position, offset int64, whence int) (int64, error) {
 	}
 
 	return offset, nil
+}
+
+// EncodeURI ensure that a uri is properly percent-encoded
+func EncodeURI(scheme, username, hostport, path string) string {
+	u := &url.URL{
+		Scheme: scheme,
+		User:   url.User(username),
+		Host:   hostport,
+		Path:   path,
+	}
+
+	return u.String()
 }

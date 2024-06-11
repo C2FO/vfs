@@ -152,24 +152,39 @@ func (s *vfssimplesuite) TestParseURI() {
 			authority: "user@host.com:22",
 			path:      "/path/to/file.txt",
 		},
+		{
+			uri:       `sftp://doamin.com%5Cuser@host.com:22/path/to/file.txt`,
+			err:       nil,
+			message:   "valid sftp uri, with percent-encoded char",
+			scheme:    "sftp",
+			authority: `doamin.com%5Cuser@host.com:22`,
+			path:      "/path/to/file.txt",
+		},
+		{
+			uri:     `sftp://doamin.com\user@host.com:22/path/to/file.txt`,
+			err:     errors.New("net/url: invalid userinfo"),
+			message: `invalid sftp uri, with raw reserved char \`,
+		},
 	}
 
 	for _, test := range tests {
-		scheme, authority, path, err := parseURI(test.uri)
-		if test.err != nil {
-			s.Error(err, test.message)
-			if errors.Is(err, test.err) {
-				s.True(errors.Is(err, test.err), test.message)
+		s.Run(test.message, func() {
+			scheme, authority, path, err := parseURI(test.uri)
+			if test.err != nil {
+				s.Error(err, test.message)
+				if errors.Is(err, test.err) {
+					s.True(errors.Is(err, test.err), test.message)
+				} else {
+					// this is necessary since we can't recreate sentinel errors from url.Parse() to do errors.Is() comparison
+					s.Contains(err.Error(), test.err.Error(), test.message)
+				}
 			} else {
-				// this is necessary since we can't recreate sentinel errors from url.Parse() to do errors.Is() comparison
-				s.Contains(err.Error(), test.err.Error(), test.message)
+				s.NoError(err, test.message)
+				s.Equal(test.scheme, scheme, test.message)
+				s.Equal(test.authority, authority, test.message)
+				s.Equal(test.path, path, test.message)
 			}
-		} else {
-			s.NoError(err, test.message)
-			s.Equal(test.scheme, scheme, test.message)
-			s.Equal(test.authority, authority, test.message)
-			s.Equal(test.path, path, test.message)
-		}
+		})
 	}
 }
 

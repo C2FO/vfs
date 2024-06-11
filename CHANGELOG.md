@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
+## [6.14.3] - 2024-05-30
+### Fixed
+- Fixed #189 - Update utils authority package to handle proper encoding/decoding of uri with reserved characters.
+
 ## [6.14.2] - 2024-05-30
 ### Fixed
 - Fixed #187 - Update to latest jlaffaye/ftp library to fix issue where FTPS connections were failing due to a bug in the library. Also updated dataconn to continue even if it fails to MakeDir.
