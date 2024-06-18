@@ -159,3 +159,67 @@ func validOptionalPort(port string) bool {
 	}
 	return true
 }
+
+// EncodeUserInfo takes an unencoded URI authority userinfo string and encodes it
+func EncodeUserInfo(rawUserInfo string) string {
+	parts := strings.SplitN(rawUserInfo, ":", 2)
+	encodedParts := make([]string, len(parts))
+	for i, part := range parts {
+		encoded := url.QueryEscape(part)
+		decoded := strings.NewReplacer(
+			"%21", "!", "%24", "$", "%26", "&", "%27", "'",
+			"%28", "(", "%29", ")", "%2A", "*", "%2B", "+",
+			"%2C", ",", "%3B", ";", "%3D", "=",
+		).Replace(encoded)
+		encodedParts[i] = decoded
+	}
+	return strings.Join(encodedParts, ":")
+}
+
+// EncodeAuthority takes an unencoded URI authority string and encodes it
+func EncodeAuthority(rawAuthority string) (string, error) {
+	var userInfo, hostPort string
+
+	// Split the authority into user info and hostPort
+	atIndex := strings.LastIndex(rawAuthority, "@")
+	if atIndex != -1 {
+		userInfo = rawAuthority[:atIndex]
+		hostPort = rawAuthority[atIndex+1:]
+	} else {
+		hostPort = rawAuthority
+	}
+
+	// Encode userInfo if present
+	if userInfo != "" {
+		userInfo = EncodeUserInfo(userInfo)
+	}
+
+	// Split host and port
+	var host, port string
+	hostPortSplit := strings.SplitN(hostPort, ":", 2)
+	if len(hostPortSplit) > 0 {
+		host = hostPortSplit[0]
+	}
+	if len(hostPortSplit) > 1 {
+		port = hostPortSplit[1]
+	}
+
+	// Encode host and port
+	encodedHost := url.QueryEscape(host)
+	var encodedPort string
+	if port != "" {
+		encodedPort = url.QueryEscape(port)
+	}
+
+	// Reconstruct the encoded authority string
+	var encodedAuthority string
+	if userInfo != "" {
+		encodedAuthority = userInfo + "@"
+	}
+	encodedAuthority += encodedHost
+	if encodedPort != "" {
+		encodedAuthority += ":" + encodedPort
+	}
+
+	return encodedAuthority, nil
+}
