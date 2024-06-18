@@ -24,7 +24,7 @@ type authorityTest struct {
 }
 
 func (a *authoritySuite) TestAuthority() {
-	tests := []*authorityTest{
+	tests := []authorityTest{
 		{
 			authorityString: "",
 			host:            "",
@@ -303,6 +303,80 @@ func (a *authoritySuite) TestAuthority() {
 				a.Equal(t.user, actual.UserInfo().Username(), t.message)
 				a.Equal(t.pass, actual.UserInfo().Password(), t.message)
 				a.Equal(t.str, actual.String(), t.message)
+			}
+		})
+	}
+}
+
+type encodeAuthorityTest struct {
+	rawAuthority    string
+	expectedEncoded string
+	hasError        bool
+	errMessage      string
+	message         string
+}
+
+func (a *authoritySuite) TestEncodeAuthority() {
+	tests := []encodeAuthorityTest{
+		{
+			rawAuthority:    "domain.com\\user@someserver.com:22",
+			expectedEncoded: "domain.com%5Cuser@someserver.com:22",
+			hasError:        false,
+			errMessage:      "",
+			message:         "basic encoding",
+		},
+		{
+			rawAuthority:    "example.com:80",
+			expectedEncoded: "example.com:80",
+			hasError:        false,
+			errMessage:      "",
+			message:         "no user info",
+		},
+		{
+			rawAuthority:    "user:password@host.com",
+			expectedEncoded: "user:password@host.com",
+			hasError:        false,
+			errMessage:      "",
+			message:         "username and password",
+		},
+		{
+			rawAuthority:    "!username@host.com:22",
+			expectedEncoded: "!username@host.com:22",
+			hasError:        false,
+			errMessage:      "",
+			message:         "exclamation point in username (remains unencoded)",
+		},
+		{
+			rawAuthority:    "user@host.com",
+			expectedEncoded: "user@host.com",
+			hasError:        false,
+			errMessage:      "",
+			message:         "username only",
+		},
+		{
+			rawAuthority:    "host.com:8080",
+			expectedEncoded: "host.com:8080",
+			hasError:        false,
+			errMessage:      "",
+			message:         "host and port only",
+		},
+		{
+			rawAuthority:    "@host.com",
+			expectedEncoded: "host.com",
+			hasError:        false,
+			errMessage:      "",
+			message:         "empty user info",
+		},
+	}
+
+	for _, t := range tests {
+		a.Run(t.message, func() {
+			actual, err := EncodeAuthority(t.rawAuthority)
+			if t.hasError {
+				a.ErrorContains(err, t.errMessage, t.message)
+			} else {
+				a.NoError(err, t.message)
+				a.Equal(t.expectedEncoded, actual, t.message)
 			}
 		})
 	}

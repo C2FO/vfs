@@ -5,7 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
-## [6.14.3] - 2024-05-30
+## [6.15.0] - 2024-06-18
+### Added
+- Fixed #191 - Add a util functions to encode authority strictly following RFC 3986.
+
+## [6.14.3] - 2024-06-11
 ### Fixed
 - Fixed #189 - Update utils authority package to handle proper encoding/decoding of uri with reserved characters.
 
