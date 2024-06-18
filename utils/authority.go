@@ -160,9 +160,9 @@ func validOptionalPort(port string) bool {
 	return true
 }
 
-// EncodeUserInfo encodes the user info part of the URI, ensuring that certain characters remain unencoded
-func EncodeUserInfo(userInfo string) string {
-	parts := strings.SplitN(userInfo, ":", 2)
+// EncodeUserInfo takes an unencoded URI authority userinfo string and encodes it
+func EncodeUserInfo(rawUserInfo string) string {
+	parts := strings.SplitN(rawUserInfo, ":", 2)
 	encodedParts := make([]string, len(parts))
 	for i, part := range parts {
 		encoded := url.QueryEscape(part)
@@ -177,16 +177,16 @@ func EncodeUserInfo(userInfo string) string {
 }
 
 // EncodeAuthority takes an unencoded URI authority string and encodes it
-func EncodeAuthority(authority string) (string, error) {
+func EncodeAuthority(rawAuthority string) (string, error) {
 	var userInfo, hostPort string
 
 	// Split the authority into user info and hostPort
-	atIndex := strings.LastIndex(authority, "@")
+	atIndex := strings.LastIndex(rawAuthority, "@")
 	if atIndex != -1 {
-		userInfo = authority[:atIndex]
-		hostPort = authority[atIndex+1:]
+		userInfo = rawAuthority[:atIndex]
+		hostPort = rawAuthority[atIndex+1:]
 	} else {
-		hostPort = authority
+		hostPort = rawAuthority
 	}
 
 	// Encode userInfo if present
