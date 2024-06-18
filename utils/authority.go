@@ -177,7 +177,7 @@ func EncodeUserInfo(rawUserInfo string) string {
 }
 
 // EncodeAuthority takes an unencoded URI authority string and encodes it
-func EncodeAuthority(rawAuthority string) (string, error) {
+func EncodeAuthority(rawAuthority string) string {
 	var userInfo, hostPort string
 
 	// Split the authority into user info and hostPort
@@ -221,5 +221,5 @@ func EncodeAuthority(rawAuthority string) (string, error) {
 		encodedAuthority += ":" + encodedPort
 	}
 
-	return encodedAuthority, nil
+	return encodedAuthority
 }
