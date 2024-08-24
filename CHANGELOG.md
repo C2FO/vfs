@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
+## [6.16.0] - 2024-08-24
+### Security
+- Fixes #196 - Update to latest go and dependencies
+  - Update .gvmrc to 1.23.0.
+  - Update go.mod min version to Go 1.23.
+  - Update actions to test only supported Go versions (1.22, 1.23).
+  - Updated dependencies.
+  - Update golangci-lint.yml for latest golang-ci-lint version.
+
 ## [6.15.1] - 2024-06-18
 ### Added
 - Fixed #193 - Correct method signature for EncodeAuthority to not return an error.
