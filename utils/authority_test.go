@@ -291,7 +291,7 @@ func (a *authoritySuite) TestAuthority() {
 		},
 	}
 
-	for _, t := range tests {
+	for _, t := range tests { //nolint:gocritic // rangeValCopy
 		a.Run(t.message, func() {
 			actual, err := NewAuthority(t.authorityString)
 			if t.hasError {

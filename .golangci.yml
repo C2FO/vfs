@@ -19,16 +19,6 @@ run:
   #build-tags:
   #  - mytag
 
-  # which dirs to skip: issues from them won't be reported;
-  # can use regexp here: generated.*, regexp is applied on full path;
-  # default value is empty list, but default dirs are skipped independently
-  # from this option's value (see skip-dirs-use-default).
-  # "/" will be replaced by current OS file path separator to properly work
-  # on Windows.
-  skip-dirs:
-    - docs
-    - mocks
-
   # default is true. Enables skipping of directories:
   #   vendor$, third_party$, testdata$, examples$, Godeps$, builtin$
   skip-dirs-use-default: true
@@ -62,7 +52,9 @@ run:
 output:
   # colored-line-number|line-number|json|tab|checkstyle|code-climate|junit-xml|github-actions
   # default is "colored-line-number"
-  format: colored-line-number
+  formats:
+    - format: colored-line-number
+      path: stdout
 
   # print lines of code with issue, default is true
   print-issued-lines: true
@@ -149,10 +141,28 @@ linters-settings:
 #    statements: 50
 
   gci:
-    # put imports beginning with prefix after 3rd-party packages;
-    # only support one prefix
-    # if not set, use goimports.local-prefixes
-    local-prefixes: github.com/c2fo/
+    # Section configuration to compare against.
+    # Section names are case-insensitive and may contain parameters in ().
+    # The default order of sections is `standard > default > custom > blank > dot > alias > localmodule`,
+    # If `custom-order` is `true`, it follows the order of `sections` option.
+    # Default: ["standard", "default"]
+    sections:
+      - standard                       # Standard section: captures all standard packages.
+      - default                        # Default section: contains all imports that could not be matched to another section type.
+      - prefix(github.com/c2fo/) # Custom section: groups all imports with the specified Prefix.
+#      - blank                          # Blank section: contains all blank imports. This section is not present unless explicitly enabled.
+#      - dot                            # Dot section: contains all dot imports. This section is not present unless explicitly enabled.
+#      - alias                          # Alias section: contains all alias imports. This section is not present unless explicitly enabled.
+#      - localmodule                    # Local module section: contains all local packages. This section is not present unless explicitly enabled.
+
+    # Skip generated files.
+    # Default: true
+    skip-generated: true
+
+    # Enable custom order of sections.
+    # If `true`, make the section order the same as the order of `sections`.
+    # Default: false
+    custom-order: false
 
 #  gocognit:
 #    # minimal code complexity to report, 30 by default (but we recommend 10-20)
@@ -362,6 +372,10 @@ linters-settings:
 #        entropy_threshold: "80.0"
 #        per_char_threshold: "3.0"
 #        truncate: "32"
+  gosec:
+    excludes:
+      # Flags for potentially-unsafe casting of ints, similar problem to globally-disabled G103
+      - G115
 
   gosimple:
     # Select the Go version to target. The default is '1.13'.
@@ -686,6 +700,16 @@ issues:
   # The default value is false. If set to true exclude and exclude-rules
   # regular expressions become case sensitive.
   exclude-case-sensitive: false
+
+  # Which dirs to exclude: issues from them won't be reported.
+  # Can use regexp here: `generated.*`, regexp is applied on full path,
+  # including the path prefix if one is set.
+  # Default dirs are skipped independently of this option's value (see exclude-dirs-use-default).
+  # "/" will be replaced by current OS file path separator to properly work on Windows.
+  # Default: []
+  exclude-dirs:
+    - docs
+    - mocks
 
   # The list of ids of default excludes to include or disable. By default it's empty.
 #  include:
