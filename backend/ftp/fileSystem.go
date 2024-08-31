@@ -109,7 +109,7 @@ func (fs *FileSystem) Client(ctx context.Context, authority utils.Authority) (ty
 			var err error
 			fs.ftpclient, err = defaultClientGetter(ctx, authority, opts)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("cannot get client: %w", err)
 			}
 		} else {
 			return nil, fmt.Errorf("unable to create client, vfs.Options must be an ftp.Options")

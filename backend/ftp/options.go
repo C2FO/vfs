@@ -46,13 +46,13 @@ func getClient(ctx context.Context, authority utils.Authority, opts Options) (ty
 	// dial connection
 	c, err := _ftp.Dial(fetchHostPortString(authority), fetchDialOptions(ctx, authority, opts)...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to dial connection: %w", err)
 	}
 
 	// login
 	err = c.Login(fetchUsername(authority), fetchPassword(opts))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to login: %w", err)
 	}
 
 	return c, nil

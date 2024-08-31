@@ -144,7 +144,7 @@ func getDataConn(ctx context.Context, authority utils.Authority, fs *FileSystem,
 	if fs.dataconn != nil && fs.dataconn.Mode() != t {
 		// wrong session type ... close current session and unset it (ps so we can set a new one after)
 		if err := fs.dataconn.Close(); err != nil {
-			return nil, wrapGetDataConnError(err)
+			return nil, wrapGetDataConnError(fmt.Errorf("dataconn.Close error: %w", err))
 		}
 		fs.dataconn = nil
 	}
@@ -152,7 +152,7 @@ func getDataConn(ctx context.Context, authority utils.Authority, fs *FileSystem,
 	if fs.dataconn == nil || fs.resetConn {
 		client, err := fs.Client(ctx, authority)
 		if err != nil {
-			return nil, wrapGetDataConnError(err)
+			return nil, wrapGetDataConnError(fmt.Errorf("fs.Client error: %w", err))
 		}
 
 		switch t {
@@ -160,7 +160,7 @@ func getDataConn(ctx context.Context, authority utils.Authority, fs *FileSystem,
 			resp, err := client.RetrFrom(f.Path(), uint64(f.offset))
 			// check errors
 			if err != nil {
-				return nil, wrapGetDataConnError(err)
+				return nil, wrapGetDataConnError(fmt.Errorf("client.RetrFrom error: %w", err))
 			}
 			fs.dataconn = &dataConn{
 				R:    resp,
