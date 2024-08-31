@@ -21,3 +21,23 @@ func WrapWriteError(err error) error {
 func WrapCloseError(err error) error {
 	return fmt.Errorf("close error: %w", err)
 }
+
+// WrapExistsError returns a wrapped touch error
+func WrapExistsError(err error) error {
+	return fmt.Errorf("exists error: %w", err)
+}
+
+// WrapListError returns a wrapped list error
+func WrapListError(err error) error {
+	return fmt.Errorf("list error: %w", err)
+}
+
+// WrapListByPrefixError returns a wrapped list error
+func WrapListByPrefixError(err error) error {
+	return fmt.Errorf("list by prefix error: %w", err)
+}
+
+// WrapListError returns a wrapped list error
+func WrapListByRegexError(err error) error {
+	return fmt.Errorf("list by regex error: %w", err)
+}

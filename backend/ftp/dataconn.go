@@ -3,6 +3,7 @@ package ftp
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/textproto"
 	"time"
@@ -118,7 +119,7 @@ func (dc *dataConn) Close() error {
 			err := dc.R.Close()
 			dc.W = nil
 			dc.R = nil
-			return err
+			return dataConnCloseError(err)
 		}
 	case types.OpenWrite:
 		if dc.W != nil {
@@ -129,7 +130,7 @@ func (dc *dataConn) Close() error {
 			err := <-dc.errChan
 			dc.W = nil
 			dc.R = nil
-			return err
+			return dataConnCloseError(err)
 		}
 	}
 
@@ -138,12 +139,12 @@ func (dc *dataConn) Close() error {
 
 func getDataConn(ctx context.Context, authority utils.Authority, fs *FileSystem, f *File, t types.OpenType) (types.DataConn, error) {
 	if fs == nil {
-		return nil, errors.New("can not get a dataconn for a nil fileset")
+		return nil, wrapGetDataConnError(errors.New("nil filesystem"))
 	}
 	if fs.dataconn != nil && fs.dataconn.Mode() != t {
 		// wrong session type ... close current session and unset it (ps so we can set a new one after)
 		if err := fs.dataconn.Close(); err != nil {
-			return nil, err
+			return nil, wrapGetDataConnError(err)
 		}
 		fs.dataconn = nil
 	}
@@ -151,7 +152,7 @@ func getDataConn(ctx context.Context, authority utils.Authority, fs *FileSystem,
 	if fs.dataconn == nil || fs.resetConn {
 		client, err := fs.Client(ctx, authority)
 		if err != nil {
-			return nil, err
+			return nil, wrapGetDataConnError(err)
 		}
 
 		switch t {
@@ -159,7 +160,7 @@ func getDataConn(ctx context.Context, authority utils.Authority, fs *FileSystem,
 			resp, err := client.RetrFrom(f.Path(), uint64(f.offset))
 			// check errors
 			if err != nil {
-				return nil, err
+				return nil, wrapGetDataConnError(err)
 			}
 			fs.dataconn = &dataConn{
 				R:    resp,
@@ -168,7 +169,7 @@ func getDataConn(ctx context.Context, authority utils.Authority, fs *FileSystem,
 		case types.OpenWrite:
 			dc, err := openWriteConnection(client, f)
 			if err != nil {
-				return nil, err
+				return nil, wrapGetDataConnError(err)
 			}
 			fs.dataconn = dc
 		case types.SingleOp:
@@ -189,7 +190,7 @@ func getDataConn(ctx context.Context, authority utils.Authority, fs *FileSystem,
 func openWriteConnection(client types.Client, f *File) (types.DataConn, error) {
 	found, err := f.Location().Exists()
 	if err != nil {
-		return nil, err
+		return nil, wrapOpenWriteConnError(err)
 	}
 	if !found {
 		err := client.MakeDir(f.Location().Path())
@@ -197,7 +198,7 @@ func openWriteConnection(client types.Client, f *File) (types.DataConn, error) {
 			var e *textproto.Error
 			if !(errors.As(err, &e) && e.Code == _ftp.StatusFileUnavailable) {
 				// Return if the error is not because the directory already exists
-				return nil, err
+				return nil, wrapOpenWriteConnError(err)
 			}
 		}
 	}
@@ -217,4 +218,22 @@ func openWriteConnection(client types.Client, f *File) (types.DataConn, error) {
 		W:       pw,
 		errChan: errChan,
 	}, nil
+}
+
+// wrapGetDataConnError returns a wrapped getDataConn error
+func wrapGetDataConnError(err error) error {
+	return fmt.Errorf("getDataConn error: %w", err)
+}
+
+// wrapOpenWriteConnError returns a wrapped openWriteConnection error
+func wrapOpenWriteConnError(err error) error {
+	return fmt.Errorf("openWriteConnection error: %w", err)
+}
+
+// dataConnCloseError returns a wrapped touch error
+func dataConnCloseError(err error) error {
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("dataconn Close error: %w", err)
 }

@@ -28,7 +28,7 @@ func (l *Location) List() ([]string, error) {
 	var filenames []string
 	dc, err := l.fileSystem.DataConn(context.TODO(), l.Authority, types.SingleOp, nil)
 	if err != nil {
-		return filenames, err
+		return filenames, utils.WrapListError(err)
 	}
 
 	entries, err := dc.List(l.Path())
@@ -37,7 +37,7 @@ func (l *Location) List() ([]string, error) {
 			// in this case the directory does not exist
 			return filenames, nil
 		}
-		return filenames, err
+		return filenames, utils.WrapListError(err)
 	}
 	for _, entry := range entries {
 		if entry.Type == _ftp.EntryTypeFile {
@@ -59,7 +59,7 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 
 	// validate prefix
 	if err := utils.ValidatePrefix(prefix); err != nil {
-		return filenames, err
+		return filenames, utils.WrapListByPrefixError(err)
 	}
 
 	// get absolute prefix path (in case prefix contains relative prefix, ie, some/path/to/myprefix)
@@ -86,7 +86,7 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 	// get dataconn
 	dc, err := l.fileSystem.DataConn(context.TODO(), l.Authority, types.SingleOp, nil)
 	if err != nil {
-		return filenames, err
+		return filenames, utils.WrapListByPrefixError(err)
 	}
 
 	// list directory entries
@@ -97,7 +97,7 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 			// in this case the directory does not exist
 			return []string{}, nil
 		}
-		return filenames, err
+		return filenames, utils.WrapListByPrefixError(err)
 	}
 
 	for _, entry := range entries {
@@ -115,7 +115,7 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 	filenames, err := l.List()
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapListByRegexError(err)
 	}
 
 	var filteredFilenames []string
@@ -141,7 +141,7 @@ func (l *Location) Path() string {
 func (l *Location) Exists() (bool, error) {
 	dc, err := l.fileSystem.DataConn(context.TODO(), l.Authority, types.SingleOp, nil)
 	if err != nil {
-		return false, err
+		return false, utils.WrapExistsError(err)
 	}
 
 	locBasename := path.Base(l.Path())
@@ -154,7 +154,7 @@ func (l *Location) Exists() (bool, error) {
 			// in this case the directory does not exist
 			return false, nil
 		}
-		return false, err
+		return false, utils.WrapExistsError(err)
 	}
 
 	for i := range entries {
