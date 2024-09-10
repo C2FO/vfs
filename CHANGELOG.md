@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
+## [6.17.0] - 2024-09-10
+### Added
+- Added additionally-supported HostKeyAlgorithms for SFTP backend.  Resolves #198.
+
 ## [6.16.0] - 2024-08-24
 ### Security
 - Fixes #196 - Update to latest go and dependencies
