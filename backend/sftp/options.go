@@ -36,6 +36,13 @@ type Options struct {
 
 var defaultSSHConfig = &ssh.ClientConfig{
 	HostKeyAlgorithms: []string{
+		"rsa-sha2-256-cert-v01@openssh.com",
+		"rsa-sha2-512-cert-v01@openssh.com",
+		"ssh-rsa-cert-v01@openssh.com",
+		"ecdsa-sha2-nistp256-cert-v01@openssh.com",
+		"ecdsa-sha2-nistp384-cert-v01@openssh.com",
+		"ecdsa-sha2-nistp521-cert-v01@openssh.com",
+		"ssh-ed25519-cert-v01@openssh.com",
 		"ssh-ed25519",
 		"ecdsa-sha2-nistp256",
 		"ecdsa-sha2-nistp384",
@@ -66,8 +73,6 @@ var defaultSSHConfig = &ssh.ClientConfig{
 			"aes256-ctr",
 			"aes192-ctr",
 			"aes128-ctr",
-			"aes256-cbc",
-			"aes192-cbc",
 			"aes128-cbc",
 			"3des-cbc",
 		},
