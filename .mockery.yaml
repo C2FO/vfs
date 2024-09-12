@@ -4,6 +4,9 @@ mockname: "{{.InterfaceName}}"
 outpkg: mocks
 with-expecter: true
 packages:
+  github.com/c2fo/vfs/v6:
+    config:
+      all: true
   github.com/c2fo/vfs/v6/backend/s3:
     config:
       all: true
