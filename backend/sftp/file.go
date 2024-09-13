@@ -2,6 +2,7 @@ package sftp
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -78,15 +79,16 @@ func (f *File) Exists() (bool, error) {
 // Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
 // Returns error if unable to touch File.
 func (f *File) Touch() error {
+	// restart timer once action is completed
+	f.fileSystem.connTimerStop()
+	defer f.fileSystem.connTimerStart()
+
 	exists, err := f.Exists()
 	if err != nil {
 		return err
 	}
 
 	if !exists {
-		// restart timer once action is completed
-		f.fileSystem.connTimerStop()
-		defer f.fileSystem.connTimerStart()
 		file, err := f.openFile(os.O_WRONLY | os.O_CREATE)
 		if err != nil {
 			return err
@@ -99,10 +101,15 @@ func (f *File) Touch() error {
 	if err != nil {
 		return err
 	}
-	// start timer once action is completed
-	defer f.fileSystem.connTimerStart()
-	now := time.Now()
 
+	// set permissions if default permissions are set
+	err = f.setPermissions(client, f.fileSystem.options)
+	if err != nil {
+		return err
+	}
+
+	// update last accessed and last modified times
+	now := time.Now()
 	return client.Chtimes(f.Path(), now, now)
 }
 
@@ -140,11 +147,6 @@ func (f *File) Location() vfs.Location {
 // If the given location is also sftp AND for the same user and host, the sftp Rename method is used, otherwise
 // we'll do a an io.Copy to the destination file then delete source file.
 func (f *File) MoveToFile(t vfs.File) error {
-	// validate seek is at 0,0 before doing copy
-	// TODO: Fix this later
-	// if err := backend.ValidateCopySeekPosition(f); err != nil {
-	//	  return err
-	// }
 	// sftp rename if vfs is sftp and for the same user/host
 	if f.fileSystem.Scheme() == t.Location().FileSystem().Scheme() &&
 		f.Authority.UserInfo().Username() == t.(*File).Authority.UserInfo().Username() &&
@@ -204,11 +206,6 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 
 // CopyToFile puts the contents of File into the targetFile passed.
 func (f *File) CopyToFile(file vfs.File) (err error) {
-	// validate seek is at 0,0 before doing copy
-	// TODO: Fix this later
-	// if err := backend.ValidateCopySeekPosition(f); err != nil {
-	//  	return err
-	// }
 
 	// Close file (f) reader regardless of an error
 	defer func() {
@@ -286,6 +283,7 @@ func (f *File) Close() error {
 		}
 		f.sftpfile = nil
 	}
+
 	// no op for unopened file
 	return nil
 }
@@ -490,8 +488,32 @@ func (f *File) _open(flags int) (ReadWriteSeekCloser, error) {
 		opener = defaultOpenFile
 	}
 
-	return opener(client, f.Path(), flags)
+	rwsc, err := opener(client, f.Path(), flags)
+	if err != nil {
+		return nil, err
+	}
 
+	// chmod file if default permissions are set and opening for write
+	if flags&os.O_WRONLY != 0 {
+		err = f.setPermissions(client, f.fileSystem.options)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return rwsc, nil
+}
+
+// setPermissions sets the file permissions if the default permissions are set in the options
+func (f *File) setPermissions(client Client, opts vfs.Options) error {
+	if opts != nil && opts.(Options).DefaultPermissions != nil {
+		err := client.Chmod(f.Path(), *f.fileSystem.options.(Options).DefaultPermissions)
+		if err != nil {
+			return fmt.Errorf("chmod err: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // defaultOpenFile uses sftp.Client to open a file and returns an sftp.File

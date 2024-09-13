@@ -187,6 +187,7 @@ func init() {
 
 // Client is an interface to make it easier to test
 type Client interface {
+	Chmod(path string, mode os.FileMode) error
 	Chtimes(path string, atime, mtime time.Time) error
 	Create(path string) (*_sftp.File, error)
 	MkdirAll(path string) error

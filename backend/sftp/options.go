@@ -32,6 +32,7 @@ type Options struct {
 	AutoDisconnect     int                 `json:"autoDisconnect,omitempty"` // seconds before disconnecting. default: 10
 	KnownHostsCallback ssh.HostKeyCallback // env var VFS_SFTP_INSECURE_KNOWN_HOSTS
 	FileBufferSize     int                 // Buffer Size In Bytes Used with utils.TouchCopyBuffered
+	DefaultPermissions *os.FileMode        // Default Permissions for new files
 }
 
 var defaultSSHConfig = &ssh.ClientConfig{

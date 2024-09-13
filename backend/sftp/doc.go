@@ -138,6 +138,22 @@ Example:
 		},
 	  )
 
+# DefaultPermissions
+
+The `DefaultPermissions` option allows you to specify the default file permissions for files created or modified using the SFTP backend.
+Permissions should be specified using an octal literal (e.g., `0777` for full read, write, and execute permissions for all users).
+
+Example:
+
+		fs = fs.WithOptions(
+	 		sftp.Options{
+	 			DefaultPermissions: &os.FileMode(0777), // Correctly specify permissions as octal
+				// other settings
+			},
+		)
+
+When a file is opened for Write() or Touch()'d, the specified `DefaultPermissions` will be applied to the file.
+
 # AutoDisconnect
 
 When dialing a TCP connection, Go doesn't disconnect for you.  This is true even when the connection falls out of scope, and even when
