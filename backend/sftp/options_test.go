@@ -608,14 +608,6 @@ func (o *optionsSuite) TestGetFileMode() {
 	}
 }
 
-func strPtr(s string) *string {
-	return &s
-}
-
-func modePtr(m os.FileMode) *os.FileMode {
-	return &m
-}
-
 func TestUtils(t *testing.T) {
 	suite.Run(t, new(optionsSuite))
 }
