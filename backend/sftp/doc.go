@@ -138,21 +138,22 @@ Example:
 		},
 	  )
 
-# DefaultPermissions
+# FilePermissions
 
-The `DefaultPermissions` option allows you to specify the default file permissions for files created or modified using the SFTP backend.
-Permissions should be specified using an octal literal (e.g., `0777` for full read, write, and execute permissions for all users).
+The `FilePermissions` option allows you to specify the file permissions for files created or modified using the SFTP backend.
+These permissions will override the sftp server or underlying filesystem's umask (default permissions). Permissions should
+be specified using an octal literal (e.g., `0777` for full read, write, and execute permissions for all users).
 
 Example:
 
 		fs = fs.WithOptions(
 	 		sftp.Options{
-	 			DefaultPermissions: &os.FileMode(0777), // Correctly specify permissions as octal
+	 			FilePermissions: &os.FileMode(0777), // Correctly specify permissions as octal
 				// other settings
 			},
 		)
 
-When a file is opened for Write() or Touch()'d, the specified `DefaultPermissions` will be applied to the file.
+When a file is opened for Write() or Touch()'d, the specified `FilePermissions` will be applied to the file.
 
 # AutoDisconnect
 

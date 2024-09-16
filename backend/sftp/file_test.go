@@ -200,7 +200,7 @@ func (ts *fileTestSuite) Test_openFile() {
 				Authority: authority,
 				fileSystem: &FileSystem{
 					sftpclient: client,
-					options:    Options{DefaultPermissions: utils.Ptr(os.FileMode(0644))},
+					options:    Options{FilePermissions: utils.Ptr("0644")},
 				},
 			}
 
@@ -831,10 +831,9 @@ func (ts *fileTestSuite) TestTouch() {
 				fileSystem: &FileSystem{
 					sftpclient: client,
 					options: Options{
-						DefaultPermissions: func() *os.FileMode {
+						FilePermissions: func() *string {
 							if tc.setPermissions {
-								mode := os.FileMode(0666)
-								return &mode
+								return utils.Ptr("0666")
 							}
 							return nil
 						}(),
@@ -974,7 +973,7 @@ func (ts *fileTestSuite) TestSetDefaultPermissions() {
 				return client
 			}(),
 			options: func() vfs.Options {
-				opts := Options{DefaultPermissions: utils.Ptr(os.FileMode(0644))}
+				opts := Options{FilePermissions: utils.Ptr("0644")}
 				return opts
 			}(),
 			expectedError: false,
@@ -987,7 +986,7 @@ func (ts *fileTestSuite) TestSetDefaultPermissions() {
 				return client
 			}(),
 			options: func() vfs.Options {
-				opts := Options{DefaultPermissions: utils.Ptr(os.FileMode(0644))}
+				opts := Options{FilePermissions: utils.Ptr("0644")}
 				return opts
 			}(),
 			expectedError:  true,

@@ -553,6 +553,69 @@ func (o *optionsSuite) TestGetSSHConfig() {
 	}
 }
 
+func (o *optionsSuite) TestGetFileMode() {
+	tests := []struct {
+		name            string
+		filePermissions *string
+		expectedMode    *os.FileMode
+		expectError     bool
+	}{
+		{
+			name:            "NilFilePermissions",
+			filePermissions: nil,
+			expectedMode:    nil,
+			expectError:     false,
+		},
+		{
+			name:            "ValidOctalString",
+			filePermissions: utils.Ptr("0755"),
+			expectedMode:    utils.Ptr(os.FileMode(0755)),
+			expectError:     false,
+		},
+		{
+			name:            "InvalidString",
+			filePermissions: utils.Ptr("invalid"),
+			expectedMode:    nil,
+			expectError:     true,
+		},
+		{
+			name:            "EmptyString",
+			filePermissions: utils.Ptr(""),
+			expectedMode:    nil,
+			expectError:     true,
+		},
+		{
+			name:            "ValidDecimalString",
+			filePermissions: utils.Ptr("493"), // 0755 in decimal
+			expectedMode:    utils.Ptr(os.FileMode(0755)),
+			expectError:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		o.Run(tt.name, func() {
+			opts := &Options{
+				FilePermissions: tt.filePermissions,
+			}
+			mode, err := opts.GetFileMode()
+			if tt.expectError {
+				o.Error(err)
+			} else {
+				o.NoError(err)
+				o.Equal(tt.expectedMode, mode)
+			}
+		})
+	}
+}
+
+func strPtr(s string) *string {
+	return &s
+}
+
+func modePtr(m os.FileMode) *os.FileMode {
+	return &m
+}
+
 func TestUtils(t *testing.T) {
 	suite.Run(t, new(optionsSuite))
 }

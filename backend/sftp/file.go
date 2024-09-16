@@ -504,13 +504,32 @@ func (f *File) _open(flags int) (ReadWriteSeekCloser, error) {
 	return rwsc, nil
 }
 
-// setPermissions sets the file permissions if the default permissions are set in the options
+// setPermissions sets the file permissions if they are set in the options
 func (f *File) setPermissions(client Client, opts vfs.Options) error {
-	if opts != nil && opts.(Options).DefaultPermissions != nil {
-		err := client.Chmod(f.Path(), *f.fileSystem.options.(Options).DefaultPermissions)
-		if err != nil {
-			return fmt.Errorf("chmod err: %w", err)
-		}
+	if opts == nil {
+		return nil
+	}
+
+	// ensure we're dealing with pointer to Options
+	ptrOpts, ok := opts.(*Options)
+	if !ok {
+		p := opts.(Options)
+		ptrOpts = &p
+	}
+
+	// if file permissions are not set, return early
+	if ptrOpts.FilePermissions == nil {
+		return nil
+	}
+
+	// get file mode
+	perms, err := ptrOpts.GetFileMode()
+	if err != nil {
+		return fmt.Errorf("get file mode err: %w", err)
+	}
+
+	if err := client.Chmod(f.Path(), *perms); err != nil {
+		return fmt.Errorf("chmod err: %w", err)
 	}
 
 	return nil
