@@ -148,7 +148,7 @@ Example:
 
 		fs = fs.WithOptions(
 	 		sftp.Options{
-	 			FilePermissions: &os.FileMode(0777), // Correctly specify permissions as octal
+	 			FilePermissions: "0777", // Correctly specify permissions as octal (in string form)
 				// other settings
 			},
 		)
