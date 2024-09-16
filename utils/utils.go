@@ -257,3 +257,8 @@ func EncodeURI(scheme, username, hostport, path string) string {
 
 	return u.String()
 }
+
+// Ptr returns a pointer to the given value.
+func Ptr[T any](value T) *T {
+	return &value
+}

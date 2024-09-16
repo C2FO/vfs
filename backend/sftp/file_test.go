@@ -122,65 +122,97 @@ func (ts *fileTestSuite) TestSeek() {
 }
 
 func (ts *fileTestSuite) Test_openFile() {
-
-	// set up sftpfile
-	filepath := "/some/path.txt"
-	client := &mocks.Client{}
-
-	file1 := &nopWriteCloser{strings.NewReader("file 1")}
-
-	auth, err := utils.NewAuthority("user@host1.com:22")
-	ts.NoError(err)
-
-	file := &File{
-		fileSystem: &FileSystem{
-			sftpclient: client,
-			options:    Options{},
-		},
-		Authority: auth,
-		path:      filepath,
-		sftpfile:  file1,
+	type testCase struct {
+		name           string
+		flags          int
+		setupMocks     func(client *mocks.Client)
+		expectedError  bool
+		expectedErrMsg string
 	}
 
-	// file already opened
-	f, err := file.openFile(os.O_RDONLY)
-	ts.NoError(err, "no error expected")
-	b, err := io.ReadAll(f)
-	ts.NoError(err, "no error expected")
-	ts.Equal(string(b), "file 1", "mock returned")
+	tests := []testCase{
+		{
+			name:  "Open file for read",
+			flags: os.O_RDONLY,
+			setupMocks: func(client *mocks.Client) {
+				client.EXPECT().OpenFile("/some/path.txt", os.O_RDONLY).Return(&sftp.File{}, nil)
+			},
+			expectedError: false,
+		},
+		{
+			name:  "Open file for write",
+			flags: os.O_WRONLY | os.O_CREATE,
+			setupMocks: func(client *mocks.Client) {
+				client.EXPECT().MkdirAll("/some").Return(nil)
+				client.EXPECT().Chmod("/some/path.txt", os.FileMode(0644)).Return(nil)
+				client.EXPECT().OpenFile("/some/path.txt", os.O_WRONLY|os.O_CREATE).Return(&sftp.File{}, nil)
+			},
+			expectedError: false,
+		},
+		{
+			name:  "Open file for create",
+			flags: os.O_RDWR | os.O_CREATE,
+			setupMocks: func(client *mocks.Client) {
+				client.EXPECT().MkdirAll(path.Dir("/some/path.txt")).Return(nil)
+				client.EXPECT().OpenFile("/some/path.txt", os.O_RDWR|os.O_CREATE).Return(&sftp.File{}, nil)
+			},
+			expectedError: false,
+		},
+		{
+			name:  "Open file for create with error",
+			flags: os.O_RDWR | os.O_CREATE,
+			setupMocks: func(client *mocks.Client) {
+				client.EXPECT().MkdirAll(path.Dir("/some/path.txt")).Return(errors.New("mkdir error"))
+			},
+			expectedError:  true,
+			expectedErrMsg: "mkdir error",
+		},
+		{
+			name:  "Open file with default permissions",
+			flags: os.O_WRONLY,
+			setupMocks: func(client *mocks.Client) {
+				client.EXPECT().OpenFile("/some/path.txt", os.O_WRONLY).Return(&sftp.File{}, nil)
+				client.EXPECT().Chmod("/some/path.txt", os.FileMode(0644)).Return(nil)
+			},
+			expectedError: false,
+		},
+		{
+			name:  "Open file with default permissions error",
+			flags: os.O_WRONLY,
+			setupMocks: func(client *mocks.Client) {
+				client.EXPECT().OpenFile("/some/path.txt", os.O_WRONLY).Return(&sftp.File{}, nil)
+				client.EXPECT().Chmod("/some/path.txt", os.FileMode(0644)).Return(errors.New("chmod error"))
+			},
+			expectedError:  true,
+			expectedErrMsg: "chmod error",
+		},
+	}
 
-	// file not open, open for read
-	file.sftpfile = nil
-	file.opener = func(c Client, p string, f int) (ReadWriteSeekCloser, error) { return file1, nil }
-	_, err = file1.Seek(0, 0) // reset file
-	ts.NoError(err, "no error expected")
-	f, err = file.openFile(os.O_RDONLY)
-	ts.NoError(err, "no error expected")
-	b, err = io.ReadAll(f)
-	ts.NoError(err, "no error expected")
-	ts.Equal(string(b), "file 1", "mock returned")
+	for _, tt := range tests {
+		ts.Run(tt.name, func() {
+			client := mocks.NewClient(ts.T())
+			tt.setupMocks(client)
 
-	// file not open, user default opener
-	file.sftpfile = nil
-	file.opener = nil
-	client.On("OpenFile", filepath, os.O_RDONLY).Return(&sftp.File{}, nil)
-	f, err = file.openFile(os.O_RDONLY)
-	ts.NoError(err, "no error expected")
-	ts.IsType(&sftp.File{}, f, "type check")
+			authority, err := utils.NewAuthority("sftp://user@host:22")
+			ts.NoError(err)
+			file := &File{
+				path:      "/some/path.txt",
+				Authority: authority,
+				fileSystem: &FileSystem{
+					sftpclient: client,
+					options:    Options{FilePermissions: utils.Ptr("0644")},
+				},
+			}
 
-	// file not open, open for create/write
-	file.sftpfile = nil
-	file.opener = func(c Client, p string, f int) (ReadWriteSeekCloser, error) { return file1, nil }
-	_, err = file1.Seek(0, 0) // reset file
-	ts.NoError(err, "no error expected")
-	client.On("MkdirAll", path.Dir(filepath)).Return(nil)
-	f, err = file.openFile(os.O_RDWR | os.O_CREATE)
-	ts.NoError(err, "no error expected")
-	b, err = io.ReadAll(f)
-	ts.NoError(err, "no error expected")
-	ts.Equal(string(b), "file 1", "mock returned")
-
-	client.AssertExpectations(ts.T())
+			_, err = file._open(tt.flags)
+			if tt.expectedError {
+				ts.Error(err)
+				ts.Contains(err.Error(), tt.expectedErrMsg)
+			} else {
+				ts.NoError(err)
+			}
+		})
+	}
 }
 
 func (ts *fileTestSuite) TestExists() {
@@ -216,7 +248,7 @@ func (ts *fileTestSuite) TestCopyToFile() {
 	// set up source
 	sourceClient := &mocks.Client{}
 
-	sourceSftpFile := &mocks.SFTPFile{}
+	sourceSftpFile := mocks.NewReadWriteSeekCloser(ts.T())
 
 	sourceSftpFile.On("Read", mock.Anything).Return(len(content), nil).Once()
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
@@ -238,7 +270,7 @@ func (ts *fileTestSuite) TestCopyToFile() {
 	// set up target
 	targetClient := &mocks.Client{}
 
-	targetSftpFile := &mocks.SFTPFile{}
+	targetSftpFile := mocks.NewReadWriteSeekCloser(ts.T())
 	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
 	targetSftpFile.On("Close").Return(nil).Once()
 
@@ -272,7 +304,7 @@ func (ts *fileTestSuite) TestCopyToFileBuffered() {
 	// set up source
 	sourceClient := &mocks.Client{}
 
-	sourceSftpFile := &mocks.SFTPFile{}
+	sourceSftpFile := mocks.NewReadWriteSeekCloser(ts.T())
 
 	sourceSftpFile.On("Read", mock.Anything).Return(len(content), nil).Once()
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
@@ -294,7 +326,7 @@ func (ts *fileTestSuite) TestCopyToFileBuffered() {
 	// set up target
 	targetClient := &mocks.Client{}
 
-	targetSftpFile := &mocks.SFTPFile{}
+	targetSftpFile := mocks.NewReadWriteSeekCloser(ts.T())
 	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
 	targetSftpFile.On("Close").Return(nil).Once()
 
@@ -331,7 +363,7 @@ func (ts *fileTestSuite) TestCopyToFileEmpty() {
 	// set up source
 	sourceClient := &mocks.Client{}
 
-	sourceSftpFile := &mocks.SFTPFile{}
+	sourceSftpFile := mocks.NewReadWriteSeekCloser(ts.T())
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
 
@@ -351,7 +383,7 @@ func (ts *fileTestSuite) TestCopyToFileEmpty() {
 	// set up target
 	targetClient := &mocks.Client{}
 
-	targetSftpFile := &mocks.SFTPFile{}
+	targetSftpFile := mocks.NewReadWriteSeekCloser(ts.T())
 	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
 	targetSftpFile.On("Close").Return(nil).Once()
 
@@ -388,7 +420,7 @@ func (ts *fileTestSuite) TestCopyToFileEmptyBuffered() {
 	// set up source
 	sourceClient := &mocks.Client{}
 
-	sourceSftpFile := &mocks.SFTPFile{}
+	sourceSftpFile := mocks.NewReadWriteSeekCloser(ts.T())
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
 
@@ -408,7 +440,7 @@ func (ts *fileTestSuite) TestCopyToFileEmptyBuffered() {
 	// set up target
 	targetClient := &mocks.Client{}
 
-	targetSftpFile := &mocks.SFTPFile{}
+	targetSftpFile := mocks.NewReadWriteSeekCloser(ts.T())
 	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
 	targetSftpFile.On("Close").Return(nil).Once()
 
@@ -445,7 +477,7 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 	// set up source
 	sourceClient := &mocks.Client{}
 
-	sourceSftpFile := &mocks.SFTPFile{}
+	sourceSftpFile := mocks.NewReadWriteSeekCloser(ts.T())
 	sourceSftpFile.On("Read", mock.Anything).Return(len(content), nil).Once()
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
@@ -466,7 +498,7 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 	// set up target
 	targetClient := &mocks.Client{}
 
-	targetSftpFile := &mocks.SFTPFile{}
+	targetSftpFile := mocks.NewReadWriteSeekCloser(ts.T())
 	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
 	targetSftpFile.On("Close").Return(nil).Once()
 
@@ -506,7 +538,7 @@ func (ts *fileTestSuite) TestMoveToFile_differentAuthority() {
 	sourceClient := &mocks.Client{}
 	sourceClient.On("Remove", mock.Anything).Return(nil).Once()
 
-	sourceSftpFile := &mocks.SFTPFile{}
+	sourceSftpFile := mocks.NewReadWriteSeekCloser(ts.T())
 	sourceSftpFile.On("Read", mock.Anything).Return(len(content), nil).Once()
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
@@ -527,7 +559,7 @@ func (ts *fileTestSuite) TestMoveToFile_differentAuthority() {
 	// set up target
 	targetClient := &mocks.Client{}
 
-	targetSftpFile := &mocks.SFTPFile{}
+	targetSftpFile := mocks.NewReadWriteSeekCloser(ts.T())
 	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
 	targetSftpFile.On("Close").Return(nil).Once()
 
@@ -573,8 +605,7 @@ func (ts *fileTestSuite) TestMoveToFile_sameAuthority() {
 		path:      "/some/path.txt",
 	}
 
-	rws := &mocks.SFTPFile{}
-	rws.On("Seek", int64(0), 1).Return(int64(0), nil)
+	rws := mocks.NewReadWriteSeekCloser(ts.T())
 	sourceFile.opener = func(c Client, p string, f int) (ReadWriteSeekCloser, error) { return rws, nil }
 
 	// set up target
@@ -623,8 +654,7 @@ func (ts *fileTestSuite) TestMoveToFile_fileExists() {
 		path:      "/some/path.txt",
 	}
 
-	rws := &mocks.SFTPFile{}
-	rws.On("Seek", int64(0), 1).Return(int64(0), nil)
+	rws := mocks.NewReadWriteSeekCloser(ts.T())
 	sourceFile.opener = func(c Client, p string, f int) (ReadWriteSeekCloser, error) { return rws, nil }
 
 	// set up target
@@ -663,7 +693,7 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	sourceClient := &mocks.Client{}
 	sourceClient.On("Remove", mock.Anything).Return(nil).Once()
 
-	sourceSftpFile := &mocks.SFTPFile{}
+	sourceSftpFile := mocks.NewReadWriteSeekCloser(ts.T())
 	sourceSftpFile.On("Read", mock.Anything).Return(len(content), nil).Once()
 	sourceSftpFile.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	sourceSftpFile.On("Close").Return(nil).Once()
@@ -684,7 +714,7 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	// set up target
 	targetClient := &mocks.Client{}
 
-	targetSftpFile := &mocks.SFTPFile{}
+	targetSftpFile := mocks.NewReadWriteSeekCloser(ts.T())
 	targetSftpFile.On("Write", mock.Anything).Return(len(content), nil).Once()
 	targetSftpFile.On("Close").Return(nil).Once()
 
@@ -718,66 +748,112 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	targetMockLocation.AssertExpectations(ts.T())
 }
 
-func (ts *fileTestSuite) TestTouch_exists() {
-	filepath := "/some/path.txt"
-	// set up source
-	sourceFileInfo := &mocks.FileInfo{}
-
-	client := &mocks.Client{}
-	client.On("Stat", filepath).Return(sourceFileInfo, nil).Once()
-	client.On("Chtimes", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-
-	sftpFile := &mocks.SFTPFile{}
-
-	auth, err := utils.NewAuthority("user@host1.com:22")
-	ts.NoError(err)
-
-	file := &File{
-		fileSystem: &FileSystem{
-			sftpclient: client,
-			options:    Options{},
+func (ts *fileTestSuite) TestTouch() {
+	type testCase struct {
+		name           string
+		filePath       string
+		fileExists     bool
+		setPermissions bool
+		expectedError  error
+		setupMocks     func(client *mocks.Client, sftpFile *mocks.ReadWriteSeekCloser, fileInfo *mocks.FileInfo)
+	}
+	err := errors.New("some error")
+	testCases := []testCase{
+		{
+			name:       "file exists",
+			filePath:   "/some/path.txt",
+			fileExists: true,
+			setupMocks: func(client *mocks.Client, sftpFile *mocks.ReadWriteSeekCloser, fileInfo *mocks.FileInfo) {
+				client.EXPECT().Stat("/some/path.txt").Return(fileInfo, nil).Once()
+				client.EXPECT().Chtimes("/some/path.txt", mock.Anything, mock.Anything).Return(nil).Once()
+			},
 		},
-		Authority: auth,
-		path:      filepath,
-		sftpfile:  sftpFile,
+		{
+			name:       "file does not exist",
+			filePath:   "/some/path.txt",
+			fileExists: false,
+			setupMocks: func(client *mocks.Client, sftpFile *mocks.ReadWriteSeekCloser, fileInfo *mocks.FileInfo) {
+				client.EXPECT().Stat("/some/path.txt").Return(nil, os.ErrNotExist).Once()
+				sftpFile.EXPECT().Close().Return(nil).Once()
+			},
+		},
+		{
+			name:           "set default permissions",
+			filePath:       "/some/path.txt",
+			fileExists:     true,
+			setPermissions: true,
+			setupMocks: func(client *mocks.Client, sftpFile *mocks.ReadWriteSeekCloser, fileInfo *mocks.FileInfo) {
+				client.EXPECT().Stat("/some/path.txt").Return(fileInfo, nil).Once()
+				client.EXPECT().Chmod("/some/path.txt", os.FileMode(0666)).Return(nil).Once()
+				client.EXPECT().Chtimes("/some/path.txt", mock.Anything, mock.Anything).Return(nil).Once()
+			},
+		},
+		{
+			name:          "error on stat",
+			filePath:      "/some/path.txt",
+			expectedError: err,
+			setupMocks: func(client *mocks.Client, sftpFile *mocks.ReadWriteSeekCloser, fileInfo *mocks.FileInfo) {
+				client.EXPECT().Stat("/some/path.txt").Return(nil, err).Once()
+			},
+		},
+		{
+			name:          "error on chtimes",
+			filePath:      "/some/path.txt",
+			fileExists:    true,
+			expectedError: err,
+			setupMocks: func(client *mocks.Client, sftpFile *mocks.ReadWriteSeekCloser, fileInfo *mocks.FileInfo) {
+				client.EXPECT().Stat("/some/path.txt").Return(fileInfo, nil).Once()
+				client.EXPECT().Chtimes("/some/path.txt", mock.Anything, mock.Anything).Return(err).Once()
+			},
+		},
+		{
+			name:     "setPermissions returns error",
+			filePath: "/some/path.txt",
+			setupMocks: func(client *mocks.Client, sftpFile *mocks.ReadWriteSeekCloser, fileInfo *mocks.FileInfo) {
+				client.EXPECT().Stat("/some/path.txt").Return(fileInfo, nil).Once()
+				client.EXPECT().Chmod("/some/path.txt", os.FileMode(0666)).Return(err).Once()
+			},
+			expectedError:  err,
+			setPermissions: true,
+		},
 	}
 
-	ts.NoError(file.Touch())
+	for _, tc := range testCases {
+		ts.Run(tc.name, func() {
+			client := mocks.NewClient(ts.T())
+			sftpFile := mocks.NewReadWriteSeekCloser(ts.T())
+			fileInfo := mocks.NewFileInfo(ts.T())
 
-	client.AssertExpectations(ts.T())
-	sftpFile.AssertExpectations(ts.T())
-	sourceFileInfo.AssertExpectations(ts.T())
-}
+			auth, err := utils.NewAuthority("user@host1.com:22")
+			ts.NoError(err)
 
-func (ts *fileTestSuite) TestTouch_notExists() {
-	filepath := "/some/path.txt"
-	// set up source
-	sourceFileInfo := &mocks.FileInfo{}
+			file := &File{
+				fileSystem: &FileSystem{
+					sftpclient: client,
+					options: Options{
+						FilePermissions: func() *string {
+							if tc.setPermissions {
+								return utils.Ptr("0666")
+							}
+							return nil
+						}(),
+					},
+				},
+				Authority: auth,
+				path:      tc.filePath,
+				sftpfile:  sftpFile,
+			}
 
-	client := &mocks.Client{}
-	client.On("Stat", filepath).Return(sourceFileInfo, os.ErrNotExist).Once()
+			tc.setupMocks(client, sftpFile, fileInfo)
 
-	sftpFile := &mocks.SFTPFile{}
-	sftpFile.On("Close").Return(nil).Once()
-
-	auth, err := utils.NewAuthority("user@host1.com:22")
-	ts.NoError(err)
-
-	file := &File{
-		fileSystem: &FileSystem{
-			sftpclient: client,
-			options:    Options{},
-		},
-		Authority: auth,
-		path:      filepath,
-		sftpfile:  sftpFile,
+			err = file.Touch()
+			if tc.expectedError != nil {
+				ts.ErrorIs(err, tc.expectedError)
+			} else {
+				ts.NoError(err)
+			}
+		})
 	}
-
-	ts.NoError(file.Touch())
-
-	client.AssertExpectations(ts.T())
-	sftpFile.AssertExpectations(ts.T())
-	sourceFileInfo.AssertExpectations(ts.T())
 }
 
 func (ts *fileTestSuite) TestDelete() {
@@ -868,6 +944,72 @@ func (ts *fileTestSuite) TestNewFile() {
 	ts.IsType(&File{}, sftpFile, "newFile returned a File struct")
 	ts.Equal(authority, sftpFile.Location().Volume())
 	ts.Equal(key, sftpFile.Path())
+}
+
+func (ts *fileTestSuite) TestSetDefaultPermissions() {
+	type testCase struct {
+		name           string
+		client         *mocks.Client
+		options        vfs.Options
+		expectedError  bool
+		expectedErrMsg string
+	}
+
+	tests := []testCase{
+		{
+			name: "No options provided",
+			client: func() *mocks.Client {
+				client := mocks.NewClient(ts.T())
+				return client
+			}(),
+			options:       nil,
+			expectedError: false,
+		},
+		{
+			name: "Default permissions set",
+			client: func() *mocks.Client {
+				client := mocks.NewClient(ts.T())
+				client.EXPECT().Chmod("/some/path.txt", os.FileMode(0644)).Return(nil)
+				return client
+			}(),
+			options: func() vfs.Options {
+				opts := Options{FilePermissions: utils.Ptr("0644")}
+				return opts
+			}(),
+			expectedError: false,
+		},
+		{
+			name: "Chmod returns error",
+			client: func() *mocks.Client {
+				client := mocks.NewClient(ts.T())
+				client.EXPECT().Chmod("/some/path.txt", os.FileMode(0644)).Return(errors.New("chmod error"))
+				return client
+			}(),
+			options: func() vfs.Options {
+				opts := Options{FilePermissions: utils.Ptr("0644")}
+				return opts
+			}(),
+			expectedError:  true,
+			expectedErrMsg: "chmod error",
+		},
+	}
+
+	for _, tt := range tests {
+		ts.Run(tt.name, func() {
+			file := &File{
+				path:       "/some/path.txt",
+				fileSystem: &FileSystem{options: tt.options},
+			}
+
+			err := file.setPermissions(tt.client, tt.options)
+			if tt.expectedError {
+				ts.Error(err)
+				ts.Contains(err.Error(), tt.expectedErrMsg)
+			} else {
+				ts.NoError(err)
+			}
+		})
+	}
 }
 
 func TestFile(t *testing.T) {

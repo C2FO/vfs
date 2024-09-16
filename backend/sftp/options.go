@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"strconv"
 
 	"github.com/mitchellh/go-homedir"
 	_sftp "github.com/pkg/sftp"
@@ -31,7 +32,23 @@ type Options struct {
 	HostKeyAlgorithms  []string            `json:"hostKeyAlgorithms,omitempty"`
 	AutoDisconnect     int                 `json:"autoDisconnect,omitempty"` // seconds before disconnecting. default: 10
 	KnownHostsCallback ssh.HostKeyCallback // env var VFS_SFTP_INSECURE_KNOWN_HOSTS
-	FileBufferSize     int                 // Buffer Size In Bytes Used with utils.TouchCopyBuffered
+	FileBufferSize     int                 `json:"fileBufferSize,omitempty"`  // Buffer Size In Bytes Used with utils.TouchCopyBuffered
+	FilePermissions    *string             `json:"filePermissions,omitempty"` // Default File Permissions for new files
+}
+
+// GetFileMode converts the FilePermissions string to os.FileMode.
+func (o *Options) GetFileMode() (*os.FileMode, error) {
+	if o.FilePermissions == nil {
+		return nil, nil
+	}
+
+	// Convert the string to an unsigned integer, interpreting it as an octal value
+	parsed, err := strconv.ParseUint(*o.FilePermissions, 0, 32)
+	if err != nil {
+		return nil, fmt.Errorf("invalid file mode: %v", err)
+	}
+	mode := os.FileMode(parsed)
+	return &mode, nil
 }
 
 var defaultSSHConfig = &ssh.ClientConfig{

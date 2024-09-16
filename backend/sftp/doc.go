@@ -138,6 +138,23 @@ Example:
 		},
 	  )
 
+# FilePermissions
+
+The `FilePermissions` option allows you to specify the file permissions for files created or modified using the SFTP backend.
+These permissions will override the sftp server or underlying filesystem's umask (default permissions). Permissions should
+be specified using an octal literal (e.g., `0777` for full read, write, and execute permissions for all users).
+
+Example:
+
+		fs = fs.WithOptions(
+	 		sftp.Options{
+	 			FilePermissions: "0777", // Correctly specify permissions as octal (in string form)
+				// other settings
+			},
+		)
+
+When a file is opened for Write() or Touch()'d, the specified `FilePermissions` will be applied to the file.
+
 # AutoDisconnect
 
 When dialing a TCP connection, Go doesn't disconnect for you.  This is true even when the connection falls out of scope, and even when
