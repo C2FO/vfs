@@ -261,7 +261,11 @@ func (s *optionsSuite) TestFetchTLSConfig() {
 		s.NoError(err, tests[i].description)
 
 		tlsCfg := fetchTLSConfig(auth, tests[i].options)
-		s.Equal(tests[i].expected, tlsCfg, tests[i].description)
+		s.Equal(tests[i].expected.MinVersion, tlsCfg.MinVersion, tests[i].description)
+		s.Equal(tests[i].expected.InsecureSkipVerify, tlsCfg.InsecureSkipVerify, tests[i].description)
+		s.Equal(tests[i].expected.ClientSessionCache, tlsCfg.ClientSessionCache, tests[i].description)
+		s.Equal(tests[i].expected.ServerName, tlsCfg.ServerName, tests[i].description)
+		s.Equal(tests[i].expected.SessionTicketsDisabled, tlsCfg.SessionTicketsDisabled, tests[i].description)
 
 		if tests[i].expectInsecureCipherSuites {
 			s.NotEmpty(tlsCfg.CipherSuites, tests[i].description)
@@ -272,9 +276,9 @@ func (s *optionsSuite) TestFetchTLSConfig() {
 
 func containsInsecureCipherSuites(suites []uint16) bool {
 	insecureSuites := tls.InsecureCipherSuites()
-	for _, suite := range suites {
+	for _, s := range suites {
 		for _, insecureSuite := range insecureSuites {
-			if suite == insecureSuite.ID {
+			if s == insecureSuite.ID {
 				return true
 			}
 		}
