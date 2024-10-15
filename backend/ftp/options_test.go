@@ -215,10 +215,11 @@ func (s *optionsSuite) TestFetchTLSConfig() {
 	}
 
 	tests := []struct {
-		description string
-		authority   string
-		options     Options
-		expected    *tls.Config
+		description                string
+		authority                  string
+		options                    Options
+		expected                   *tls.Config
+		expectInsecureCipherSuites bool
 	}{
 		{
 			description: "check defaults",
@@ -239,6 +240,20 @@ func (s *optionsSuite) TestFetchTLSConfig() {
 			},
 			expected: cfg,
 		},
+		{
+			description: "include insecure cipher suites",
+			authority:   "user@host.com",
+			options: Options{
+				IncludeInsecureCiphers: true,
+			},
+			expected: &tls.Config{
+				MinVersion:         tls.VersionTLS12,
+				InsecureSkipVerify: true, //nolint:gosec
+				ClientSessionCache: tls.NewLRUClientSessionCache(0),
+				ServerName:         "host.com",
+			},
+			expectInsecureCipherSuites: true,
+		},
 	}
 
 	for i := range tests {
@@ -247,7 +262,24 @@ func (s *optionsSuite) TestFetchTLSConfig() {
 
 		tlsCfg := fetchTLSConfig(auth, tests[i].options)
 		s.Equal(tests[i].expected, tlsCfg, tests[i].description)
+
+		if tests[i].expectInsecureCipherSuites {
+			s.NotEmpty(tlsCfg.CipherSuites, tests[i].description)
+			s.True(containsInsecureCipherSuites(tlsCfg.CipherSuites), tests[i].description)
+		}
 	}
+}
+
+func containsInsecureCipherSuites(suites []uint16) bool {
+	insecureSuites := tls.InsecureCipherSuites()
+	for _, suite := range suites {
+		for _, insecureSuite := range insecureSuites {
+			if suite == insecureSuite.ID {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (s *optionsSuite) TestFetchProtocol() {
