@@ -17,12 +17,13 @@ import (
 
 // Options  struct implements the vfs.Options interface, providing optional parameters for creating and ftp filesystem.
 type Options struct {
-	Password    string // env var VFS_FTP_PASSWORD
-	Protocol    string // env var VFS_FTP_PROTOCOL
-	DisableEPSV *bool  // env var VFS_DISABLE_EPSV
-	DebugWriter io.Writer
-	TLSConfig   *tls.Config
-	DialTimeout time.Duration
+	Password               string // env var VFS_FTP_PASSWORD
+	Protocol               string // env var VFS_FTP_PROTOCOL
+	DisableEPSV            *bool  // env var VFS_DISABLE_EPSV
+	DebugWriter            io.Writer
+	TLSConfig              *tls.Config
+	DialTimeout            time.Duration
+	IncludeInsecureCiphers bool
 }
 
 const (
@@ -160,6 +161,22 @@ func fetchTLSConfig(auth utils.Authority, opts Options) *tls.Config {
 		InsecureSkipVerify: true, //nolint:gosec
 		ClientSessionCache: tls.NewLRUClientSessionCache(0),
 		ServerName:         auth.Host(),
+	}
+
+	if opts.IncludeInsecureCiphers {
+		var suites []uint16
+
+		// get default cipher suites
+		for _, suite := range tls.CipherSuites() {
+			suites = append(suites, suite.ID)
+		}
+
+		// add insecure cipher suites
+		for _, suite := range tls.InsecureCipherSuites() {
+			suites = append(suites, suite.ID)
+		}
+
+		tlsConfig.CipherSuites = suites
 	}
 
 	// override with Options, if any

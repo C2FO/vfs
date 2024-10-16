@@ -55,6 +55,7 @@ These methods are chainable:
 				  Protocol: ftp.ProtocolFTPES,
 				  DialTimeout: 15 * time.Second,
 				  DebugWriter: os.Stdout,
+				  IncludeInsecureCiphers: true,
 			  },
 		  )
 
@@ -148,5 +149,7 @@ DebugWriter *io.Writer* - captures FTP command details to any writer.
 DialTimeout *time.Duration - sets timeout for connecting only.
 
 DisableEPSV bool - Extended Passive mode (EPSV) is attempted by default. Set to true to use regular Passive mode (PASV).
+
+IncludeInsecureCiphers bool - If set to true, includes insecure cipher suites in the TLS configuration.
 */
 package ftp
