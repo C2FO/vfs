@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ## [6.20.0] - 2024-10-15
-###
+### Added
 - Add IncludeInsecureCiphers option to FTP backend.  Fixes #204.
 
 ## [6.19.0] - 2024-09-13
