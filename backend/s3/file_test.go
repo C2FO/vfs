@@ -24,6 +24,7 @@ import (
 	"github.com/c2fo/vfs/v6/backend/s3/mocks"
 	vfsmocks "github.com/c2fo/vfs/v6/mocks"
 	"github.com/c2fo/vfs/v6/options/delete"
+	"github.com/c2fo/vfs/v6/options/newfile"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -700,6 +701,13 @@ func (ts *fileTestSuite) TestUploadInputDisableSSE() {
 	ts.Nil(input.ServerSideEncryption, "sse was disabled")
 	ts.Equal("/some/file/test.txt", *input.Key, "key was set")
 	ts.Equal("mybucket", *input.Bucket, "bucket was set")
+}
+
+func (ts *fileTestSuite) TestUploadInputContentType() {
+	fs = FileSystem{client: &mocks.S3API{}}
+	file, _ := fs.NewFile("mybucket", "/some/file/test.txt", newfile.WithContentType("text/plain"))
+	input := uploadInput(file.(*File))
+	ts.Equal("text/plain", *input.ContentType)
 }
 
 func (ts *fileTestSuite) TestNewFile() {

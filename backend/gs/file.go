@@ -16,6 +16,7 @@ import (
 	"github.com/c2fo/vfs/v6/backend"
 	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/options/delete"
+	"github.com/c2fo/vfs/v6/options/newfile"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -28,6 +29,7 @@ type File struct {
 	fileSystem *FileSystem
 	bucket     string
 	key        string
+	opts       []options.NewFileOption
 
 	// seek-related fields
 	cursorPos  int64
@@ -105,6 +107,14 @@ func (f *File) tempToGCS() error {
 
 	w := handle.NewWriter(f.fileSystem.ctx)
 	defer func() { _ = w.Close() }()
+
+	for _, o := range f.opts {
+		switch o := o.(type) {
+		case *newfile.ContentType:
+			w.ContentType = *(*string)(o)
+		default:
+		}
+	}
 
 	_, err = f.tempFileWriter.Seek(0, io.SeekStart)
 	if err != nil {
@@ -325,6 +335,14 @@ func (f *File) initWriters() error {
 			w := handle.NewWriter(ctx)
 			if err != nil {
 				return err
+			}
+
+			for _, o := range f.opts {
+				switch o := o.(type) {
+				case *newfile.ContentType:
+					w.ContentType = *(*string)(o)
+				default:
+				}
 			}
 
 			// set gcsWriter
@@ -589,6 +607,15 @@ func (f *File) createEmptyFile() error {
 	defer cancel()
 
 	w := handle.NewWriter(ctx)
+
+	for _, o := range f.opts {
+		switch o := o.(type) {
+		case *newfile.ContentType:
+			w.ContentType = *(*string)(o)
+		default:
+		}
+	}
+
 	defer func() { _ = w.Close() }()
 	if _, err := w.Write(make([]byte, 0)); err != nil {
 		return err

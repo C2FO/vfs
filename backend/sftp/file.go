@@ -18,6 +18,7 @@ type File struct {
 	fileSystem *FileSystem
 	Authority  utils.Authority
 	path       string
+	opts       []options.NewFileOption
 	sftpfile   ReadWriteSeekCloser
 	opener     fileOpener
 	seekCalled bool

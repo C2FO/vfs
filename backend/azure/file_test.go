@@ -11,6 +11,7 @@ import (
 
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/options/delete"
+	"github.com/c2fo/vfs/v6/options/newfile"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -112,6 +113,15 @@ func (s *FileTestSuite) TestExists_NonExistentFile() {
 	exists, err := f.Exists()
 	s.NoError(err, "no error is returned when the file does not exist")
 	s.False(exists)
+}
+
+func (s *FileTestSuite) TestCloseWithContentType() {
+	client := MockAzureClient{PropertiesError: MockStorageError{}}
+	fs := NewFileSystem().WithClient(&client)
+	f, _ := fs.NewFile("test-container", "/foo.txt", newfile.WithContentType("text/plain"))
+	_, _ = f.Write([]byte("Hello, World!"))
+	s.NoError(f.Close())
+	s.Equal("text/plain", client.UploadContentType)
 }
 
 func (s *FileTestSuite) TestLocation() {
@@ -285,6 +295,16 @@ func (s *FileTestSuite) TestTouch_NonexistentContainer() {
 	f, err := fs.NewFile("nosuchcontainer", "/foo.txt")
 	s.NoError(err, "The path is valid so no error should be returned")
 	s.Error(f.Touch(), "The container does not exist so creating the new file should error")
+}
+
+func (s *FileTestSuite) TestTouchWithContentType() {
+	client := MockAzureClient{ExpectedResult: &BlobProperties{}, PropertiesError: MockStorageError{}}
+	fs := NewFileSystem().WithClient(&client)
+
+	f, err := fs.NewFile("test-container", "/foo.txt", newfile.WithContentType("text/plain"))
+	s.NoError(err, "The path is valid so no error should be returned")
+	s.NoError(f.Touch())
+	s.Equal("text/plain", client.UploadContentType)
 }
 
 func (s *FileTestSuite) TestURI() {

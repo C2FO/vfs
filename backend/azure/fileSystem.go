@@ -10,6 +10,7 @@ import (
 
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/backend"
+	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -57,7 +58,7 @@ func (fs *FileSystem) Client() (Client, error) {
 }
 
 // NewFile returns the azure implementation of vfs.File
-func (fs *FileSystem) NewFile(volume, absFilePath string) (vfs.File, error) {
+func (fs *FileSystem) NewFile(volume, absFilePath string, opts ...options.NewFileOption) (vfs.File, error) {
 	if fs == nil {
 		return nil, errors.New(errNilFileSystemReceiver)
 	}
@@ -74,6 +75,7 @@ func (fs *FileSystem) NewFile(volume, absFilePath string) (vfs.File, error) {
 		fileSystem: fs,
 		container:  volume,
 		name:       path.Clean(absFilePath),
+		opts:       opts,
 	}, nil
 }
 

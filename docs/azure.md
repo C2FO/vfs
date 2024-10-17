@@ -449,7 +449,7 @@ Name returns "azure"
 #### func (*FileSystem) NewFile
 
 ```go
-func (fs *FileSystem) NewFile(volume, absFilePath string) (vfs.File, error)
+func (fs *FileSystem) NewFile(volume, absFilePath string, opts ...options.NewFileOption) (vfs.File, error)
 ```
 NewFile returns the azure implementation of vfs.File
 
@@ -558,7 +558,7 @@ ListByRegex returns a list of base names that match the given regular expression
 #### func (*Location) NewFile
 
 ```go
-func (l *Location) NewFile(relFilePath string) (vfs.File, error)
+func (l *Location) NewFile(relFilePath string, opts ...options.NewFileOption) (vfs.File, error)
 ```
 NewFile returns a new file instance at the given path, relative to the current
 location.

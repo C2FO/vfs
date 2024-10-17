@@ -15,6 +15,7 @@ import (
 	"github.com/c2fo/vfs/v6/backend"
 	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/options/delete"
+	"github.com/c2fo/vfs/v6/options/newfile"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -23,6 +24,7 @@ type File struct {
 	fileSystem *FileSystem
 	container  string
 	name       string
+	opts       []options.NewFileOption
 	tempFile   *os.File
 	isDirty    bool
 }
@@ -47,7 +49,16 @@ func (f *File) Close() error {
 		}
 
 		if f.isDirty {
-			if err := client.Upload(f, f.tempFile); err != nil {
+			var contentType string
+			for _, o := range f.opts {
+				switch o := o.(type) {
+				case *newfile.ContentType:
+					contentType = *(*string)(o)
+				default:
+				}
+			}
+
+			if err := client.Upload(f, f.tempFile, contentType); err != nil {
 				return utils.WrapCloseError(err)
 			}
 		}
@@ -308,7 +319,16 @@ func (f *File) Touch() error {
 	}
 
 	if !exists {
-		return client.Upload(f, strings.NewReader(""))
+		var contentType string
+		for _, o := range f.opts {
+			switch o := o.(type) {
+			case *newfile.ContentType:
+				contentType = *(*string)(o)
+			default:
+			}
+		}
+
+		return client.Upload(f, strings.NewReader(""), contentType)
 	}
 
 	props, err := client.Properties(f.Location().(*Location).ContainerURL(), f.Path())

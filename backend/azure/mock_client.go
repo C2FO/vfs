@@ -11,10 +11,11 @@ import (
 
 // MockAzureClient is a mock implementation of azure.Client.
 type MockAzureClient struct {
-	PropertiesError  error
-	PropertiesResult *BlobProperties
-	ExpectedError    error
-	ExpectedResult   interface{}
+	PropertiesError   error
+	PropertiesResult  *BlobProperties
+	ExpectedError     error
+	ExpectedResult    interface{}
+	UploadContentType string
 }
 
 // Properties returns a PropertiesResult if it exists, otherwise it will return the value of PropertiesError
@@ -31,7 +32,8 @@ func (a *MockAzureClient) SetMetadata(file vfs.File, metadata map[string]string)
 }
 
 // Upload returns the value of ExpectedError
-func (a *MockAzureClient) Upload(file vfs.File, content io.ReadSeeker) error {
+func (a *MockAzureClient) Upload(file vfs.File, content io.ReadSeeker, contentType string) error {
+	a.UploadContentType = contentType
 	return a.ExpectedError
 }
 

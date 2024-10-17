@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v6/options/delete"
+	"github.com/c2fo/vfs/v6/options/newfile"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -223,6 +224,56 @@ func (ts *fileTestSuite) TestWrite() {
 
 	ts.Len(contents, count, "Returned count of bytes written should match number of bytes passed to Write.")
 	ts.NoError(err, "Error should be nil when calling Write")
+}
+
+func (ts *fileTestSuite) TestWriteWithContentType() {
+	contents := "hello world!"
+	bucketName := "bucki"
+	objectName := "some/path/file.txt"
+	server := fakestorage.NewServer(Objects{})
+	defer server.Stop()
+	client := server.Client()
+	bucket := client.Bucket(bucketName)
+	ctx := context.Background()
+	err := bucket.Create(ctx, "", nil)
+	ts.Require().NoError(err)
+	fs := NewFileSystem().WithClient(client)
+
+	file, err := fs.NewFile(bucketName, "/"+objectName, newfile.WithContentType("text/plain"))
+	ts.NoError(err, "Shouldn't fail creating new file")
+
+	_, err = file.Write([]byte(contents))
+	ts.NoError(err, "Error should be nil when calling Write")
+
+	err = file.Close()
+	ts.NoError(err, "Error should be nil when calling Close")
+
+	attrs, err := bucket.Object(objectName).Attrs(ctx)
+	ts.Require().NoError(err)
+	ts.Equal("text/plain", attrs.ContentType)
+}
+
+func (ts *fileTestSuite) TestTouchWithContentType() {
+	bucketName := "bucki"
+	objectName := "some/path/file.txt"
+	server := fakestorage.NewServer(Objects{})
+	defer server.Stop()
+	client := server.Client()
+	bucket := client.Bucket(bucketName)
+	ctx := context.Background()
+	err := bucket.Create(ctx, "", nil)
+	ts.Require().NoError(err)
+	fs := NewFileSystem().WithClient(client)
+
+	file, err := fs.NewFile(bucketName, "/"+objectName, newfile.WithContentType("text/plain"))
+	ts.NoError(err, "Shouldn't fail creating new file")
+
+	err = file.Touch()
+	ts.NoError(err, "Error should be nil when calling Touch")
+
+	attrs, err := bucket.Object(objectName).Attrs(ctx)
+	ts.Require().NoError(err)
+	ts.Equal("text/plain", attrs.ContentType)
 }
 
 func (ts *fileTestSuite) TestGetLocation() {

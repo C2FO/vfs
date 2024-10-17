@@ -6,6 +6,7 @@ package azure
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"strings"
@@ -64,7 +65,7 @@ func (s *ClientIntegrationTestSuite) TestAllTheThings_FileWithNoPath() {
 	s.NoError(err, "Env variables (AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_ACCESS_KEY) should contain valid azure account credentials")
 
 	// Create the new file
-	err = client.Upload(f, strings.NewReader("Hello world!"))
+	err = client.Upload(f, strings.NewReader("Hello world!"), "")
 	s.NoError(err, "The file should be successfully uploaded to azure")
 
 	// make sure it exists
@@ -112,7 +113,7 @@ func (s *ClientIntegrationTestSuite) TestAllTheThings_FileWithPath() {
 	s.NoError(err, "Env variables (AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_ACCESS_KEY) should contain valid azure account credentials")
 
 	// create a new file
-	err = client.Upload(f, strings.NewReader("Hello world!"))
+	err = client.Upload(f, strings.NewReader("Hello world!"), "")
 	s.NoError(err, "The file should be successfully uploaded to azure")
 
 	// check to see if it exists
@@ -144,11 +145,11 @@ func (s *ClientIntegrationTestSuite) TestDeleteAllVersions() {
 	s.NoError(err, "Env variables (AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_ACCESS_KEY) should contain valid azure account credentials")
 
 	// Create the new file
-	err = client.Upload(f, strings.NewReader("Hello!"))
+	err = client.Upload(f, strings.NewReader("Hello!"), "")
 	s.NoError(err, "The file should be successfully uploaded to azure")
 
 	// Recreate the file
-	err = client.Upload(f, strings.NewReader("Hello world!"))
+	err = client.Upload(f, strings.NewReader("Hello world!"), "")
 	s.NoError(err, "The file should be successfully uploaded to azure")
 
 	// make sure it exists
@@ -172,7 +173,7 @@ func (s *ClientIntegrationTestSuite) TestProperties() {
 	client, err := fs.Client()
 	s.NoError(err, "Env variables (AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_ACCESS_KEY) should contain valid azure account credentials")
 
-	err = client.Upload(f, strings.NewReader("Hello world!"))
+	err = client.Upload(f, strings.NewReader("Hello world!"), "")
 	s.NoError(err, "The file should be successfully uploaded to azure so we shouldn't get an error")
 	props, err := client.Properties(f.Location().(*Location).ContainerURL(), f.Path())
 	s.NoError(err, "The file exists so we shouldn't get an error")
@@ -188,7 +189,7 @@ func (s *ClientIntegrationTestSuite) TestProperties_Location() {
 	l, _ := fs.NewLocation("test-container", "/")
 	client, _ := fs.Client()
 
-	err = client.Upload(f, strings.NewReader("Hello world!"))
+	err = client.Upload(f, strings.NewReader("Hello world!"), "")
 	s.NoError(err, "The file should be successfully uploaded to azure so we shouldn't get an error")
 
 	props, err := client.Properties(l.URI(), "")
@@ -226,7 +227,7 @@ func (s *ClientIntegrationTestSuite) TestTouch_NonexistentContainer() {
 	client, err := fs.Client()
 	s.NoError(err, "Env variables (AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_ACCESS_KEY) should contain valid azure account credentials")
 
-	err = client.Upload(f, strings.NewReader(""))
+	err = client.Upload(f, strings.NewReader(""), "")
 	s.Error(err, "The container doesn't exist so we should get an error")
 }
 
@@ -237,7 +238,7 @@ func (s *ClientIntegrationTestSuite) TestTouch_FileAlreadyExists() {
 	client, err := fs.Client()
 	s.NoError(err)
 
-	err = client.Upload(f, strings.NewReader("One fish, two fish, red fish, blue fish."))
+	err = client.Upload(f, strings.NewReader("One fish, two fish, red fish, blue fish."), "")
 	s.NoError(err)
 	originalProps, err := client.Properties(f.Location().(*Location).ContainerURL(), f.Path())
 	s.NoError(err, "Should get properties back from azure with no error")

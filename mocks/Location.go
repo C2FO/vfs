@@ -406,9 +406,16 @@ func (_c *Location_ListByRegex_Call) RunAndReturn(run func(*regexp.Regexp) ([]st
 	return _c
 }
 
-// NewFile provides a mock function with given fields: relFilePath
-func (_m *Location) NewFile(relFilePath string) (vfs.File, error) {
-	ret := _m.Called(relFilePath)
+// NewFile provides a mock function with given fields: relFilePath, opts
+func (_m *Location) NewFile(relFilePath string, opts ...options.NewFileOption) (vfs.File, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, relFilePath)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for NewFile")
@@ -416,19 +423,19 @@ func (_m *Location) NewFile(relFilePath string) (vfs.File, error) {
 
 	var r0 vfs.File
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (vfs.File, error)); ok {
-		return rf(relFilePath)
+	if rf, ok := ret.Get(0).(func(string, ...options.NewFileOption) (vfs.File, error)); ok {
+		return rf(relFilePath, opts...)
 	}
-	if rf, ok := ret.Get(0).(func(string) vfs.File); ok {
-		r0 = rf(relFilePath)
+	if rf, ok := ret.Get(0).(func(string, ...options.NewFileOption) vfs.File); ok {
+		r0 = rf(relFilePath, opts...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(vfs.File)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(relFilePath)
+	if rf, ok := ret.Get(1).(func(string, ...options.NewFileOption) error); ok {
+		r1 = rf(relFilePath, opts...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -443,13 +450,21 @@ type Location_NewFile_Call struct {
 
 // NewFile is a helper method to define mock.On call
 //   - relFilePath string
-func (_e *Location_Expecter) NewFile(relFilePath interface{}) *Location_NewFile_Call {
-	return &Location_NewFile_Call{Call: _e.mock.On("NewFile", relFilePath)}
+//   - opts ...options.NewFileOption
+func (_e *Location_Expecter) NewFile(relFilePath interface{}, opts ...interface{}) *Location_NewFile_Call {
+	return &Location_NewFile_Call{Call: _e.mock.On("NewFile",
+		append([]interface{}{relFilePath}, opts...)...)}
 }
 
-func (_c *Location_NewFile_Call) Run(run func(relFilePath string)) *Location_NewFile_Call {
+func (_c *Location_NewFile_Call) Run(run func(relFilePath string, opts ...options.NewFileOption)) *Location_NewFile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		variadicArgs := make([]options.NewFileOption, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(options.NewFileOption)
+			}
+		}
+		run(args[0].(string), variadicArgs...)
 	})
 	return _c
 }
@@ -459,7 +474,7 @@ func (_c *Location_NewFile_Call) Return(_a0 vfs.File, _a1 error) *Location_NewFi
 	return _c
 }
 
-func (_c *Location_NewFile_Call) RunAndReturn(run func(string) (vfs.File, error)) *Location_NewFile_Call {
+func (_c *Location_NewFile_Call) RunAndReturn(run func(string, ...options.NewFileOption) (vfs.File, error)) *Location_NewFile_Call {
 	_c.Call.Return(run)
 	return _c
 }

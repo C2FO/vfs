@@ -10,6 +10,7 @@ import (
 
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/backend"
+	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -30,7 +31,7 @@ func (fs *FileSystem) Retry() vfs.Retry {
 }
 
 // NewFile function returns the s3 implementation of vfs.File.
-func (fs *FileSystem) NewFile(volume, name string) (vfs.File, error) {
+func (fs *FileSystem) NewFile(volume, name string, opts ...options.NewFileOption) (vfs.File, error) {
 	if fs == nil {
 		return nil, errors.New("non-nil s3.FileSystem pointer is required")
 	}
@@ -45,6 +46,7 @@ func (fs *FileSystem) NewFile(volume, name string) (vfs.File, error) {
 		fileSystem: fs,
 		bucket:     utils.RemoveTrailingSlash(volume),
 		key:        path.Clean(name),
+		opts:       opts,
 	}, nil
 }
 

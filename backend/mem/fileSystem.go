@@ -6,6 +6,7 @@ import (
 
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/backend"
+	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -38,7 +39,7 @@ func (fs *FileSystem) Retry() vfs.Retry {
 // If a file is written to before a touch call, Write() will take care of that call.  This is
 // true for other functions as well and existence only poses a problem in the context of deletion
 // or copying FROM a non-existent file.
-func (fs *FileSystem) NewFile(volume, absFilePath string) (vfs.File, error) {
+func (fs *FileSystem) NewFile(volume, absFilePath string, opts ...options.NewFileOption) (vfs.File, error) {
 	err := utils.ValidateAbsoluteFilePath(absFilePath)
 	if err != nil {
 		return nil, err
@@ -59,6 +60,7 @@ func (fs *FileSystem) NewFile(volume, absFilePath string) (vfs.File, error) {
 						name:            obj.i.(*memFile).name,
 						memFile:         obj.i.(*memFile),
 						readWriteSeeker: NewReadWriteSeekerWithData(obj.i.(*memFile).contents),
+						opts:            opts,
 					}
 					return vfsFile, nil
 				}
@@ -68,6 +70,7 @@ func (fs *FileSystem) NewFile(volume, absFilePath string) (vfs.File, error) {
 	// validateAbsFile path will throw an error if there was a trailing slash, hence not calling path.Clean()
 	file := &File{
 		name: path.Base(absFilePath),
+		opts: opts,
 	}
 
 	memFile := newMemFile(file, location.(*Location))
