@@ -22,7 +22,7 @@ type FileSystem interface {
 	//       s3://mybucket/path/to/file has a volume of "mybucket and name /path/to/file
 	//     results in /tmp/dir1/newerdir/file.txt for the final vfs.File path.
 	//   * The file may or may not already exist.
-	NewFile(volume string, absFilePath string) (File, error)
+	NewFile(volume string, absFilePath string, opts ...options.NewFileOption) (File, error)
 
 	// NewLocation initializes a Location on the specified volume with the given path.
 	//
@@ -123,7 +123,7 @@ type Location interface {
 	//       results in /tmp/dir1/newerdir/file.txt for the final vfs.File path.
 	//   * Upon success, a vfs.File, representing the file's new path (location path + file relative path), will be returned.
 	//   * The file may or may not already exist.
-	NewFile(relFilePath string) (File, error)
+	NewFile(relFilePath string, opts ...options.NewFileOption) (File, error)
 
 	// DeleteFile deletes the file of the given name at the location.
 	//
@@ -131,7 +131,7 @@ type Location interface {
 	// error handling overhead.
 	//
 	// * Accepts relative file path.
-	DeleteFile(relFilePath string, deleteOpts ...options.DeleteOption) error
+	DeleteFile(relFilePath string, opts ...options.DeleteOption) error
 
 	// URI returns the fully qualified absolute URI for the Location.  IE, s3://bucket/some/path/
 	//
@@ -197,7 +197,7 @@ type File interface {
 	MoveToFile(file File) error
 
 	// Delete unlinks the File on the file system.
-	Delete(deleteOpts ...options.DeleteOption) error
+	Delete(opts ...options.DeleteOption) error
 
 	// LastModified returns the timestamp the file was last modified (as *time.Time).
 	LastModified() (*time.Time, error)

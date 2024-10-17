@@ -31,7 +31,7 @@ func (a *MockAzureClient) SetMetadata(file vfs.File, metadata map[string]string)
 }
 
 // Upload returns the value of ExpectedError
-func (a *MockAzureClient) Upload(file vfs.File, content io.ReadSeeker) error {
+func (a *MockAzureClient) Upload(file vfs.File, content io.ReadSeeker, contentType string) error {
 	return a.ExpectedError
 }
 

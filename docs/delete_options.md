@@ -5,7 +5,7 @@
 Package delete consists of custom delete options
 
 ## DeleteAllVersions
-Currently, we have DeleteAllVersions option that can be used to remove all the versions of a file upon delete.
+Currently, we have delete.AllVersions option that can be used to remove all the versions of a file upon delete.
 This is supported for all filesystems that have file versioning (E.g: S3, GS etc.)
 
 ### Usage
@@ -21,7 +21,7 @@ Delete file using file.delete():
     func DeleteFile() error {
         file, err := fs.NewFile(bucketName, fileName)
         ...
-        err = file.Delete(delete.WithDeleteAllVersions())
+        err = file.Delete(delete.WithAllVersions())
         ...
     }
 ```
@@ -37,7 +37,7 @@ Delete file using location.delete():
     )
     
     func DeleteFileUsingLocation() error {
-        err = location.DeleteFile("filename.txt", delete.WithDeleteAllVersions())
+        err = location.DeleteFile("filename.txt", delete.WithAllVersions())
         ...
     }
 ```

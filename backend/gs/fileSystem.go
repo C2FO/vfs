@@ -10,6 +10,7 @@ import (
 
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/backend"
+	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -27,14 +28,14 @@ type FileSystem struct {
 
 // Retry will return a retrier provided via options, or a no-op if none is provided.
 func (fs *FileSystem) Retry() vfs.Retry {
-	if options, _ := fs.options.(Options); options.Retry != nil {
-		return options.Retry
+	if opts, _ := fs.options.(Options); opts.Retry != nil {
+		return opts.Retry
 	}
 	return vfs.DefaultRetryer()
 }
 
 // NewFile function returns the gcs implementation of vfs.File.
-func (fs *FileSystem) NewFile(volume, name string) (vfs.File, error) {
+func (fs *FileSystem) NewFile(volume, name string, opts ...options.NewFileOption) (vfs.File, error) {
 	if fs == nil {
 		return nil, errors.New("non-nil gs.FileSystem pointer is required")
 	}
@@ -48,6 +49,7 @@ func (fs *FileSystem) NewFile(volume, name string) (vfs.File, error) {
 		fileSystem: fs,
 		bucket:     volume,
 		key:        path.Clean(name),
+		opts:       opts,
 	}, nil
 }
 

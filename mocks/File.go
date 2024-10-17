@@ -173,11 +173,11 @@ func (_c *File_CopyToLocation_Call) RunAndReturn(run func(vfs.Location) (vfs.Fil
 	return _c
 }
 
-// Delete provides a mock function with given fields: deleteOpts
-func (_m *File) Delete(deleteOpts ...options.DeleteOption) error {
-	_va := make([]interface{}, len(deleteOpts))
-	for _i := range deleteOpts {
-		_va[_i] = deleteOpts[_i]
+// Delete provides a mock function with given fields: opts
+func (_m *File) Delete(opts ...options.DeleteOption) error {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
 	}
 	var _ca []interface{}
 	_ca = append(_ca, _va...)
@@ -189,7 +189,7 @@ func (_m *File) Delete(deleteOpts ...options.DeleteOption) error {
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(...options.DeleteOption) error); ok {
-		r0 = rf(deleteOpts...)
+		r0 = rf(opts...)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -203,13 +203,13 @@ type File_Delete_Call struct {
 }
 
 // Delete is a helper method to define mock.On call
-//   - deleteOpts ...options.DeleteOption
-func (_e *File_Expecter) Delete(deleteOpts ...interface{}) *File_Delete_Call {
+//   - opts ...options.DeleteOption
+func (_e *File_Expecter) Delete(opts ...interface{}) *File_Delete_Call {
 	return &File_Delete_Call{Call: _e.mock.On("Delete",
-		append([]interface{}{}, deleteOpts...)...)}
+		append([]interface{}{}, opts...)...)}
 }
 
-func (_c *File_Delete_Call) Run(run func(deleteOpts ...options.DeleteOption)) *File_Delete_Call {
+func (_c *File_Delete_Call) Run(run func(opts ...options.DeleteOption)) *File_Delete_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		variadicArgs := make([]options.DeleteOption, len(args)-0)
 		for i, a := range args[0:] {
