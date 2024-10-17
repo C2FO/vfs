@@ -12,7 +12,7 @@ import (
 const Scheme = "file"
 const name = "os"
 
-// FileSystem implements vfs.Filesystem for the OS file system.
+// FileSystem implements vfs.FileSystem for the OS file system.
 type FileSystem struct{}
 
 // Retry will return a retriever provided via options, or a no-op if none is provided.

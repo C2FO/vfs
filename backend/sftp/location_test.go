@@ -265,7 +265,7 @@ func (lt *locationTestSuite) TestExists() {
 	lt.Error(err, "from Exists")
 	lt.True(!exists, "Call to Exists expected to return false.")
 
-	// check for not dir -- this shoudln't be possible since NewLocation won't accept non-absolute directories
+	// check for not dir -- this shouldn't be possible since NewLocation won't accept non-absolute directories
 	dir1 = &mocks.FileInfo{}
 	dir1.
 		On("Name").Return(locPath).

@@ -10,15 +10,15 @@ import (
 	"google.golang.org/api/option"
 )
 
-type fileysystemSuite struct {
+type fileSystemSuite struct {
 	suite.Suite
 }
 
-func TestFilesystemSuite(t *testing.T) {
-	suite.Run(t, new(fileysystemSuite))
+func TestFileSystemSuite(t *testing.T) {
+	suite.Run(t, new(fileSystemSuite))
 }
 
-func (s *fileysystemSuite) TestNewFile() {
+func (s *fileSystemSuite) TestNewFile() {
 	testCases := []struct {
 		description       string
 		volume            string
@@ -75,7 +75,7 @@ func (s *fileysystemSuite) TestNewFile() {
 	}
 }
 
-func (s *fileysystemSuite) TestNewLocation() {
+func (s *fileSystemSuite) TestNewLocation() {
 	testCases := []struct {
 		description       string
 		volume            string
@@ -132,12 +132,12 @@ func (s *fileysystemSuite) TestNewLocation() {
 	}
 }
 
-func (s *fileysystemSuite) TestName() {
+func (s *fileSystemSuite) TestName() {
 	fs := &FileSystem{}
 	s.Equal(name, fs.Name())
 }
 
-func (s *fileysystemSuite) TestRetry() {
+func (s *fileSystemSuite) TestRetry() {
 	sentinel := errors.New("sentinel")
 	fs := &FileSystem{
 		options: Options{
@@ -161,7 +161,7 @@ func (c *mockClientCreator) NewClient(ctx context.Context, opts ...option.Client
 	return &storage.Client{}, nil
 }
 
-func (s *fileysystemSuite) TestClient() {
+func (s *fileSystemSuite) TestClient() {
 	testCases := []struct {
 		name         string
 		setup        func() *FileSystem
@@ -221,7 +221,7 @@ func (s *fileysystemSuite) TestClient() {
 	}
 }
 
-func (s *fileysystemSuite) TestWithContext() {
+func (s *fileSystemSuite) TestWithContext() {
 	fs := &FileSystem{}
 	ctx := context.Background()
 	fs = fs.WithContext(ctx)

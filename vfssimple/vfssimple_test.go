@@ -12,14 +12,14 @@ import (
 )
 
 func TestVFSSimple(t *testing.T) {
-	suite.Run(t, new(vfssimplesuite))
+	suite.Run(t, new(vfsSimpleSuite))
 }
 
-type vfssimplesuite struct {
+type vfsSimpleSuite struct {
 	suite.Suite
 }
 
-func (s *vfssimplesuite) TestParseURI() {
+func (s *vfsSimpleSuite) TestParseURI() {
 	tests := []struct {
 		uri, message, scheme, authority, path string
 		err                                   error
@@ -153,15 +153,15 @@ func (s *vfssimplesuite) TestParseURI() {
 			path:      "/path/to/file.txt",
 		},
 		{
-			uri:       `sftp://doamin.com%5Cuser@host.com:22/path/to/file.txt`,
+			uri:       `sftp://domain.com%5Cuser@host.com:22/path/to/file.txt`,
 			err:       nil,
 			message:   "valid sftp uri, with percent-encoded char",
 			scheme:    "sftp",
-			authority: `doamin.com%5Cuser@host.com:22`,
+			authority: `domain.com%5Cuser@host.com:22`,
 			path:      "/path/to/file.txt",
 		},
 		{
-			uri:     `sftp://doamin.com\user@host.com:22/path/to/file.txt`,
+			uri:     `sftp://domain.com\user@host.com:22/path/to/file.txt`,
 			err:     errors.New("net/url: invalid userinfo"),
 			message: `invalid sftp uri, with raw reserved char \`,
 		},
@@ -188,7 +188,7 @@ func (s *vfssimplesuite) TestParseURI() {
 	}
 }
 
-func (s *vfssimplesuite) TestParseSupportedURI() {
+func (s *vfsSimpleSuite) TestParseSupportedURI() {
 	// register backend fs's that have a mock client injected that we can introspect in tests to ensure we right the right fs back
 	backend.Register("s3://mybucket/", s3.NewFileSystem().WithClient(getS3NamedClientMock("bucket1")))
 	backend.Register("s3://otherbucket/", s3.NewFileSystem().WithClient(getS3NamedClientMock("bucket2")))
@@ -305,7 +305,7 @@ func (s *vfssimplesuite) TestParseSupportedURI() {
 		}
 	}
 }
-func (s *vfssimplesuite) TestNewFile() {
+func (s *vfsSimpleSuite) TestNewFile() {
 	backend.Register("s3://filetest/path/", s3.NewFileSystem().WithClient(getS3NamedClientMock("filetest-path")))
 	backend.Register("s3://filetest/", s3.NewFileSystem().WithClient(getS3NamedClientMock("filetest-bucket")))
 
@@ -337,7 +337,7 @@ func (s *vfssimplesuite) TestNewFile() {
 	s.True(errors.Is(err, ErrBlankURI))
 }
 
-func (s *vfssimplesuite) TestNewLocation() {
+func (s *vfsSimpleSuite) TestNewLocation() {
 	backend.Register("s3://loctest/path/", s3.NewFileSystem().WithClient(getS3NamedClientMock("loctest-path")))
 	backend.Register("s3://loctest/", s3.NewFileSystem().WithClient(getS3NamedClientMock("loctest-bucket")))
 

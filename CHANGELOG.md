@@ -50,7 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [6.14.1] - 2024-05-28
 ### Fixed
-- Fixed #185 - location.Exists was checking if a list entry was a directory but it was was only checking the first entry.
+- Fixed #185 - location.Exists was checking if a list entry was a directory but it was only checking the first entry.
 
 ## [6.14.0] - 2024-05-15
 ### Security
@@ -59,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [6.13.2] - 2024-05-15
 ### Fixed
 - Fixed #182 - location.Exists was checking the wrong dir for existence.  Now it checks the file's parent dir for the subdir's existence.
-- Corrected where file.Close() occurs then file.Location().NewFile("somefile.txt") but was not repsecting the connection reset. Now it does.
+- Corrected where file.Close() occurs then file.Location().NewFile("somefile.txt") but was not respecting the connection reset. Now it does.
 
 ## [6.13.1] - 2024-04-24
 ### Fixed
@@ -95,7 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [6.11.3] - 2024-02-02
 ### Fixed
-- Fixed #158 bug. Updated sftp backend to to fix issue where some servers return a generic error message when a file is opened for RW on Read().
+- Fixed #158 bug. Updated sftp backend to fix issue where some servers return a generic error message when a file is opened for RW on Read().
 
 ## [6.11.2] - 2024-01-30
 ### Fixed
@@ -113,7 +113,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - fixed #145 - Remove use of local temp file when reading/seeking from s3 files.  This should improve performance by allowing streaming reads from s3 files.
 ### Added
-- fixes #149 - Add overrideable default HostKeyAlgorithms, Ciphers, MACs, and KeyExchanges
+- fixes #149 - Add overridable default HostKeyAlgorithms, Ciphers, MACs, and KeyExchanges
 
 ## [6.9.1] - 2023-11-21
 ### Fixed
@@ -235,7 +235,7 @@ using concurrent go routines to download parts of the file vs. a single request 
 ## [5.9.0] - 2021-09-07
 ### Added
 - Add support (and tests) for Go 1.17. Updated dependencies.
-- Updated golanci.yml config.
+- Updated golangci.yml config.
 ### Fixed
 - fixed broken backend integration test.
 
@@ -321,8 +321,8 @@ https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl for
 ## [5.2.3] - 2019-08-07
 ### Fixed
 - The GS implementation of location.List() returned an empty string for files found inside a persistent "folder" object
-created in the UI or by createing a zero-length object ending with "/".  These objects are now ignored.
-- Fixed a gs-to-gs copy bug that became visible with integration tests aded in v5.2.2.
+created in the UI or by creating a zero-length object ending with "/".  These objects are now ignored.
+- Fixed a gs-to-gs copy bug that became visible with integration tests added in v5.2.2.
 
 ## [5.2.2] - 2019-07-17
 ### Fixed
@@ -355,7 +355,7 @@ created in the UI or by createing a zero-length object ending with "/".  These o
 
 ## [5.0.0] - 2019-06-18
 ### Changed
-- Defined stricter definitions in interfaces, largely related to input requiements being more
+- Defined stricter definitions in interfaces, largely related to input requirements being more
 URI compliant.
 - FileSystem's NewFile and NewLocation required absolute paths.  Locations NewFile and NewLocation require relative paths.
 - Added/Updated several new utils functions for URI validation across implementations.
@@ -363,7 +363,7 @@ URI compliant.
 - Document expected behavior with empty readers in all copy and move function as well as io.Copy
 - ListByPrefix now allows relative paths.
 ### Added
-- Integration test suite for backened developers that ensures expected interface behaviors and tests interactions
+- Integration test suite for backend developers that ensures expected interface behaviors and tests interactions
 between implementations.
 - Examples of io.Copy usage in docs.
 ### Fixed

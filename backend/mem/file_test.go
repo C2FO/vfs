@@ -166,7 +166,7 @@ func (s *memFileTest) TestExists2() {
 	s.False(existence)
 }
 
-// TestNewFile creates a file and then checks that it exists in our system the the path expected
+// TestNewFile creates a file and then checks that it exists in our system at the path expected
 func (s *memFileTest) TestNewFile() {
 
 	file, err := s.fileSystem.NewFile("", "/test_file/foo.txt")
@@ -458,11 +458,11 @@ func (s *memFileTest) TestCopyToFileOS() {
 	num, err := s.testFile.Write([]byte(expectedText))
 	s.False(num == 0)
 	s.NoError(err, "no error expected from Write but got one")
-	s.NoError(s.testFile.Close(), "unexpected error closing a  file")
+	s.NoError(s.testFile.Close(), "unexpected error closing a file")
 
 	err = s.testFile.CopyToFile(osFile)
 	s.NoError(err, "copy to file failed unexpectedly")
-	s.NoError(osFile.Close(), "unexpected error closing a  file")
+	s.NoError(osFile.Close(), "unexpected error closing a file")
 
 	size1, err := s.testFile.Size()
 	s.NoError(err, "unexpected error retrieving size")
@@ -474,8 +474,8 @@ func (s *memFileTest) TestCopyToFileOS() {
 
 // TestEmptyCopy to file creates two files,
 // one is empty the other is not. Calls
-// CopyToFile using the empty one on t
-// he non-empty one. Succeeds on the non-empty
+// CopyToFile using the empty one on the
+// non-empty one. Succeeds on the non-empty
 // file becoming empty
 func (s *memFileTest) TestEmptyCopyToFile() {
 
@@ -686,7 +686,7 @@ func (s *memFileTest) TestWriteThenReadNoClose() {
 	s.False(found2)
 }
 
-// TestLastModified Writes to a file then retrives the value that LastModified() returns and the lastModified value
+// TestLastModified Writes to a file then retrieves the value that LastModified() returns and the lastModified value
 // stored in the File struct and compares them against eachother.  Successful if they are equal.
 func (s *memFileTest) TestLastModified() {
 	_, err := s.testFile.Write([]byte("Hello World!"))
@@ -717,7 +717,7 @@ func (s *memFileTest) TestName() {
 // TestSize allocates 64 bytes in one file and 32 in the other.  It makes sure that Size() returns the correct sizes.
 func (s *memFileTest) TestSize() {
 	otherFile, err := s.fileSystem.NewFile("", "/test.txt")
-	s.NoError(err, "unexpected error creting file")
+	s.NoError(err, "unexpected error creating file")
 	_, err = s.testFile.Write(make([]byte, 64))
 	s.NoError(err, "unexpected write error")
 	_, err = otherFile.Write(make([]byte, 32))

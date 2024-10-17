@@ -93,7 +93,7 @@ func (s *dataConnSuite) TestGetDataConn_ReadError() {
 
 func (s *dataConnSuite) TestGetDataConn_WriteLocationNotExists() {
 
-	// dataconn is nil - opebrewn for write - location doesnt exist - success
+	// dataconn is nil - open for write - location doesn't exist - success
 	s.client.EXPECT().
 		List("/").
 		Return(nil, errors.New("550")).
@@ -115,7 +115,7 @@ func (s *dataConnSuite) TestGetDataConn_WriteLocationNotExists() {
 
 func (s *dataConnSuite) TestGetDataConn_WriteLocationNotExistsFails() {
 	someerr := errors.New("some error")
-	// dataconn is nil - opebrewn for write - location doesnt exist - success
+	// dataconn is nil - open for write - location doesn't exist - success
 	s.client.EXPECT().
 		List("/").
 		Return(nil, errors.New("550")).
@@ -177,7 +177,7 @@ func (s *dataConnSuite) TestGetDataConn_writeSuccess() {
 	time.Sleep(50 * time.Millisecond)
 }
 
-func (s *dataConnSuite) TestGetDataConn_reaedAfterWriteError() {
+func (s *dataConnSuite) TestGetDataConn_readAfterWriteError() {
 
 	// open dataconn for read after dataconn for write exists - error on dataconn.Close
 	fakedconn := NewFakeDataConn(types.OpenWrite)

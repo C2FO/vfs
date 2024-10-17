@@ -168,13 +168,13 @@ type hostkeyTest struct {
 
 func (o *optionsSuite) TestGetHostKeyCallback() {
 
-	knwonHosts := filepath.Join(o.tmpdir, "known_hosts")
-	f, err := os.Create(knwonHosts) //nolint:gosec
+	knownHosts := filepath.Join(o.tmpdir, "known_hosts")
+	f, err := os.Create(knownHosts) //nolint:gosec
 	o.NoError(err, "create file for getHostKeyCallback test")
 	_, err = f.WriteString("127.0.0.1 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBMkEmvHLSa43yoLA8QBqTfwgXgNCfd0DKs20NlBVbMoo21+Bs0fUpemyy6U0nnGHiOJVhiL7lNG/lB1fF1ymouM=") //nolint:lll // long line
 	o.NoError(err, "writing to file for getHostKeyCallback test")
 	o.NoError(f.Close(), "closing file for getHostKeyCallback test")
-	defer func() { o.NoError(os.Remove(knwonHosts), "clean up file for getHostKeyCallback test") }()
+	defer func() { o.NoError(os.Remove(knownHosts), "clean up file for getHostKeyCallback test") }()
 
 	tests := []hostkeyTest{
 		{
@@ -203,7 +203,7 @@ func (o *optionsSuite) TestGetHostKeyCallback() {
 		},
 		{
 			options: Options{
-				KnownHostsFile: knwonHosts,
+				KnownHostsFile: knownHosts,
 			},
 			hasError:   false,
 			errMessage: "",
@@ -223,7 +223,7 @@ func (o *optionsSuite) TestGetHostKeyCallback() {
 		{
 			options: Options{},
 			envVars: map[string]string{
-				"VFS_SFTP_KNOWN_HOSTS_FILE": knwonHosts,
+				"VFS_SFTP_KNOWN_HOSTS_FILE": knownHosts,
 			},
 			hasError:   false,
 			errMessage: "",

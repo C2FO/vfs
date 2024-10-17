@@ -28,22 +28,22 @@ Or call directly:
     import "github.com/c2fo/vfs/v6/backend/azure"
 
     func DoSomething() {
-        fs := azure.NewFilesystem()
+        fs := azure.NewFileSystem()
         ...
     }
 ```
 
 azure can be augmented with the following implementation-specific methods.
 [Backend](backend.md) returns [vfs.FileSystem](../README.md#type-filesystem) interface so it would have to be cast as
-azure.Filesystem to use the following:
+azure.FileSystem to use the following:
 
 ```go
     func DoSomething() {
 
         ...
 
-        // cast if fs was created using backend.Backend().  Not necessary if created directly from azure.NewFilesystem().
-        fs = fs.(azure.Filesystem)
+        // cast if fs was created using backend.Backend().  Not necessary if created directly from azure.NewFileSystem().
+        fs = fs.(azure.FileSystem)
 
         // to pass in client options
         fs = fs.WithOptions(
@@ -98,7 +98,7 @@ is a valid Azure URI
 ```go
 func ParsePath(p string) (host, pth string, err error)
 ```
-ParsePath is a utility function used by vfssiple to separate the host from the
+ParsePath is a utility function used by vfssimple to separate the host from the
 path. The first parameter returned is the host and the second parameter is the
 path.
 
@@ -216,7 +216,7 @@ Download returns an io.ReadCloser for the given vfs.File
 func (a *DefaultClient) List(l vfs.Location) ([]string, error)
 ```
 List will return a listing of the contents of the given location. Each item in
-the list will contain the full key as specified by the azure blob (incliding the
+the list will contain the full key as specified by the azure blob (including the
 virtual 'path').
 
 #### func (*DefaultClient) Properties
@@ -255,7 +255,7 @@ for OAuth authentication
 ```go
 func (f *DefaultTokenCredentialFactory) New(tenantID, clientID, clientSecret, azureEnvName string) (azblob.TokenCredential, error)
 ```
-New creates a new azblob.TokenCredntial struct
+New creates a new azblob.TokenCredential struct
 
 ### type File
 
@@ -726,7 +726,7 @@ for unit testing
 ```go
 func (f *MockTokenCredentialFactory) New(tenantID, clientID, clientSecret, azureEnvName string) (azblob.TokenCredential, error)
 ```
-New creates a new azblob.TokenCredntial struct
+New creates a new azblob.TokenCredential struct
 
 ### type Options
 
@@ -797,7 +797,7 @@ configured. Options are checked and evaluated in the following order:
 
 ```go
 type TokenCredentialFactory interface {
-	// New creates a new azblob.TokenCredntial struct
+	// New creates a new azblob.TokenCredential struct
 	New(tenantID, clientID, clientSecret, azureEnvName string) (azblob.TokenCredential, error)
 }
 ```

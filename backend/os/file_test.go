@@ -331,7 +331,7 @@ func (s *osFileTest) TestMoveToLocation() {
 	mockFile := new(mocks.File)
 	mockFile.On("Location").Return(mockLocation, nil)
 	mockFile.On("Name").Return("/some/path/to/move.txt")
-	mockFile.On("Location ").Return(mockLocation, nil)
+	mockFile.On("Location").Return(mockLocation, nil)
 	mockLocation.On("NewFile", mock.Anything).Return(mockFile, nil)
 	mockfs.On("NewLocation", mock.Anything, mock.Anything).Return(mockLocation)
 
@@ -468,7 +468,7 @@ func (s *osFileTest) TestMoveToFile() {
 	mockLocation.On("Close").Return(nil)
 	mockFile.On("Location").Return(mockLocation, nil)
 	mockFile.On("Name").Return("/some/path/to/file.txt")
-	mockFile.On("Location ").Return(mockLocation, nil)
+	mockFile.On("Location").Return(mockLocation, nil)
 	mockfs.On("NewLocation", mock.Anything, mock.Anything).Return(mockLocation)
 
 	s.NoError(file2.MoveToFile(mockFile))

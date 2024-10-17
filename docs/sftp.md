@@ -3,7 +3,7 @@
 ---
 
 
-Package sftp SFTP VFS implementation.
+Package sftp - SFTP VFS implementation.
 
 In this backend, any new FileSystem instance is a new connection to the remote server.  It may be impolite
 to take up a large number of a server's available connections, so better to use the same filesystem.
@@ -31,7 +31,7 @@ Or call directly:
       import "github.com/c2fo/vfs/v6/backend/sftp"
 
       func DoSomething() {
-    	  fs := sftp.NewFilesystem()
+    	  fs := sftp.NewFileSystem()
 
     	  location, err := fs.NewLocation("myuser@server.com:22", "/some/path/")
     	  if err != nil {
@@ -53,9 +53,9 @@ These methods are chainable:
 ```go
       func DoSomething() {
 
-    	  // cast if fs was created using backend.Backend().  Not necessary if created directly from sftp.NewFilesystem().
+    	  // cast if fs was created using backend.Backend().  Not necessary if created directly from sftp.NewFileSystem().
     	  fs := backend.Backend(sftp.Scheme)
-    	  fs = fs.(*sftp.Filesystem)
+    	  fs = fs.(*sftp.FileSystem)
 
     	  // to pass specific client
     	  sshClient, err := ssh.Dial("tcp", "myuser@server.com:22", &ssh.ClientConfig{
@@ -182,7 +182,7 @@ should be the most desirable behavior.
 
 ```go
     func doSFTPStuff() {
-    	fs := sftp.NewFilesystem()
+    	fs := sftp.NewFileSystem()
     	loc, err := fs.NewLocation("myuser@server.com:22", "/some/path/")
     	file1, _ := loc.NewFile("file1.txt")
     	file2, _ := loc.NewFile("file2.txt")
@@ -306,7 +306,7 @@ func (f *File) MoveToFile(t vfs.File) error
 MoveToFile puts the contents of File into the targetFile passed using
 [File.CopyToFile](#func-file-copytofile). If the copy succeeds, the source file is deleted. Any errors
 from the copy or delete are returned. If the given location is also sftp AND for
-the same user and host, the [sftp.Rename](https://godoc.org/github.com/pkg/sftp#Client.Rename) method is used, otherwise we'll do a an
+the same user and host, the [sftp.Rename](https://godoc.org/github.com/pkg/sftp#Client.Rename) method is used, otherwise we'll do an
 [io.Copy](https://godoc.org/io#Copy) to the destination file then delete source file.
 
 #### func (*File) MoveToLocation
@@ -390,7 +390,7 @@ type FileSystem struct {
 }
 ```
 
-FileSystem implements vfs.Filesystem for the SFTP filesystem.
+FileSystem implements vfs.FileSystem for the SFTP filesystem.
 
 #### func  NewFileSystem
 
@@ -583,7 +583,7 @@ type Options struct {
 	KnownHostsFile     string              `json:"knownHostsFile,omitempty"` // env var VFS_SFTP_KNOWN_HOSTS_FILE
 	KnownHostsString   string              `json:"knownHostsString,omitempty"`
 	KeyExchanges       []string            `json:"keyExchanges,omitempty"`
-	Ciphers            []string            `json:"cihers,omitempty"`
+	Ciphers            []string            `json:"ciphers,omitempty"`
 	MACs               []string            `json:"macs,omitempty"`
 	HostKeyAlgorithms  []string            `json:"hostKeyAlgorithms,omitempty"`
 	AutoDisconnect     int                 `json:"autoDisconnect,omitempty"` // seconds before disconnecting. default: 10

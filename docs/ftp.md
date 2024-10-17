@@ -28,7 +28,7 @@ Or call directly:
       import "github.com/c2fo/vfs/v6/backend/ftp"
 
       func DoSomething() {
-    	  fs := ftp.NewFilesystem()
+    	  fs := ftp.NewFileSystem()
 
     	  location, err := fs.NewLocation("myuser@server.com:21", "/some/path/")
     	  if err != nil {
@@ -39,7 +39,7 @@ Or call directly:
 ```
 
 ftp can be augmented with some implementation-specific methods. [Backend](backend.md) returns
-[vfs.FileSystem](../README.md#type-filesystem) interface, so it would have to be cast as ftp.Filesystem to use
+[vfs.FileSystem](../README.md#type-filesystem) interface, so it would have to be cast as ftp.FileSystem to use
 them.
 
 These methods are chainable: (*FileSystem) WithClient(client interface{})
@@ -48,9 +48,9 @@ These methods are chainable: (*FileSystem) WithClient(client interface{})
 ```go
       func DoSomething() {
 
-    	  // cast if fs was created using backend.Backend().  Not necessary if created directly from ftp.NewFilesystem().
+    	  // cast if fs was created using backend.Backend().  Not necessary if created directly from ftp.NewFileSystem().
     	  fs := backend.Backend(ftp.Scheme)
-    	  fs = fs.(*ftp.Filesystem)
+    	  fs = fs.(*ftp.FileSystem)
 
     	  // to pass specific client implementing types.Client interface (in this case, _ftp github.com/jlaffaye/ftp)
     	  client, _ := _ftp.Dial("server.com:21")
@@ -91,9 +91,9 @@ The provided CopyToFile and CopyToLocation functions should be used instead in t
 ```go
 		func DoSomething() {
 
-		  // cast if fs was created using backend.Backend().  Not necessary if created directly from ftp.NewFilesystem().
+		  // cast if fs was created using backend.Backend().  Not necessary if created directly from ftp.NewFileSystem().
 		  fs := backend.Backend(ftp.Scheme)
-		  fs = fs.(*ftp.Filesystem)
+		  fs = fs.(*ftp.FileSystem)
 
 		  // to pass specific client implementing types.Client interface (in this case, _ftp github.com/jlaffaye/ftp)
 		  client, _ := _ftp.Dial("server.com:21")
@@ -275,7 +275,7 @@ func (f *File) MoveToFile(t vfs.File) error
 MoveToFile puts the contents of File into the targetFile passed using
 File.CopyToFile. If the copy succeeds, the source file is deleted. Any errors
 from the copy or delete are returned. If the given location is also ftp AND for
-the same user and host, the ftp Rename method is used, otherwise we'll do a an
+the same user and host, the ftp Rename method is used, otherwise we'll do an
 io.Copy to the destination file then delete source file.
 
 #### func (*File) MoveToLocation
@@ -359,7 +359,7 @@ type FileSystem struct {
 }
 ```
 
-FileSystem implements vfs.Filesystem for the FTP filesystem.
+FileSystem implements vfs.FileSystem for the FTP filesystem.
 
 #### func  NewFileSystem
 
