@@ -190,20 +190,22 @@ func (lt *locationTestSuite) TestListByPrefix() {
 	}
 
 	for _, test := range tests {
-		// setup location
-		loc, err := lt.ftpfs.NewLocation("host.com", test.path)
-		lt.NoError(err, test.description)
+		lt.Run(test.description, func() {
+			// setup location
+			loc, err := lt.ftpfs.NewLocation("host.com", test.path)
+			lt.NoError(err, test.description)
 
-		// setup mock List
-		lt.client.EXPECT().
-			List(test.resolvedPath).
-			Return(test.allEntries, nil).
-			Once()
+			// setup mock List
+			lt.client.EXPECT().
+				List(test.resolvedPath).
+				Return(test.allEntries, nil).
+				Once()
 
-		// perform ListByPrefix
-		fileList, err := loc.ListByPrefix(test.prefix)
-		lt.NoError(err, test.description)
-		lt.Equal(test.expectedFiles, fileList, test.description)
+			// perform ListByPrefix
+			fileList, err := loc.ListByPrefix(test.prefix)
+			lt.NoError(err, test.description)
+			lt.Equal(test.expectedFiles, fileList, test.description)
+		})
 	}
 
 	// client.List returns no results, return empty string slice and nil (error)

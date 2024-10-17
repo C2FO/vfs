@@ -308,35 +308,37 @@ func (ts *fileTestSuite) TestGetCopyObject() {
 	}
 
 	// ensure spaces are properly encoded (or not)
-	for _, t := range tests {
-		sourceFile := &File{
-			fileSystem: &FileSystem{
-				client: s3apiMock,
-				options: Options{
-					AccessKeyID:                 "abc",
-					DisableServerSideEncryption: true,
+	for i, t := range tests {
+		ts.Run(fmt.Sprintf("%d", i), func() {
+			sourceFile := &File{
+				fileSystem: &FileSystem{
+					client: s3apiMock,
+					options: Options{
+						AccessKeyID:                 "abc",
+						DisableServerSideEncryption: true,
+					},
 				},
-			},
-			bucket: "TestBucket",
-			key:    t.key,
-		}
+				bucket: "TestBucket",
+				key:    t.key,
+			}
 
-		targetFile := &File{
-			fileSystem: &FileSystem{
-				client: s3apiMock,
-				options: Options{
-					AccessKeyID: "abc",
+			targetFile := &File{
+				fileSystem: &FileSystem{
+					client: s3apiMock,
+					options: Options{
+						AccessKeyID: "abc",
+					},
 				},
-			},
-			bucket: "TestBucket",
-			key:    "source.txt",
-		}
+				bucket: "TestBucket",
+				key:    "source.txt",
+			}
 
-		// copy from t.key to /source.txt
-		actual, err := sourceFile.getCopyObjectInput(targetFile)
-		ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
-		ts.Equal("TestBucket"+t.expectedCopySource, *actual.CopySource)
-		ts.Nil(actual.ServerSideEncryption, "sse is disabled")
+			// copy from t.key to /source.txt
+			actual, err := sourceFile.getCopyObjectInput(targetFile)
+			ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
+			ts.Equal("TestBucket"+t.expectedCopySource, *actual.CopySource)
+			ts.Nil(actual.ServerSideEncryption, "sse is disabled")
+		})
 	}
 
 	// test that different options returns nil
