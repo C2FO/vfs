@@ -195,7 +195,6 @@ func (f *File) MoveToFile(t vfs.File) error {
 
 // MoveToLocation works by creating a new file on the target location then calling MoveToFile() on it.
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
-
 	newFile, err := location.NewFile(f.Name())
 	if err != nil {
 		return nil, err
@@ -206,7 +205,6 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 
 // CopyToFile puts the contents of File into the targetFile passed.
 func (f *File) CopyToFile(file vfs.File) (err error) {
-
 	// Close file (f) reader regardless of an error
 	defer func() {
 		// close writer
@@ -244,7 +242,6 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 // CopyToLocation creates a copy of *File, using the file's current path as the new file's
 // path at the given location.
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
-
 	newFile, err := location.NewFile(f.Name())
 	if err != nil {
 		return nil, err
@@ -383,7 +380,6 @@ func (f *File) String() string {
 // openFile wrapper allows us to inject a file opener (for mocking) vs the defaultOpenFile.
 func (f *File) openFile(flags int) (ReadWriteSeekCloser, error) { //nolint:gocyclo // this function is complex by nature
 	if f.sftpfile != nil {
-
 		// this case shouldn't normally exist except when we've set our own ReadWriteSeekCloser in tests
 		if f.flagsUsed == 0 && !f.readCalled && !f.seekCalled {
 			return f.sftpfile, nil
@@ -392,7 +388,6 @@ func (f *File) openFile(flags int) (ReadWriteSeekCloser, error) { //nolint:gocyc
 		needRw := false
 		// check if the file is not already open in read-write mode
 		if (f.flagsUsed & os.O_RDWR) == 0 {
-
 			// check if currently open for read only but now need write
 			if f.flagsUsed == os.O_RDONLY && (flags&(os.O_WRONLY|os.O_RDWR)) != 0 {
 				needRw = true

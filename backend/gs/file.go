@@ -98,7 +98,6 @@ func (f *File) Close() error {
 }
 
 func (f *File) tempToGCS() error {
-
 	handle, err := f.getObjectHandle()
 	if err != nil {
 		return err
@@ -498,7 +497,6 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 // Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
 // Returns error if unable to touch File.
 func (f *File) Touch() error {
-
 	// check if file exists
 	exists, err := f.Exists()
 	if err != nil {
@@ -532,7 +530,6 @@ func (f *File) Touch() error {
 }
 
 func (f *File) updateLastModifiedByAttrUpdate() error {
-
 	// save original metadata (in case it was set already)
 	objAttrs, err := f.getObjectAttrs()
 	if err != nil {
@@ -582,7 +579,6 @@ func (f *File) isBucketVersioningEnabled() (bool, error) {
 }
 
 func (f *File) createEmptyFile() error {
-
 	handle, err := f.getObjectHandle()
 	if err != nil {
 		return err
@@ -659,7 +655,6 @@ func (f *File) URI() string {
 }
 
 func (f *File) copyToLocalTempReader(tmpFile *os.File) error {
-
 	handle, err := f.getObjectHandle()
 	if err != nil {
 		return err

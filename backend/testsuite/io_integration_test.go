@@ -49,7 +49,7 @@ func (o *OSWrapper) Read(b []byte) (int, error) {
 		return 0, errors.New("file not found")
 	}
 	if o.file == nil {
-		file, err := os.OpenFile(o.filename, os.O_RDWR, 0600)
+		file, err := os.OpenFile(o.filename, os.O_RDWR, 0o600)
 		if err != nil {
 			return 0, err
 		}
@@ -64,7 +64,7 @@ func (o *OSWrapper) Write(b []byte) (int, error) {
 		if o.seekCalled {
 			flags = os.O_RDWR | os.O_CREATE
 		}
-		file, err := os.OpenFile(o.filename, flags, 0600) //nolint:gosec
+		file, err := os.OpenFile(o.filename, flags, 0o600) //nolint:gosec
 		if err != nil {
 			return 0, err
 		}
@@ -81,7 +81,7 @@ func (o *OSWrapper) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	if o.file == nil {
-		file, err := os.OpenFile(o.filename, os.O_RDWR, 0600)
+		file, err := os.OpenFile(o.filename, os.O_RDWR, 0o600)
 		if err != nil {
 			return 0, err
 		}
@@ -224,7 +224,8 @@ func (s *ioTestSuite) testFileOperations(testPath string) {
 		},
 
 		// Read, Seek, Read, Close
-		{"Read, Seek, Read, Close, file exists",
+		{
+			"Read, Seek, Read, Close, file exists",
 			"R(4);S(0,0);R(4);C()",
 			true,
 			false,
@@ -358,7 +359,6 @@ func (s *ioTestSuite) testFileOperations(testPath string) {
 
 			// run in a closure so we can defer teardown
 			func() {
-
 				// Setup vfs environment
 				file, err := s.setupTestFile(tc.fileAlreadyExists, testPath, testFileName) // Implement this setup function
 				defer func() {
@@ -484,7 +484,6 @@ SEQ:
 		t.Fatalf("error reading file: %s", err.Error())
 	}
 	return string(contents), nil
-
 }
 
 var commandArgsRegex = regexp.MustCompile(`^([a-zA-Z0-9]+)\((.*)\)$`)
@@ -538,7 +537,6 @@ func (s *ioTestSuite) teardownTestLocation(t *testing.T, testPath string) {
 			t.Fatal(err)
 		}
 	} else {
-
 		scheme := strings.Split(testPath, ":")[0]
 		// Write something to the file
 		loc := s.testLocations[scheme]

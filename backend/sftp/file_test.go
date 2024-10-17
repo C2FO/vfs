@@ -46,7 +46,6 @@ func (nopWriteCloser) Close() error                      { return nil }
 func (nopWriteCloser) Write(_ []byte) (n int, err error) { return 0, nil }
 
 func (ts *fileTestSuite) TestRead() {
-
 	// set up sftpfile
 	filepath := "/some/path.txt"
 	client := &mocks.Client{}
@@ -77,7 +76,6 @@ func (ts *fileTestSuite) TestRead() {
 }
 
 func (ts *fileTestSuite) TestSeek() {
-
 	// set up sftpfile
 	filepath := "/some/path.txt"
 	client := &mocks.Client{}

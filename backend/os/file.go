@@ -121,7 +121,6 @@ func (f *File) Close() error {
 
 // Read implements the io.Reader interface.  It returns the bytes read and an error, if any.
 func (f *File) Read(p []byte) (int, error) {
-
 	// if we have not written to this file, ensure the original file exists
 	if !f.useTempFile {
 		if exists, err := f.Exists(); err != nil {
@@ -397,7 +396,6 @@ func (f *File) openFile() (*os.File, error) {
 }
 
 func openOSFile(filePath string) (*os.File, error) {
-
 	// Ensure the path exists before opening the file, NoOp if dir already exists.
 	var fileMode os.FileMode = 0666
 	if err := os.MkdirAll(path.Dir(filePath), os.ModeDir|0750); err != nil {

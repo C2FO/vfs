@@ -35,7 +35,6 @@ type Options struct {
 
 // getClient setup S3 client
 func getClient(opt Options) (s3iface.S3API, error) {
-
 	// setup default config
 	awsConfig := defaults.Config()
 

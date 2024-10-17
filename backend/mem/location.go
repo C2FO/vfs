@@ -24,14 +24,12 @@ type Location struct {
 
 // String implements io.Stringer by returning the location's URI as a string
 func (l *Location) String() string {
-
 	return l.URI()
 }
 
 // List finds all of the files living at the current location and returns them in a slice of strings.
 // If there are no files at location, then an empty slice will be returned
 func (l *Location) List() ([]string, error) {
-
 	locPath := l.Path()
 	// setting mapRef to this value for code readability
 	mapRef := l.fileSystem.fsMap
@@ -50,7 +48,6 @@ func (l *Location) List() ([]string, error) {
 // returns all file base names whose full paths contain that substring
 // Returns empty slice if nothing found
 func (l *Location) ListByPrefix(prefix string) ([]string, error) {
-
 	list := make([]string, 0)
 	str := path.Join(l.Path(), prefix)
 	mapRef := l.fileSystem.fsMap
@@ -74,7 +71,6 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 // found that matched the regular expression.  Returns an
 // empty slice upon nothing found
 func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
-
 	list := make([]string, 0)
 	str := l.Path()
 	mapRef := l.fileSystem.fsMap
@@ -96,16 +92,13 @@ func (l *Location) Volume() string {
 
 // Path returns the full, absolute path of the location with leading and trailing slashes
 func (l *Location) Path() string {
-
 	// just to be sure that we return a trailing and leading slash
 	str := utils.EnsureTrailingSlash(path.Clean(l.name))
 	return utils.EnsureLeadingSlash(str)
-
 }
 
 // Exists always returns true on locations
 func (l *Location) Exists() (bool, error) {
-
 	l.exists = true
 	return true, nil
 }
@@ -136,7 +129,6 @@ func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
 		exists:     false,
 		volume:     l.Volume(),
 	}, nil
-
 }
 
 // ChangeDir simply changes the directory of the location
@@ -147,19 +139,15 @@ func (l *Location) ChangeDir(relLocPath string) error {
 	}
 	l.name = path.Join(l.name, relLocPath)
 	return nil
-
 }
 
 // FileSystem returns the type of file system location exists on, if it exists at all
 func (l *Location) FileSystem() vfs.FileSystem {
-
 	return l.fileSystem
-
 }
 
 // NewFile creates a vfs.File given its relative path and tags it onto "l's" path
 func (l *Location) NewFile(relFilePath string) (vfs.File, error) {
-
 	if relFilePath == "" {
 		return nil, errors.New("cannot use empty name for file")
 	}
@@ -227,6 +215,5 @@ func (l *Location) DeleteFile(relFilePath string, _ ...options.DeleteOption) err
 
 // URI returns the URI of the location if the location exists
 func (l *Location) URI() string {
-
 	return utils.GetLocationURI(l)
 }

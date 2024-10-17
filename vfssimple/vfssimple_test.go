@@ -305,6 +305,7 @@ func (s *vfssimplesuite) TestParseSupportedURI() {
 		}
 	}
 }
+
 func (s *vfssimplesuite) TestNewFile() {
 	backend.Register("s3://filetest/path/", s3.NewFileSystem().WithClient(getS3NamedClientMock("filetest-path")))
 	backend.Register("s3://filetest/", s3.NewFileSystem().WithClient(getS3NamedClientMock("filetest-bucket")))

@@ -710,7 +710,6 @@ func (f *File) getReader() (io.ReadCloser, error) {
 				// can't set range on empty file, so just return an empty ReadCloser
 				f.reader = io.NopCloser(strings.NewReader(""))
 			} else {
-
 				// Create the request to get the object
 				input := new(s3.GetObjectInput).
 					SetBucket(f.bucket).

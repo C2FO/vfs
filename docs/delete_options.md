@@ -17,7 +17,7 @@ Delete file using file.delete():
         "github.com/c2fo/vfs/v6/options"
         "github.com/c2fo/vfs/v6/options/delete"
     )
-    
+
     func DeleteFile() error {
         file, err := fs.NewFile(bucketName, fileName)
         ...
@@ -35,7 +35,7 @@ Delete file using location.delete():
         "github.com/c2fo/vfs/v6/options"
         "github.com/c2fo/vfs/v6/options/delete"
     )
-    
+
     func DeleteFileUsingLocation() error {
         err = location.DeleteFile("filename.txt", delete.WithDeleteAllVersions())
         ...
