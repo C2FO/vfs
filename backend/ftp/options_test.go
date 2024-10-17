@@ -22,7 +22,7 @@ func TestOptions(t *testing.T) {
 }
 
 func (s *optionsSuite) TestFetchUsername() {
-	tests := []struct {
+	tests := []*struct {
 		description string
 		authority   string
 		options     Options
@@ -40,12 +40,14 @@ func (s *optionsSuite) TestFetchUsername() {
 		},
 	}
 
-	for i := range tests {
-		auth, err := utils.NewAuthority(tests[i].authority)
-		s.NoError(err, tests[i].description)
+	for _, test := range tests {
+		s.Run(test.description, func() {
+			auth, err := utils.NewAuthority(test.authority)
+			s.NoError(err, test.description)
 
-		username := fetchUsername(auth)
-		s.Equal(tests[i].expected, username, tests[i].description)
+			username := fetchUsername(auth)
+			s.Equal(test.expected, username, test.description)
+		})
 	}
 }
 
@@ -80,14 +82,16 @@ func (s *optionsSuite) TestFetchPassword() {
 		},
 	}
 
-	for i := range tests {
-		if tests[i].envVar != nil {
-			err := os.Setenv(envPassword, *tests[i].envVar)
-			s.NoError(err, tests[i].description)
-		}
+	for _, test := range tests {
+		s.Run(test.description, func() {
+			if test.envVar != nil {
+				err := os.Setenv(envPassword, *test.envVar)
+				s.NoError(err, test.description)
+			}
 
-		password := fetchPassword(tests[i].options)
-		s.Equal(tests[i].expected, password, tests[i].description)
+			password := fetchPassword(test.options)
+			s.Equal(test.expected, password, test.description)
+		})
 	}
 }
 
@@ -110,17 +114,19 @@ func (s *optionsSuite) TestFetchHostPortString() {
 		},
 	}
 
-	for i := range tests {
-		auth, err := utils.NewAuthority(tests[i].authority)
-		s.NoError(err, tests[i].description)
+	for _, test := range tests {
+		s.Run(test.description, func() {
+			auth, err := utils.NewAuthority(test.authority)
+			s.NoError(err, test.description)
 
-		if tests[i].envVar != nil {
-			err := os.Setenv(envPassword, *tests[i].envVar)
-			s.NoError(err, tests[i].description)
-		}
+			if test.envVar != nil {
+				err := os.Setenv(envPassword, *test.envVar)
+				s.NoError(err, test.description)
+			}
 
-		hostPortString := fetchHostPortString(auth)
-		s.Equal(tests[i].expected, hostPortString, tests[i].description)
+			hostPortString := fetchHostPortString(auth)
+			s.Equal(test.expected, hostPortString, test.description)
+		})
 	}
 }
 
@@ -194,14 +200,16 @@ func (s *optionsSuite) TestIsDisableEPSV() {
 		},
 	}
 
-	for i := range tests {
-		if tests[i].envVar != nil {
-			err := os.Setenv(envDisableEPSV, *tests[i].envVar)
-			s.NoError(err, tests[i].description)
-		}
+	for _, test := range tests {
+		s.Run(test.description, func() {
+			if test.envVar != nil {
+				err := os.Setenv(envDisableEPSV, *test.envVar)
+				s.NoError(err, test.description)
+			}
 
-		disabled := isDisableOption(tests[i].options)
-		s.Equal(tests[i].expected, disabled, tests[i].description)
+			disabled := isDisableOption(test.options)
+			s.Equal(test.expected, disabled, test.description)
+		})
 	}
 }
 
@@ -214,7 +222,7 @@ func (s *optionsSuite) TestFetchTLSConfig() {
 		SessionTicketsDisabled: true,
 	}
 
-	tests := []struct {
+	tests := []*struct {
 		description                string
 		authority                  string
 		options                    Options
@@ -256,21 +264,23 @@ func (s *optionsSuite) TestFetchTLSConfig() {
 		},
 	}
 
-	for i := range tests {
-		auth, err := utils.NewAuthority(tests[i].authority)
-		s.NoError(err, tests[i].description)
+	for _, test := range tests {
+		s.Run(test.description, func() {
+			auth, err := utils.NewAuthority(test.authority)
+			s.NoError(err, test.description)
 
-		tlsCfg := fetchTLSConfig(auth, tests[i].options)
-		s.Equal(tests[i].expected.MinVersion, tlsCfg.MinVersion, tests[i].description)
-		s.Equal(tests[i].expected.InsecureSkipVerify, tlsCfg.InsecureSkipVerify, tests[i].description)
-		s.Equal(tests[i].expected.ClientSessionCache, tlsCfg.ClientSessionCache, tests[i].description)
-		s.Equal(tests[i].expected.ServerName, tlsCfg.ServerName, tests[i].description)
-		s.Equal(tests[i].expected.SessionTicketsDisabled, tlsCfg.SessionTicketsDisabled, tests[i].description)
+			tlsCfg := fetchTLSConfig(auth, test.options)
+			s.Equal(test.expected.MinVersion, tlsCfg.MinVersion, test.description)
+			s.Equal(test.expected.InsecureSkipVerify, tlsCfg.InsecureSkipVerify, test.description)
+			s.Equal(test.expected.ClientSessionCache, tlsCfg.ClientSessionCache, test.description)
+			s.Equal(test.expected.ServerName, tlsCfg.ServerName, test.description)
+			s.Equal(test.expected.SessionTicketsDisabled, tlsCfg.SessionTicketsDisabled, test.description)
 
-		if tests[i].expectInsecureCipherSuites {
-			s.NotEmpty(tlsCfg.CipherSuites, tests[i].description)
-			s.True(containsInsecureCipherSuites(tlsCfg.CipherSuites), tests[i].description)
-		}
+			if test.expectInsecureCipherSuites {
+				s.NotEmpty(tlsCfg.CipherSuites, test.description)
+				s.True(containsInsecureCipherSuites(tlsCfg.CipherSuites), test.description)
+			}
+		})
 	}
 }
 
@@ -334,20 +344,22 @@ func (s *optionsSuite) TestFetchProtocol() {
 		},
 	}
 
-	for i := range tests {
-		s.NoError(os.Unsetenv(envProtocol))
-		if tests[i].envVar != nil {
-			err := os.Setenv(envProtocol, *tests[i].envVar)
-			s.NoError(err, tests[i].description)
-		}
+	for _, test := range tests {
+		s.Run(test.description, func() {
+			s.NoError(os.Unsetenv(envProtocol))
+			if test.envVar != nil {
+				err := os.Setenv(envProtocol, *test.envVar)
+				s.NoError(err, test.description)
+			}
 
-		protocol := fetchProtocol(tests[i].options)
-		s.Equal(tests[i].expected, protocol, tests[i].description)
+			protocol := fetchProtocol(test.options)
+			s.Equal(test.expected, protocol, test.description)
+		})
 	}
 }
 
 func (s *optionsSuite) TestFetchDialOptions() {
-	tests := []struct {
+	tests := []*struct {
 		description string
 		authority   string
 		options     Options
@@ -421,17 +433,19 @@ func (s *optionsSuite) TestFetchDialOptions() {
 		},
 	}
 
-	for i := range tests {
-		if tests[i].envVar != nil {
-			err := os.Setenv(envProtocol, *tests[i].envVar)
-			s.NoError(err, tests[i].description)
-		}
+	for _, test := range tests {
+		s.Run(test.description, func() {
+			if test.envVar != nil {
+				err := os.Setenv(envProtocol, *test.envVar)
+				s.NoError(err, test.description)
+			}
 
-		auth, err := utils.NewAuthority(tests[i].authority)
-		s.NoError(err, tests[i].description)
+			auth, err := utils.NewAuthority(test.authority)
+			s.NoError(err, test.description)
 
-		dialOpts := fetchDialOptions(context.Background(), auth, tests[i].options)
-		s.Len(dialOpts, tests[i].expected, tests[i].description)
+			dialOpts := fetchDialOptions(context.Background(), auth, test.options)
+			s.Len(dialOpts, test.expected, test.description)
+		})
 	}
 }
 
