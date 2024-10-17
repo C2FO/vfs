@@ -1,6 +1,7 @@
 package os
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -42,7 +43,11 @@ func (o *osFileSystemTest) TestNewFile() {
 	o.Nil(file, "file should be nil on err")
 
 	// success
-	file, err = fs.NewFile("", "/valid/file")
+	path := "/valid/file"
+	if runtime.GOOS == "windows" {
+		path = "C:" + path
+	}
+	file, err = fs.NewFile("", path)
 	o.NoError(err, "no error expected for valid file")
 	o.IsType(&File{}, file)
 }
@@ -62,7 +67,11 @@ func (o *osFileSystemTest) TestNewLocation() {
 	o.Nil(loc, "file should be nil on err")
 
 	// success
-	loc, err = fs.NewLocation("", "/valid/location/")
+	path := "/valid/location/"
+	if runtime.GOOS == "windows" {
+		path = "C:" + path
+	}
+	loc, err = fs.NewLocation("", path)
 	o.NoError(err, "no error expected for valid file")
 	o.IsType(&Location{}, loc)
 }

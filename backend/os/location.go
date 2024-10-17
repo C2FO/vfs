@@ -3,9 +3,9 @@ package os
 import (
 	"errors"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"github.com/c2fo/vfs/v6"
@@ -32,7 +32,10 @@ func (l *Location) NewFile(fileName string) (vfs.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	fileName = utils.EnsureLeadingSlash(path.Clean(path.Join(l.name, fileName)))
+	fileName = filepath.Clean(filepath.Join(l.name, fileName))
+	if runtime.GOOS != "windows" {
+		fileName = utils.EnsureLeadingSlash(fileName)
+	}
 	return l.fileSystem.NewFile(l.Volume(), fileName)
 }
 
@@ -58,7 +61,7 @@ func (l *Location) List() ([]string, error) {
 func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 	var loc vfs.Location
 	var err error
-	d := path.Dir(prefix)
+	d := filepath.Dir(prefix)
 
 	// if prefix has a dir component, use it's location and basename of prefix
 	if d != "." && d != "/" {
@@ -66,7 +69,7 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 		if err != nil {
 			return []string{}, err
 		}
-		prefix = path.Base(prefix)
+		prefix = filepath.Base(prefix)
 	} else {
 		// otherwise just use everything as-is
 		loc = l
@@ -117,7 +120,11 @@ func (l *Location) Volume() string {
 
 // Path returns the location path.
 func (l *Location) Path() string {
-	return utils.EnsureLeadingSlash(utils.EnsureTrailingSlash(l.name))
+	path := utils.EnsureTrailingSlash(l.name)
+	if runtime.GOOS != "windows" {
+		path = utils.EnsureLeadingSlash(path)
+	}
+	return path
 }
 
 // Exists returns true if the location exists, and the calling user has the appropriate
@@ -177,7 +184,10 @@ func (l *Location) ChangeDir(relativePath string) error {
 	}
 
 	// update location path
-	l.name = utils.EnsureTrailingSlash(utils.EnsureLeadingSlash(path.Join(l.name, relativePath)))
+	l.name = utils.EnsureLeadingSlash(filepath.Join(l.name, relativePath))
+	if runtime.GOOS != "windows" {
+		l.name = utils.EnsureLeadingSlash(l.name)
+	}
 
 	return nil
 }

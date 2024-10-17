@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -277,10 +277,10 @@ func (s *osFileTest) TestCopyToLocationIgnoreExtraSeparator() {
 
 func (s *osFileTest) TestMoveToLocation() {
 	expectedText := "moved file"
-	dir, terr := os.MkdirTemp(path.Join(s.tmploc.Path(), "test_files"), "example")
+	dir, terr := os.MkdirTemp(filepath.Join(s.tmploc.Path(), "test_files"), "example")
 	s.NoError(terr)
 
-	origFileName := path.Join(dir, "test_files/move.txt")
+	origFileName := filepath.Join(dir, "test_files", "move.txt")
 	file, nerr := s.fileSystem.NewFile("", origFileName)
 	s.NoError(nerr)
 
@@ -340,7 +340,7 @@ func (s *osFileTest) TestMoveToLocation() {
 }
 
 func (s *osFileTest) TestSafeOsRename() {
-	dir, err := os.MkdirTemp(path.Join(s.tmploc.Path(), "test_files"), "example")
+	dir, err := os.MkdirTemp(filepath.Join(s.tmploc.Path(), "test_files"), "example")
 	s.NoError(err)
 	defer func() {
 		err := os.RemoveAll(dir)
@@ -352,7 +352,7 @@ func (s *osFileTest) TestSafeOsRename() {
 	//     errors are handled correctly and that normal renames work.
 
 	// test that normal rename works
-	testfile := path.Join(dir, "original.txt")
+	testfile := filepath.Join(dir, "original.txt")
 	file1, err := s.fileSystem.NewFile("", testfile)
 	s.NoError(err)
 	var testBytes = []byte("test me")
@@ -360,7 +360,7 @@ func (s *osFileTest) TestSafeOsRename() {
 	s.NoError(err)
 	s.NoError(file1.Close())
 
-	newFile := path.Join(dir, "new.txt")
+	newFile := filepath.Join(dir, "new.txt")
 	s.NoError(safeOsRename(testfile, newFile))
 
 	exists, err := file1.Exists()
@@ -373,7 +373,7 @@ func (s *osFileTest) TestSafeOsRename() {
 	s.True(exists)
 
 	// test that a rename failure (non-"invalid cross-device link" error) is returned properly
-	badfile := path.Join(dir, "this_should_not_exist.txt")
+	badfile := filepath.Join(dir, "this_should_not_exist.txt")
 
 	err = safeOsRename(badfile, newFile)
 	s.Error(err)
@@ -381,24 +381,26 @@ func (s *osFileTest) TestSafeOsRename() {
 }
 
 func (s *osFileTest) TestOsCopy() {
-	dir, err := os.MkdirTemp(path.Join(s.tmploc.Path(), "test_files"), "example")
+	dir, err := os.MkdirTemp(filepath.Join(s.tmploc.Path(), "test_files"), "example")
 	s.NoError(err)
 	defer func() {
 		err := os.RemoveAll(dir)
 		s.NoError(err, "remove all error not expected")
 	}()
 
-	file1, err := s.fileSystem.NewFile("", path.Join(dir, "original.txt"))
+	file1, err := s.fileSystem.NewFile("", filepath.Join(dir, "original.txt"))
 	s.NoError(err)
 	var testBytes = []byte("test me")
 	_, err = file1.Write(testBytes)
 	s.NoError(err)
 	s.NoError(file1.Close())
 
-	file2, err := s.fileSystem.NewFile("", path.Join(dir, "move.txt"))
+	file2, err := s.fileSystem.NewFile("", filepath.Join(dir, "move.txt"))
 	s.NoError(err)
 
-	s.NoError(osCopy(path.Join(file1.Location().Volume(), file1.Path()), path.Join(file2.Location().Volume(), file2.Path())), "test osCopy")
+	name1 := filepath.Join(file1.Location().Volume(), file1.Path())
+	name2 := filepath.Join(file2.Location().Volume(), file2.Path())
+	s.NoError(osCopy(name1, name2), "test osCopy")
 
 	b, err := io.ReadAll(file2)
 	s.NoError(err)
@@ -406,13 +408,13 @@ func (s *osFileTest) TestOsCopy() {
 }
 
 func (s *osFileTest) TestMoveToFile() {
-	dir, terr := os.MkdirTemp(path.Join(s.tmploc.Path(), "test_files"), "example")
+	dir, terr := os.MkdirTemp(filepath.Join(s.tmploc.Path(), "test_files"), "example")
 	s.NoError(terr)
 
-	file1, err := s.fileSystem.NewFile("", path.Join(dir, "original.txt"))
+	file1, err := s.fileSystem.NewFile("", filepath.Join(dir, "original.txt"))
 	s.NoError(err)
 
-	file2, err := s.fileSystem.NewFile("", path.Join(dir, "move.txt"))
+	file2, err := s.fileSystem.NewFile("", filepath.Join(dir, "move.txt"))
 	s.NoError(err)
 
 	defer func() {
@@ -642,7 +644,7 @@ func (s *osFileTest) TestLastModified() {
 
 	lastModified, err := file.LastModified()
 	s.NoError(err)
-	osStats, err := os.Stat(path.Join(s.tmploc.Path(), "test_files/test.txt"))
+	osStats, err := os.Stat(filepath.Join(s.tmploc.Path(), "test_files", "test.txt"))
 	s.NoError(err)
 	s.NotNil(lastModified)
 	s.Equal(osStats.ModTime(), *lastModified)
@@ -667,7 +669,7 @@ func (s *osFileTest) TestSize() {
 	size, err := file.Size()
 	s.NoError(err)
 
-	osStats, err := os.Stat(path.Join(s.tmploc.Path(), "test_files/test.txt"))
+	osStats, err := os.Stat(filepath.Join(s.tmploc.Path(), "test_files", "test.txt"))
 	s.NoError(err)
 	s.NotNil(size)
 	s.Equal(osStats.Size(), int64(size))
@@ -682,20 +684,20 @@ func (s *osFileTest) TestSize() {
 func (s *osFileTest) TestPath() {
 	file, err := s.tmploc.NewFile("test_files/test.txt")
 	s.NoError(err)
-	s.Equal(path.Join(file.Location().Path(), file.Name()), file.Path())
+	s.Equal(filepath.Join(file.Location().Path(), file.Name()), file.Path())
 }
 
 func (s *osFileTest) TestURI() {
 	file, err := s.tmploc.NewFile("some/file/test.txt")
 	s.NoError(err)
-	expected := fmt.Sprintf("file://%s", path.Join(s.tmploc.Path(), "some/file/test.txt"))
+	expected := fmt.Sprintf("file://%s", filepath.Join(s.tmploc.Path(), "some", "file", "test.txt"))
 	s.Equal(expected, file.URI(), "%s does not match %s", file.URI(), expected)
 }
 
 func (s *osFileTest) TestStringer() {
 	file, err := s.tmploc.NewFile("some/file/test.txt")
 	s.NoError(err)
-	s.Equal(fmt.Sprintf("file://%s", path.Join(s.tmploc.Path(), "some/file/test.txt")), file.String())
+	s.Equal(fmt.Sprintf("file://%s", filepath.Join(s.tmploc.Path(), "some", "file", "test.txt")), file.String())
 }
 
 func (s *osFileTest) TestLocationRightAfterChangeDir() {
@@ -751,7 +753,7 @@ func teardownTestFiles(baseLoc vfs.Location) {
 }
 
 func createDir(baseLoc vfs.Location, dirname string) {
-	dir := path.Join(baseLoc.Path(), dirname)
+	dir := filepath.Join(baseLoc.Path(), dirname)
 	perm := os.FileMode(0755)
 	err := os.Mkdir(dir, perm)
 	if err != nil {
@@ -761,7 +763,7 @@ func createDir(baseLoc vfs.Location, dirname string) {
 }
 
 func writeStringFile(baseLoc vfs.Location, filename, data string) {
-	file := path.Join(baseLoc.Path(), filename)
+	file := filepath.Join(baseLoc.Path(), filename)
 	f, err := os.Create(file) //nolint:gosec
 	if err != nil {
 		teardownTestFiles(baseLoc)
