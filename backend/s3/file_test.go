@@ -51,7 +51,7 @@ func (ts *fileTestSuite) SetupTest() {
 	testFile, err = fs.NewFile(bucket, testFileName)
 
 	if err != nil {
-		ts.Fail("Shouldn't return error creating test s3.File instance.")
+		ts.Error(err, "Shouldn't return error creating test s3.File instance.")
 	}
 }
 
@@ -63,7 +63,7 @@ func (ts *fileTestSuite) TestRead() {
 
 	file, err := fs.NewFile("bucket", "/some/path/file.txt")
 	if err != nil {
-		ts.Fail("Shouldn't fail creating new file")
+		ts.Error(err, "Shouldn't fail creating new file")
 	}
 
 	var localFile = bytes.NewBuffer([]byte{})
@@ -192,7 +192,7 @@ func (ts *fileTestSuite) TestGetLocation() {
 func (ts *fileTestSuite) TestExists() {
 	file, err := fs.NewFile("bucket", "/path/hello.txt")
 	if err != nil {
-		ts.Fail("Shouldn't fail creating new file.")
+		ts.Error(err, "Shouldn't fail creating new file.")
 	}
 
 	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
@@ -205,7 +205,7 @@ func (ts *fileTestSuite) TestExists() {
 func (ts *fileTestSuite) TestNotExists() {
 	file, err := fs.NewFile("bucket", "/path/hello.txt")
 	if err != nil {
-		ts.Fail("Shouldn't fail creating new file.")
+		ts.Error(err, "Shouldn't fail creating new file.")
 	}
 
 	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).
@@ -513,7 +513,7 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 
 	file, err := fs.NewFile("bucket", "/hello.txt")
 	if err != nil {
-		ts.Fail("Shouldn't return error creating test s3.File instance.")
+		ts.Error(err, "Shouldn't return error creating test s3.File instance.")
 	}
 
 	defer func() {
@@ -535,7 +535,7 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	fs = FileSystem{client: s3apiMock2}
 	file2, err := fs.NewFile("bucket", "/hello.txt")
 	if err != nil {
-		ts.Fail("Shouldn't return error creating test s3.File instance.")
+		ts.Error(err, "Shouldn't return error creating test s3.File instance.")
 	}
 
 	_, err = file2.CopyToLocation(mockLocation)
@@ -557,7 +557,7 @@ func (ts *fileTestSuite) TestMoveToLocationFail() {
 
 	file, err := fs.NewFile("bucket", "/hello.txt")
 	if err != nil {
-		ts.Fail("Shouldn't return error creating test s3.File instance.")
+		ts.Error(err, "Shouldn't return error creating test s3.File instance.")
 	}
 
 	_, merr := file.MoveToLocation(location)
