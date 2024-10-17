@@ -21,6 +21,7 @@ import (
 	"github.com/c2fo/vfs/v6/mocks"
 	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/options/delete"
+	"github.com/c2fo/vfs/v6/options/newfile"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -31,6 +32,7 @@ type File struct {
 	fileSystem *FileSystem
 	bucket     string
 	key        string
+	opts       []options.NewFileOption
 
 	// seek-related fields
 	cursorPos  int64
@@ -651,6 +653,14 @@ func uploadInput(f *File) *s3manager.UploadInput {
 	if opts, ok := f.fileSystem.options.(Options); ok {
 		if opts.ACL != "" {
 			input.ACL = &opts.ACL
+		}
+	}
+
+	for _, o := range f.opts {
+		switch o := o.(type) {
+		case *newfile.ContentType:
+			input.ContentType = (*string)(o)
+		default:
 		}
 	}
 

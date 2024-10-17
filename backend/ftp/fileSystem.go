@@ -9,6 +9,7 @@ import (
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/backend"
 	"github.com/c2fo/vfs/v6/backend/ftp/types"
+	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -34,7 +35,7 @@ func (fs *FileSystem) Retry() vfs.Retry {
 }
 
 // NewFile function returns the FTP implementation of vfs.File.
-func (fs *FileSystem) NewFile(authority, filePath string) (vfs.File, error) {
+func (fs *FileSystem) NewFile(authority, filePath string, opts ...options.NewFileOption) (vfs.File, error) {
 	if fs == nil {
 		return nil, errors.New("non-nil ftp.FileSystem pointer is required")
 	}
@@ -54,6 +55,7 @@ func (fs *FileSystem) NewFile(authority, filePath string) (vfs.File, error) {
 		fileSystem: fs,
 		authority:  auth,
 		path:       path.Clean(filePath),
+		opts:       opts,
 	}, nil
 }
 

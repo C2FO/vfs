@@ -273,7 +273,7 @@ Name returns "Google Cloud Storage"
 #### func (*FileSystem) NewFile
 
 ```go
-func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error)
+func (fs *FileSystem) NewFile(volume string, name string, opts ...options.NewFileOption) (vfs.File, error)
 ```
 NewFile function returns the gcs implementation of [vfs.File](../README.md#type-file).
 
@@ -378,7 +378,7 @@ provided regular expression.
 #### func (*Location) NewFile
 
 ```go
-func (l *Location) NewFile(filePath string) (vfs.File, error)
+func (l *Location) NewFile(filePath string, opts ...options.NewFileOption) (vfs.File, error)
 ```
 NewFile returns a new file instance at the given path, relative to the current
 location.

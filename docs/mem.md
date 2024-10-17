@@ -222,7 +222,7 @@ Name returns the name of the underlying FileSystem
 #### func (*FileSystem) NewFile
 
 ```go
-func (fs *FileSystem) NewFile(volume string, absFilePath string) (vfs.File, error)
+func (fs *FileSystem) NewFile(volume string, absFilePath string, opts ...options.NewFileOption) (vfs.File, error)
 ```
 NewFile function returns the in-memory implementation of vfs.File. Since this is
 inside FileSystem, we assume that the caller knows that the CWD is the root. If
@@ -325,7 +325,7 @@ empty slice upon nothing found
 #### func (*Location) NewFile
 
 ```go
-func (l *Location) NewFile(relFilePath string) (vfs.File, error)
+func (l *Location) NewFile(relFilePath string, opts ...options.NewFileOption) (vfs.File, error)
 ```
 NewFile creates a vfs.File given its relative path and tags it onto "l's" path
 
