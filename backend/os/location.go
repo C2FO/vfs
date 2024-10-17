@@ -49,18 +49,18 @@ func (l *Location) DeleteFile(fileName string, opts ...options.DeleteOption) err
 
 type fileTest func(fileName string) bool
 
-// List returns a slice of all files in the top directory of of the location.
+// List returns a slice of all files in the top directory of the location.
 func (l *Location) List() ([]string, error) {
 	return l.fileList(func(name string) bool { return true })
 }
 
-// ListByPrefix returns a slice of all files starting with "prefix" in the top directory of of the location.
+// ListByPrefix returns a slice of all files starting with "prefix" in the top directory of the location.
 func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 	var loc vfs.Location
 	var err error
 	d := path.Dir(prefix)
 
-	// if prefix has a dir component, use it's location and basename of prefix
+	// if prefix has a dir component, use its location and basename of prefix
 	if d != "." && d != "/" {
 		loc, err = l.NewLocation(utils.EnsureTrailingSlash(d))
 		if err != nil {
@@ -77,7 +77,7 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 	})
 }
 
-// ListByRegex returns a slice of all files matching the regex in the top directory of of the location.
+// ListByRegex returns a slice of all files matching the regex in the top directory of the location.
 func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 	return l.fileList(func(name string) bool {
 		return regex.MatchString(name)

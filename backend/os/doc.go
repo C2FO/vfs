@@ -1,5 +1,5 @@
 /*
-Package os built-in os lib VFS implementation.
+Package os - built-in os lib VFS implementation.
 
 # Usage
 

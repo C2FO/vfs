@@ -483,7 +483,7 @@ func (ts *fileTestSuite) TestCopyToFile() {
 	ts.NoError(err, "Error shouldn't be returned from successful call to CopyToFile")
 	ts.Equal(contents, targetFile.fileSystem.dataconn.(*FakeDataConn).GetWriteContents(), "contents match")
 
-	// file doesnt exist error while copying
+	// file doesn't exist error while copying
 	fakeSingleOpDataConn := NewFakeDataConn(types.SingleOp)
 	fakeSingleOpDataConn.AssertExists(false)
 	sourceFile.fileSystem.resetConn = false
@@ -830,7 +830,7 @@ func (ts *fileTestSuite) TestTouch_exists() {
 		Once()
 	ts.NoError(file.Touch())
 
-	// success calling Touch when SetTime is suppported
+	// success calling Touch when SetTime is supported
 	client.EXPECT().
 		IsTimePreciseInList().
 		Return(true).
@@ -1342,7 +1342,7 @@ func getFakeDataConn(_ context.Context, a utils.Authority, fileSystem *FileSyste
 		fileSystem.dataconn = NewFakeDataConn(t)
 	}
 
-	// Seek to offset (whence is always zero because of the way file.Seek calculates it for you
+	// Seek to offset (whence is always zero because of the way file.Seek calculates it for you)
 	if f != nil {
 		_, err := fileSystem.dataconn.(*FakeDataConn).rw.Seek(f.offset, 0)
 		if err != nil {

@@ -103,7 +103,7 @@ func (s *FileTestSuite) TestExists() {
 	s.True(exists)
 }
 
-func (s *FileTestSuite) TestExists_NonExistantFile() {
+func (s *FileTestSuite) TestExists_NonExistentFile() {
 	client := MockAzureClient{PropertiesError: MockStorageError{}}
 	fs := NewFileSystem().WithClient(&client)
 
@@ -241,7 +241,7 @@ func (s *FileTestSuite) TestSize() {
 	s.Equal(uint64(5), size, "The size should be 5")
 }
 
-func (s *FileTestSuite) TestSize_NonExistantFile() {
+func (s *FileTestSuite) TestSize_NonExistentFile() {
 	client := MockAzureClient{PropertiesError: errors.New("i always error")}
 	fs := NewFileSystem().WithClient(&client)
 
@@ -278,7 +278,7 @@ func (s *FileTestSuite) TestTouch() {
 	s.NoError(f.Touch())
 }
 
-func (s *FileTestSuite) TestTouch_NonexistantContainer() {
+func (s *FileTestSuite) TestTouch_NonexistentContainer() {
 	client := MockAzureClient{ExpectedError: errors.New("i always error")}
 	fs := NewFileSystem().WithClient(&client)
 

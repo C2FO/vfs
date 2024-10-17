@@ -30,7 +30,7 @@ type RetryBucketHandler struct {
 	handler *storage.BucketHandle
 }
 
-// Attrs accetps a context and returns bucket attrs wrapped in a retry
+// Attrs accepts a context and returns bucket attrs wrapped in a retry
 func (r *RetryBucketHandler) Attrs(ctx context.Context) (*storage.BucketAttrs, error) {
 	return bucketAttributeRetry(r.Retry, func() (*storage.BucketAttrs, error) {
 		return r.handler.Attrs(ctx)

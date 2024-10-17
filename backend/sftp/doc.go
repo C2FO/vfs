@@ -1,5 +1,5 @@
 /*
-Package sftp SFTP VFS implementation.
+Package sftp - SFTP VFS implementation.
 
 # Usage
 
@@ -20,7 +20,7 @@ Or call directly:
 	  import "github.com/c2fo/vfs/v6/backend/sftp"
 
 	  func DoSomething() {
-		  fs := sftp.NewFilesystem()
+		  fs := sftp.NewFileSystem()
 
 		  location, err := fs.NewLocation("myuser@server.com:22", "/some/path/")
 		  if err != nil {
@@ -29,8 +29,8 @@ Or call directly:
 		  ...
 	  }
 
-sftp can be augmented with some implementation-specific methods.  Backend returns vfs.Filesystem interface so it
-would have to be cast as sftp.Filesystem to use them.
+sftp can be augmented with some implementation-specific methods.  Backend returns vfs.FileSystem interface so it
+would have to be cast as sftp.FileSystem to use them.
 
 These methods are chainable:
 (*FileSystem) WithClient(client interface{}) *FileSystem
@@ -38,9 +38,9 @@ These methods are chainable:
 
 	  func DoSomething() {
 
-		  // cast if fs was created using backend.Backend().  Not necessary if created directly from sftp.NewFilesystem().
+		  // cast if fs was created using backend.Backend().  Not necessary if created directly from sftp.NewFileSystem().
 		  fs := backend.Backend(sftp.Scheme)
-		  fs = fs.(*sftp.Filesystem)
+		  fs = fs.(*sftp.FileSystem)
 
 		  // to pass specific client
 		  sshClient, err := ssh.Dial("tcp", "myuser@server.com:22", &ssh.ClientConfig{
@@ -172,7 +172,7 @@ Any server request action using the same underlying FileSystem (and therefore sf
 should be the most desirable behavior.
 
 	func doSFTPStuff() {
-		fs := sftp.NewFilesystem()
+		fs := sftp.NewFileSystem()
 		loc, err := fs.NewLocation("myuser@server.com:22", "/some/path/")
 		file1, _ := loc.NewFile("file1.txt")
 		file2, _ := loc.NewFile("file2.txt")
@@ -189,7 +189,7 @@ should be the most desirable behavior.
 		doSFTPStuff()
 		// even though the vfs sftp objects have fallen out of scope, our connection remains UNTIL the timer counts down
 
-		// do more work (that take longer than 10 seconds
+		// do more work (that take longer than 10 seconds)
 		doOtherTimeConsumingStuff()
 
 		// at some point during the above, the sftp connection will have closed

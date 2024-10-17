@@ -54,7 +54,7 @@ func (s *FileSystemTestSuite) TestNewFile() {
 func (s *FileSystemTestSuite) TestNewFile_NilReceiver() {
 	var fs *FileSystem
 	file, err := fs.NewFile("temp", "/foo/bar/test.txt")
-	s.Error(err, "the receiver pointer is nil so we whould receive an error")
+	s.Error(err, "the receiver pointer is nil so we would receive an error")
 	s.Equal("azure.FileSystem receiver pointer must be non-nil", err.Error())
 	s.Nil(file, "Since there was an error we expect a nil file to be returned")
 }

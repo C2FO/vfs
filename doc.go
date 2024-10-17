@@ -60,7 +60,7 @@ becomes
 
 # Usage
 
-We provide vfssimple as basic way of initializing file system backends (see each implementations's docs about authentication).
+We provide vfssimple as basic way of initializing file system backends (see each implementation's docs about authentication).
 vfssimple pulls in every c2fo/vfs backend.  If you need to reduce the backend requirements (and app memory footprint) or
 add a third party backend, you'll need to implement your own "factory".  See backend doc for more info.
 

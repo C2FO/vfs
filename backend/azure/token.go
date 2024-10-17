@@ -11,14 +11,14 @@ import (
 // TokenCredentialFactory is an interface that provides a single factory method to create azure.TokenCredentials.  This
 // interface is provided to allow for mocking in unit tests.
 type TokenCredentialFactory interface {
-	// New creates a new azblob.TokenCredntial struct
+	// New creates a new azblob.TokenCredential struct
 	New(tenantID, clientID, clientSecret, azureEnvName string) (azblob.TokenCredential, error)
 }
 
 // DefaultTokenCredentialFactory knows how to make azblob.TokenCredential structs for OAuth authentication
 type DefaultTokenCredentialFactory struct{}
 
-// New creates a new azblob.TokenCredntial struct
+// New creates a new azblob.TokenCredential struct
 func (f *DefaultTokenCredentialFactory) New(tenantID, clientID, clientSecret, azureEnvName string) (azblob.TokenCredential, error) {
 	env, err := azure.EnvironmentFromName(azureEnvName)
 	if err != nil {

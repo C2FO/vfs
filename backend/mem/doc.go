@@ -1,5 +1,5 @@
 /*
-Package mem built-in mem lib VFS implementation.
+Package mem - built-in mem lib VFS implementation.
 Usage
 Rely on github.com/c2fo/vfs/v6/backend
 

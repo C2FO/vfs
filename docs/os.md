@@ -2,7 +2,7 @@
 
 ---
 
-Package os built-in os lib VFS implementation.
+Package os - built-in os lib VFS implementation.
 
 
 ### Usage
@@ -139,7 +139,7 @@ Name returns the full name of the File relative to [Location.Name()](#func-files
 ```go
 func (f *File) Path() string
 ```
-Path returns the the path of the File relative to [Location.Name()](#func-filesystem-name).
+Path returns the path of the File relative to [Location.Name()](#func-filesystem-name).
 
 #### func (*File) Read
 
@@ -154,7 +154,7 @@ if any.
 ```go
 func (f *File) Seek(offset int64, whence int) (int64, error)
 ```
-Seek implements the io.Seeker interface. It accepts an offset and "whench" where
+Seek implements the io.Seeker interface. It accepts an offset and "whence" where
 0 means relative to the origin of the file, 1 means relative to the current
 offset, and 2 means relative to the end. It returns the new offset and an error,
 if any.
@@ -186,7 +186,7 @@ URI returns the [File](#type-file)'s URI as a string.
 func (f *File) Write(p []byte) (n int, err error)
 ```
 Write implements the [io.Writer](https://godoc.org/io#Writer) interface. It accepts a slice of bytes and
-returns the number of btyes written and an error, if any.
+returns the number of bytes written and an error, if any.
 
 ### type FileSystem
 
@@ -274,7 +274,7 @@ file system.
 ```go
 func (l *Location) List() ([]string, error)
 ```
-List returns a slice of all files in the top directory of of the location.
+List returns a slice of all files in the top directory of the location.
 
 #### func (*Location) ListByPrefix
 
@@ -282,7 +282,7 @@ List returns a slice of all files in the top directory of of the location.
 func (l *Location) ListByPrefix(prefix string) ([]string, error)
 ```
 ListByPrefix returns a slice of all files starting with "prefix" in the top
-directory of of the location.
+directory of the location.
 
 #### func (*Location) ListByRegex
 
@@ -290,7 +290,7 @@ directory of of the location.
 func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error)
 ```
 ListByRegex returns a slice of all files matching the regex in the top directory
-of of the location.
+of the location.
 
 #### func (*Location) NewFile
 

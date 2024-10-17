@@ -1,5 +1,5 @@
 /*
-Package s3 AWS S3 VFS implementation.
+Package s3 - AWS S3 VFS implementation.
 
 # Usage
 
