@@ -6,14 +6,12 @@ vfscp copies a file from one place to another, even between supported remote
 systems. Complete URI (scheme:// authority/path) required except for local
 file system. See github.com/c2fo/vfs docs for authentication.
 
-
 ### Usage
 
 vfscp's usage is extremely simple:
 
     vfscp <uri> <uri>
     -help   prints help message
-
 
 ### Examples
 

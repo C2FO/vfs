@@ -116,7 +116,6 @@ func (ts *fileSystemTestSuite) TestClient() {
 	ts.NoError(err, "no error")
 	ts.NotNil(client, "client was set")
 	ts.NotNil(s3fs.client, "client was set")
-
 }
 
 func TestFileSystem(t *testing.T) {

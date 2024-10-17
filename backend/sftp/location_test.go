@@ -70,7 +70,6 @@ func (lt *locationTestSuite) TestList() {
 }
 
 func (lt *locationTestSuite) TestListByPrefix() {
-
 	expectedFileList := []string{"file.txt", "file2.txt"}
 
 	file1 := &mocks.FileInfo{}
@@ -192,7 +191,6 @@ func (lt *locationTestSuite) TestVolume() {
 }
 
 func (lt *locationTestSuite) TestPath() {
-
 	loc, err := lt.sftpfs.NewLocation("host.com", "/path/")
 	lt.NoError(err)
 	lt.Equal("/path/", loc.Path(), "Path() should return the path on location.")

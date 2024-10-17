@@ -78,7 +78,6 @@ func copyFiles(srcFileURI, targetFileURI string) {
 	}
 
 	fmt.Print(green.Sprint("done\n\n"))
-
 }
 
 func failMessage(err error) {

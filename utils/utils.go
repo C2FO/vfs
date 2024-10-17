@@ -92,7 +92,6 @@ func GetFileURI(f vfs.File) string {
 
 // GetLocationURI returns a Location URI
 func GetLocationURI(l vfs.Location) string {
-
 	return fmt.Sprintf("%s://%s%s", l.FileSystem().Scheme(), l.Volume(), l.Path())
 }
 
@@ -228,7 +227,6 @@ func UpdateLastModifiedByMoving(file vfs.File) error {
 // SeekTo is a helper function for Seek. It takes the current position, offset, whence, and length of the file
 // and returns the new position. It also checks for invalid offsets and returns an error if one is found.
 func SeekTo(length, position, offset int64, whence int) (int64, error) {
-
 	switch whence {
 	default:
 		return 0, vfs.ErrSeekInvalidWhence

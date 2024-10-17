@@ -23,7 +23,6 @@ type Location struct {
 // List calls SFTP ReadDir to list all files in the location's path.
 // If you have many thousands of files at the given location, this could become quite expensive.
 func (l *Location) List() ([]string, error) {
-
 	var filenames []string
 	client, err := l.fileSystem.Client(l.Authority)
 	if err != nil {
@@ -50,7 +49,6 @@ func (l *Location) List() ([]string, error) {
 
 // ListByPrefix calls SFTP ReadDir with the location's path modified relatively by the prefix arg passed to the function.
 func (l *Location) ListByPrefix(prefix string) ([]string, error) {
-
 	var filenames []string
 	client, err := l.fileSystem.Client(l.Authority)
 	if err != nil {
@@ -91,7 +89,6 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 // ListByRegex retrieves the filenames of all the files at the location's current path, then filters out all those
 // that don't match the given regex. The resource considerations of List() apply here as well.
 func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
-
 	filenames, err := l.List()
 	if err != nil {
 		return []string{}, err
@@ -118,7 +115,6 @@ func (l *Location) Path() string {
 
 // Exists returns true if the remote SFTP file exists.
 func (l *Location) Exists() (bool, error) {
-
 	client, err := l.fileSystem.Client(l.Authority)
 	if err != nil {
 		return false, err

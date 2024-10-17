@@ -49,7 +49,6 @@ func (ts *fileTestSuite) SetupTest() {
 	testFileName = "/some/path/to/file.txt"
 	bucket = "bucket"
 	testFile, err = fs.NewFile(bucket, testFileName)
-
 	if err != nil {
 		ts.Fail("Shouldn't return error creating test s3.File instance.")
 	}
@@ -362,8 +361,9 @@ func (ts *fileTestSuite) TestGetCopyObject() {
 	targetFile := &File{
 		fileSystem: &FileSystem{
 			client: s3apiMock,
-			options: Options{AccessKeyID: "xyz",
-				ACL: "SomeCannedACL",
+			options: Options{
+				AccessKeyID: "xyz",
+				ACL:         "SomeCannedACL",
 			},
 		},
 		bucket: "TestBucket",
@@ -426,7 +426,6 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 	// no error "copying" objects
 	_, err := f.CopyToLocation(l)
 	ts.NoError(err, "Shouldn't return error for this call to CopyToLocation")
-
 }
 
 func (ts *fileTestSuite) TestTouch() {
@@ -488,7 +487,6 @@ func (ts *fileTestSuite) TestTouch() {
 	ts.NoError(terr2, "Shouldn't return error creating test s3.File instance.")
 
 	s3Mock2.AssertExpectations(ts.T())
-
 }
 
 func (ts *fileTestSuite) TestMoveToLocation() {
@@ -547,7 +545,6 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 }
 
 func (ts *fileTestSuite) TestMoveToLocationFail() {
-
 	// If CopyToLocation fails we need to ensure DeleteObject isn't called.
 	otherFs := new(vfsmocks.FileSystem)
 	location := new(vfsmocks.Location)
@@ -763,7 +760,6 @@ func (ts *fileTestSuite) TestCloseWithWrite() {
 	ts.Error(err, "file doesn't exists , retired 5 times ")
 
 	s3Mock.AssertExpectations(ts.T())
-
 }
 
 type fileTestCase struct {
@@ -776,7 +772,6 @@ type fileTestCase struct {
 }
 
 func (ts *fileTestSuite) TestWriteOperations() {
-
 	// setup fake uploader
 	oldfunc := getUploader
 	defer func() { getUploader = oldfunc }()

@@ -28,7 +28,6 @@ func (dc *dataConn) Delete(path string) error {
 		return singleOpInvalidDataconnType
 	}
 	return dc.c.Delete(path)
-
 }
 
 // GetEntry attempts to retrieve the ftp entry for
