@@ -6,7 +6,7 @@
 Package options provides a means of creating custom options that can be used with operations that are performed on components of filesystem. 
 
 ## DeleteOption
-Currently, we define DeleteOption interface that can be used to implement custom options that can be used for delete operation. One such implementation is the [DeleteAllVersions](./delete_options.md#DeleteAllVersions) option.
+Currently, we define DeleteOption interface that can be used to implement custom options that can be used for delete operation. One such implementation is the [delete.AllVersions](./delete_options.md#DeleteAllVersions) option.
 
 ## Development
 
@@ -33,8 +33,8 @@ Now, in each implementation of file.Delete(... options.DeleteOptions), implement
     func (f *File) Delete(opts ...options.DeleteOption) error {
         for _, o := range opts {
             switch o.(type) {
-            case delete.DeleteAllVersions:
-                deleteAllVersions = true
+            case delete.AllVersions:
+                allVersions = true
 			case delete.MyTakeBackupDeleteOption:
                 // do something to take backup	
             default:

@@ -587,7 +587,7 @@ func (ts *fileTestSuite) TestDeleteError() {
 	s3apiMock.AssertExpectations(ts.T())
 }
 
-func (ts *fileTestSuite) TestDeleteWithDeleteAllVersionsOption() {
+func (ts *fileTestSuite) TestDeleteWithAllVersionsOption() {
 	var versions []*s3.ObjectVersion
 	verIds := [...]string{"ver1", "ver2"}
 	for i := range verIds {
@@ -599,13 +599,13 @@ func (ts *fileTestSuite) TestDeleteWithDeleteAllVersionsOption() {
 	s3apiMock.On("ListObjectVersions", mock.AnythingOfType("*s3.ListObjectVersionsInput")).Return(&versOutput, nil)
 	s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
 
-	err := testFile.Delete(delete.WithDeleteAllVersions())
+	err := testFile.Delete(delete.WithAllVersions())
 	ts.Nil(err, "Successful delete should not return an error.")
 	s3apiMock.AssertExpectations(ts.T())
 	s3apiMock.AssertNumberOfCalls(ts.T(), "DeleteObject", 3)
 }
 
-func (ts *fileTestSuite) TestDeleteWithDeleteAllVersionsOptionError() {
+func (ts *fileTestSuite) TestDeleteWithAllVersionsOptionError() {
 	var versions []*s3.ObjectVersion
 	verIds := [...]string{"ver1", "ver2"}
 	for i := range verIds {
@@ -619,7 +619,7 @@ func (ts *fileTestSuite) TestDeleteWithDeleteAllVersionsOptionError() {
 	s3apiMock.On("DeleteObject", &s3.DeleteObjectInput{Key: &testFileName, Bucket: &bucket, VersionId: &verIds[0]}).
 		Return(nil, errors.New("something went wrong"))
 
-	err := testFile.Delete(delete.WithDeleteAllVersions())
+	err := testFile.Delete(delete.WithAllVersions())
 	ts.NotNil(err, "Delete should return an error if s3 api had error.")
 	s3apiMock.AssertExpectations(ts.T())
 	s3apiMock.AssertNumberOfCalls(ts.T(), "DeleteObject", 2)

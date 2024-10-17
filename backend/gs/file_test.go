@@ -211,7 +211,7 @@ func (ts *fileTestSuite) TestDeleteRemoveAllVersions() {
 	}
 	assert.Equal(ts.T(), 1, len(handles))
 
-	err = file.Delete(delete.WithDeleteAllVersions())
+	err = file.Delete(delete.WithAllVersions())
 	if err != nil {
 		ts.Fail("Shouldn't fail deleting the file")
 	}

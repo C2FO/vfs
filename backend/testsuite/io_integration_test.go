@@ -120,7 +120,7 @@ type ReadWriteSeekCloseURINamer interface {
 	io.Closer
 	Name() string
 	URI() string
-	Delete(deleteOpts ...options.DeleteOption) error
+	Delete(opts ...options.DeleteOption) error
 }
 
 type ioTestSuite struct {

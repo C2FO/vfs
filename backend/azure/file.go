@@ -225,7 +225,7 @@ func (f *File) MoveToFile(file vfs.File) error {
 }
 
 // Delete deletes the file.
-// If DeleteAllVersions option is provided, each version of the file is deleted. NOTE: if soft deletion is enabled,
+// If delete.AllVersions option is provided, each version of the file is deleted. NOTE: if soft deletion is enabled,
 // it will mark all versions as soft deleted, and they will be removed by Azure as per soft deletion policy.
 // Returns any error returned by the API.
 func (f *File) Delete(opts ...options.DeleteOption) error {
@@ -238,11 +238,11 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		return err
 	}
 
-	var deleteAllVersions bool
+	var allVersions bool
 	for _, o := range opts {
 		switch o.(type) {
-		case delete.DeleteAllVersions:
-			deleteAllVersions = true
+		case delete.AllVersions:
+			allVersions = true
 		default:
 		}
 	}
@@ -251,7 +251,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		return err
 	}
 
-	if deleteAllVersions {
+	if allVersions {
 		return client.DeleteAllVersions(f)
 	}
 
