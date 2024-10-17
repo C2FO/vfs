@@ -295,7 +295,7 @@ be done to the new file.
 ```go
 func (f *File) Delete(opts ...options.DeleteOption) error
 ```
-Deletes the file using Azure's delete blob api. If opts is of type DeleteAllVersions, after deleting the blob, each version of the blob is deleted using Azure's delete api. NOTE that if soft deletion is enabled for the blobs, each version will be marked as deleted and will get permanently deleted by Azure as per the soft deletion policy. Returns any error returned by the API.
+Deletes the file using Azure's delete blob api. If opts is of type delete.AllVersions, after deleting the blob, each version of the blob is deleted using Azure's delete api. NOTE that if soft deletion is enabled for the blobs, each version will be marked as deleted and will get permanently deleted by Azure as per the soft deletion policy. Returns any error returned by the API.
 
 #### func (*File) Exists
 

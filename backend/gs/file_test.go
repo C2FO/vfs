@@ -198,7 +198,7 @@ func (ts *fileTestSuite) TestDeleteRemoveAllVersions() {
 	ts.Require().NoError(err, "Shouldn't fail getting object generation handles")
 	ts.Len(handles, 1)
 
-	err = file.Delete(delete.WithDeleteAllVersions())
+	err = file.Delete(delete.WithAllVersions())
 	ts.Require().NoError(err, "Shouldn't fail deleting the file")
 
 	bucket := client.Bucket(bucketName)

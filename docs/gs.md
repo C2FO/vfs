@@ -130,7 +130,7 @@ to the new file.
 func (f *File) Delete(opts ...options.DeleteOption) error
 ```
 Delete clears any local temp file, or write buffer from read/writes to the file,
-then makes a DeleteObject call to GCS for the file. If opts is of type DeleteAllVersions, DeleteObject call is made to
+then makes a DeleteObject call to GCS for the file. If opts is of type delete.AllVersions, DeleteObject call is made to
 GCS for each version of the file. Returns any error returned by the API.
 
 #### func (*File) Exists

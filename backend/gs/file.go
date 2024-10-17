@@ -454,18 +454,18 @@ func (f *File) MoveToFile(file vfs.File) error {
 }
 
 // Delete clears any local temp file, or write buffer from read/writes to the file, then makes
-// a DeleteObject call to GCS for the file. If DeleteAllVersions option is provided,
+// a DeleteObject call to GCS for the file. If delete.AllVersions option is provided,
 // DeleteObject call is made to GCS for each version of the file. Returns any error returned by the API.
 func (f *File) Delete(opts ...options.DeleteOption) error {
 	if err := f.Close(); err != nil {
 		return err
 	}
 
-	var deleteAllVersions bool
+	var allVersions bool
 	for _, o := range opts {
 		switch o.(type) {
-		case delete.DeleteAllVersions:
-			deleteAllVersions = true
+		case delete.AllVersions:
+			allVersions = true
 		default:
 		}
 	}
@@ -479,7 +479,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		return err
 	}
 
-	if deleteAllVersions {
+	if allVersions {
 		handles, err := f.getObjectGenerationHandles()
 		if err != nil {
 			return err

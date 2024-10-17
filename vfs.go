@@ -131,7 +131,7 @@ type Location interface {
 	// error handling overhead.
 	//
 	// * Accepts relative file path.
-	DeleteFile(relFilePath string, deleteOpts ...options.DeleteOption) error
+	DeleteFile(relFilePath string, opts ...options.DeleteOption) error
 
 	// URI returns the fully qualified absolute URI for the Location.  IE, s3://bucket/some/path/
 	//
@@ -197,7 +197,7 @@ type File interface {
 	MoveToFile(file File) error
 
 	// Delete unlinks the File on the file system.
-	Delete(deleteOpts ...options.DeleteOption) error
+	Delete(opts ...options.DeleteOption) error
 
 	// LastModified returns the timestamp the file was last modified (as *time.Time).
 	LastModified() (*time.Time, error)

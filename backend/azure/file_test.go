@@ -189,22 +189,22 @@ func (s *FileTestSuite) TestDelete() {
 	s.NoError(f.Delete(), "The delete should succeed so there should be no error")
 }
 
-func (s *FileTestSuite) TestDeleteWithDeleteAllVersionsOption() {
+func (s *FileTestSuite) TestDeleteWithAllVersionsOption() {
 	client := MockAzureClient{}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.NoError(err, "The path is valid so no error should be returned")
-	s.NoError(f.Delete(delete.WithDeleteAllVersions()), "The delete should succeed so there should be no error")
+	s.NoError(f.Delete(delete.WithAllVersions()), "The delete should succeed so there should be no error")
 }
 
-func (s *FileTestSuite) TestDeleteWithDeleteAllVersionsOption_Error() {
+func (s *FileTestSuite) TestDeleteWithAllVersionsOption_Error() {
 	client := MockAzureClient{ExpectedError: errors.New("i always error")}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.NoError(err, "The path is valid so no error should be returned")
-	err = f.Delete(delete.WithDeleteAllVersions())
+	err = f.Delete(delete.WithAllVersions())
 	s.Error(err, "If the file does not exist we get an error")
 }
 

@@ -70,11 +70,11 @@ func (_c *Location_ChangeDir_Call) RunAndReturn(run func(string) error) *Locatio
 	return _c
 }
 
-// DeleteFile provides a mock function with given fields: relFilePath, deleteOpts
-func (_m *Location) DeleteFile(relFilePath string, deleteOpts ...options.DeleteOption) error {
-	_va := make([]interface{}, len(deleteOpts))
-	for _i := range deleteOpts {
-		_va[_i] = deleteOpts[_i]
+// DeleteFile provides a mock function with given fields: relFilePath, opts
+func (_m *Location) DeleteFile(relFilePath string, opts ...options.DeleteOption) error {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
 	}
 	var _ca []interface{}
 	_ca = append(_ca, relFilePath)
@@ -87,7 +87,7 @@ func (_m *Location) DeleteFile(relFilePath string, deleteOpts ...options.DeleteO
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, ...options.DeleteOption) error); ok {
-		r0 = rf(relFilePath, deleteOpts...)
+		r0 = rf(relFilePath, opts...)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -102,13 +102,13 @@ type Location_DeleteFile_Call struct {
 
 // DeleteFile is a helper method to define mock.On call
 //   - relFilePath string
-//   - deleteOpts ...options.DeleteOption
-func (_e *Location_Expecter) DeleteFile(relFilePath interface{}, deleteOpts ...interface{}) *Location_DeleteFile_Call {
+//   - opts ...options.DeleteOption
+func (_e *Location_Expecter) DeleteFile(relFilePath interface{}, opts ...interface{}) *Location_DeleteFile_Call {
 	return &Location_DeleteFile_Call{Call: _e.mock.On("DeleteFile",
-		append([]interface{}{relFilePath}, deleteOpts...)...)}
+		append([]interface{}{relFilePath}, opts...)...)}
 }
 
-func (_c *Location_DeleteFile_Call) Run(run func(relFilePath string, deleteOpts ...options.DeleteOption)) *Location_DeleteFile_Call {
+func (_c *Location_DeleteFile_Call) Run(run func(relFilePath string, opts ...options.DeleteOption)) *Location_DeleteFile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		variadicArgs := make([]options.DeleteOption, len(args)-1)
 		for i, a := range args[1:] {
