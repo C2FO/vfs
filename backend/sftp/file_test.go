@@ -33,7 +33,7 @@ func (ts *fileTestSuite) SetupTest() {
 	ts.fs = FileSystem{sftpclient: ts.sftpMock, options: Options{}}
 	ts.testFile, err = ts.fs.NewFile("user@host.com:22", "/some/path/to/file.txt")
 	if err != nil {
-		ts.Fail("Shouldn't return error creating test sftp.File instance.")
+		ts.Error(err, "Shouldn't return error creating test sftp.File instance.")
 	}
 }
 
@@ -218,7 +218,7 @@ func (ts *fileTestSuite) Test_openFile() {
 func (ts *fileTestSuite) TestExists() {
 	sftpfile, err := ts.fs.NewFile("user@host.com", "/path/hello.txt")
 	if err != nil {
-		ts.Fail("Shouldn't fail creating new file.")
+		ts.Error(err, "Shouldn't fail creating new file.")
 	}
 
 	ts.sftpMock.On("MkdirAll", sftpfile.Location().Path()).Return(nil).Once()
@@ -232,7 +232,7 @@ func (ts *fileTestSuite) TestExists() {
 func (ts *fileTestSuite) TestNotExists() {
 	sftpfile, err := ts.fs.NewFile("user@host.com", "/path/hello.txt")
 	if err != nil {
-		ts.Fail("Shouldn't fail creating new file.")
+		ts.Error(err, "Shouldn't fail creating new file.")
 	}
 
 	ts.sftpMock.On("MkdirAll", sftpfile.Location().Path()).Return(nil).Once()

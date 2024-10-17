@@ -39,7 +39,7 @@ func (ts *fileTestSuite) SetupTest() {
 	ts.fs = FileSystem{ftpclient: ts.ftpClientMock, options: Options{}}
 	ts.testFile, err = ts.fs.NewFile("user@host.com:22", "/some/path/to/file.txt")
 	if err != nil {
-		ts.Fail("Shouldn't return error creating test ftp.File instance.")
+		ts.Error(err, "Shouldn't return error creating test ftp.File instance.")
 	}
 }
 
