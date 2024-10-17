@@ -20,19 +20,19 @@ Or call directly:
 	import "github.com/c2fo/vfs/v6/backend/azure"
 
 	func DoSomething() {
-	    fs := azure.NewFilesystem()
+	    fs := azure.NewFileSystem()
 	    ...
 	}
 
-azure can be augmented with the following implementation-specific methods.  Backend returns vfs.Filesystem interface so it
-would have to be cast as azure.Filesystem to use the following:
+azure can be augmented with the following implementation-specific methods.  Backend returns vfs.FileSystem interface so it
+would have to be cast as azure.FileSystem to use the following:
 
 	func DoSomething() {
 
 	    ...
 
-	    // cast if fs was created using backend.Backend().  Not necessary if created directly from azure.NewFilesystem().
-	    fs = fs.(azure.Filesystem)
+	    // cast if fs was created using backend.Backend().  Not necessary if created directly from azure.NewFileSystem().
+	    fs = fs.(azure.FileSystem)
 
 	    // to pass in client options
 	    fs = fs.WithOptions(

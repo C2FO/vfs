@@ -133,7 +133,7 @@ func PathToURI(p string) (string, error) {
 		return "", err
 	}
 
-	// if scheme is found, its already a URI
+	// if scheme is found, it's already a URI
 	if u.Scheme != "" {
 		return p, nil
 	}
@@ -211,7 +211,7 @@ func UpdateLastModifiedByMoving(file vfs.File) error {
 		return err
 	}
 
-	// copy file file to tempfile
+	// copy file to tempfile
 	err = file.CopyToFile(tempfile)
 	if err != nil {
 		return err

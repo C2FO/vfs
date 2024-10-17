@@ -19,7 +19,7 @@ const name = "File Transfer Protocol"
 var dataConnGetterFunc func(context.Context, utils.Authority, *FileSystem, *File, types.OpenType) (types.DataConn, error)
 var defaultClientGetter func(context.Context, utils.Authority, Options) (client types.Client, err error)
 
-// FileSystem implements vfs.Filesystem for the FTP filesystem.
+// FileSystem implements vfs.FileSystem for the FTP filesystem.
 type FileSystem struct {
 	options   vfs.Options
 	ftpclient types.Client
@@ -146,6 +146,6 @@ func NewFileSystem() *FileSystem {
 func init() {
 	defaultClientGetter = getClient
 	dataConnGetterFunc = getDataConn
-	// registers a default Filesystem
+	// registers a default FileSystem
 	backend.Register(Scheme, NewFileSystem())
 }

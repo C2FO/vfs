@@ -1,5 +1,5 @@
 /*
-Package gs Google Cloud Storage VFS implementation.
+Package gs - Google Cloud Storage VFS implementation.
 
 # Usage
 
@@ -20,19 +20,19 @@ Or call directly:
 	import "github.com/c2fo/vfs/v6/backend/gs"
 
 	func DoSomething() {
-	    fs := gs.NewFilesystem()
+	    fs := gs.NewFileSystem()
 	    ...
 	}
 
-gs can be augmented with the following implementation-specific methods.  Backend returns vfs.Filesystem interface so it
-would have to be cast as gs.Filesystem to use the following:
+gs can be augmented with the following implementation-specific methods.  Backend returns vfs.FileSystem interface so it
+would have to be cast as gs.FileSystem to use the following:
 
 	func DoSomething() {
 
 	    ...
 
-	    // cast if fs was created using backend.Backend().  Not necessary if created directly from gs.NewFilesystem().
-	    fs = fs.(gs.Filesystem)
+	    // cast if fs was created using backend.Backend().  Not necessary if created directly from gs.NewFileSystem().
+	    fs = fs.(gs.FileSystem)
 
 	    // to use your own "context"
 	    ctx := context.Background()

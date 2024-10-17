@@ -62,14 +62,14 @@ To create your own backend, you must create a package that implements the interf
 
     // register backend
     func init() {
-        backend.Register("exfs", &MyExoticFilesystem{})
+        backend.Register("exfs", &MyExoticFileSystem{})
     }
 ```
 
 Then do use it in some other package do
 
 ```go
-    package MyExoticFilesystem
+    package MyExoticFileSystem
 
     import(
         "github.com/c2fo/vfs/v6/backend"

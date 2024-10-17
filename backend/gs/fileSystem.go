@@ -129,7 +129,7 @@ func (d *defaultClientCreator) NewClient(ctx context.Context, opts ...option.Cli
 	return storage.NewClient(ctx, opts...)
 }
 
-// NewFileSystem initializer for FileSystem struct accepts google cloud storage client and returns Filesystem or error.
+// NewFileSystem initializer for FileSystem struct accepts google cloud storage client and returns FileSystem or error.
 func NewFileSystem() *FileSystem {
 	fs := &FileSystem{
 		ctx:           context.Background(),
@@ -140,6 +140,6 @@ func NewFileSystem() *FileSystem {
 }
 
 func init() {
-	// registers a default Filesystem
+	// registers a default FileSystem
 	backend.Register(Scheme, NewFileSystem())
 }

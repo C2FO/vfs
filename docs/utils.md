@@ -65,7 +65,7 @@ PathToURI takes a relative or absolute path and returns an OS URI.
 * We assume non-scheme path is an OS File or Location. 
 * We assume volume(URI authority) is empty. 
 * We assume relative paths are relative to the pwd (program's working directory)
-* We assum an empty path is equal to the root path: "/"
+* We assume an empty path is equal to the root path: "/"
 
 | original path | becomes URI |
 | --------------- | --------------- |

@@ -27,7 +27,7 @@ type Options struct {
 	KnownHostsFile     string              `json:"knownHostsFile,omitempty"` // env var VFS_SFTP_KNOWN_HOSTS_FILE
 	KnownHostsString   string              `json:"knownHostsString,omitempty"`
 	KeyExchanges       []string            `json:"keyExchanges,omitempty"`
-	Ciphers            []string            `json:"cihers,omitempty"`
+	Ciphers            []string            `json:"ciphers,omitempty"`
 	MACs               []string            `json:"macs,omitempty"`
 	HostKeyAlgorithms  []string            `json:"hostKeyAlgorithms,omitempty"`
 	AutoDisconnect     int                 `json:"autoDisconnect,omitempty"` // seconds before disconnecting. default: 10
@@ -212,7 +212,7 @@ func getHostKeyCallback(opts Options) (ssh.HostKeyCallback, error) {
 
 	// use env var known_hosts file path, ie, /home/bob/.ssh/known_hosts
 	case os.Getenv("VFS_SFTP_INSECURE_KNOWN_HOSTS") != "":
-		return ssh.InsecureIgnoreHostKey(), nil //nolint:gosec // this is only use if a uer specifically call it (testing)
+		return ssh.InsecureIgnoreHostKey(), nil //nolint:gosec // this is only used if a user specifically calls it (testing)
 
 	// use user/system-wide known_hosts paths (as defined by OpenSSH https://man.openbsd.org/ssh)
 	default:
@@ -233,15 +233,15 @@ func findHomeSystemKnownHosts(knownHostsFiles []string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	homeKnonwHostsPath := utils.EnsureLeadingSlash(path.Join(home, ".ssh/known_hosts"))
+	homeKnownHostsPath := utils.EnsureLeadingSlash(path.Join(home, ".ssh/known_hosts"))
 
 	// check file existence first to prevent auto-vivification of file
-	found, err := foundFile(homeKnonwHostsPath)
+	found, err := foundFile(homeKnownHostsPath)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, err
 	}
 	if found {
-		knownHostsFiles = append(knownHostsFiles, homeKnonwHostsPath)
+		knownHostsFiles = append(knownHostsFiles, homeKnownHostsPath)
 	}
 
 	// add /etc/ssh/.ssh/known_hosts for unix-like systems.  SSH doesn't exist natively on Windows and each

@@ -262,7 +262,7 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 		   TODO: *************************************************************************************************************
 			     note that Exists is not consistent among implementations. GCSs and S3 always return true if the bucket exist.
 		         Fundamentally, why one wants to know if location exists is to know whether you're able to write there.  But
-		         this feels unintuitve.
+		         this feels unintuitive.
 	         	 *************************************************************************************************************
 
 		   Consider:
@@ -571,7 +571,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 		// CopyToFile will copy the current file to the provided file instance.
 		//
 		//   * In the case of an error, nil is returned for the file.
-		//   * CopyToLocation should use native functions when possible withen the same scheme.
+		//   * CopyToLocation should use native functions when possible within the same scheme.
 		//   * If the file already exists, the contents will be overwritten with the current file's contents.
 
 		// setup dstFile
@@ -875,7 +875,7 @@ func (s *vfsTestSuite) gsList(baseLoc vfs.Location) {
 	*/
 
 	/*
-		first create persisent "folder"
+		first create persistent "folder"
 	*/
 
 	// getting client since VFS doesn't allow a File ending with a slash
@@ -895,7 +895,7 @@ func (s *vfsTestSuite) gsList(baseLoc vfs.Location) {
 	s.NoError(writer.Close())
 
 	/*
-		next create create a file inside the "folder"
+		next create a file inside the "folder"
 	*/
 
 	f, err := baseLoc.NewFile("myfolder/file.txt")
@@ -921,7 +921,7 @@ func (s *vfsTestSuite) gsList(baseLoc vfs.Location) {
 
 func sftpRemoveAll(location *sftp.Location) error {
 
-	// get sftp client from Filesystem
+	// get sftp client from FileSystem
 	client, err := location.FileSystem().(*sftp.FileSystem).Client(location.Authority)
 	if err != nil {
 		return err
@@ -941,7 +941,7 @@ func recursiveSFTPRemove(absPath string, client sftp.Client) error {
 		return nil
 	}
 
-	// handle error unless it was directory which we'll assume we coudln't delete because it isn't empty
+	// handle error unless it was directory which we'll assume we couldn't delete because it isn't empty
 	if !strings.HasSuffix(absPath, "/") {
 		// not a directory (file's should have already been deleted) so return err
 		return err

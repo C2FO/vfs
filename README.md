@@ -30,7 +30,7 @@ the effect of
       }
 ```
 
-Not only was ugly but because the behaviors of each "file system" were 
+Not only was ugly but because the behaviors of each "file system" were
 different and we had to constantly alter the file locations and pass a bucket string (even
 if the file system didn't know what a bucket was).
 
@@ -73,7 +73,7 @@ go install github.com/c2fo/vfs/v6
 ### Upgrading
 
 #### Upgrading from v5 to v6
-With v6.0.0, sftp.Options struct changed to to accept an array of Key Exchange algorithms rather than a string. To update, change the syntax of the auth commands.
+With v6.0.0, sftp.Options struct changed to accept an array of Key Exchange algorithms rather than a string. To update, change the syntax of the auth commands.
 ```
   "keyExchanges":"diffie-hellman-group-a256"
 ```
@@ -85,7 +85,7 @@ becomes
 ### Usage
 
 We provide [vfssimple](docs/vfssimple.md) as basic way of initializing file system backends (see each
-implementations's docs about authentication). [vfssimple](docs/vfssimple.md) pulls in every c2fo/vfs
+implementation's docs about authentication). [vfssimple](docs/vfssimple.md) pulls in every c2fo/vfs
 backend. If you need to reduce the backend requirements (and app memory
 footprint) or add a third party backend, you'll need to implement your own
 "factory". See [backend](docs/backend.md) doc for more info.
@@ -134,10 +134,10 @@ Note: [io.Copy()](https://godoc.org/io#Copy) doesn't strictly define what happen
 will first delegate actual copying in the following:
   1. if the io.Reader also implements io.WriterTo, WriteTo() will do the copy
   2. if the io.Writer also implements io.ReaderFrom, ReadFrom() will do the copy
-  3. finally, if neither 1 or 2, io.Copy will do it's own buffered copy
+  3. finally, if neither 1 or 2, io.Copy will do its own buffered copy
 
 In case 3, and most implementations of cases 1 and 2, if reader is empty, Write() never gets called. What that means for
-vfs is there is no way for us to ensure that an empty file does or doesn't get written on an io.Copy().  For instance 
+vfs is there is no way for us to ensure that an empty file does or doesn't get written on an io.Copy().  For instance
 OS always creates a file, regardless of calling Write() whereas S3 must Write() and Close().
 
 As such, vfs cannot guarantee copy behavior except in our own CopyToFile, MoveToFile, CopyToLocation, and MoveToLocation
@@ -160,7 +160,7 @@ Feel free to send a pull request if you want to add your backend to the list.
   * [in-memory backend](docs/mem.md)
   * [sftp backend](docs/sftp.md)
   * [ftp backend](docs/ftp.md)
-  * [azure backend](docs/azure.md)  
+  * [azure backend](docs/azure.md)
 * [utils](docs/utils.md)
 
 ### Ideas
@@ -305,7 +305,7 @@ type File interface {
 	//
 	// For file:///some/path/to/file.txt, it would return file.txt
 	Name() string
-	
+
 	// Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
     	// Returns error if unable to touch File.
         Touch() error
@@ -345,7 +345,7 @@ type FileSystem interface {
 	NewLocation(volume string, absLocPath string) (Location, error)
 
 	// Name returns the name of the FileSystem ie: Amazon S3, os, Google Cloud Storage, etc.
-	Name() string	
+	Name() string
 
 	// Scheme returns the uri scheme used by the FileSystem: s3, file, gs, etc.
 	Scheme() string
@@ -395,7 +395,7 @@ type Location interface {
 	// Note: Some file systems may not have a volume and will return "".
 	Volume() string
 
-	// Path returns absolute location path, ie /some/path/to/.  An absolute path must be resolved to it's shortest path:
+	// Path returns absolute location path, ie /some/path/to/.  An absolute path must be resolved to its shortest path:
 	// see path.Clean
 	Path() string
 

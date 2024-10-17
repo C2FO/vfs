@@ -68,7 +68,7 @@ func (dc *dataConn) Rename(from, to string) error {
 }
 
 // IsSetTimeSupported will specify whether the ftp
-// set time function is availalbe for the connection.
+// set time function is available for the connection.
 func (dc *dataConn) IsSetTimeSupported() bool {
 	return dc.c.IsSetTimeSupported()
 }
@@ -125,7 +125,7 @@ func (dc *dataConn) Close() error {
 			if err := dc.W.Close(); err != nil {
 				return err
 			}
-			// after writer is closed STOR shoud commit - check for error
+			// after writer is closed STOR should commit - check for error
 			err := <-dc.errChan
 			dc.W = nil
 			dc.R = nil

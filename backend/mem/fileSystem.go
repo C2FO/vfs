@@ -11,7 +11,7 @@ import (
 
 // Scheme defines the FileSystem type's underlying implementation.
 const Scheme = "mem"
-const name = "In-Memory Filesystem"
+const name = "In-Memory FileSystem"
 
 type fsObject struct {
 	isFile bool

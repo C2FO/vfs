@@ -20,7 +20,7 @@ Or call directly:
 	  import "github.com/c2fo/vfs/v6/backend/ftp"
 
 	  func DoSomething() {
-		  fs := ftp.NewFilesystem()
+		  fs := ftp.NewFileSystem()
 
 		  location, err := fs.NewLocation("myuser@server.com:21", "/some/path/")
 		  if err != nil {
@@ -29,8 +29,8 @@ Or call directly:
 		  ...
 	  }
 
-ftp can be augmented with some implementation-specific methods.  Backend returns vfs.Filesystem interface so it
-would have to be cast as ftp.Filesystem to use them.
+ftp can be augmented with some implementation-specific methods.  Backend returns vfs.FileSystem interface so it
+would have to be cast as ftp.FileSystem to use them.
 
 These methods are chainable:
 (*FileSystem) WithClient(client interface{}) *FileSystem
@@ -38,9 +38,9 @@ These methods are chainable:
 
 	  func DoSomething() {
 
-		  // cast if fs was created using backend.Backend().  Not necessary if created directly from ftp.NewFilesystem().
+		  // cast if fs was created using backend.Backend().  Not necessary if created directly from ftp.NewFileSystem().
 		  fs := backend.Backend(ftp.Scheme)
-		  fs = fs.(*ftp.Filesystem)
+		  fs = fs.(*ftp.FileSystem)
 
 		  // to pass specific client implementing types.Client interface (in this case, _ftp github.com/jlaffaye/ftp)
 		  client, _ := _ftp.Dial("server.com:21")

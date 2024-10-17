@@ -157,7 +157,7 @@ func (ts *fileSystemTestSuite) TestClientWithAutoDisconnect() {
 	// list should've been called 3 times
 	client.AssertExpectations(ts.T())
 
-	// newClient should only have been called twice (because it was cached one time.
+	// newClient should only have been called twice (because it was cached one time).
 	ts.Equal(2, getClientCount, "newClient should only have been called twice (because it was cached one time")
 }
 
