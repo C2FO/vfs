@@ -49,10 +49,7 @@ func (ts *fileTestSuite) SetupTest() {
 	testFileName = "/some/path/to/file.txt"
 	bucket = "bucket"
 	testFile, err = fs.NewFile(bucket, testFileName)
-
-	if err != nil {
-		ts.Fail("Shouldn't return error creating test s3.File instance.")
-	}
+	ts.Require().NoError(err, "Shouldn't return error creating test s3.File instance.")
 }
 
 func (ts *fileTestSuite) TearDownTest() {
@@ -62,9 +59,7 @@ func (ts *fileTestSuite) TestRead() {
 	contents := "hello world!"
 
 	file, err := fs.NewFile("bucket", "/some/path/file.txt")
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file")
-	}
+	ts.Require().NoError(err, "Shouldn't fail creating new file")
 
 	var localFile = bytes.NewBuffer([]byte{})
 	s3apiMock.
@@ -191,9 +186,7 @@ func (ts *fileTestSuite) TestGetLocation() {
 
 func (ts *fileTestSuite) TestExists() {
 	file, err := fs.NewFile("bucket", "/path/hello.txt")
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file.")
-	}
+	ts.Require().NoError(err, "Shouldn't fail creating new file.")
 
 	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
 
@@ -204,9 +197,7 @@ func (ts *fileTestSuite) TestExists() {
 
 func (ts *fileTestSuite) TestNotExists() {
 	file, err := fs.NewFile("bucket", "/path/hello.txt")
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file.")
-	}
+	ts.Require().NoError(err, "Shouldn't fail creating new file.")
 
 	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).
 		Return(&s3.HeadObjectOutput{}, awserr.New(s3.ErrCodeNoSuchKey, "key doesn't exist", nil))
@@ -512,9 +503,7 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
 
 	file, err := fs.NewFile("bucket", "/hello.txt")
-	if err != nil {
-		ts.Fail("Shouldn't return error creating test s3.File instance.")
-	}
+	ts.Require().NoError(err, "Shouldn't return error creating test s3.File instance.")
 
 	defer func() {
 		closeErr := file.Close()
@@ -534,9 +523,7 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 
 	fs = FileSystem{client: s3apiMock2}
 	file2, err := fs.NewFile("bucket", "/hello.txt")
-	if err != nil {
-		ts.Fail("Shouldn't return error creating test s3.File instance.")
-	}
+	ts.Require().NoError(err, "Shouldn't return error creating test s3.File instance.")
 
 	_, err = file2.CopyToLocation(mockLocation)
 	ts.NoError(err, "MoveToLocation error not expected")
@@ -556,9 +543,7 @@ func (ts *fileTestSuite) TestMoveToLocationFail() {
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(nil, errors.New("didn't copy, oh noes"))
 
 	file, err := fs.NewFile("bucket", "/hello.txt")
-	if err != nil {
-		ts.Fail("Shouldn't return error creating test s3.File instance.")
-	}
+	ts.Require().NoError(err, "Shouldn't return error creating test s3.File instance.")
 
 	_, merr := file.MoveToLocation(location)
 	ts.Error(merr, "MoveToLocation error not expected")

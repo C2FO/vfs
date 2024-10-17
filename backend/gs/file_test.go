@@ -98,9 +98,7 @@ func (ts *fileTestSuite) TestRead() {
 	fs := NewFileSystem().WithClient(server.Client())
 
 	file, err := fs.NewFile(bucketName, "/"+objectName)
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file")
-	}
+	ts.Require().NoError(err, "Shouldn't fail creating new file")
 
 	var localFile = bytes.NewBuffer([]byte{})
 
@@ -135,14 +133,10 @@ func (ts *fileTestSuite) TestDelete() {
 	fs := NewFileSystem().WithClient(client)
 
 	file, err := fs.NewFile(bucketName, "/"+objectName)
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file")
-	}
+	ts.Require().NoError(err, "Shouldn't fail creating new file")
 
 	err = file.Delete()
-	if err != nil {
-		ts.Fail("Shouldn't fail deleting the file")
-	}
+	ts.Require().NoError(err, "Shouldn't fail deleting the file")
 
 	bucket := client.Bucket(bucketName)
 	assert.Equal(ts.T(), false, objectExists(bucket, objectName))
@@ -170,9 +164,7 @@ func (ts *fileTestSuite) TestDeleteError() {
 	fs := NewFileSystem().WithClient(client)
 
 	file, err := fs.NewFile(bucketName, "/invalidObject")
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file")
-	}
+	ts.Require().NoError(err, "Shouldn't fail creating new file")
 
 	err = file.Delete()
 	ts.NotNil(err, "Should return an error if gs client had error")
@@ -200,28 +192,20 @@ func (ts *fileTestSuite) TestDeleteRemoveAllVersions() {
 	fs := NewFileSystem().WithClient(client)
 
 	file, err := fs.NewFile(bucketName, "/"+objectName)
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file")
-	}
+	ts.Require().NoError(err, "Shouldn't fail creating new file")
 
 	f := file.(*File)
 	handles, err := f.getObjectGenerationHandles()
-	if err != nil {
-		ts.Fail("Shouldn't fail getting object generation handles")
-	}
+	ts.Require().NoError(err, "Shouldn't fail getting object generation handles")
 	assert.Equal(ts.T(), 1, len(handles))
 
 	err = file.Delete(delete.WithDeleteAllVersions())
-	if err != nil {
-		ts.Fail("Shouldn't fail deleting the file")
-	}
+	ts.Require().NoError(err, "Shouldn't fail deleting the file")
 
 	bucket := client.Bucket(bucketName)
 	assert.Equal(ts.T(), false, objectExists(bucket, objectName))
 	handles, err = f.getObjectGenerationHandles()
-	if err != nil {
-		ts.Fail("Shouldn't fail getting object generation handles")
-	}
+	ts.Require().NoError(err, "Shouldn't fail getting object generation handles")
 	assert.Nil(ts.T(), handles)
 }
 
@@ -274,9 +258,7 @@ func (ts *fileTestSuite) TestExists() {
 	fs := NewFileSystem().WithClient(server.Client())
 
 	file, err := fs.NewFile(bucketName, "/"+objectName)
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file.")
-	}
+	ts.Require().NoError(err, "Shouldn't fail creating new file.")
 
 	exists, err := file.Exists()
 	ts.True(exists, "Should return true for exists based on this setup")
@@ -289,9 +271,7 @@ func (ts *fileTestSuite) TestNotExists() {
 	fs := NewFileSystem().WithClient(server.Client())
 
 	file, err := fs.NewFile("bucket", "/path/hello.txt")
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file.")
-	}
+	ts.Require().NoError(err, "Shouldn't fail creating new file.")
 
 	exists, err := file.Exists()
 	ts.False(exists, "Should return false for exists based on setup")

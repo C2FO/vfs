@@ -32,9 +32,7 @@ func (ts *fileTestSuite) SetupTest() {
 	ts.sftpMock = &mocks.Client{}
 	ts.fs = FileSystem{sftpclient: ts.sftpMock, options: Options{}}
 	ts.testFile, err = ts.fs.NewFile("user@host.com:22", "/some/path/to/file.txt")
-	if err != nil {
-		ts.Fail("Shouldn't return error creating test sftp.File instance.")
-	}
+	ts.Require().NoError(err, "Shouldn't return error creating test sftp.File instance.")
 }
 
 // this wraps strings.Reader to satisfy ReadWriteSeekCloser interface
@@ -217,9 +215,7 @@ func (ts *fileTestSuite) Test_openFile() {
 
 func (ts *fileTestSuite) TestExists() {
 	sftpfile, err := ts.fs.NewFile("user@host.com", "/path/hello.txt")
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file.")
-	}
+	ts.Require().NoError(err, "Shouldn't fail creating new file.")
 
 	ts.sftpMock.On("MkdirAll", sftpfile.Location().Path()).Return(nil).Once()
 	ts.sftpMock.On("Stat", sftpfile.Path()).Return(nil, nil).Once()
@@ -231,9 +227,7 @@ func (ts *fileTestSuite) TestExists() {
 
 func (ts *fileTestSuite) TestNotExists() {
 	sftpfile, err := ts.fs.NewFile("user@host.com", "/path/hello.txt")
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file.")
-	}
+	ts.Require().NoError(err, "Shouldn't fail creating new file.")
 
 	ts.sftpMock.On("MkdirAll", sftpfile.Location().Path()).Return(nil).Once()
 	ts.sftpMock.On("Stat", sftpfile.Path()).Return(nil, os.ErrNotExist).Once()
