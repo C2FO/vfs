@@ -32,7 +32,7 @@ func (s *OptionsTestSuite) TestCredentials_ServiceAccount() {
 		TenantID:               "foo",
 		ClientID:               "foo",
 		ClientSecret:           "foo",
-		tokenCredentialFactory: &MockTokenCredentialFactory{},
+		tokenCredentialFactory: MockTokenCredentialFactory,
 	}
 
 	credential, err := options.Credential()
@@ -46,7 +46,7 @@ func (s *OptionsTestSuite) TestCredentials_StorageAccount() {
 	options := Options{
 		AccountName:            "foo",
 		AccountKey:             base64.StdEncoding.EncodeToString([]byte("bar")),
-		tokenCredentialFactory: &MockTokenCredentialFactory{},
+		tokenCredentialFactory: MockTokenCredentialFactory,
 	}
 
 	credential, err := options.Credential()
@@ -59,7 +59,7 @@ func (s *OptionsTestSuite) TestCredentials_StorageAccount() {
 func (s *OptionsTestSuite) TestCredentials_Anon() {
 	options := Options{
 		AccountName:            "foo",
-		tokenCredentialFactory: &MockTokenCredentialFactory{},
+		tokenCredentialFactory: MockTokenCredentialFactory,
 	}
 
 	credential, err := options.Credential()

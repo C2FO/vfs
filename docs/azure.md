@@ -238,21 +238,14 @@ func (a *DefaultClient) Upload(file vfs.File, content io.ReadSeeker) error
 ```
 Upload uploads a new file to Azure Blob Storage
 
-### type DefaultTokenCredentialFactory
+### func DefaultTokenCredentialFactory
 
 ```go
-type DefaultTokenCredentialFactory struct{}
+func DefaultTokenCredentialFactory(tenantID, clientID, clientSecret, azureEnvName string) (azblob.TokenCredential, error)
 ```
 
 DefaultTokenCredentialFactory knows how to make azblob.TokenCredential structs
 for OAuth authentication
-
-#### func (*DefaultTokenCredentialFactory) New
-
-```go
-func (f *DefaultTokenCredentialFactory) New(tenantID, clientID, clientSecret, azureEnvName string) (azblob.TokenCredential, error)
-```
-New creates a new azblob.TokenCredential struct
 
 ### type File
 
@@ -709,21 +702,14 @@ func (mse MockStorageError) Timeout() bool
 ```
 Timeout returns nil
 
-### type MockTokenCredentialFactory
+### func MockTokenCredentialFactory
 
 ```go
-type MockTokenCredentialFactory struct{}
+func MockTokenCredentialFactory(_, _, _, _ string) (azblob.TokenCredential, error)
 ```
 
 MockTokenCredentialFactory knows how to create a "do-nothing" credential used
 for unit testing
-
-#### func (*MockTokenCredentialFactory) New
-
-```go
-func (f *MockTokenCredentialFactory) New(tenantID, clientID, clientSecret, azureEnvName string) (azblob.TokenCredential, error)
-```
-New creates a new azblob.TokenCredential struct
 
 ### type Options
 
@@ -790,15 +776,11 @@ configured. Options are checked and evaluated in the following order:
        is used with storage accounts and only provides access to a single storage account.
     3. Returns an anonymous credential.  This allows access only to public blobs.
 
-### type TokenCredentialFactory
+### func TokenCredentialFactory
 
 ```go
-type TokenCredentialFactory interface {
-	// New creates a new azblob.TokenCredential struct
-	New(tenantID, clientID, clientSecret, azureEnvName string) (azblob.TokenCredential, error)
-}
+type TokenCredentialFactory func(tenantID, clientID, clientSecret, azureEnvName string) (azblob.TokenCredential, error)
 ```
 
-TokenCredentialFactory is an interface that provides a single factory method to
-create azure.TokenCredentials. This interface is provided to allow for mocking
+TokenCredentialFactory creates azure.TokenCredentials. This function is provided to allow for mocking
 in unit tests.

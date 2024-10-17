@@ -60,7 +60,7 @@ func NewOptions() *Options {
 		ClientID:               os.Getenv("VFS_AZURE_CLIENT_ID"),
 		ClientSecret:           os.Getenv("VFS_AZURE_CLIENT_SECRET"),
 		AzureEnvName:           os.Getenv("VFS_AZURE_ENV_NAME"),
-		tokenCredentialFactory: &DefaultTokenCredentialFactory{},
+		tokenCredentialFactory: DefaultTokenCredentialFactory,
 	}
 }
 
@@ -73,12 +73,12 @@ func NewOptions() *Options {
 //  3. Returns an anonymous credential.  This allows access only to public blobs.
 func (o *Options) Credential() (azblob.Credential, error) {
 	if o.tokenCredentialFactory == nil {
-		o.tokenCredentialFactory = &DefaultTokenCredentialFactory{}
+		o.tokenCredentialFactory = DefaultTokenCredentialFactory
 	}
 
 	// Check to see if we have service account credentials
 	if o.TenantID != "" && o.ClientID != "" && o.ClientSecret != "" {
-		return o.tokenCredentialFactory.New(o.TenantID, o.ClientID, o.ClientSecret, o.AzureEnvName)
+		return o.tokenCredentialFactory(o.TenantID, o.ClientID, o.ClientSecret, o.AzureEnvName)
 	}
 
 	// Check to see if we have storage account credentials
