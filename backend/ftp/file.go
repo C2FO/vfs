@@ -40,7 +40,6 @@ type File struct {
 
 // LastModified returns the LastModified property of ftp file.
 func (f *File) LastModified() (*time.Time, error) {
-
 	entry, err := f.stat(context.TODO())
 	if err != nil {
 		return nil, err
@@ -151,7 +150,6 @@ func getTempFilename(origName string) string {
 
 // Size returns the size of the remote file.
 func (f *File) Size() (uint64, error) {
-
 	entry, err := f.stat(context.TODO())
 	if err != nil {
 		return 0, err
@@ -181,7 +179,6 @@ func (f *File) MoveToFile(t vfs.File) error {
 	if f.fileSystem.Scheme() == t.Location().FileSystem().Scheme() &&
 		f.authority.UserInfo().Username() == t.(*File).authority.UserInfo().Username() &&
 		f.authority.HostPortStr() == t.(*File).authority.HostPortStr() {
-
 		// ensure destination exists before moving
 		exists, err := t.Location().Exists()
 		if err != nil {
@@ -287,7 +284,6 @@ func (f *File) CopyToFile(file vfs.File) (err error) { //nolint:gocyclo
 
 		return err
 	}
-
 }
 
 // CopyToLocation creates a copy of *File, using the file's current path as the new file's

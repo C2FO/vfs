@@ -2,9 +2,7 @@
 
 ---
 
-
 Package gs Google Cloud Storage VFS implementation.
-
 
 ### Usage
 
@@ -39,7 +37,6 @@ use the following:
 
 ```go
     func DoSomething() {
-
         ...
 
         // cast if fs was created using backend.Backend().  Not necessary if created directly from gs.NewFilsystem().
@@ -79,7 +76,6 @@ found:
 1. On Google Compute Engine and Google App Engine Managed VMs, it fetches credentials from the metadata server.
 
 See https://cloud.google.com/docs/authentication/production for more auth info
-
 
 ### See Also
 
@@ -134,8 +130,8 @@ to the new file.
 func (f *File) Delete(opts ...options.DeleteOption) error
 ```
 Delete clears any local temp file, or write buffer from read/writes to the file,
-then makes a DeleteObject call to GCS for the file. If opts is of type DeleteAllVersions, DeleteObject call is made to 
-GCS for each version of the file. Returns any error returned by the API. 
+then makes a DeleteObject call to GCS for the file. If opts is of type DeleteAllVersions, DeleteObject call is made to
+GCS for each version of the file. Returns any error returned by the API.
 
 #### func (*File) Exists
 

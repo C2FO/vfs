@@ -322,5 +322,4 @@ func (lt *locationTestSuite) TestDeleteFile() {
 
 func TestLocation(t *testing.T) {
 	suite.Run(t, new(locationTestSuite))
-
 }

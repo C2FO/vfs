@@ -53,7 +53,6 @@ func (rws *ReadWriteSeeker) Read(p []byte) (n int, err error) {
 
 // Seek sets the cursor position.
 func (rws *ReadWriteSeeker) Seek(offset int64, whence int) (int64, error) {
-
 	var position int64
 	switch whence {
 	case io.SeekStart: // io.SeekStart

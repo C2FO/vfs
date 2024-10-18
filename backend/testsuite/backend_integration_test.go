@@ -62,7 +62,6 @@ func (s *vfsTestSuite) SetupSuite() {
 			panic(fmt.Sprintf("unknown scheme: %s", l.FileSystem().Scheme()))
 		}
 	}
-
 }
 
 // Test File
@@ -280,7 +279,6 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 		        myfile.Write("write some text")
 		        myfile.Close()
 
-
 		    Now consider if the context is os/sftp OR gcs/s3/mem.
 
 			==== Exists() (bool, error)
@@ -404,7 +402,6 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 
 	// should error if file doesn't exist
 	s.Error(srcLoc.DeleteFile(f1.Path()), "deleteFile trying to delete a file already deleted")
-
 }
 
 // Test File
@@ -855,7 +852,6 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 	s.Error(err, "expected error because file does not exist")
 
 	// end existence tests
-
 }
 
 // gs-specific test cases
@@ -920,7 +916,6 @@ func (s *vfsTestSuite) gsList(baseLoc vfs.Location) {
 }
 
 func sftpRemoveAll(location *sftp.Location) error {
-
 	// get sftp client from Filesystem
 	client, err := location.FileSystem().(*sftp.FileSystem).Client(location.Authority)
 	if err != nil {
@@ -932,7 +927,6 @@ func sftpRemoveAll(location *sftp.Location) error {
 }
 
 func recursiveSFTPRemove(absPath string, client sftp.Client) error {
-
 	// we can return early if we can just remove it
 	err := client.Remove(absPath)
 	// if we succeeded or it didn't exist, just return

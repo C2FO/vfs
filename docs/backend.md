@@ -2,7 +2,6 @@
 
 ---
 
-
 Package backend provides a means of allowing backend file systems to
 self-register on load via an init() call to backend.Register("some scheme",
 vfs.FileSystem)
@@ -45,7 +44,7 @@ In this way, a caller of vfs backends can simply load the backend file system
 ### Development
 
 To create your own backend, you must create a package that implements the interfaces:
-[vfs.FileSystem](../README.md#type-filesystem), [vfs.Location](../README.md#type-location), and 
+[vfs.FileSystem](../README.md#type-filesystem), [vfs.Location](../README.md#type-location), and
 [vfs.File](../README.md#type-file). Then ensure it registers itself on load:
 
 ```go
