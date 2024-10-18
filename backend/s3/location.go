@@ -1,13 +1,15 @@
 package s3
 
 import (
+	"context"
 	"errors"
 	"path"
 	"regexp"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/options"
@@ -26,7 +28,8 @@ type Location struct {
 // If you have many thousands of keys at the given location, this could become quite expensive.
 func (l *Location) List() ([]string, error) {
 	prefix := utils.RemoveLeadingSlash(l.prefix)
-	listObjectsInput := l.getListObjectsInput().SetPrefix(utils.EnsureTrailingSlash(prefix))
+	listObjectsInput := l.getListObjectsInput()
+	listObjectsInput.Prefix = aws.String(utils.EnsureTrailingSlash(prefix))
 	return l.fullLocationList(listObjectsInput, prefix)
 }
 
@@ -35,7 +38,8 @@ func (l *Location) List() ([]string, error) {
 func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 	searchPrefix := utils.RemoveLeadingSlash(path.Join(l.prefix, prefix))
 	d := path.Dir(searchPrefix)
-	listObjectsInput := l.getListObjectsInput().SetPrefix(searchPrefix)
+	listObjectsInput := l.getListObjectsInput()
+	listObjectsInput.Prefix = aws.String(searchPrefix)
 	return l.fullLocationList(listObjectsInput, d)
 }
 
@@ -70,14 +74,15 @@ func (l *Location) Path() string {
 // permissions. Will receive false without an error if the bucket simply doesn't exist. Otherwise could receive
 // false and any errors passed back from the API.
 func (l *Location) Exists() (bool, error) {
-	headBucketInput := new(s3.HeadBucketInput).SetBucket(l.bucket)
+	headBucketInput := &s3.HeadBucketInput{Bucket: aws.String(l.bucket)}
 	client, err := l.fileSystem.Client()
 	if err != nil {
 		return false, err
 	}
-	_, err = client.HeadBucket(headBucketInput)
+	_, err = client.HeadBucket(context.Background(), headBucketInput)
 	if err != nil {
-		if err.(awserr.Error).Code() == s3.ErrCodeNoSuchBucket {
+		var terr *types.NoSuchBucket
+		if errors.As(err, &terr) {
 			return false, nil
 		}
 		return false, err
@@ -178,7 +183,7 @@ func (l *Location) fullLocationList(input *s3.ListObjectsInput, prefix string) (
 		return keys, err
 	}
 	for {
-		listObjectsOutput, err := client.ListObjects(input)
+		listObjectsOutput, err := client.ListObjects(context.Background(), input)
 		if err != nil {
 			return []string{}, err
 		}
@@ -188,7 +193,7 @@ func (l *Location) fullLocationList(input *s3.ListObjectsInput, prefix string) (
 		// if s3 response "IsTruncated" we need to call List again with
 		// an updated Marker (s3 version of paging)
 		if *listObjectsOutput.IsTruncated {
-			input.SetMarker(*listObjectsOutput.NextMarker)
+			input.Marker = listObjectsOutput.NextMarker
 		} else {
 			break
 		}
@@ -198,10 +203,13 @@ func (l *Location) fullLocationList(input *s3.ListObjectsInput, prefix string) (
 }
 
 func (l *Location) getListObjectsInput() *s3.ListObjectsInput {
-	return new(s3.ListObjectsInput).SetBucket(l.bucket).SetDelimiter("/")
+	return &s3.ListObjectsInput{
+		Bucket:    aws.String(l.bucket),
+		Delimiter: aws.String("/"),
+	}
 }
 
-func getNamesFromObjectSlice(objects []*s3.Object, locationPrefix string) []string {
+func getNamesFromObjectSlice(objects []types.Object, locationPrefix string) []string {
 	var keys []string
 	for _, object := range objects {
 		if *object.Key != locationPrefix {
