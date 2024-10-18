@@ -101,6 +101,7 @@ type getFileTest struct {
 	keyfile    string
 	passphrase string
 	hasError   bool
+	err        error
 	errMessage string
 	message    string
 }
@@ -126,7 +127,7 @@ func (o *optionsSuite) TestGetKeyFile() {
 			keyfile:    "nonexistent.key",
 			passphrase: "",
 			hasError:   true,
-			errMessage: "open nonexistent.key: no such file or directory",
+			err:        os.ErrNotExist,
 			message:    "file not found",
 		},
 		{
@@ -151,7 +152,11 @@ func (o *optionsSuite) TestGetKeyFile() {
 	for _, t := range tests {
 		_, err := getKeyFile(t.keyfile, t.passphrase)
 		if t.hasError {
-			o.EqualError(err, t.errMessage, t.message)
+			if t.err != nil {
+				o.ErrorIs(err, t.err, t.message)
+			} else {
+				o.EqualError(err, t.errMessage, t.message)
+			}
 		} else {
 			o.NoError(err, t.message)
 		}
@@ -265,6 +270,7 @@ type authTest struct {
 	returnCount int
 	hasError    bool
 	errMessage  string
+	err         error
 	message     string
 }
 
@@ -371,7 +377,7 @@ func (o *optionsSuite) TestGetAuthMethods() {
 			},
 			returnCount: 1,
 			hasError:    true,
-			errMessage:  "open nonexistent.key: no such file or directory",
+			err:         os.ErrNotExist,
 			message:     "env var keyfile returns error for file not found",
 		},
 	}
@@ -387,7 +393,11 @@ func (o *optionsSuite) TestGetAuthMethods() {
 		// apply test
 		auth, err := getAuthMethods(t.options)
 		if t.hasError {
-			o.EqualError(err, t.errMessage, t.message)
+			if t.err != nil {
+				o.ErrorIs(err, t.err, t.message)
+			} else {
+				o.EqualError(err, t.errMessage, t.message)
+			}
 		} else {
 			o.NoError(err, t.message)
 			o.Equal(t.returnCount, len(auth), "auth count")
@@ -404,6 +414,7 @@ type getClientTest struct {
 	options   Options
 	authority utils.Authority
 	hasError  bool
+	err       error
 	errRegex  string
 	message   string
 }
@@ -431,7 +442,7 @@ func (o *optionsSuite) TestGetClient() {
 				KnownHostsCallback: ssh.FixedHostKey(o.publicKey),
 			},
 			hasError: true,
-			errRegex: "open nonexistent.key: no such file or directory",
+			err:      os.ErrNotExist,
 			message:  "getclient - bad auth key",
 		},
 		{
@@ -451,8 +462,12 @@ func (o *optionsSuite) TestGetClient() {
 		_, _, err := getClient(t.authority, t.options)
 		if t.hasError {
 			if o.Error(err, "error found") {
-				re := regexp.MustCompile(t.errRegex)
-				o.Regexp(re, err.Error(), "error matches")
+				if t.err != nil {
+					o.ErrorIs(err, t.err, t.message)
+				} else {
+					re := regexp.MustCompile(t.errRegex)
+					o.Regexp(re, err.Error(), "error matches")
+				}
 			}
 		} else {
 			o.NoError(err, t.message)

@@ -42,7 +42,7 @@ func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error) {
 	//     NewLocation("/some/path/").ListByPrefix("dir1/dir2/")
 	// obviously we don't want to add a trailing slash if we're looking for a file prefix:
 	//     NewLocation("/some/path/").ListByPrefix("dir1/MyFilePrefix")
-	if filenamePrefix == "" || filenamePrefix[len(filenamePrefix)-1:] == "/" {
+	if filenamePrefix == "" || strings.HasSuffix(filenamePrefix, "/") {
 		prefix = utils.EnsureTrailingSlash(prefix)
 	}
 	// remove location prefix altogether if this is the root

@@ -124,7 +124,7 @@ func (s *osLocationTest) TestVolume() {
 	volume := s.testFile.Location().Volume()
 
 	// For Unix, this returns an empty string. For windows, it would be something like 'C:'
-	s.Equal(filepath.VolumeName("test_files/test.txt"), volume)
+	s.Equal(filepath.VolumeName(s.testFile.Path()), volume)
 }
 
 func (s *osLocationTest) TestPath() {

@@ -1,7 +1,9 @@
 package os
 
 import (
-	"path"
+	"errors"
+	"path/filepath"
+	"strings"
 
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/backend"
@@ -22,23 +24,21 @@ func (fs *FileSystem) Retry() vfs.Retry {
 
 // NewFile function returns the os implementation of vfs.File.
 func (fs *FileSystem) NewFile(volume, name string) (vfs.File, error) {
-	err := utils.ValidateAbsoluteFilePath(name)
-	if err != nil {
-		return nil, err
+	if !filepath.IsAbs(name) || strings.HasSuffix(name, "/") {
+		return nil, errors.New(utils.ErrBadAbsFilePath)
 	}
 	return &File{name: name, filesystem: fs}, nil
 }
 
 // NewLocation function returns the os implementation of vfs.Location.
 func (fs *FileSystem) NewLocation(volume, name string) (vfs.Location, error) {
-	err := utils.ValidateAbsoluteLocationPath(name)
-	if err != nil {
-		return nil, err
+	if !filepath.IsAbs(name) || !strings.HasSuffix(name, "/") {
+		return nil, errors.New(utils.ErrBadAbsLocationPath)
 	}
 
 	return &Location{
 		fileSystem: fs,
-		name:       utils.EnsureTrailingSlash(path.Clean(name)),
+		name:       utils.EnsureTrailingSlash(filepath.Clean(name)),
 	}, nil
 }
 

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"time"
 
@@ -56,7 +55,7 @@ func (f *File) LastModified() (*time.Time, error) {
 //
 // For `file:///some/path/to/file.txt`, it would return `file.txt`
 func (f *File) Name() string {
-	return path.Base(f.name)
+	return filepath.Base(f.name)
 }
 
 // Path returns absolute path, including filename,
@@ -218,7 +217,7 @@ func (f *File) Write(p []byte) (n int, err error) {
 func (f *File) Location() vfs.Location {
 	return &Location{
 		fileSystem: f.filesystem,
-		name:       utils.EnsureTrailingSlash(path.Dir(f.name)),
+		name:       utils.EnsureTrailingSlash(filepath.Dir(f.name)),
 	}
 }
 
@@ -356,7 +355,7 @@ func (f *File) Touch() error {
 }
 
 func (f *File) copyWithName(name string, location vfs.Location) (vfs.File, error) {
-	newFile, err := location.FileSystem().NewFile(location.Volume(), path.Join(location.Path(), name))
+	newFile, err := location.FileSystem().NewFile(location.Volume(), filepath.Join(location.Path(), name))
 	if err != nil {
 		return nil, err
 	}
@@ -400,7 +399,7 @@ func openOSFile(filePath string) (*os.File, error) {
 
 	// Ensure the path exists before opening the file, NoOp if dir already exists.
 	var fileMode os.FileMode = 0666
-	if err := os.MkdirAll(path.Dir(filePath), os.ModeDir|0750); err != nil {
+	if err := os.MkdirAll(filepath.Dir(filePath), os.ModeDir|0750); err != nil {
 		return nil, err
 	}
 

@@ -145,7 +145,7 @@ func PathToURI(p string) (string, error) {
 	}
 
 	// Abs() strips trailing slashes so add back if original path had slash
-	if p[len(p)-1:] == "/" {
+	if strings.HasSuffix(p, "/") {
 		absPath = EnsureTrailingSlash(absPath)
 	}
 
