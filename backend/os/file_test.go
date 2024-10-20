@@ -267,10 +267,7 @@ func (s *osFileTest) TestCopyToLocationIgnoreExtraSeparator() {
 	location := Location{"/some/path/", otherFs}
 
 	_, err := s.testFile.CopyToLocation(&location)
-
-	if err != nil {
-		s.Fail(err.Error())
-	}
+	s.Require().NoError(err)
 
 	otherFs.AssertCalled(s.T(), "NewFile", "", "/some/path/test.txt")
 }

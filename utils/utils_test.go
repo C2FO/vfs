@@ -654,9 +654,7 @@ func (s *utilsSuite) TestTouchCopy() {
 
 	// write out blank file
 	tmpfile, err := os.CreateTemp("", "utils_test")
-	if err != nil {
-		s.NoError(err, "unexpected temp file setup error")
-	}
+	s.NoError(err, "unexpected temp file setup error")
 	defer func() {
 		err := os.Remove(tmpfile.Name())
 		if err != nil {
@@ -664,12 +662,10 @@ func (s *utilsSuite) TestTouchCopy() {
 		}
 	}()
 
-	if _, err := tmpfile.Write([]byte{}); err != nil {
-		s.NoError(err, "unexpected temp file writing error")
-	}
-	if err := tmpfile.Close(); err != nil {
-		s.NoError(err, "unexpected temp file close error")
-	}
+	_, err = tmpfile.Write([]byte{})
+	s.NoError(err, "unexpected temp file writing error")
+	err = tmpfile.Close()
+	s.NoError(err, "unexpected temp file close error")
 
 	// setup reader vfs.File
 	osfs := _os.FileSystem{}
@@ -735,9 +731,7 @@ func (s *utilsSuite) TestTouchCopyBufferedDefaultBufferSize() {
 
 	// write out blank file
 	tmpfile, err := os.CreateTemp("", "utils_test")
-	if err != nil {
-		s.NoError(err, "unexpected temp file setup error")
-	}
+	s.NoError(err, "unexpected temp file setup error")
 	defer func() {
 		err := os.Remove(tmpfile.Name())
 		if err != nil {
@@ -745,12 +739,10 @@ func (s *utilsSuite) TestTouchCopyBufferedDefaultBufferSize() {
 		}
 	}()
 
-	if _, err := tmpfile.Write([]byte{}); err != nil {
-		s.NoError(err, "unexpected temp file writing error")
-	}
-	if err := tmpfile.Close(); err != nil {
-		s.NoError(err, "unexpected temp file close error")
-	}
+	_, err = tmpfile.Write([]byte{})
+	s.NoError(err, "unexpected temp file writing error")
+	err = tmpfile.Close()
+	s.NoError(err, "unexpected temp file close error")
 
 	// setup reader vfs.File
 	osfs := _os.FileSystem{}
@@ -816,9 +808,7 @@ func (s *utilsSuite) TestTouchCopyBufferedNonDefaultBufferSize() {
 
 	// write out blank file
 	tmpfile, err := os.CreateTemp("", "utils_test")
-	if err != nil {
-		s.NoError(err, "unexpected temp file setup error")
-	}
+	s.NoError(err, "unexpected temp file setup error")
 	defer func() {
 		err := os.Remove(tmpfile.Name())
 		if err != nil {
@@ -826,12 +816,10 @@ func (s *utilsSuite) TestTouchCopyBufferedNonDefaultBufferSize() {
 		}
 	}()
 
-	if _, err := tmpfile.Write([]byte{}); err != nil {
-		s.NoError(err, "unexpected temp file writing error")
-	}
-	if err := tmpfile.Close(); err != nil {
-		s.NoError(err, "unexpected temp file close error")
-	}
+	_, err = tmpfile.Write([]byte{})
+	s.NoError(err, "unexpected temp file writing error")
+	err = tmpfile.Close()
+	s.NoError(err, "unexpected temp file close error")
 
 	// setup reader vfs.File
 	osfs := _os.FileSystem{}

@@ -3,7 +3,6 @@ package mem
 import (
 	"io"
 	"io/fs"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -377,9 +376,7 @@ func (s *memFileTest) TestCopyToLocationOS() {
 
 	var osFile vfs.File
 	dir, err := os.MkdirTemp("", "osDir")
-	if err != nil {
-		log.Fatal(err)
-	}
+	s.Require().NoError(err)
 	osFileName := filepath.Join(dir, "osFile.txt")
 
 	osFile, err = backend.Backend(_os.Scheme).NewFile("", osFileName)
@@ -447,9 +444,7 @@ func (s *memFileTest) TestCopyToFileOS() {
 	var osFile vfs.File
 	var err error
 	dir, err := os.MkdirTemp("", "osDir")
-	if err != nil {
-		log.Fatal(err)
-	}
+	s.Require().NoError(err)
 	osFileName := filepath.Join(dir, "osFile.txt")
 	osFile, err = backend.Backend(_os.Scheme).NewFile("", osFileName)
 	s.NoError(err, "unexpected error creating osFile")

@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v6"
@@ -116,7 +115,7 @@ func (s *osLocationTest) TestChangeDir() {
 	fileLocation := otherFile.Location()
 	cwd := fileLocation.Path()
 	err := fileLocation.ChangeDir("other/")
-	assert.NoError(s.T(), err, "change dir error not expected")
+	s.NoError(err, "change dir error not expected")
 	s.Equal(fileLocation.Path(), utils.EnsureTrailingSlash(filepath.Join(cwd, "other")))
 }
 

@@ -153,9 +153,7 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 		// clean up srcLoc after test for OS
 		if srcLoc.FileSystem().Scheme() == "file" {
 			exists, err := srcLoc.Exists()
-			if err != nil {
-				panic(err)
-			}
+			s.Require().NoError(err)
 			if exists {
 				s.NoError(os.RemoveAll(srcLoc.Path()), "failed to clean up location test srcLoc")
 			}
@@ -416,9 +414,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 		// clean up srcLoc after test for OS
 		if srcLoc.FileSystem().Scheme() == "file" {
 			exists, err := srcLoc.Exists()
-			if err != nil {
-				panic(err)
-			}
+			s.Require().NoError(err)
 			if exists {
 				s.NoError(os.RemoveAll(srcLoc.Path()), "failed to clean up file test srcLoc")
 			}
@@ -542,9 +538,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 			// clean up dstLoc after test for OS
 			if dstLoc.FileSystem().Scheme() == "file" {
 				exists, err := dstLoc.Exists()
-				if err != nil {
-					panic(err)
-				}
+				s.Require().NoError(err)
 				if exists {
 					s.NoError(os.RemoveAll(dstLoc.Path()), "failed to clean up file test dstLoc")
 				}

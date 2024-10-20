@@ -9,7 +9,6 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/fsouza/fake-gcs-server/fakestorage"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v6/options/delete"
@@ -104,9 +103,9 @@ func (ts *fileTestSuite) TestRead() {
 
 	buffer := make([]byte, utils.TouchCopyMinBufferSize)
 	_, copyErr := io.CopyBuffer(localFile, file, buffer)
-	assert.NoError(ts.T(), copyErr, "no error expected")
+	ts.NoError(copyErr, "no error expected")
 	closeErr := file.Close()
-	assert.NoError(ts.T(), closeErr, "no error expected")
+	ts.NoError(closeErr, "no error expected")
 
 	ts.Equal(localFile.String(), contents, "Copying an gs file to a buffer should fill buffer with file's contents")
 }
@@ -139,7 +138,7 @@ func (ts *fileTestSuite) TestDelete() {
 	ts.Require().NoError(err, "Shouldn't fail deleting the file")
 
 	bucket := client.Bucket(bucketName)
-	assert.Equal(ts.T(), false, objectExists(bucket, objectName))
+	ts.Equal(false, objectExists(bucket, objectName))
 }
 
 func (ts *fileTestSuite) TestDeleteError() {
@@ -197,16 +196,16 @@ func (ts *fileTestSuite) TestDeleteRemoveAllVersions() {
 	f := file.(*File)
 	handles, err := f.getObjectGenerationHandles()
 	ts.Require().NoError(err, "Shouldn't fail getting object generation handles")
-	assert.Equal(ts.T(), 1, len(handles))
+	ts.Equal(1, len(handles))
 
 	err = file.Delete(delete.WithDeleteAllVersions())
 	ts.Require().NoError(err, "Shouldn't fail deleting the file")
 
 	bucket := client.Bucket(bucketName)
-	assert.Equal(ts.T(), false, objectExists(bucket, objectName))
+	ts.Equal(false, objectExists(bucket, objectName))
 	handles, err = f.getObjectGenerationHandles()
 	ts.Require().NoError(err, "Shouldn't fail getting object generation handles")
-	assert.Nil(ts.T(), handles)
+	ts.Nil(handles)
 }
 
 func (ts *fileTestSuite) TestWrite() {

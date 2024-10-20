@@ -17,7 +17,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager/s3manageriface"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
@@ -404,7 +403,7 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 
 	defer func() {
 		closeErr := f.Close()
-		assert.NoError(ts.T(), closeErr, "no error expected")
+		ts.NoError(closeErr, "no error expected")
 	}()
 
 	l := &Location{

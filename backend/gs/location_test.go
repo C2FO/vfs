@@ -5,7 +5,6 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v6/utils"
@@ -68,61 +67,45 @@ func (lt *locationTestSuite) TestList() {
 
 	fs := NewFileSystem().WithClient(server.Client())
 	for _, objectPrefix := range objectPrefixes {
-		lt.T().Run("list direct "+objectPrefix, func(t *testing.T) {
+		lt.Run("list direct "+objectPrefix, func() {
 			loc, err := fs.NewLocation(bucket, "/"+objectPrefix)
-			if err != nil {
-				lt.T().Fatal(err)
-			}
-			t.Logf("location URI: %q", loc.URI())
+			lt.Require().NoError(err)
+			lt.T().Logf("location URI: %q", loc.URI())
 
 			files, err := loc.List()
-			if err != nil {
-				lt.T().Fatal(err)
-			}
-			assert.ElementsMatch(t, objectBaseNames, files, "should find all files in the location")
+			lt.Require().NoError(err)
+			lt.ElementsMatch(objectBaseNames, files, "should find all files in the location")
 		})
-		lt.T().Run("list prefix "+objectPrefix, func(t *testing.T) {
+		lt.Run("list prefix "+objectPrefix, func() {
 			loc, err := fs.NewLocation(bucket, "/")
-			if err != nil {
-				lt.T().Fatal(err)
-			}
-			t.Logf("location URI: %q", loc.URI())
+			lt.Require().NoError(err)
+			lt.T().Logf("location URI: %q", loc.URI())
 
-			t.Run("without slash", func(t *testing.T) {
+			lt.Run("without slash", func() {
 				files, err := loc.ListByPrefix(objectPrefix)
-				if err != nil {
-					lt.T().Fatal(err)
-				}
-				assert.ElementsMatch(t, objectBaseNames, files, "should find all files in the location")
+				lt.Require().NoError(err)
+				lt.ElementsMatch(objectBaseNames, files, "should find all files in the location")
 			})
-			t.Run("with slash", func(t *testing.T) {
+			lt.Run("with slash", func() {
 				files, err := loc.ListByPrefix(objectPrefix + "/")
-				if err != nil {
-					lt.T().Fatal(err)
-				}
-				assert.ElementsMatch(t, objectBaseNames, files, "should find all files in the location")
+				lt.Require().NoError(err)
+				lt.ElementsMatch(objectBaseNames, files, "should find all files in the location")
 			})
-			t.Run("include object-level filename prefix f2", func(t *testing.T) {
+			lt.Run("include object-level filename prefix f2", func() {
 				files, err := loc.ListByPrefix(objectPrefix + "/f2")
-				if err != nil {
-					lt.T().Fatal(err)
-				}
+				lt.Require().NoError(err)
 				fileObjectBaseNames := []string{"f2.txt"}
-				assert.ElementsMatch(t, fileObjectBaseNames, files, "should find all files in the location matching f2")
+				lt.ElementsMatch(fileObjectBaseNames, files, "should find all files in the location matching f2")
 			})
 		})
-		lt.T().Run("list regex "+objectPrefix, func(t *testing.T) {
+		lt.Run("list regex "+objectPrefix, func() {
 			loc, err := fs.NewLocation(bucket, "/"+objectPrefix)
-			if err != nil {
-				lt.T().Fatal(err)
-			}
-			t.Logf("location URI: %q", loc.URI())
+			lt.Require().NoError(err)
+			lt.T().Logf("location URI: %q", loc.URI())
 
 			files, err := loc.ListByRegex(regexp.MustCompile("^f[02].txt$"))
-			if err != nil {
-				lt.T().Fatal(err)
-			}
-			assert.ElementsMatch(t, []string{"f0.txt", "f2.txt"}, files,
+			lt.Require().NoError(err)
+			lt.ElementsMatch([]string{"f0.txt", "f2.txt"}, files,
 				"should find exactly two files f0.txt and f2.txt")
 		})
 	}
@@ -309,12 +292,12 @@ func (lt *locationTestSuite) TestDeleteFile() {
 	loc, err := fs.NewLocation(bucket, "/old/")
 	lt.NoError(err)
 
-	lt.T().Run("delete existing", func(t *testing.T) {
+	lt.Run("delete existing", func() {
 		err = loc.DeleteFile("filename.txt")
 		lt.Nil(err, "Successful delete should not return an error.")
 	})
 
-	lt.T().Run("delete non-existing", func(t *testing.T) {
+	lt.Run("delete non-existing", func() {
 		err = loc.DeleteFile("filename.txt")
 		lt.Error(err, "Delete of non existing file should fail")
 	})
