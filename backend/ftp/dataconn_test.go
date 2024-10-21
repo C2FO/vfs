@@ -232,7 +232,7 @@ func (s *dataConnSuite) TestRead() {
 	w := &strings.Builder{}
 	written, err := io.Copy(w, dc)
 	s.NoError(err, "error not expected")
-	s.EqualValues(len(contents), written, "byte count should equal contents of reader")
+	s.Len(contents, int(written), "byte count should equal contents of reader")
 	s.Equal(contents, w.String(), "read contents equals original contents")
 }
 

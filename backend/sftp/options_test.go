@@ -293,7 +293,7 @@ func (o *optionsSuite) TestGetAuthMethods() {
 			returnCount: 1,
 			hasError:    false,
 			errMessage:  "",
-			message:     "explicit Options password",
+			message:     "env var password",
 		},
 		{
 			envVars: map[string]string{
@@ -397,7 +397,7 @@ func (o *optionsSuite) TestGetAuthMethods() {
 				o.EqualError(err, t.errMessage, t.message)
 			} else {
 				o.NoError(err, t.message)
-				o.Equal(t.returnCount, len(auth), "auth count")
+				o.Len(auth, t.returnCount, "auth count")
 			}
 
 			// return env vars to original value
@@ -480,10 +480,10 @@ func (o *optionsSuite) TestMarshalOptions() {
 	}
 
 	raw, err := json.Marshal(opts)
-	o.Nil(err)
+	o.NoError(err)
 	optStruct := &Options{}
 	err = json.Unmarshal(raw, optStruct)
-	o.Nil(err)
+	o.NoError(err)
 
 	o.Equal(kh, optStruct.KeyFilePath, "KeyFilePath check")
 	o.Equal(pw, optStruct.Password, "Password check")

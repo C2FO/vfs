@@ -321,16 +321,16 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 
 	files, err := srcLoc.List()
 	s.NoError(err)
-	s.Equal(3, len(files), "list srcLoc location")
+	s.Len(files, 3, "list srcLoc location")
 
 	files, err = subLoc.List()
 	s.NoError(err)
-	s.Equal(1, len(files), "list subLoc location")
+	s.Len(files, 1, "list subLoc location")
 	s.Equal("that.txt", files[0], "returned basename")
 
 	files, err = cdTestLoc.List()
 	s.NoError(err)
-	s.Equal(0, len(files), "non-existent location")
+	s.Empty(files, "non-existent location")
 
 	switch baseLoc.FileSystem().Scheme() {
 	case "gs":
@@ -351,21 +351,21 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 
 	files, err = srcLoc.ListByPrefix("file")
 	s.NoError(err)
-	s.Equal(2, len(files), "list srcLoc location matching prefix")
+	s.Len(files, 2, "list srcLoc location matching prefix")
 
 	files, err = srcLoc.ListByPrefix("s")
 	s.NoError(err)
-	s.Equal(1, len(files), "list srcLoc location")
+	s.Len(files, 1, "list srcLoc location")
 	s.Equal("self.txt", files[0], "returned only file basename, not subdir matching prefix")
 
 	files, err = srcLoc.ListByPrefix("somepath/t")
 	s.NoError(err)
-	s.Equal(1, len(files), "list 'somepath' location relative to srcLoc")
+	s.Len(files, 1, "list 'somepath' location relative to srcLoc")
 	s.Equal("that.txt", files[0], "returned only file basename, using relative prefix")
 
 	files, err = cdTestLoc.List()
 	s.NoError(err)
-	s.Equal(0, len(files), "non-existent location")
+	s.Empty(files, "non-existent location")
 
 	// ListByRegex returns a slice of strings representing the base names of the files found in the Location that matched the
 	// given regular expression.
@@ -377,15 +377,15 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 
 	files, err = srcLoc.ListByRegex(regexp.MustCompile("^f"))
 	s.NoError(err)
-	s.Equal(2, len(files), "list srcLoc location matching prefix")
+	s.Len(files, 2, "list srcLoc location matching prefix")
 
 	files, err = srcLoc.ListByRegex(regexp.MustCompile(`.txt$`))
 	s.NoError(err)
-	s.Equal(3, len(files), "list srcLoc location matching prefix")
+	s.Len(files, 3, "list srcLoc location matching prefix")
 
 	files, err = srcLoc.ListByRegex(regexp.MustCompile(`Z`))
 	s.NoError(err)
-	s.Equal(0, len(files), "list srcLoc location matching prefix")
+	s.Empty(files, "list srcLoc location matching prefix")
 
 	// DeleteFile deletes the file of the given name at the location.
 	//
@@ -801,7 +801,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 
 	size, err := touchedFile.Size()
 	s.NoError(err)
-	s.Equal(uint64(0), size, "%s should be empty", touchedFile)
+	s.Zero(size, "%s should be empty", touchedFile)
 
 	// capture last modified
 	modified, err := touchedFile.LastModified()
@@ -837,14 +837,14 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 
 	size, err = srcFile.Size()
 	s.Error(err, "expected error because file does not exist")
-	s.Equal(uint64(0x0), size)
+	s.Zero(size)
 
 	_, err = srcFile.LastModified()
 	s.Error(err, "expected error because file does not exist")
 
 	seeked, err := srcFile.Seek(-1, 2)
 	s.Error(err, "expected error because file does not exist")
-	s.Equal(int64(0x0), seeked)
+	s.Zero(seeked)
 
 	_, err = srcFile.Read(make([]byte, 1))
 	s.Error(err, "expected error because file does not exist")
@@ -906,7 +906,7 @@ func (s *vfsTestSuite) gsList(baseLoc vfs.Location) {
 
 	files, err := f.Location().List()
 	s.NoError(err)
-	s.Equal(1, len(files), "check file count found")
+	s.Len(len(files), 1, "check file count found")
 	s.Equal("file.txt", files[0], "file.txt was found")
 
 	// CLEAN UP

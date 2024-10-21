@@ -88,7 +88,7 @@ func (s *osFileTest) TestTouch() {
 	// size should be zero
 	size, err := testfile.Size()
 	s.NoError(err)
-	s.Equal(size, uint64(0), "size should be zero")
+	s.Zero(size, "size should be zero")
 
 	// capture last_modified
 	firstModTime, err := testfile.LastModified()
@@ -101,7 +101,7 @@ func (s *osFileTest) TestTouch() {
 	// size should still be zero
 	size, err = testfile.Size()
 	s.NoError(err)
-	s.Equal(size, uint64(0), "size should be zero")
+	s.Zero(size, "size should be zero")
 
 	// LastModified should be later than previous LastModified
 	nextModTime, err := testfile.LastModified()
@@ -151,7 +151,7 @@ func (s *osFileTest) TestRead() {
 	data = make([]byte, 4)
 	b, err = f.Read(data)
 	s.Error(err)
-	s.Equal(0, b)
+	s.Zero(b)
 
 	f.(*File).fileOpener = nil
 	b, err = f.Write([]byte("blah"))
@@ -162,7 +162,7 @@ func (s *osFileTest) TestRead() {
 	data = make([]byte, 4)
 	b, err = f.Read(data)
 	s.Error(err)
-	s.Equal(0, b)
+	s.Zero(b)
 }
 
 func (s *osFileTest) TestSeek() {
@@ -374,7 +374,7 @@ func (s *osFileTest) TestSafeOsRename() {
 
 	err = safeOsRename(badfile, newFile)
 	s.Error(err)
-	s.NotEqual(err.Error(), osCrossDeviceLinkError)
+	s.NotEqual(osCrossDeviceLinkError, err.Error())
 }
 
 func (s *osFileTest) TestOsCopy() {
@@ -673,7 +673,7 @@ func (s *osFileTest) TestSize() {
 	s.NoError(err)
 	size, err = noFile.Size()
 	s.Error(err)
-	s.Equal(uint64(0), size)
+	s.Zero(size)
 }
 
 func (s *osFileTest) TestPath() {

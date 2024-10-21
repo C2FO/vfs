@@ -99,8 +99,8 @@ func (ts *fileTestSuite) TestWrite() {
 	contents := []byte("Hello world!")
 	count, err := file.Write(contents)
 
-	ts.Equal(len(contents), count, "Returned count of bytes written should match number of bytes passed to Write.")
-	ts.Nil(err, "Error should be nil when calling Write")
+	ts.Len(contents, count, "Returned count of bytes written should match number of bytes passed to Write.")
+	ts.NoError(err, "Error should be nil when calling Write")
 }
 
 func (ts *fileTestSuite) TestSeek() {
@@ -191,7 +191,7 @@ func (ts *fileTestSuite) TestExists() {
 
 	exists, err := file.Exists()
 	ts.True(exists, "Should return true for exists based on this setup")
-	ts.Nil(err, "Shouldn't return an error when exists is true")
+	ts.NoError(err, "Shouldn't return an error when exists is true")
 }
 
 func (ts *fileTestSuite) TestNotExists() {
@@ -203,7 +203,7 @@ func (ts *fileTestSuite) TestNotExists() {
 
 	exists, err := file.Exists()
 	ts.False(exists, "Should return false for exists based on setup")
-	ts.Nil(err, "Error from key not existing should be hidden since it just confirms it doesn't")
+	ts.NoError(err, "Error from key not existing should be hidden since it just confirms it doesn't")
 }
 
 func (ts *fileTestSuite) TestCopyToFile() {
@@ -219,7 +219,7 @@ func (ts *fileTestSuite) TestCopyToFile() {
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
 
 	err := testFile.CopyToFile(targetFile)
-	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
+	ts.NoError(err, "Error shouldn't be returned from successful call to CopyToFile")
 	s3apiMock.AssertExpectations(ts.T())
 
 	// Test With Non Minimum Buffer Size in TouchCopyBuffered
@@ -238,7 +238,7 @@ func (ts *fileTestSuite) TestCopyToFile() {
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
 
 	err = testFile.CopyToFile(targetFile)
-	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
+	ts.NoError(err, "Error shouldn't be returned from successful call to CopyToFile")
 	s3apiMock.AssertExpectations(ts.T())
 }
 
@@ -255,7 +255,7 @@ func (ts *fileTestSuite) TestEmptyCopyToFile() {
 		Return(&s3.GetObjectOutput{Body: io.NopCloser(strings.NewReader(""))}, nil).
 		Once()
 	err := testFile.CopyToFile(targetFile)
-	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
+	ts.NoError(err, "Error shouldn't be returned from successful call to CopyToFile")
 
 	// Assert that file was still written to and closed when the reader size is 0 bytes.
 	targetFile.AssertExpectations(ts.T())
@@ -275,7 +275,7 @@ func (ts *fileTestSuite) TestMoveToFile() {
 	s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
 
 	err := testFile.MoveToFile(targetFile)
-	ts.Nil(err, "Error shouldn't be returned from successful call to MoveToFile")
+	ts.NoError(err, "Error shouldn't be returned from successful call to MoveToFile")
 	s3apiMock.AssertExpectations(ts.T())
 }
 
@@ -334,7 +334,7 @@ func (ts *fileTestSuite) TestGetCopyObject() {
 
 			// copy from t.key to /source.txt
 			actual, err := sourceFile.getCopyObjectInput(targetFile)
-			ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
+			ts.NoError(err, "Error shouldn't be returned from successful call to CopyToFile")
 			ts.Equal("TestBucket"+t.expectedCopySource, *actual.CopySource)
 			ts.Nil(actual.ServerSideEncryption, "sse is disabled")
 		})
@@ -362,7 +362,7 @@ func (ts *fileTestSuite) TestGetCopyObject() {
 		key:    "/path/to/otherFile.txt",
 	}
 	actual, err := sourceFile.getCopyObjectInput(targetFile)
-	ts.Nil(err, "Error shouldn't be returned from successful call to CopyToFile")
+	ts.NoError(err, "Error shouldn't be returned from successful call to CopyToFile")
 	ts.Nil(actual, "copyOjbectInput should be nil (can't do s3-to-s3 copyObject)")
 
 	s3apiMock.AssertExpectations(ts.T())
@@ -381,7 +381,7 @@ func (ts *fileTestSuite) TestMoveToFile_CopyError() {
 	s3apiMock.On("CopyObject", mock.AnythingOfType("*s3.CopyObjectInput")).Return(nil, errors.New("some copy error"))
 
 	err := testFile.MoveToFile(targetFile)
-	ts.NotNil(err, "Error shouldn't be returned from successful call to CopyToFile")
+	ts.Error(err, "Error shouldn't be returned from successful call to CopyToFile")
 	s3apiMock.AssertNotCalled(ts.T(), "DeleteObject", mock.Anything)
 	s3apiMock.AssertExpectations(ts.T())
 }
@@ -561,15 +561,14 @@ func (ts *fileTestSuite) TestMoveToLocationFail() {
 func (ts *fileTestSuite) TestDelete() {
 	s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
 	err := testFile.Delete()
-	ts.Nil(err, "Successful delete should not return an error.")
+	ts.NoError(err, "Successful delete should not return an error.")
 	s3apiMock.AssertExpectations(ts.T())
 }
 
 func (ts *fileTestSuite) TestDeleteError() {
 	s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(nil, errors.New("something went wrong"))
 	err := testFile.Delete()
-	ts.NotNil(err, "Delete should return an error if s3 api had error.")
-	ts.Equal(err.Error(), "something went wrong")
+	ts.EqualError(err, "something went wrong", "Delete should return an error if s3 api had error.")
 	s3apiMock.AssertExpectations(ts.T())
 }
 
@@ -586,7 +585,7 @@ func (ts *fileTestSuite) TestDeleteWithDeleteAllVersionsOption() {
 	s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
 
 	err := testFile.Delete(delete.WithDeleteAllVersions())
-	ts.Nil(err, "Successful delete should not return an error.")
+	ts.NoError(err, "Successful delete should not return an error.")
 	s3apiMock.AssertExpectations(ts.T())
 	s3apiMock.AssertNumberOfCalls(ts.T(), "DeleteObject", 3)
 }
@@ -606,7 +605,7 @@ func (ts *fileTestSuite) TestDeleteWithDeleteAllVersionsOptionError() {
 		Return(nil, errors.New("something went wrong"))
 
 	err := testFile.Delete(delete.WithDeleteAllVersions())
-	ts.NotNil(err, "Delete should return an error if s3 api had error.")
+	ts.Error(err, "Delete should return an error if s3 api had error.")
 	s3apiMock.AssertExpectations(ts.T())
 	s3apiMock.AssertNumberOfCalls(ts.T(), "DeleteObject", 2)
 }
@@ -617,7 +616,7 @@ func (ts *fileTestSuite) TestLastModified() {
 		LastModified: &now,
 	}, nil)
 	modTime, err := testFile.LastModified()
-	ts.Nil(err, "Error should be nil when correctly returning time of object.")
+	ts.NoError(err, "Error should be nil when correctly returning time of object.")
 	ts.Equal(&now, modTime, "Returned time matches expected LastModified time.")
 }
 
@@ -641,7 +640,7 @@ func (ts *fileTestSuite) TestSize() {
 	}, nil)
 
 	size, err := testFile.Size()
-	ts.Nil(err, "Error should be nil when requesting size for file that exists.")
+	ts.NoError(err, "Error should be nil when requesting size for file that exists.")
 	ts.Equal(uint64(100), size, "Size should return the ContentLength value from s3 HEAD request.")
 	s3apiMock.AssertExpectations(ts.T())
 }

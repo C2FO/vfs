@@ -186,7 +186,7 @@ func (lt *locationTestSuite) TestExists_true() {
 	loc, err := fs.NewLocation(bucket, "/")
 	lt.NoError(err)
 	exists, err := loc.Exists()
-	lt.Nil(err, "No error expected from Exists")
+	lt.NoError(err, "No error expected from Exists")
 	lt.True(exists, "Call to Exists expected to return true.")
 }
 
@@ -198,7 +198,7 @@ func (lt *locationTestSuite) TestExists_false() {
 	loc, err := fs.NewLocation(bucket, "/")
 	lt.NoError(err)
 	exists, err := loc.Exists()
-	lt.Nil(err, "No error expected from Exists")
+	lt.NoError(err, "No error expected from Exists")
 	lt.False(exists, "Call to Exists expected to return true.")
 }
 
@@ -294,7 +294,7 @@ func (lt *locationTestSuite) TestDeleteFile() {
 
 	lt.Run("delete existing", func() {
 		err = loc.DeleteFile("filename.txt")
-		lt.Nil(err, "Successful delete should not return an error.")
+		lt.NoError(err, "Successful delete should not return an error.")
 	})
 
 	lt.Run("delete non-existing", func() {

@@ -33,7 +33,7 @@ func (ts *fileSystemTestSuite) TestNewFileSystem() {
 func (ts *fileSystemTestSuite) TestNewFile() {
 	filePath := "/path/to/file.txt"
 	file, err := ts.sftpfs.NewFile("host.com", filePath)
-	ts.Nil(err, "No errors returned by NewFile(%s)", filePath)
+	ts.NoError(err, "No errors returned by NewFile(%s)", filePath)
 	ts.NotNil(file, "sftpfs.NewFile(%s) should assign all but first name component to key", filePath)
 }
 
@@ -121,8 +121,7 @@ func (ts *fileSystemTestSuite) TestClient() {
 	ts.sftpfs.sftpclient = nil
 	ts.sftpfs.options = badOpt
 	_, err = ts.sftpfs.Client(utils.Authority{})
-	ts.Error(err, "error found")
-	ts.Equal("unable to create client, vfs.Options must be an sftp.Options", err.Error(), "client was already set")
+	ts.EqualError(err, "unable to create client, vfs.Options must be an sftp.Options", "client was already set")
 }
 
 func (ts *fileSystemTestSuite) TestClientWithAutoDisconnect() {
