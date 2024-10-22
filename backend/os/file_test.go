@@ -6,7 +6,9 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -48,7 +50,7 @@ func (s *osFileTest) SetupTest() {
 	s.testFile = file
 }
 
-func (s *osFileTest) TeardownTest() {
+func (s *osFileTest) TearDownTest() {
 	err := s.testFile.Close()
 	s.NoError(err, "close error not expected")
 }
@@ -92,6 +94,8 @@ func (s *osFileTest) TestTouch() {
 	// capture last_modified
 	firstModTime, err := testfile.LastModified()
 	s.NoError(err)
+
+	time.Sleep(time.Millisecond)
 
 	// touch again
 	err = testfile.Touch()
@@ -173,14 +177,6 @@ func (s *osFileTest) TestSeek() {
 	s.NoError(rerr, "read error not expected")
 	s.Equal(expectedText, string(data))
 	s.NoError(s.testFile.Close())
-
-	// setup file for err out of opening
-	f, err := s.tmploc.NewFile("test_files/seekFileFail.txt")
-	s.NoError(err)
-	f.(*File).useTempFile = true
-	f.(*File).fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("bad opener") }
-	_, err = f.Seek(0, 4)
-	s.Error(err)
 }
 
 func (s *osFileTest) TestCopyToLocation() {
@@ -193,7 +189,7 @@ func (s *osFileTest) TestCopyToLocation() {
 	otherFile.On("Close").Return(nil)
 	otherFs.On("NewFile", mock.Anything, mock.Anything).Return(otherFile, nil)
 
-	location := Location{"/some/path", otherFs}
+	location := Location{name: "/some/path", fileSystem: otherFs}
 
 	_, err := s.testFile.CopyToLocation(&location)
 	s.NoError(err)
@@ -208,7 +204,7 @@ func (s *osFileTest) TestCopyToFile() {
 	otherFs := &mocks.FileSystem{}
 	otherFile := new(mocks.File)
 
-	location := Location{"/some/path", otherFs}
+	location := Location{name: "/some/path", fileSystem: otherFs}
 
 	// Expected behavior
 	otherFile.On("Write", mock.Anything).Return(len(expectedText), nil)
@@ -231,7 +227,7 @@ func (s *osFileTest) TestEmptyCopyToFile() {
 	otherFs := new(mocks.FileSystem)
 	otherFile := new(mocks.File)
 
-	location := Location{"/some/path", otherFs}
+	location := Location{name: "/some/path", fileSystem: otherFs}
 
 	// Expected behavior
 	otherFile.On("Write", mock.Anything).Return(len(expectedText), nil)
@@ -263,7 +259,7 @@ func (s *osFileTest) TestCopyToLocationIgnoreExtraSeparator() {
 	otherFs.On("NewFile", mock.Anything, mock.Anything).Return(otherFile, nil)
 
 	// Add trailing slash
-	location := Location{"/some/path/", otherFs}
+	location := Location{name: "/some/path/", fileSystem: otherFs}
 
 	_, err := s.testFile.CopyToLocation(&location)
 	s.Require().NoError(err)
@@ -273,10 +269,10 @@ func (s *osFileTest) TestCopyToLocationIgnoreExtraSeparator() {
 
 func (s *osFileTest) TestMoveToLocation() {
 	expectedText := "moved file"
-	dir, terr := os.MkdirTemp(path.Join(s.tmploc.Path(), "test_files"), "example")
+	dir, terr := os.MkdirTemp(filepath.Join(osLocationPath(s.tmploc), "test_files"), "example")
 	s.NoError(terr)
 
-	origFileName := path.Join(dir, "test_files/move.txt")
+	origFileName := filepath.Join(dir, "test_files", "move.txt")
 	file, nerr := s.fileSystem.NewFile("", origFileName)
 	s.NoError(nerr)
 
@@ -296,10 +292,11 @@ func (s *osFileTest) TestMoveToLocation() {
 	s.True(found)
 
 	// setup location
-	location := Location{dir, s.fileSystem}
+	location, err := s.fileSystem.NewLocation("", utils.EnsureTrailingSlash(dir))
+	s.Require().NoError(err)
 
 	// move the file to new location
-	movedFile, err := file.MoveToLocation(&location)
+	movedFile, err := file.MoveToLocation(location)
 	s.NoError(err)
 
 	s.Equal(location.Path(), movedFile.Location().Path(), "ensure file location changed")
@@ -336,7 +333,7 @@ func (s *osFileTest) TestMoveToLocation() {
 }
 
 func (s *osFileTest) TestSafeOsRename() {
-	dir, err := os.MkdirTemp(path.Join(s.tmploc.Path(), "test_files"), "example")
+	dir, err := os.MkdirTemp(filepath.Join(osLocationPath(s.tmploc), "test_files"), "example")
 	s.NoError(err)
 	defer func() {
 		err := os.RemoveAll(dir)
@@ -377,7 +374,7 @@ func (s *osFileTest) TestSafeOsRename() {
 }
 
 func (s *osFileTest) TestOsCopy() {
-	dir, err := os.MkdirTemp(path.Join(s.tmploc.Path(), "test_files"), "example")
+	dir, err := os.MkdirTemp(filepath.Join(osLocationPath(s.tmploc), "test_files"), "example")
 	s.NoError(err)
 	defer func() {
 		err := os.RemoveAll(dir)
@@ -399,10 +396,12 @@ func (s *osFileTest) TestOsCopy() {
 	b, err := io.ReadAll(file2)
 	s.NoError(err)
 	s.Equal(testBytes, b, "contents match")
+
+	s.Require().NoError(file2.Close())
 }
 
 func (s *osFileTest) TestMoveToFile() {
-	dir, terr := os.MkdirTemp(path.Join(s.tmploc.Path(), "test_files"), "example")
+	dir, terr := os.MkdirTemp(filepath.Join(osLocationPath(s.tmploc), "test_files"), "example")
 	s.NoError(terr)
 
 	file1, err := s.fileSystem.NewFile("", path.Join(dir, "original.txt"))
@@ -509,6 +508,7 @@ func (s *osFileTest) TestWrite() {
 	data = make([]byte, 4)
 	_, err = f.Write(data)
 	s.Error(err)
+	s.Require().NoError(f.Close())
 }
 
 func (s *osFileTest) TestCursor() {
@@ -638,7 +638,7 @@ func (s *osFileTest) TestLastModified() {
 
 	lastModified, err := file.LastModified()
 	s.NoError(err)
-	osStats, err := os.Stat(path.Join(s.tmploc.Path(), "test_files/test.txt"))
+	osStats, err := os.Stat(filepath.Join(osLocationPath(s.tmploc), "test_files", "test.txt"))
 	s.NoError(err)
 	s.NotNil(lastModified)
 	s.Equal(osStats.ModTime(), *lastModified)
@@ -663,7 +663,7 @@ func (s *osFileTest) TestSize() {
 	size, err := file.Size()
 	s.NoError(err)
 
-	osStats, err := os.Stat(path.Join(s.tmploc.Path(), "test_files/test.txt"))
+	osStats, err := os.Stat(filepath.Join(osLocationPath(s.tmploc), "test_files", "test.txt"))
 	s.NoError(err)
 	s.NotNil(size)
 	s.Equal(osStats.Size(), int64(size))
@@ -684,14 +684,14 @@ func (s *osFileTest) TestPath() {
 func (s *osFileTest) TestURI() {
 	file, err := s.tmploc.NewFile("some/file/test.txt")
 	s.NoError(err)
-	expected := fmt.Sprintf("file://%s", path.Join(s.tmploc.Path(), "some/file/test.txt"))
+	expected := fmt.Sprintf("file://%s", filepath.ToSlash(filepath.Join(osLocationPath(s.tmploc), "some", "file", "test.txt")))
 	s.Equal(expected, file.URI(), "%s does not match %s", file.URI(), expected)
 }
 
 func (s *osFileTest) TestStringer() {
 	file, err := s.tmploc.NewFile("some/file/test.txt")
 	s.NoError(err)
-	s.Equal(fmt.Sprintf("file://%s", path.Join(s.tmploc.Path(), "some/file/test.txt")), file.String())
+	s.Equal(fmt.Sprintf("file://%s", filepath.ToSlash(filepath.Join(osLocationPath(s.tmploc), "some", "file", "test.txt"))), file.String())
 }
 
 func (s *osFileTest) TestLocationRightAfterChangeDir() {

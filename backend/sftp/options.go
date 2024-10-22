@@ -231,7 +231,10 @@ func findHomeSystemKnownHosts(knownHostsFiles []string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	homeKnownHostsPath := utils.EnsureLeadingSlash(path.Join(home, ".ssh/known_hosts"))
+	homeKnownHostsPath := path.Join(home, ".ssh/known_hosts")
+	if runtime.GOOS != "windows" {
+		homeKnownHostsPath = utils.EnsureLeadingSlash(homeKnownHostsPath)
+	}
 
 	// check file existence first to prevent auto-vivification of file
 	found, err := foundFile(homeKnownHostsPath)

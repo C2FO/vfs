@@ -6,6 +6,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"github.com/c2fo/vfs/v6"
@@ -15,6 +16,7 @@ import (
 
 // Location implements the vfs.Location interface specific to OS fs.
 type Location struct {
+	volume     string
 	name       string
 	fileSystem vfs.FileSystem
 }
@@ -28,6 +30,7 @@ func (l *Location) NewFile(fileName string) (vfs.File, error) {
 	if fileName == "" {
 		return nil, errors.New("non-empty string filePath is required")
 	}
+	fileName = filepath.ToSlash(fileName)
 	err := utils.ValidateRelativeFilePath(fileName)
 	if err != nil {
 		return nil, err
@@ -112,7 +115,7 @@ func (l *Location) fileList(testEval fileTest) ([]string, error) {
 
 // Volume returns the volume, if any, of the location. Given "C:\foo\bar" it returns "C:" on Windows. On other platforms it returns "".
 func (l *Location) Volume() string {
-	return filepath.VolumeName(l.name)
+	return l.volume
 }
 
 // Path returns the location path.
@@ -124,7 +127,7 @@ func (l *Location) Path() string {
 // permissions. Will receive false without an error if the location simply doesn't exist. Otherwise could receive
 // false and any errors passed back from the OS.
 func (l *Location) Exists() (bool, error) {
-	_, err := os.Stat(l.Path())
+	_, err := os.Stat(osLocationPath(l))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
@@ -155,6 +158,7 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 	// make a copy of the original location first, then ChangeDir, leaving the original location as-is
 	newLocation := &Location{}
 	*newLocation = *l
+	relativePath = filepath.ToSlash(relativePath)
 	err := newLocation.ChangeDir(relativePath)
 	if err != nil {
 		return nil, err
@@ -185,4 +189,11 @@ func (l *Location) ChangeDir(relativePath string) error {
 // FileSystem returns a vfs.FileSystem interface of the location's underlying file system.
 func (l *Location) FileSystem() vfs.FileSystem {
 	return l.fileSystem
+}
+
+func osLocationPath(l vfs.Location) string {
+	if runtime.GOOS == "windows" {
+		return l.Volume() + filepath.FromSlash(l.Path())
+	}
+	return l.Path()
 }
