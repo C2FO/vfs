@@ -51,24 +51,24 @@ func (s *memLocationTest) TestList() {
 // by showing that no files live on those directories
 func (s *memLocationTest) TestList_NonExistentDirectory() {
 	location, err := s.testFile.Location().NewLocation("not/a/directory/")
-	s.Nil(err, "error isn't expected")
+	s.NoError(err, "error isn't expected")
 
 	exists, err := location.Exists()
-	s.Nil(err, "error isn't expected")
+	s.NoError(err, "error isn't expected")
 	s.True(exists, "location should return true for Exists")
 
 	contents, err := location.List()
-	s.Nil(err, "error isn't expected")
-	s.Equal(0, len(contents), "list should return empty slice for non-existent directory")
+	s.NoError(err, "error isn't expected")
+	s.Empty(contents, "list should return empty slice for non-existent directory")
 
 	prefixContents, err := location.ListByPrefix("anything")
-	s.Nil(err, "error isn't expected")
-	s.Equal(0, len(prefixContents), "ListByPrefix should return empty slice for non-existent directory")
+	s.NoError(err, "error isn't expected")
+	s.Empty(prefixContents, "ListByPrefix should return empty slice for non-existent directory")
 
 	regex := regexp.MustCompile("-+")
 	regexContents, err := location.ListByRegex(regex)
-	s.Nil(err, "error isn't expected")
-	s.Equal(0, len(regexContents), "ListByRegex should return empty slice for non-existent directory")
+	s.NoError(err, "error isn't expected")
+	s.Empty(regexContents, "ListByRegex should return empty slice for non-existent directory")
 }
 
 // TestListByPrefix creates some files and provides a prefix. Succeeds on correct string slice returned
@@ -103,7 +103,7 @@ func (s *memLocationTest) TestListByPrefix() {
 	s.Equal(expectedSlice, nameSlice)
 	emptySlice, err := s.testFile.Location().ListByPrefix("m")
 	s.NoError(err, "unexpected error retrieving files by prefix")
-	s.Equal(make([]string, 0), emptySlice) // no files should be found with this prefix at this location
+	s.Empty(emptySlice) // no files should be found with this prefix at this location
 }
 
 // TestListByRegex provides a simple regular expression and ensures that the correct fileNames matched that regEx
@@ -235,7 +235,7 @@ func (s *memLocationTest) TestChangeDir() {
 	exists, eerr := loc.Exists()
 	s.NoError(eerr, "unexpected error checking for Existence")
 	s.True(exists)
-	s.False(newFile.Location().Path() == loc.Path())
+	s.NotEqual(newFile.Location().Path(), loc.Path())
 }
 
 // TestVolume makes sure that the mem-fs returns the empty string for its volume

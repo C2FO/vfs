@@ -47,7 +47,7 @@ func (lt *locationTestSuite) TestList() {
 	loc, err := lt.fs.NewLocation(bucket, locPath)
 	lt.NoError(err)
 	fileList, err := loc.List()
-	lt.Nil(err, "Shouldn't return an error when successfully returning list.")
+	lt.NoError(err, "Shouldn't return an error when successfully returning list.")
 	lt.Len(fileList, len(expectedFileList), "Should return the expected number of files.")
 	for _, fileKey := range fileList {
 		lt.Contains(expectedFileList, fileKey, "All returned keys should be in expected file list.")
@@ -91,7 +91,7 @@ func (lt *locationTestSuite) TestList_pagedCall() {
 	loc, err := lt.fs.NewLocation(bucket, locPath)
 	lt.NoError(err)
 	fileList, err := loc.List()
-	lt.Nil(err, "Shouldn't return an error when successfully returning list.")
+	lt.NoError(err, "Shouldn't return an error when successfully returning list.")
 	lt.Len(fileList, len(expectedFileList), "Should return the expected number of files.")
 	for _, expectedKey := range expectedFileList {
 		lt.Contains(fileList, expectedKey, "All returned keys should be in expected file list.")
@@ -120,7 +120,7 @@ func (lt *locationTestSuite) TestListByPrefix() {
 	loc, err := lt.fs.NewLocation(bucket, locPath)
 	lt.NoError(err)
 	fileList, err := loc.ListByPrefix(prefix)
-	lt.Nil(err, "Shouldn't return an error when successfully returning list.")
+	lt.NoError(err, "Shouldn't return an error when successfully returning list.")
 	lt.Len(fileList, len(expectedFileList), "Should return expected number of file keys.")
 	for _, fileKey := range fileList {
 		lt.Contains(expectedFileList, fileKey, "All returned keys should be in the expected list.")
@@ -150,7 +150,7 @@ func (lt *locationTestSuite) TestListByRegex() {
 	fileTypeRegex := regexp.MustCompile("txt$")
 
 	fileList, err := loc.ListByRegex(fileTypeRegex)
-	lt.Nil(err, "Shouldn't return an error on successful call to ListByRegex")
+	lt.NoError(err, "Shouldn't return an error on successful call to ListByRegex")
 	lt.Len(fileList, len(expectedFileList), "Should return expected number of file keys.")
 	for _, fileKey := range fileList {
 		lt.Contains(expectedFileList, fileKey, "All returned keys should be in the expected list.")
@@ -212,7 +212,7 @@ func (lt *locationTestSuite) TestExists_true() {
 	loc, err := lt.fs.NewLocation(bucket, "/")
 	lt.NoError(err)
 	exists, err := loc.Exists()
-	lt.Nil(err, "No error expected from Exists")
+	lt.NoError(err, "No error expected from Exists")
 	lt.True(exists, "Call to Exists expected to return true.")
 	lt.s3apiMock.AssertExpectations(lt.T())
 }
@@ -225,7 +225,7 @@ func (lt *locationTestSuite) TestExists_false() {
 	loc, err := lt.fs.NewLocation(bucket, "/")
 	lt.NoError(err)
 	exists, err := loc.Exists()
-	lt.Nil(err, "No error expected from Exists")
+	lt.NoError(err, "No error expected from Exists")
 	lt.False(exists, "Call to Exists expected to return true.")
 	lt.s3apiMock.AssertExpectations(lt.T())
 }
@@ -296,7 +296,7 @@ func (lt *locationTestSuite) TestDeleteFile() {
 	lt.NoError(err)
 
 	err = loc.DeleteFile("filename.txt")
-	lt.Nil(err, "Successful delete should not return an error.")
+	lt.NoError(err, "Successful delete should not return an error.")
 	lt.s3apiMock.AssertExpectations(lt.T())
 }
 
@@ -315,7 +315,7 @@ func (lt *locationTestSuite) TestDeleteFileWithDeleteAllVersionsOption() {
 	lt.NoError(err)
 
 	err = loc.DeleteFile("filename.txt", delete.WithDeleteAllVersions())
-	lt.Nil(err, "Successful delete should not return an error.")
+	lt.NoError(err, "Successful delete should not return an error.")
 	lt.s3apiMock.AssertExpectations(lt.T())
 	lt.s3apiMock.AssertNumberOfCalls(lt.T(), "DeleteObject", 3)
 }

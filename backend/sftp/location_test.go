@@ -48,7 +48,7 @@ func (lt *locationTestSuite) TestList() {
 	loc, err := lt.sftpfs.NewLocation(authority, locPath)
 	lt.NoError(err)
 	fileList, err := loc.List()
-	lt.Nil(err, "Shouldn't return an error when successfully returning list.")
+	lt.NoError(err, "Shouldn't return an error when successfully returning list.")
 	lt.Len(fileList, len(expectedFileList), "Should return the expected number of files.")
 	for _, fileKey := range fileList {
 		lt.Contains(expectedFileList, fileKey, "All returned keys should be in expected file list.")
@@ -97,7 +97,7 @@ func (lt *locationTestSuite) TestListByPrefix() {
 	lt.NoError(err)
 	prefix := "fil"
 	fileList, err := loc.ListByPrefix(prefix)
-	lt.Nil(err, "Shouldn't return an error when successfully returning list.")
+	lt.NoError(err, "Shouldn't return an error when successfully returning list.")
 	lt.Len(fileList, len(expectedFileList), "Should return expected number of file keys.")
 	for _, fileKey := range fileList {
 		lt.Contains(expectedFileList, fileKey, "All returned keys should be in the expected list.")
@@ -137,7 +137,7 @@ func (lt *locationTestSuite) TestListByRegex() {
 	fileTypeRegex := regexp.MustCompile("txt$")
 
 	fileList, err := loc.ListByRegex(fileTypeRegex)
-	lt.Nil(err, "Shouldn't return an error on successful call to ListByRegex")
+	lt.NoError(err, "Shouldn't return an error on successful call to ListByRegex")
 	lt.Len(fileList, len(expectedFileList), "Should return expected number of file keys.")
 	for _, fileKey := range fileList {
 		lt.Contains(expectedFileList, fileKey, "All returned keys should be in the expected list.")
@@ -244,7 +244,7 @@ func (lt *locationTestSuite) TestExists() {
 	loc, err := lt.sftpfs.NewLocation(authority, locPath)
 	lt.NoError(err)
 	exists, err := loc.Exists()
-	lt.Nil(err, "No error expected from Exists")
+	lt.NoError(err, "No error expected from Exists")
 	lt.True(exists, "Call to Exists expected to return true.")
 
 	// locations does not exist
@@ -254,7 +254,7 @@ func (lt *locationTestSuite) TestExists() {
 	loc, err = lt.sftpfs.NewLocation(authority, locPath)
 	lt.NoError(err)
 	exists, err = loc.Exists()
-	lt.Nil(err, "No error expected from Exists")
+	lt.NoError(err, "No error expected from Exists")
 	lt.True(!exists, "Call to Exists expected to return false.")
 
 	// some error calling stat
@@ -274,7 +274,7 @@ func (lt *locationTestSuite) TestExists() {
 	loc, err = lt.sftpfs.NewLocation(authority, locPath)
 	lt.NoError(err)
 	exists, err = loc.Exists()
-	lt.Nil(err, "No error expected from Exists")
+	lt.NoError(err, "No error expected from Exists")
 	lt.True(!exists, "Call to Exists expected to return false.")
 
 	lt.client.AssertExpectations(lt.T())

@@ -31,7 +31,7 @@ func (ts *fileSystemTestSuite) TestNewFileSystem() {
 func (ts *fileSystemTestSuite) TestNewFile() {
 	filePath := "/path/to/file.txt"
 	file, err := ts.ftpfs.NewFile("host.com", filePath)
-	ts.Nil(err, "No errors returned by NewFile(%s)", filePath)
+	ts.NoError(err, "No errors returned by NewFile(%s)", filePath)
 	ts.NotNil(file, "ftpfs.NewFile(%s) should assign all but first name component to key", filePath)
 }
 
@@ -119,8 +119,7 @@ func (ts *fileSystemTestSuite) TestClient() {
 	ts.ftpfs.ftpclient = nil
 	ts.ftpfs.options = badOpt
 	_, err = ts.ftpfs.Client(context.Background(), utils.Authority{})
-	ts.Error(err, "error found")
-	ts.Equal("unable to create client, vfs.Options must be an ftp.Options", err.Error(), "client was already set")
+	ts.EqualError(err, "unable to create client, vfs.Options must be an ftp.Options", "client was already set")
 }
 
 func TestFileSystem(t *testing.T) {
