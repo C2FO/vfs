@@ -142,8 +142,7 @@ func (s *LocationTestSuite) TestNewLocation() {
 func (s *LocationTestSuite) TestNewLocation_NilReceiver() {
 	var l *Location
 	nl, err := l.NewLocation("test-container/")
-	s.Error(err, "The receiver for NewLocation must be non-nil so we expect an error")
-	s.Equal("azure.Location receiver pointer must be non-nil", err.Error())
+	s.EqualError(err, "azure.Location receiver pointer must be non-nil", "The receiver for NewLocation must be non-nil so we expect an error")
 	s.Nil(nl, "An error was returned so we expect a nil location to be returned")
 }
 
@@ -159,26 +158,25 @@ func (s *LocationTestSuite) TestChangeDir() {
 
 	l = Location{}
 	err = l.ChangeDir("/test-container/")
-	s.Error(err, "The path begins with a slash and therefore is not a relative path so this should return an error")
-	s.Equal("relative location path is invalid - may not include leading slash but must include trailing slash", err.Error())
+	s.EqualError(err, "relative location path is invalid - may not include leading slash but must include trailing slash",
+		"The path begins with a slash and therefore is not a relative path so this should return an error")
 
 	l = Location{}
 	err = l.ChangeDir("test-container")
-	s.Error(err, "The path does not end with a slash and therefore is not a relative path so this should return an error")
-	s.Equal("relative location path is invalid - may not include leading slash but must include trailing slash", err.Error())
+	s.EqualError(err, "relative location path is invalid - may not include leading slash but must include trailing slash",
+		"The path does not end with a slash and therefore is not a relative path so this should return an error")
 
 	l = Location{}
 	err = l.ChangeDir("")
-	s.Error(err, "An empty relative path does not end with a slash and therefore is not a valid relative path so this should return an error")
-	s.Equal("relative location path is invalid - may not include leading slash but must include trailing slash", err.Error())
+	s.EqualError(err, "relative location path is invalid - may not include leading slash but must include trailing slash",
+		"An empty relative path does not end with a slash and therefore is not a valid relative path so this should return an error")
 }
 
 func (s *LocationTestSuite) TestChangeDir_NilReceiver() {
 	var l *Location
 	s.Nil(l)
 	err := l.ChangeDir("")
-	s.Error(err)
-	s.Equal("azure.Location receiver pointer must be non-nil", err.Error())
+	s.EqualError(err, "azure.Location receiver pointer must be non-nil")
 }
 
 func (s *LocationTestSuite) TestFileSystem() {
@@ -192,18 +190,18 @@ func (s *LocationTestSuite) TestNewFile() {
 	l, _ := fs.NewLocation("test-container", "/folder/")
 
 	f, err := l.NewFile("")
-	s.Error(err, "Empty string is not a valid relative file path so we expect an error")
-	s.Equal("relative file path is invalid - may not include leading or trailing slashes", err.Error())
+	s.EqualError(err, "relative file path is invalid - may not include leading or trailing slashes",
+		"Empty string is not a valid relative file path so we expect an error")
 	s.Nil(f, "Since the call to NewFile resulted in an error we expect a nil pointer")
 
 	f, err = l.NewFile("/foo/bar.txt")
-	s.Error(err, "The file path begins with a slash therefore it is not a valid relative file path so we expect an error")
-	s.Equal("relative file path is invalid - may not include leading or trailing slashes", err.Error())
+	s.EqualError(err, "relative file path is invalid - may not include leading or trailing slashes",
+		"The file path begins with a slash therefore it is not a valid relative file path so we expect an error")
 	s.Nil(f, "Since the call to NewFile resulted in an error we expect a nil pointer")
 
 	f, err = l.NewFile("foo/bar/")
-	s.Error(err, "The file path ends with a slash therefore it is not a valid relative file path so we expect an error")
-	s.Equal("relative file path is invalid - may not include leading or trailing slashes", err.Error())
+	s.EqualError(err, "relative file path is invalid - may not include leading or trailing slashes",
+		"The file path ends with a slash therefore it is not a valid relative file path so we expect an error")
 	s.Nil(f, "Since the call to NewFile resulted in an error we expect a nil pointer")
 
 	f, err = l.NewFile("foo/bar.txt")
@@ -216,8 +214,7 @@ func (s *LocationTestSuite) TestNewFile() {
 func (s *LocationTestSuite) TestNewFile_NilReceiver() {
 	var l *Location
 	f, err := l.NewFile("foo/bar.txt")
-	s.Error(err, "Can't create a new file from a nil location so we expect an error")
-	s.Equal("azure.Location receiver pointer must be non-nil", err.Error())
+	s.EqualError(err, "azure.Location receiver pointer must be non-nil", "Can't create a new file from a nil location so we expect an error")
 	s.Nil(f, "the call to NewFile returned an error so we expect a nil pointer")
 }
 

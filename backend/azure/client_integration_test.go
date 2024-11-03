@@ -162,7 +162,7 @@ func (s *ClientIntegrationTestSuite) TestDeleteAllVersions() {
 	// make sure the file doesn't exist
 	exists, err := f.Exists()
 	s.NoError(err, "no error should be returned on exists check")
-	s.Equal(false, exists)
+	s.False(exists)
 }
 
 func (s *ClientIntegrationTestSuite) TestProperties() {

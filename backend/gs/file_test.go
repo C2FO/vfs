@@ -9,7 +9,6 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/fsouza/fake-gcs-server/fakestorage"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v6/options/delete"
@@ -98,17 +97,15 @@ func (ts *fileTestSuite) TestRead() {
 	fs := NewFileSystem().WithClient(server.Client())
 
 	file, err := fs.NewFile(bucketName, "/"+objectName)
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file")
-	}
+	ts.Require().NoError(err, "Shouldn't fail creating new file")
 
 	var localFile = bytes.NewBuffer([]byte{})
 
 	buffer := make([]byte, utils.TouchCopyMinBufferSize)
 	_, copyErr := io.CopyBuffer(localFile, file, buffer)
-	assert.NoError(ts.T(), copyErr, "no error expected")
+	ts.NoError(copyErr, "no error expected")
 	closeErr := file.Close()
-	assert.NoError(ts.T(), closeErr, "no error expected")
+	ts.NoError(closeErr, "no error expected")
 
 	ts.Equal(localFile.String(), contents, "Copying an gs file to a buffer should fill buffer with file's contents")
 }
@@ -135,17 +132,13 @@ func (ts *fileTestSuite) TestDelete() {
 	fs := NewFileSystem().WithClient(client)
 
 	file, err := fs.NewFile(bucketName, "/"+objectName)
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file")
-	}
+	ts.Require().NoError(err, "Shouldn't fail creating new file")
 
 	err = file.Delete()
-	if err != nil {
-		ts.Fail("Shouldn't fail deleting the file")
-	}
+	ts.Require().NoError(err, "Shouldn't fail deleting the file")
 
 	bucket := client.Bucket(bucketName)
-	assert.Equal(ts.T(), false, objectExists(bucket, objectName))
+	ts.False(objectExists(bucket, objectName))
 }
 
 func (ts *fileTestSuite) TestDeleteError() {
@@ -170,12 +163,10 @@ func (ts *fileTestSuite) TestDeleteError() {
 	fs := NewFileSystem().WithClient(client)
 
 	file, err := fs.NewFile(bucketName, "/invalidObject")
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file")
-	}
+	ts.Require().NoError(err, "Shouldn't fail creating new file")
 
 	err = file.Delete()
-	ts.NotNil(err, "Should return an error if gs client had error")
+	ts.Error(err, "Should return an error if gs client had error")
 }
 
 func (ts *fileTestSuite) TestDeleteRemoveAllVersions() {
@@ -200,29 +191,21 @@ func (ts *fileTestSuite) TestDeleteRemoveAllVersions() {
 	fs := NewFileSystem().WithClient(client)
 
 	file, err := fs.NewFile(bucketName, "/"+objectName)
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file")
-	}
+	ts.Require().NoError(err, "Shouldn't fail creating new file")
 
 	f := file.(*File)
 	handles, err := f.getObjectGenerationHandles()
-	if err != nil {
-		ts.Fail("Shouldn't fail getting object generation handles")
-	}
-	assert.Equal(ts.T(), 1, len(handles))
+	ts.Require().NoError(err, "Shouldn't fail getting object generation handles")
+	ts.Len(handles, 1)
 
 	err = file.Delete(delete.WithDeleteAllVersions())
-	if err != nil {
-		ts.Fail("Shouldn't fail deleting the file")
-	}
+	ts.Require().NoError(err, "Shouldn't fail deleting the file")
 
 	bucket := client.Bucket(bucketName)
-	assert.Equal(ts.T(), false, objectExists(bucket, objectName))
+	ts.False(objectExists(bucket, objectName))
 	handles, err = f.getObjectGenerationHandles()
-	if err != nil {
-		ts.Fail("Shouldn't fail getting object generation handles")
-	}
-	assert.Nil(ts.T(), handles)
+	ts.Require().NoError(err, "Shouldn't fail getting object generation handles")
+	ts.Nil(handles)
 }
 
 func (ts *fileTestSuite) TestWrite() {
@@ -238,8 +221,8 @@ func (ts *fileTestSuite) TestWrite() {
 
 	count, err := file.Write([]byte(contents))
 
-	ts.Equal(len(contents), count, "Returned count of bytes written should match number of bytes passed to Write.")
-	ts.Nil(err, "Error should be nil when calling Write")
+	ts.Len(contents, count, "Returned count of bytes written should match number of bytes passed to Write.")
+	ts.NoError(err, "Error should be nil when calling Write")
 }
 
 func (ts *fileTestSuite) TestGetLocation() {
@@ -274,13 +257,11 @@ func (ts *fileTestSuite) TestExists() {
 	fs := NewFileSystem().WithClient(server.Client())
 
 	file, err := fs.NewFile(bucketName, "/"+objectName)
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file.")
-	}
+	ts.Require().NoError(err, "Shouldn't fail creating new file.")
 
 	exists, err := file.Exists()
 	ts.True(exists, "Should return true for exists based on this setup")
-	ts.Nil(err, "Shouldn't return an error when exists is true")
+	ts.NoError(err, "Shouldn't return an error when exists is true")
 }
 
 func (ts *fileTestSuite) TestNotExists() {
@@ -289,13 +270,11 @@ func (ts *fileTestSuite) TestNotExists() {
 	fs := NewFileSystem().WithClient(server.Client())
 
 	file, err := fs.NewFile("bucket", "/path/hello.txt")
-	if err != nil {
-		ts.Fail("Shouldn't fail creating new file.")
-	}
+	ts.Require().NoError(err, "Shouldn't fail creating new file.")
 
 	exists, err := file.Exists()
 	ts.False(exists, "Should return false for exists based on setup")
-	ts.Nil(err, "Error from key not existing should be hidden since it just confirms it doesn't")
+	ts.NoError(err, "Error from key not existing should be hidden since it just confirms it doesn't")
 }
 
 func (ts *fileTestSuite) TestMoveAndCopy() {
@@ -382,7 +361,7 @@ func (ts *fileTestSuite) TestMoveAndCopy() {
 			if testCase.readFirst {
 				ts.Error(err, "Error should be returned for operation on file that has been read (i.e. has non 0 cursor position)")
 			} else {
-				ts.Nil(err, "Error shouldn't be returned from successful operation")
+				ts.NoError(err, "Error shouldn't be returned from successful operation")
 
 				if testCase.move {
 					ts.False(objectExists(sourceBucket, sourceName), "source should not exist")
@@ -487,7 +466,7 @@ func (ts *fileTestSuite) TestMoveAndCopyBuffered() {
 			if testCase.readFirst {
 				ts.Error(err, "Error should be returned for operation on file that has been read (i.e. has non 0 cursor position)")
 			} else {
-				ts.Nil(err, "Error shouldn't be returned from successful operation")
+				ts.NoError(err, "Error shouldn't be returned from successful operation")
 
 				if testCase.move {
 					ts.False(objectExists(sourceBucket, sourceName), "source should not exist")

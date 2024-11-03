@@ -22,26 +22,23 @@ func (s *FileSystemTestSuite) TestVFSFileSystemImplementor() {
 func (s *FileSystemTestSuite) TestNewFile() {
 	fs := NewFileSystem().WithOptions(Options{AccountName: "test-container"})
 	file, err := fs.NewFile("", "")
-	s.Error(err, "volume and path are required")
+	s.EqualError(err, "non-empty strings for container and path are required", "volume and path are required")
 	s.Nil(file)
-	s.Equal("non-empty strings for container and path are required", err.Error())
 
 	fs = NewFileSystem().WithOptions(Options{AccountName: "test-container"})
 	file, err = fs.NewFile("temp", "")
-	s.Error(err, "volume and path are required")
+	s.EqualError(err, "non-empty strings for container and path are required", "volume and path are required")
 	s.Nil(file)
-	s.Equal("non-empty strings for container and path are required", err.Error())
 
 	fs = NewFileSystem().WithOptions(Options{AccountName: "test-container"})
 	file, err = fs.NewFile("", "/blah/blah.txt")
-	s.Error(err, "volume and path are required")
+	s.EqualError(err, "non-empty strings for container and path are required", "volume and path are required")
 	s.Nil(file)
-	s.Equal("non-empty strings for container and path are required", err.Error())
 
 	fs = NewFileSystem().WithOptions(Options{AccountName: "test-container"})
 	file, err = fs.NewFile("temp", "blah/blah.txt")
-	s.Error(err, "the path is invalid so we expect an error")
-	s.Equal("absolute file path is invalid - must include leading slash and may not include trailing slash", err.Error())
+	s.EqualError(err, "absolute file path is invalid - must include leading slash and may not include trailing slash",
+		"the path is invalid so we expect an error")
 	s.Nil(file, "Since an error was returned we expect a nil file to be returned")
 
 	fs = NewFileSystem().WithOptions(Options{AccountName: "test-container"})
@@ -54,8 +51,7 @@ func (s *FileSystemTestSuite) TestNewFile() {
 func (s *FileSystemTestSuite) TestNewFile_NilReceiver() {
 	var fs *FileSystem
 	file, err := fs.NewFile("temp", "/foo/bar/test.txt")
-	s.Error(err, "the receiver pointer is nil so we would receive an error")
-	s.Equal("azure.FileSystem receiver pointer must be non-nil", err.Error())
+	s.EqualError(err, "azure.FileSystem receiver pointer must be non-nil", "the receiver pointer is nil so we would receive an error")
 	s.Nil(file, "Since there was an error we expect a nil file to be returned")
 }
 
@@ -77,14 +73,14 @@ func (s *FileSystemTestSuite) TestNewLocation() {
 
 	fs = NewFileSystem().WithOptions(Options{AccountName: "test-container"})
 	loc, err = fs.NewLocation("temp", "foo/bar/")
-	s.Error(err, "The path does not start with a slash and therefore not an absolute path so we expect an error")
-	s.Equal("absolute location path is invalid - must include leading and trailing slashes", err.Error())
+	s.EqualError(err, "absolute location path is invalid - must include leading and trailing slashes",
+		"The path does not start with a slash and therefore not an absolute path so we expect an error")
 	s.Nil(loc, "Since an error was returned the location is nil")
 
 	fs = NewFileSystem().WithOptions(Options{AccountName: "test-container"})
 	loc, err = fs.NewLocation("temp", "/foo/bar")
-	s.Error(err, "The path does not end with a slash and therefore not an absolute path so we expect an error")
-	s.Equal("absolute location path is invalid - must include leading and trailing slashes", err.Error())
+	s.EqualError(err, "absolute location path is invalid - must include leading and trailing slashes",
+		"The path does not end with a slash and therefore not an absolute path so we expect an error")
 	s.Nil(loc, "Since an error was returned the location is nil")
 
 	fs = NewFileSystem().WithOptions(Options{AccountName: "test-container"})
@@ -109,8 +105,8 @@ func (s *FileSystemTestSuite) TestNewLocation() {
 func (s *FileSystemTestSuite) TestNewLocation_NilReceiver() {
 	var fs *FileSystem
 	loc, err := fs.NewLocation("temp", "/foo/bar/")
-	s.Error(err, "The receiver pointer on the function call is nill so we should get an error")
-	s.Equal("azure.FileSystem receiver pointer must be non-nil", err.Error())
+	s.EqualError(err, "azure.FileSystem receiver pointer must be non-nil",
+		"The receiver pointer on the function call is nill so we should get an error")
 	s.Nil(loc, "The call returned an error so the location should be nil")
 }
 
@@ -142,8 +138,7 @@ func (s *FileSystemTestSuite) TestRetry() {
 	fs = NewFileSystem().WithOptions(Options{RetryFunc: errorRetry})
 	retryFn = fs.Retry()
 	err = retryFn(doNothing)
-	s.Error(err, "This implementation should use the retry function from the options which always errors")
-	s.Equal("i always error", err.Error())
+	s.EqualError(err, "i always error", "This implementation should use the retry function from the options which always errors")
 }
 
 func (s *FileSystemTestSuite) TestNewFileSystem() {
@@ -157,7 +152,7 @@ func (s *FileSystemTestSuite) TestWithOptions() {
 	s.Equal("foo-account", fs.options.AccountName)
 
 	fs = NewFileSystem().WithOptions("Not Azure Options...")
-	s.Equal("", fs.options.AccountName)
+	s.Empty(fs.options.AccountName)
 }
 
 func (s *FileSystemTestSuite) TestClient() {
@@ -187,8 +182,8 @@ func (s *FileSystemTestSuite) TestParsePath() {
 	u, _ = url.Parse(uri)
 	volume, path, err = ParsePath(u.Path)
 	s.Error(err, "a container is required so we should get an error")
-	s.Equal("", volume, "we got an error so volume should be empty")
-	s.Equal("", path, "we got an error so path should be empty")
+	s.Empty(volume, "we got an error so volume should be empty")
+	s.Empty(path, "we got an error so path should be empty")
 
 	uri = "https://my-account.blob.core.windows.net/my_container/foo/bar/baz.txt"
 	u, _ = url.Parse(uri)
