@@ -152,9 +152,7 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 		// clean up srcLoc after test for OS
 		if srcLoc.FileSystem().Scheme() == "file" {
 			exists, err := srcLoc.Exists()
-			if err != nil {
-				panic(err)
-			}
+			s.Require().NoError(err)
 			if exists {
 				s.NoError(os.RemoveAll(srcLoc.Path()), "failed to clean up location test srcLoc")
 			}
@@ -261,7 +259,7 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 		   TODO: *************************************************************************************************************
 			     note that Exists is not consistent among implementations. GCSs and S3 always return true if the bucket exist.
 		         Fundamentally, why one wants to know if location exists is to know whether you're able to write there.  But
-		         this feels unintuitve.
+		         this feels unintuitive.
 	         	 *************************************************************************************************************
 
 		   Consider:
@@ -321,16 +319,16 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 
 	files, err := srcLoc.List()
 	s.NoError(err)
-	s.Equal(3, len(files), "list srcLoc location")
+	s.Len(files, 3, "list srcLoc location")
 
 	files, err = subLoc.List()
 	s.NoError(err)
-	s.Equal(1, len(files), "list subLoc location")
+	s.Len(files, 1, "list subLoc location")
 	s.Equal("that.txt", files[0], "returned basename")
 
 	files, err = cdTestLoc.List()
 	s.NoError(err)
-	s.Equal(0, len(files), "non-existent location")
+	s.Empty(files, "non-existent location")
 
 	switch baseLoc.FileSystem().Scheme() {
 	case "gs":
@@ -351,21 +349,21 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 
 	files, err = srcLoc.ListByPrefix("file")
 	s.NoError(err)
-	s.Equal(2, len(files), "list srcLoc location matching prefix")
+	s.Len(files, 2, "list srcLoc location matching prefix")
 
 	files, err = srcLoc.ListByPrefix("s")
 	s.NoError(err)
-	s.Equal(1, len(files), "list srcLoc location")
+	s.Len(files, 1, "list srcLoc location")
 	s.Equal("self.txt", files[0], "returned only file basename, not subdir matching prefix")
 
 	files, err = srcLoc.ListByPrefix("somepath/t")
 	s.NoError(err)
-	s.Equal(1, len(files), "list 'somepath' location relative to srcLoc")
+	s.Len(files, 1, "list 'somepath' location relative to srcLoc")
 	s.Equal("that.txt", files[0], "returned only file basename, using relative prefix")
 
 	files, err = cdTestLoc.List()
 	s.NoError(err)
-	s.Equal(0, len(files), "non-existent location")
+	s.Empty(files, "non-existent location")
 
 	// ListByRegex returns a slice of strings representing the base names of the files found in the Location that matched the
 	// given regular expression.
@@ -377,15 +375,15 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 
 	files, err = srcLoc.ListByRegex(regexp.MustCompile("^f"))
 	s.NoError(err)
-	s.Equal(2, len(files), "list srcLoc location matching prefix")
+	s.Len(files, 2, "list srcLoc location matching prefix")
 
 	files, err = srcLoc.ListByRegex(regexp.MustCompile(`.txt$`))
 	s.NoError(err)
-	s.Equal(3, len(files), "list srcLoc location matching prefix")
+	s.Len(files, 3, "list srcLoc location matching prefix")
 
 	files, err = srcLoc.ListByRegex(regexp.MustCompile(`Z`))
 	s.NoError(err)
-	s.Equal(0, len(files), "list srcLoc location matching prefix")
+	s.Empty(files, "list srcLoc location matching prefix")
 
 	// DeleteFile deletes the file of the given name at the location.
 	//
@@ -413,9 +411,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 		// clean up srcLoc after test for OS
 		if srcLoc.FileSystem().Scheme() == "file" {
 			exists, err := srcLoc.Exists()
-			if err != nil {
-				panic(err)
-			}
+			s.Require().NoError(err)
 			if exists {
 				s.NoError(os.RemoveAll(srcLoc.Path()), "failed to clean up file test srcLoc")
 			}
@@ -539,9 +535,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 			// clean up dstLoc after test for OS
 			if dstLoc.FileSystem().Scheme() == "file" {
 				exists, err := dstLoc.Exists()
-				if err != nil {
-					panic(err)
-				}
+				s.Require().NoError(err)
 				if exists {
 					s.NoError(os.RemoveAll(dstLoc.Path()), "failed to clean up file test dstLoc")
 				}
@@ -568,7 +562,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 		// CopyToFile will copy the current file to the provided file instance.
 		//
 		//   * In the case of an error, nil is returned for the file.
-		//   * CopyToLocation should use native functions when possible withen the same scheme.
+		//   * CopyToLocation should use native functions when possible within the same scheme.
 		//   * If the file already exists, the contents will be overwritten with the current file's contents.
 
 		// setup dstFile
@@ -739,50 +733,51 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 			{Path: "path%20has/", Filename: "encodedSpace.txt"},
 		}
 
-		for _, test := range tests {
-			// setup src
-			srcSpaces, err := srcLoc.NewFile(path.Join(test.Path, test.Filename))
-			s.NoError(err)
-			b, err := srcSpaces.Write([]byte("something"))
-			s.NoError(err)
-			s.Equal(9, b, "byte count is correct")
-			err = srcSpaces.Close()
-			s.NoError(err)
+		for i, test := range tests {
+			s.Run(fmt.Sprintf("%d", i), func() {
+				// setup src
+				srcSpaces, err := srcLoc.NewFile(path.Join(test.Path, test.Filename))
+				s.NoError(err)
+				b, err := srcSpaces.Write([]byte("something"))
+				s.NoError(err)
+				s.Equal(9, b, "byte count is correct")
+				err = srcSpaces.Close()
+				s.NoError(err)
 
-			testDestLoc, err := dstLoc.NewLocation(test.Path)
-			s.NoError(err)
+				testDestLoc, err := dstLoc.NewLocation(test.Path)
+				s.NoError(err)
 
-			dstSpaces, err := srcSpaces.MoveToLocation(testDestLoc)
-			s.NoError(err)
-			exists, err := dstSpaces.Exists()
-			s.NoError(err)
-			s.True(exists, "dstSpaces should now exist")
-			exists, err = srcSpaces.Exists()
-			s.NoError(err)
-			s.False(exists, "srcSpaces should no longer exist")
-			s.True(
-				strings.HasSuffix(dstSpaces.URI(), path.Join(test.Path, test.Filename)),
-				"destination file %s ends with source string for %s", dstSpaces.URI(), path.Join(test.Path, test.Filename),
-			)
+				dstSpaces, err := srcSpaces.MoveToLocation(testDestLoc)
+				s.NoError(err)
+				exists, err := dstSpaces.Exists()
+				s.NoError(err)
+				s.True(exists, "dstSpaces should now exist")
+				exists, err = srcSpaces.Exists()
+				s.NoError(err)
+				s.False(exists, "srcSpaces should no longer exist")
+				s.True(
+					strings.HasSuffix(dstSpaces.URI(), path.Join(test.Path, test.Filename)),
+					"destination file %s ends with source string for %s", dstSpaces.URI(), path.Join(test.Path, test.Filename),
+				)
 
-			newSrcSpaces, err := dstSpaces.MoveToLocation(srcSpaces.Location())
-			s.NoError(err)
-			exists, err = newSrcSpaces.Exists()
-			s.NoError(err)
-			s.True(exists, "newSrcSpaces should now exist")
-			exists, err = dstSpaces.Exists()
-			s.NoError(err)
-			s.False(exists, "dstSpaces should no longer exist")
-			hasSuffix := strings.HasSuffix(newSrcSpaces.URI(), path.Join(test.Path, test.Filename))
-			s.True(hasSuffix, "destination file %s ends with source string for %s", dstSpaces.URI(), path.Join(test.Path, test.Filename))
+				newSrcSpaces, err := dstSpaces.MoveToLocation(srcSpaces.Location())
+				s.NoError(err)
+				exists, err = newSrcSpaces.Exists()
+				s.NoError(err)
+				s.True(exists, "newSrcSpaces should now exist")
+				exists, err = dstSpaces.Exists()
+				s.NoError(err)
+				s.False(exists, "dstSpaces should no longer exist")
+				hasSuffix := strings.HasSuffix(newSrcSpaces.URI(), path.Join(test.Path, test.Filename))
+				s.True(hasSuffix, "destination file %s ends with source string for %s", dstSpaces.URI(), path.Join(test.Path, test.Filename))
 
-			err = newSrcSpaces.Delete()
-			s.NoError(err)
-			exists, err = newSrcSpaces.Exists()
-			s.NoError(err)
-			s.False(exists, "newSrcSpaces should now exist")
+				err = newSrcSpaces.Delete()
+				s.NoError(err)
+				exists, err = newSrcSpaces.Exists()
+				s.NoError(err)
+				s.False(exists, "newSrcSpaces should now exist")
+			})
 		}
-
 	}
 
 	// Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
@@ -803,7 +798,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 
 	size, err := touchedFile.Size()
 	s.NoError(err)
-	s.Equal(uint64(0), size, "%s should be empty", touchedFile)
+	s.Zero(size, "%s should be empty", touchedFile)
 
 	// capture last modified
 	modified, err := touchedFile.LastModified()
@@ -839,14 +834,14 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 
 	size, err = srcFile.Size()
 	s.Error(err, "expected error because file does not exist")
-	s.Equal(uint64(0x0), size)
+	s.Zero(size)
 
 	_, err = srcFile.LastModified()
 	s.Error(err, "expected error because file does not exist")
 
 	seeked, err := srcFile.Seek(-1, 2)
 	s.Error(err, "expected error because file does not exist")
-	s.Equal(int64(0x0), seeked)
+	s.Zero(seeked)
 
 	_, err = srcFile.Read(make([]byte, 1))
 	s.Error(err, "expected error because file does not exist")
@@ -871,7 +866,7 @@ func (s *vfsTestSuite) gsList(baseLoc vfs.Location) {
 	*/
 
 	/*
-		first create persisent "folder"
+		first create persistent "folder"
 	*/
 
 	// getting client since VFS doesn't allow a File ending with a slash
@@ -891,7 +886,7 @@ func (s *vfsTestSuite) gsList(baseLoc vfs.Location) {
 	s.NoError(writer.Close())
 
 	/*
-		next create create a file inside the "folder"
+		next create a file inside the "folder"
 	*/
 
 	f, err := baseLoc.NewFile("myfolder/file.txt")
@@ -907,7 +902,7 @@ func (s *vfsTestSuite) gsList(baseLoc vfs.Location) {
 
 	files, err := f.Location().List()
 	s.NoError(err)
-	s.Equal(1, len(files), "check file count found")
+	s.Len(len(files), 1, "check file count found")
 	s.Equal("file.txt", files[0], "file.txt was found")
 
 	// CLEAN UP
@@ -916,7 +911,7 @@ func (s *vfsTestSuite) gsList(baseLoc vfs.Location) {
 }
 
 func sftpRemoveAll(location *sftp.Location) error {
-	// get sftp client from Filesystem
+	// get sftp client from FileSystem
 	client, err := location.FileSystem().(*sftp.FileSystem).Client(location.Authority)
 	if err != nil {
 		return err
@@ -935,7 +930,7 @@ func recursiveSFTPRemove(absPath string, client sftp.Client) error {
 		return nil
 	}
 
-	// handle error unless it was directory which we'll assume we coudln't delete because it isn't empty
+	// handle error unless it was directory which we'll assume we couldn't delete because it isn't empty
 	if !strings.HasSuffix(absPath, "/") {
 		// not a directory (file's should have already been deleted) so return err
 		return err

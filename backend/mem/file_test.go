@@ -3,7 +3,6 @@ package mem
 import (
 	"io"
 	"io/fs"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -162,7 +161,7 @@ func (s *memFileTest) TestExists2() {
 	s.False(existence)
 }
 
-// TestNewFile creates a file and then checks that it exists in our system the the path expected
+// TestNewFile creates a file and then checks that it exists in our system at the path expected
 func (s *memFileTest) TestNewFile() {
 	file, err := s.fileSystem.NewFile("", "/test_file/foo.txt")
 	s.NoError(err, "unexpected error creating file")
@@ -170,7 +169,7 @@ func (s *memFileTest) TestNewFile() {
 	filePath := file.Path()
 	returnedFile, err := s.fileSystem.NewFile(file.Location().Volume(), filePath) // checking our system map for a match to the given fileName
 	s.NoError(err, "unexpected error retrieving file")
-	s.True(returnedFile.Name() == "foo.txt") // casting the object to a file so we can call "Name()"
+	s.Equal("foo.txt", returnedFile.Name()) // casting the object to a file so we can call "Name()"
 }
 
 // TestSeek2 tests to ensure that we can seek to any part of the file, if it exists
@@ -197,7 +196,7 @@ func (s *memFileTest) TestSeek2() {
 
 	num, err := newFile.Read(testByte)
 	s.NoError(err, "unexpected read error")
-	s.True(string(testByte) == "H")
+	s.Equal("H", string(testByte))
 	s.Equal(1, num)
 
 	_, err = newFile.Seek(-2, 1)
@@ -251,7 +250,7 @@ func (s *memFileTest) TestOpenFile() {
 
 	_, err = s.testFile.Read(data)
 	s.Error(err, "read error expected")
-	s.False(expectedText == string(data))
+	s.NotEqual(expectedText, string(data))
 }
 
 // TestSeek writes to a file and seeks to the beginning of it to read what it wrote
@@ -302,16 +301,16 @@ func (s *memFileTest) TestCopyToLocation() {
 	s.NoError(cerr, "CopyToLocation unexpectedly failed")
 
 	s.NoError(copiedFile.Touch(), "unexpected error touching file")
-	s.True(copiedFile != nil)
+	s.NotNil(copiedFile)
 	// making sure the path was correctly updated
-	s.EqualValues("/home/test.txt", copiedFile.Path())
+	s.Equal("/home/test.txt", copiedFile.Path())
 
 	_, err = copiedFile.Read(readSlice1)
 	s.NoError(err, "unexpected read error")
 
 	_, err = s.testFile.Read(readSlice2)
 	s.NoError(err, "unexpected read error")
-	s.EqualValues(string(readSlice2), string(readSlice1))
+	s.Equal(readSlice2, readSlice1)
 }
 
 // TestCopyToLocationOW copies a file to a location that has
@@ -334,13 +333,13 @@ func (s *memFileTest) TestCopyToLocationOW() {
 	readSlice := make([]byte, len(expectedText))
 	copiedFile, err := s.testFile.CopyToLocation(newFile.Location())
 	s.NoError(err, "CopyToLocation unexpectedly failed")
-	s.True(copiedFile != nil)
+	s.NotNil(copiedFile)
 	s.NoError(copiedFile.Close(), "unexpected close error")
 
-	s.EqualValues("/home/test.txt", copiedFile.Path())
+	s.Equal("/home/test.txt", copiedFile.Path())
 	_, err = copiedFile.Read(readSlice)
 	s.NoError(err, "unexpected read error")
-	s.EqualValues("hello world!", string(readSlice))
+	s.Equal("hello world!", string(readSlice))
 }
 
 // TestCopyToNilFile ensures that an error is thrown for trying to copy to a nil file
@@ -361,9 +360,7 @@ func (s *memFileTest) TestCopyToLocationOS() {
 
 	var osFile vfs.File
 	dir, err := os.MkdirTemp("", "osDir")
-	if err != nil {
-		log.Fatal(err)
-	}
+	s.Require().NoError(err)
 	osFileName := filepath.Join(dir, "osFile.txt")
 
 	osFile, err = backend.Backend(_os.Scheme).NewFile("", osFileName)
@@ -383,17 +380,17 @@ func (s *memFileTest) TestCopyToLocationOS() {
 	s.NoError(err, "CopyToLocation unexpectedly failed")
 	s.NoError(copiedFile.Close(), "unexpected Close error")
 
-	s.True(copiedFile != nil)
-	s.EqualValues("/test_files/test.txt", s.testFile.Path())         // testFile's path should be unchanged
-	s.EqualValues(filepath.Join(dir, "test.txt"), copiedFile.Path()) // new path should be that
+	s.NotNil(copiedFile)
+	s.Equal("/test_files/test.txt", s.testFile.Path())         // testFile's path should be unchanged
+	s.Equal(filepath.Join(dir, "test.txt"), copiedFile.Path()) // new path should be that
 
 	_, err = copiedFile.Read(readSlice)
 	s.NoError(err, "unexpected read error")
 
 	_, err = s.testFile.Read(readSlice2)
 	s.NoError(err, "unexpected read error")
-	s.EqualValues(string(readSlice2), string(readSlice)) // both reads should be the same
-	cleanErr := os.RemoveAll(dir)                        // clean up
+	s.Equal(readSlice2, readSlice) // both reads should be the same
+	cleanErr := os.RemoveAll(dir)  // clean up
 	s.NoError(cleanErr, "unexpected error cleaning up osFiles")
 }
 
@@ -405,7 +402,7 @@ func (s *memFileTest) TestCopyToFile() {
 	readSlice1 := make([]byte, len(expectedText))
 	readSlice2 := make([]byte, len(expectedText))
 	num, err := s.testFile.Write([]byte(expectedText))
-	s.False(num == 0)
+	s.NotZero(num)
 	s.NoError(err, "no error expected from Write but got one")
 	s.NoError(s.testFile.Close(), "unexpected error closing a file")
 
@@ -419,7 +416,7 @@ func (s *memFileTest) TestCopyToFile() {
 	s.NoError(err, "unexpected creation error")
 	_, err = otherFile.Read(readSlice2)
 	s.NoError(err, "unexpected read error")
-	s.EqualValues(string(readSlice1), string(readSlice2))
+	s.Equal(readSlice1, readSlice2)
 }
 
 // TestCopyToFileOS tests "CopyToFile()" between one file in the in-memory FileSystem and the other in the os FileSystem
@@ -428,22 +425,20 @@ func (s *memFileTest) TestCopyToFileOS() {
 	var osFile vfs.File
 	var err error
 	dir, err := os.MkdirTemp("", "osDir")
-	if err != nil {
-		log.Fatal(err)
-	}
+	s.Require().NoError(err)
 	osFileName := filepath.Join(dir, "osFile.txt")
 	osFile, err = backend.Backend(_os.Scheme).NewFile("", osFileName)
 	s.NoError(err, "unexpected error creating osFile")
 	_, err = osFile.Write(make([]byte, 0))
 	s.NoError(err, "unexpected error writing zero bytes to osFile")
 	num, err := s.testFile.Write([]byte(expectedText))
-	s.False(num == 0)
+	s.NotZero(num)
 	s.NoError(err, "no error expected from Write but got one")
-	s.NoError(s.testFile.Close(), "unexpected error closing a  file")
+	s.NoError(s.testFile.Close(), "unexpected error closing a file")
 
 	err = s.testFile.CopyToFile(osFile)
 	s.NoError(err, "copy to file failed unexpectedly")
-	s.NoError(osFile.Close(), "unexpected error closing a  file")
+	s.NoError(osFile.Close(), "unexpected error closing a file")
 
 	size1, err := s.testFile.Size()
 	s.NoError(err, "unexpected error retrieving size")
@@ -454,8 +449,8 @@ func (s *memFileTest) TestCopyToFileOS() {
 
 // TestEmptyCopy to file creates two files,
 // one is empty the other is not. Calls
-// CopyToFile using the empty one on t
-// he non-empty one. Succeeds on the non-empty
+// CopyToFile using the empty one on the
+// non-empty one. Succeeds on the non-empty
 // file becoming empty
 func (s *memFileTest) TestEmptyCopyToFile() {
 	expectedText := ""
@@ -552,7 +547,7 @@ func (s *memFileTest) TestMoveToFile() {
 	_, err = newFile.Read(newFileSlice)
 	s.NoError(err, "read unexpectedly failed")
 
-	s.Equal(string(expectedSlice), string(newFileSlice))
+	s.Equal(expectedSlice, newFileSlice)
 	s.Equal("/samples/test.txt", newFile.Path())
 }
 
@@ -575,7 +570,7 @@ func (s *memFileTest) TestMoveToFile2() {
 
 	_, err = newFile.Read(newFileSlice)
 	s.NoError(err, "read unexpectedly failed")
-	s.Equal(string(expectedSlice), string(newFileSlice))
+	s.Equal(expectedSlice, newFileSlice)
 	s.Equal("/samples/diffName.txt", newFile.Path())
 }
 
@@ -598,7 +593,7 @@ func (s *memFileTest) TestWrite() {
 	s.NoError(s.testFile.Close(), "unexpected close error")
 	actualText, err := io.ReadAll(s.testFile)
 	s.NoError(err, "unexpected read error")
-	s.EqualValues("Hello World!ith this world", string(actualText))
+	s.Equal("Hello World!ith this world", string(actualText))
 }
 
 // TestRead ensures read can be called successively to get an entire file's contents in chunks
@@ -614,7 +609,7 @@ func (s *memFileTest) TestRead() {
 
 	b, err := io.ReadAll(fileToRead)
 	s.NoError(err, "read error not expected")
-	s.EqualValues(12, len(b))
+	s.Len(b, 12)
 	s.Equal(expectedSlice, b)
 
 	// test for reading from a non-existent file
@@ -656,7 +651,7 @@ func (s *memFileTest) TestWriteThenReadNoClose() {
 	s.False(found2)
 }
 
-// TestLastModified Writes to a file then retrives the value that LastModified() returns and the lastModified value
+// TestLastModified Writes to a file then retrieves the value that LastModified() returns and the lastModified value
 // stored in the File struct and compares them against eachother.  Successful if they are equal.
 func (s *memFileTest) TestLastModified() {
 	_, err := s.testFile.Write([]byte("Hello World!"))
@@ -686,7 +681,7 @@ func (s *memFileTest) TestName() {
 // TestSize allocates 64 bytes in one file and 32 in the other.  It makes sure that Size() returns the correct sizes.
 func (s *memFileTest) TestSize() {
 	otherFile, err := s.fileSystem.NewFile("", "/test.txt")
-	s.NoError(err, "unexpected error creting file")
+	s.NoError(err, "unexpected error creating file")
 	_, err = s.testFile.Write(make([]byte, 64))
 	s.NoError(err, "unexpected write error")
 	_, err = otherFile.Write(make([]byte, 32))

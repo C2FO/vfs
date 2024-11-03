@@ -87,13 +87,15 @@ func (o *optionsSuite) TestFoundFile() {
 	}
 
 	for _, t := range tests {
-		actual, err := foundFile(t.file)
-		if t.hasError {
-			o.EqualError(err, t.errMessage, t.message)
-		} else {
-			o.NoError(err, t.message)
-			o.Equal(t.expected, actual, t.message)
-		}
+		o.Run(t.message, func() {
+			actual, err := foundFile(t.file)
+			if t.hasError {
+				o.EqualError(err, t.errMessage, t.message)
+			} else {
+				o.NoError(err, t.message)
+				o.Equal(t.expected, actual, t.message)
+			}
+		})
 	}
 }
 
@@ -148,12 +150,14 @@ func (o *optionsSuite) TestGetKeyFile() {
 	}
 
 	for _, t := range tests {
-		_, err := getKeyFile(t.keyfile, t.passphrase)
-		if t.hasError {
-			o.EqualError(err, t.errMessage, t.message)
-		} else {
-			o.NoError(err, t.message)
-		}
+		o.Run(t.message, func() {
+			_, err := getKeyFile(t.keyfile, t.passphrase)
+			if t.hasError {
+				o.EqualError(err, t.errMessage, t.message)
+			} else {
+				o.NoError(err, t.message)
+			}
+		})
 	}
 }
 
@@ -166,13 +170,13 @@ type hostkeyTest struct {
 }
 
 func (o *optionsSuite) TestGetHostKeyCallback() {
-	knwonHosts := filepath.Join(o.tmpdir, "known_hosts")
-	f, err := os.Create(knwonHosts) //nolint:gosec
+	knownHosts := filepath.Join(o.tmpdir, "known_hosts")
+	f, err := os.Create(knownHosts) //nolint:gosec
 	o.NoError(err, "create file for getHostKeyCallback test")
 	_, err = f.WriteString("127.0.0.1 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBMkEmvHLSa43yoLA8QBqTfwgXgNCfd0DKs20NlBVbMoo21+Bs0fUpemyy6U0nnGHiOJVhiL7lNG/lB1fF1ymouM=") //nolint:lll // long line
 	o.NoError(err, "writing to file for getHostKeyCallback test")
 	o.NoError(f.Close(), "closing file for getHostKeyCallback test")
-	defer func() { o.NoError(os.Remove(knwonHosts), "clean up file for getHostKeyCallback test") }()
+	defer func() { o.NoError(os.Remove(knownHosts), "clean up file for getHostKeyCallback test") }()
 
 	tests := []hostkeyTest{
 		{
@@ -201,7 +205,7 @@ func (o *optionsSuite) TestGetHostKeyCallback() {
 		},
 		{
 			options: Options{
-				KnownHostsFile: knwonHosts,
+				KnownHostsFile: knownHosts,
 			},
 			hasError:   false,
 			errMessage: "",
@@ -221,7 +225,7 @@ func (o *optionsSuite) TestGetHostKeyCallback() {
 		{
 			options: Options{},
 			envVars: map[string]string{
-				"VFS_SFTP_KNOWN_HOSTS_FILE": knwonHosts,
+				"VFS_SFTP_KNOWN_HOSTS_FILE": knownHosts,
 			},
 			hasError:   false,
 			errMessage: "",
@@ -235,25 +239,27 @@ func (o *optionsSuite) TestGetHostKeyCallback() {
 	} // #nosec - InsecureIgnoreHostKey only used for testing
 
 	for _, t := range tests { //nolint:gocritic // rangeValCopy
-		// setup env vars, if any
-		tmpMap := make(map[string]string)
-		for k, v := range t.envVars {
-			tmpMap[k] = os.Getenv(k)
-			o.NoError(os.Setenv(k, v))
-		}
+		o.Run(t.message, func() {
+			// setup env vars, if any
+			tmpMap := make(map[string]string)
+			for k, v := range t.envVars {
+				tmpMap[k] = os.Getenv(k)
+				o.NoError(os.Setenv(k, v))
+			}
 
-		// apply test
-		_, err := getHostKeyCallback(t.options)
-		if t.hasError {
-			o.EqualError(err, t.errMessage, t.message)
-		} else {
-			o.NoError(err, t.message)
-		}
+			// apply test
+			_, err := getHostKeyCallback(t.options)
+			if t.hasError {
+				o.EqualError(err, t.errMessage, t.message)
+			} else {
+				o.NoError(err, t.message)
+			}
 
-		// return env vars to original value
-		for k, v := range tmpMap {
-			o.NoError(os.Setenv(k, v))
-		}
+			// return env vars to original value
+			for k, v := range tmpMap {
+				o.NoError(os.Setenv(k, v))
+			}
+		})
 	}
 }
 
@@ -284,7 +290,7 @@ func (o *optionsSuite) TestGetAuthMethods() {
 			returnCount: 1,
 			hasError:    false,
 			errMessage:  "",
-			message:     "explicit Options password",
+			message:     "env var password",
 		},
 		{
 			envVars: map[string]string{
@@ -374,26 +380,28 @@ func (o *optionsSuite) TestGetAuthMethods() {
 	}
 
 	for _, t := range tests { //nolint:gocritic // rangeValCopy
-		// setup env vars, if any
-		tmpMap := make(map[string]string)
-		for k, v := range t.envVars {
-			tmpMap[k] = os.Getenv(k)
-			o.NoError(os.Setenv(k, v))
-		}
+		o.Run(t.message, func() {
+			// setup env vars, if any
+			tmpMap := make(map[string]string)
+			for k, v := range t.envVars {
+				tmpMap[k] = os.Getenv(k)
+				o.NoError(os.Setenv(k, v))
+			}
 
-		// apply test
-		auth, err := getAuthMethods(t.options)
-		if t.hasError {
-			o.EqualError(err, t.errMessage, t.message)
-		} else {
-			o.NoError(err, t.message)
-			o.Equal(t.returnCount, len(auth), "auth count")
-		}
+			// apply test
+			auth, err := getAuthMethods(t.options)
+			if t.hasError {
+				o.EqualError(err, t.errMessage, t.message)
+			} else {
+				o.NoError(err, t.message)
+				o.Len(auth, t.returnCount, "auth count")
+			}
 
-		// return env vars to original value
-		for k, v := range tmpMap {
-			o.NoError(os.Setenv(k, v))
-		}
+			// return env vars to original value
+			for k, v := range tmpMap {
+				o.NoError(os.Setenv(k, v))
+			}
+		})
 	}
 }
 
@@ -443,16 +451,17 @@ func (o *optionsSuite) TestGetClient() {
 	} // #nosec - InsecureIgnoreHostKey only used for testing
 
 	for _, t := range tests { //nolint:gocritic // rangeValCopy
-		// apply test
-		_, _, err := getClient(t.authority, t.options)
-		if t.hasError {
-			if o.Error(err, "error found") {
-				re := regexp.MustCompile(t.errRegex)
-				o.Regexp(re, err.Error(), "error matches")
+		o.Run(t.message, func() {
+			_, _, err := getClient(t.authority, t.options)
+			if t.hasError {
+				if o.Error(err, "error found") {
+					re := regexp.MustCompile(t.errRegex)
+					o.Regexp(re, err.Error(), "error matches")
+				}
+			} else {
+				o.NoError(err, t.message)
 			}
-		} else {
-			o.NoError(err, t.message)
-		}
+		})
 	}
 }
 
@@ -467,10 +476,10 @@ func (o *optionsSuite) TestMarshalOptions() {
 	}
 
 	raw, err := json.Marshal(opts)
-	o.Nil(err)
+	o.NoError(err)
 	optStruct := &Options{}
 	err = json.Unmarshal(raw, optStruct)
-	o.Nil(err)
+	o.NoError(err)
 
 	o.Equal(kh, optStruct.KeyFilePath, "KeyFilePath check")
 	o.Equal(pw, optStruct.Password, "Password check")

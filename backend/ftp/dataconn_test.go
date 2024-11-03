@@ -88,7 +88,7 @@ func (s *dataConnSuite) TestGetDataConn_ReadError() {
 }
 
 func (s *dataConnSuite) TestGetDataConn_WriteLocationNotExists() {
-	// dataconn is nil - opebrewn for write - location doesnt exist - success
+	// dataconn is nil - open for write - location doesn't exist - success
 	s.client.EXPECT().
 		List("/").
 		Return(nil, errors.New("550")).
@@ -110,7 +110,7 @@ func (s *dataConnSuite) TestGetDataConn_WriteLocationNotExists() {
 
 func (s *dataConnSuite) TestGetDataConn_WriteLocationNotExistsFails() {
 	someerr := errors.New("some error")
-	// dataconn is nil - opebrewn for write - location doesnt exist - success
+	// dataconn is nil - open for write - location doesn't exist - success
 	s.client.EXPECT().
 		List("/").
 		Return(nil, errors.New("550")).
@@ -172,7 +172,7 @@ func (s *dataConnSuite) TestGetDataConn_writeSuccess() {
 	time.Sleep(50 * time.Millisecond)
 }
 
-func (s *dataConnSuite) TestGetDataConn_reaedAfterWriteError() {
+func (s *dataConnSuite) TestGetDataConn_readAfterWriteError() {
 	// open dataconn for read after dataconn for write exists - error on dataconn.Close
 	fakedconn := NewFakeDataConn(types.OpenWrite)
 	closeErr := errors.New("some close err")
@@ -226,7 +226,7 @@ func (s *dataConnSuite) TestRead() {
 	w := &strings.Builder{}
 	written, err := io.Copy(w, dc)
 	s.NoError(err, "error not expected")
-	s.EqualValues(len(contents), written, "byte count should equal contents of reader")
+	s.Len(contents, int(written), "byte count should equal contents of reader")
 	s.Equal(contents, w.String(), "read contents equals original contents")
 }
 

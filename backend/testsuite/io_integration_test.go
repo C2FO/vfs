@@ -184,12 +184,12 @@ func (s *ioTestSuite) SetupSuite() {
 
 func (s *ioTestSuite) TestFileOperations() {
 	if s.localDir != "" {
-		s.T().Run("local", func(t *testing.T) {
+		s.Run("local", func() {
 			s.testFileOperations(s.localDir)
 		})
 	}
 	for scheme, location := range s.testLocations {
-		s.T().Run(scheme, func(t *testing.T) {
+		s.Run(scheme, func() {
 			s.testFileOperations(location.URI())
 		})
 	}
@@ -367,24 +367,22 @@ func (s *ioTestSuite) testFileOperations(testPath string) {
 						_ = file.Delete()
 					}
 				}()
-				if err != nil {
-					s.T().Fatalf("expected failure did not match err: %s", err.Error())
-				}
+				s.Require().NoError(err)
 
 				// Use vfs to execute the sequence of operations described by the description
 				actualContents, err := executeSequence(s.T(), file, tc.sequence) // Implement this function
 
 				// Assert expected outcomes
 				if tc.expectFailure && err == nil {
-					s.T().Errorf("%s: expected failure but got success", tc.description)
+					s.Failf("%s: expected failure but got success", tc.description)
 				}
 
 				if err != nil && !tc.expectFailure {
-					s.T().Errorf("%s: expected success but got failure: %v", tc.description, err)
+					s.Failf("%s: expected success but got failure: %v", tc.description, err)
 				}
 
 				if tc.expectedResults != actualContents {
-					s.T().Errorf("%s: expected results %s but got %s", tc.description, tc.expectedResults, actualContents)
+					s.Failf("%s: expected results %s but got %s", tc.description, tc.expectedResults, actualContents)
 				}
 			}()
 		})

@@ -55,7 +55,7 @@ func (s *utilsSuite) TestEnsureTrailingSlash() {
 		{
 			path:     "/some/path/file.txt",
 			expected: "/some/path/file.txt/",
-			message:  "no slash but looks like a file - add one anyaway",
+			message:  "no slash but looks like a file - add one anyway",
 		},
 	}
 
@@ -610,8 +610,7 @@ func (s *utilsSuite) TestPathToURI() {
 
 	// parse path with null character
 	_, err := utils.PathToURI(fmt.Sprintf("/some%s/path/", string(nullChar)))
-	s.Error(err, "expected error on ctrl char in path")
-	s.EqualError(err, "parse \"/some\\x00/path/\": net/url: invalid control character in URL")
+	s.EqualError(err, "parse \"/some\\x00/path/\": net/url: invalid control character in URL", "expected error on ctrl char in path")
 }
 
 func (s *utilsSuite) TestGetURI() {
@@ -641,20 +640,18 @@ func (s *utilsSuite) TestGetURI() {
 	mockFile2.On("Location").Return(mockLoc2)
 
 	// GetFileURI
-	s.Equal("file:///some/path/to/file.txt", utils.GetFileURI(mockFile1), "os file uri matches ")
-	s.Equal("s3://mybucket/this/path/to/file.txt", utils.GetFileURI(mockFile2), "s3 file uri matches ")
+	s.Equal("file:///some/path/to/file.txt", utils.GetFileURI(mockFile1), "os file uri matches")
+	s.Equal("s3://mybucket/this/path/to/file.txt", utils.GetFileURI(mockFile2), "s3 file uri matches")
 
 	// GetLocationURI
-	s.Equal("file:///some/path/to/", utils.GetLocationURI(mockLoc1), "os location uri matches ")
-	s.Equal("s3://mybucket/this/path/to/", utils.GetLocationURI(mockLoc2), "s3 location uri matches ")
+	s.Equal("file:///some/path/to/", utils.GetLocationURI(mockLoc1), "os location uri matches")
+	s.Equal("s3://mybucket/this/path/to/", utils.GetLocationURI(mockLoc2), "s3 location uri matches")
 }
 
 func (s *utilsSuite) TestTouchCopy() {
 	// write out blank file
 	tmpfile, err := os.CreateTemp("", "utils_test")
-	if err != nil {
-		s.NoError(err, "unexpected temp file setup error")
-	}
+	s.NoError(err, "unexpected temp file setup error")
 	defer func() {
 		err := os.Remove(tmpfile.Name())
 		if err != nil {
@@ -662,12 +659,10 @@ func (s *utilsSuite) TestTouchCopy() {
 		}
 	}()
 
-	if _, err := tmpfile.Write([]byte{}); err != nil {
-		s.NoError(err, "unexpected temp file writing error")
-	}
-	if err := tmpfile.Close(); err != nil {
-		s.NoError(err, "unexpected temp file close error")
-	}
+	_, err = tmpfile.Write([]byte{})
+	s.NoError(err, "unexpected temp file writing error")
+	err = tmpfile.Close()
+	s.NoError(err, "unexpected temp file close error")
 
 	// setup reader vfs.File
 	osfs := _os.FileSystem{}
@@ -681,12 +676,12 @@ func (s *utilsSuite) TestTouchCopy() {
 	buffer := make([]byte, utils.TouchCopyMinBufferSize)
 	byteCount, err := io.CopyBuffer(writer, reader, buffer)
 	s.NoError(err, "unexpected doing io.Copy")
-	s.Equal(int64(0), byteCount, "should be no content")
+	s.Zero(byteCount, "should be no content")
 
 	// writer file should not exist
 	_, err = os.Stat(writer.Path())
 	s.Error(err, "should have failed stat")
-	s.True(os.IsNotExist(err), "should be true: not exists")
+	s.ErrorIs(err, os.ErrNotExist, "should be not exists")
 
 	// now with TouchCopy
 	_, err = reader.Seek(0, 0) // reset reader
@@ -705,7 +700,7 @@ func (s *utilsSuite) TestTouchCopy() {
 	fi, err := os.Stat(writer.Path())
 	s.NoError(err, "file should exist, so no error")
 	if fi != nil {
-		s.Equal(int64(0), fi.Size(), "file should be zero length")
+		s.Zero(fi.Size(), "file should be zero length")
 	}
 
 	// TouchCopy on file that actually has data
@@ -718,11 +713,11 @@ func (s *utilsSuite) TestTouchCopy() {
 	s.NoError(err, "unexpected error running TouchCopy()")
 	fi, err = os.Stat(writer.Path())
 	s.NoError(err, "file should exist, so no error")
-	s.NotEqual(fi, 0, "file should have a non-zero byte size")
+	s.NotZero(fi, "file should have a non-zero byte size")
 
 	// TouchCopy should fail on a reader.Size() error
-	nonexistantFile := path.Join(writer.Path(), "nonexistent.file")
-	noFile, err := osfs.NewFile("", nonexistantFile)
+	nonexistentFile := path.Join(writer.Path(), "nonexistent.file")
+	noFile, err := osfs.NewFile("", nonexistentFile)
 	s.NoError(err, "unexpected error creating vfs.File reader for non-existent file")
 	err = utils.TouchCopy(writer, noFile)
 	s.Error(err, "expected error running TouchCopy() using non-existent reader")
@@ -731,9 +726,7 @@ func (s *utilsSuite) TestTouchCopy() {
 func (s *utilsSuite) TestTouchCopyBufferedDefaultBufferSize() {
 	// write out blank file
 	tmpfile, err := os.CreateTemp("", "utils_test")
-	if err != nil {
-		s.NoError(err, "unexpected temp file setup error")
-	}
+	s.NoError(err, "unexpected temp file setup error")
 	defer func() {
 		err := os.Remove(tmpfile.Name())
 		if err != nil {
@@ -741,12 +734,10 @@ func (s *utilsSuite) TestTouchCopyBufferedDefaultBufferSize() {
 		}
 	}()
 
-	if _, err := tmpfile.Write([]byte{}); err != nil {
-		s.NoError(err, "unexpected temp file writing error")
-	}
-	if err := tmpfile.Close(); err != nil {
-		s.NoError(err, "unexpected temp file close error")
-	}
+	_, err = tmpfile.Write([]byte{})
+	s.NoError(err, "unexpected temp file writing error")
+	err = tmpfile.Close()
+	s.NoError(err, "unexpected temp file close error")
 
 	// setup reader vfs.File
 	osfs := _os.FileSystem{}
@@ -760,12 +751,12 @@ func (s *utilsSuite) TestTouchCopyBufferedDefaultBufferSize() {
 	buffer := make([]byte, utils.TouchCopyMinBufferSize)
 	byteCount, err := io.CopyBuffer(writer, reader, buffer)
 	s.NoError(err, "unexpected doing io.Copy")
-	s.Equal(int64(0), byteCount, "should be no content")
+	s.Zero(byteCount, "should be no content")
 
 	// writer file should not exist
 	_, err = os.Stat(writer.Path())
 	s.Error(err, "should have failed stat")
-	s.True(os.IsNotExist(err), "should be true: not exists")
+	s.ErrorIs(err, os.ErrNotExist, "should be not exists")
 
 	// now with TouchCopyBuffered
 	_, err = reader.Seek(0, 0) // reset reader
@@ -784,7 +775,7 @@ func (s *utilsSuite) TestTouchCopyBufferedDefaultBufferSize() {
 	fi, err := os.Stat(writer.Path())
 	s.NoError(err, "file should exist, so no error")
 	if fi != nil {
-		s.Equal(int64(0), fi.Size(), "file should be zero length")
+		s.Zero(fi.Size(), "file should be zero length")
 	}
 
 	// TouchCopyBuffered on file that actually has data
@@ -797,11 +788,11 @@ func (s *utilsSuite) TestTouchCopyBufferedDefaultBufferSize() {
 	s.NoError(err, "unexpected error running TouchCopyBuffered()")
 	fi, err = os.Stat(writer.Path())
 	s.NoError(err, "file should exist, so no error")
-	s.NotEqual(fi, 0, "file should have a non-zero byte size")
+	s.NotZero(fi, "file should have a non-zero byte size")
 
 	// TouchCopyBuffered should fail on a reader.Size() error
-	nonexistantFile := path.Join(writer.Path(), "nonexistent.file")
-	noFile, err := osfs.NewFile("", nonexistantFile)
+	nonexistentFile := path.Join(writer.Path(), "nonexistent.file")
+	noFile, err := osfs.NewFile("", nonexistentFile)
 	s.NoError(err, "unexpected error creating vfs.File reader for non-existent file")
 	err = utils.TouchCopyBuffered(writer, noFile, 0)
 	s.Error(err, "expected error running TouchCopyBuffered() using non-existent reader")
@@ -810,9 +801,7 @@ func (s *utilsSuite) TestTouchCopyBufferedDefaultBufferSize() {
 func (s *utilsSuite) TestTouchCopyBufferedNonDefaultBufferSize() {
 	// write out blank file
 	tmpfile, err := os.CreateTemp("", "utils_test")
-	if err != nil {
-		s.NoError(err, "unexpected temp file setup error")
-	}
+	s.NoError(err, "unexpected temp file setup error")
 	defer func() {
 		err := os.Remove(tmpfile.Name())
 		if err != nil {
@@ -820,12 +809,10 @@ func (s *utilsSuite) TestTouchCopyBufferedNonDefaultBufferSize() {
 		}
 	}()
 
-	if _, err := tmpfile.Write([]byte{}); err != nil {
-		s.NoError(err, "unexpected temp file writing error")
-	}
-	if err := tmpfile.Close(); err != nil {
-		s.NoError(err, "unexpected temp file close error")
-	}
+	_, err = tmpfile.Write([]byte{})
+	s.NoError(err, "unexpected temp file writing error")
+	err = tmpfile.Close()
+	s.NoError(err, "unexpected temp file close error")
 
 	// setup reader vfs.File
 	osfs := _os.FileSystem{}
@@ -839,12 +826,12 @@ func (s *utilsSuite) TestTouchCopyBufferedNonDefaultBufferSize() {
 	buffer := make([]byte, utils.TouchCopyMinBufferSize)
 	byteCount, err := io.CopyBuffer(writer, reader, buffer)
 	s.NoError(err, "unexpected doing io.Copy")
-	s.Equal(int64(0), byteCount, "should be no content")
+	s.Zero(byteCount, "should be no content")
 
 	// writer file should not exist
 	_, err = os.Stat(writer.Path())
 	s.Error(err, "should have failed stat")
-	s.True(os.IsNotExist(err), "should be true: not exists")
+	s.ErrorIs(err, os.ErrNotExist, "should be not exists")
 
 	// now with TouchCopyBuffered
 	_, err = reader.Seek(0, 0) // reset reader
@@ -863,7 +850,7 @@ func (s *utilsSuite) TestTouchCopyBufferedNonDefaultBufferSize() {
 	fi, err := os.Stat(writer.Path())
 	s.NoError(err, "file should exist, so no error")
 	if fi != nil {
-		s.Equal(int64(0), fi.Size(), "file should be zero length")
+		s.Zero(fi.Size(), "file should be zero length")
 	}
 
 	// TouchCopyBuffered on file that actually has data
@@ -876,11 +863,11 @@ func (s *utilsSuite) TestTouchCopyBufferedNonDefaultBufferSize() {
 	s.NoError(err, "unexpected error running TouchCopyBuffered()")
 	fi, err = os.Stat(writer.Path())
 	s.NoError(err, "file should exist, so no error")
-	s.NotEqual(fi, 0, "file should have a non-zero byte size")
+	s.NotZero(fi, "file should have a non-zero byte size")
 
 	// TouchCopyBuffered should fail on a reader.Size() error
-	nonexistantFile := path.Join(writer.Path(), "nonexistent.file")
-	noFile, err := osfs.NewFile("", nonexistantFile)
+	nonexistentFile := path.Join(writer.Path(), "nonexistent.file")
+	noFile, err := osfs.NewFile("", nonexistentFile)
 	s.NoError(err, "unexpected error creating vfs.File reader for non-existent file")
 	err = utils.TouchCopyBuffered(writer, noFile, 1048576)
 	s.Error(err, "expected error running TouchCopyBuffered() using non-existent reader")

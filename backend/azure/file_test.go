@@ -103,14 +103,14 @@ func (s *FileTestSuite) TestExists() {
 	s.True(exists)
 }
 
-func (s *FileTestSuite) TestExists_NonExistantFile() {
+func (s *FileTestSuite) TestExists_NonExistentFile() {
 	client := MockAzureClient{PropertiesError: MockStorageError{}}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.NoError(err, "The path is valid so no error should be returned")
 	exists, err := f.Exists()
-	s.NoError(err, "no error is returned when  the file does not exist")
+	s.NoError(err, "no error is returned when the file does not exist")
 	s.False(exists)
 }
 
@@ -241,7 +241,7 @@ func (s *FileTestSuite) TestSize() {
 	s.Equal(uint64(5), size, "The size should be 5")
 }
 
-func (s *FileTestSuite) TestSize_NonExistantFile() {
+func (s *FileTestSuite) TestSize_NonExistentFile() {
 	client := MockAzureClient{PropertiesError: errors.New("i always error")}
 	fs := NewFileSystem().WithClient(&client)
 
@@ -249,7 +249,7 @@ func (s *FileTestSuite) TestSize_NonExistantFile() {
 	s.NoError(err, "The path is valid so no error should be returned")
 	size, err := f.Size()
 	s.Error(err, "If the file does not exist we get an error")
-	s.Equal(uint64(0), size, "the file does not exist so the size is 0")
+	s.Zero(size, "the file does not exist so the size is 0")
 }
 
 func (s *FileTestSuite) TestPath() {
@@ -278,7 +278,7 @@ func (s *FileTestSuite) TestTouch() {
 	s.NoError(f.Touch())
 }
 
-func (s *FileTestSuite) TestTouch_NonexistantContainer() {
+func (s *FileTestSuite) TestTouch_NonexistentContainer() {
 	client := MockAzureClient{ExpectedError: errors.New("i always error")}
 	fs := NewFileSystem().WithClient(&client)
 
@@ -336,7 +336,7 @@ func (s *FileTestSuite) TestCheckTempFile_FileDoesNotExist() {
 
 	contents, err := io.ReadAll(azureFile.tempFile)
 	s.NoError(err, "No error should occur while reading the tempFile")
-	s.Equal("", string(contents))
+	s.Empty(contents)
 }
 
 func (s *FileTestSuite) TestCheckTempFile_DownloadError() {

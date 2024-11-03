@@ -37,8 +37,7 @@ func (o *osFileSystemTest) TestNewFile() {
 
 	// failure on validation
 	file, err := fs.NewFile("", "invalid/file")
-	o.Error(err, "error expected for invalid file")
-	o.EqualError(err, utils.ErrBadAbsFilePath)
+	o.EqualError(err, utils.ErrBadAbsFilePath, "error expected for invalid file")
 	o.Nil(file, "file should be nil on err")
 
 	// success
@@ -52,13 +51,11 @@ func (o *osFileSystemTest) TestNewLocation() {
 
 	// failure on validation
 	loc, err := fs.NewLocation("", "/invalid/location")
-	o.Error(err, "error expected for invalid file")
-	o.EqualError(err, utils.ErrBadAbsLocationPath)
+	o.EqualError(err, utils.ErrBadAbsLocationPath, "error expected for invalid file")
 	o.Nil(loc, "file should be nil on err")
 
 	loc, err = fs.NewLocation("", "invalid/location/")
-	o.Error(err, "error expected for invalid file")
-	o.EqualError(err, utils.ErrBadAbsLocationPath)
+	o.EqualError(err, utils.ErrBadAbsLocationPath, "error expected for invalid file")
 	o.Nil(loc, "file should be nil on err")
 
 	// success
@@ -72,6 +69,6 @@ func (o *osFileSystemTest) TestLocation() {
 	o.Equal("file", fs.Scheme())
 }
 
-func TestOSFileSystemn(t *testing.T) {
+func TestOSFileSystem(t *testing.T) {
 	suite.Run(t, new(osFileSystemTest))
 }

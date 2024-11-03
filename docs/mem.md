@@ -2,7 +2,7 @@
 
 ---
 
-Package mem, in-memory backend VFS implementation.
+Package mem - in-memory backend VFS implementation.
 
 ### Usage
 
@@ -174,7 +174,7 @@ of the file's URI
 ```go
 func (f *File) Touch() error
 ```
-Touch takes a in-memory vfs.File, makes it existent, and updates the
+Touch takes an in-memory vfs.File, makes it existent, and updates the
 lastModified
 
 #### func (*File) URI

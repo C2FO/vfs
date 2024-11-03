@@ -2,7 +2,7 @@
 
 ---
 
-Package gs Google Cloud Storage VFS implementation.
+Package gs - Google Cloud Storage VFS implementation.
 
 ### Usage
 
@@ -39,7 +39,7 @@ use the following:
     func DoSomething() {
         ...
 
-        // cast if fs was created using backend.Backend().  Not necessary if created directly from gs.NewFilsystem().
+        // cast if fs was created using backend.Backend().  Not necessary if created directly from gs.NewFileSystem().
         fs = fs.(gs.FileSystem)
 
         // to use your own "context"

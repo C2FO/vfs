@@ -80,7 +80,7 @@ type Location interface {
 	// Note: Some file systems may not have a volume and will return "".
 	Volume() string
 
-	// Path returns absolute location path, ie /some/path/to/.  An absolute path must be resolved to it's shortest path:
+	// Path returns absolute location path, ie /some/path/to/.  An absolute path must be resolved to its shortest path:
 	// see path.Clean
 	Path() string
 

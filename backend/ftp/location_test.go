@@ -55,7 +55,7 @@ func (lt *locationTestSuite) TestList() {
 	loc, err := lt.ftpfs.NewLocation(authority, locPath)
 	lt.NoError(err)
 	fileList, err := loc.List()
-	lt.Nil(err, "Shouldn't return an error when successfully returning list.")
+	lt.NoError(err, "Shouldn't return an error when successfully returning list.")
 	lt.Len(fileList, len(expectedFileList), "Should return the expected number of files.")
 	for _, fileKey := range fileList {
 		lt.Contains(expectedFileList, fileKey, "All returned keys should be in expected file list.")
@@ -190,20 +190,22 @@ func (lt *locationTestSuite) TestListByPrefix() {
 	}
 
 	for _, test := range tests {
-		// setup location
-		loc, err := lt.ftpfs.NewLocation("host.com", test.path)
-		lt.NoError(err, test.description)
+		lt.Run(test.description, func() {
+			// setup location
+			loc, err := lt.ftpfs.NewLocation("host.com", test.path)
+			lt.NoError(err, test.description)
 
-		// setup mock List
-		lt.client.EXPECT().
-			List(test.resolvedPath).
-			Return(test.allEntries, nil).
-			Once()
+			// setup mock List
+			lt.client.EXPECT().
+				List(test.resolvedPath).
+				Return(test.allEntries, nil).
+				Once()
 
-		// perform ListByPrefix
-		fileList, err := loc.ListByPrefix(test.prefix)
-		lt.NoError(err, test.description)
-		lt.Equal(test.expectedFiles, fileList, test.description)
+			// perform ListByPrefix
+			fileList, err := loc.ListByPrefix(test.prefix)
+			lt.NoError(err, test.description)
+			lt.Equal(test.expectedFiles, fileList, test.description)
+		})
 	}
 
 	// client.List returns no results, return empty string slice and nil (error)
@@ -295,7 +297,7 @@ func (lt *locationTestSuite) TestListByRegex() {
 
 	fileTypeRegex := regexp.MustCompile("txt$")
 	fileList, err := loc.ListByRegex(fileTypeRegex)
-	lt.Nil(err, "Shouldn't return an error on successful call to ListByRegex")
+	lt.NoError(err, "Shouldn't return an error on successful call to ListByRegex")
 	lt.Len(fileList, len(expectedFileList), "Should return expected number of file keys.")
 	for _, fileKey := range fileList {
 		lt.Contains(expectedFileList, fileKey, "All returned keys should be in the expected list.")
@@ -415,7 +417,7 @@ func (lt *locationTestSuite) TestExists() {
 	loc, err := lt.ftpfs.NewLocation(authority, locPath)
 	lt.NoError(err)
 	exists, err := loc.Exists()
-	lt.Nil(err, "No error expected from Exists")
+	lt.NoError(err, "No error expected from Exists")
 	lt.True(exists, "Call to Exists expected to return true.")
 
 	// locations does not exist
@@ -432,7 +434,7 @@ func (lt *locationTestSuite) TestExists() {
 	loc, err = lt.ftpfs.NewLocation(authority, locPath)
 	lt.NoError(err)
 	exists, err = loc.Exists()
-	lt.Nil(err, "No error expected from Exists")
+	lt.NoError(err, "No error expected from Exists")
 	lt.True(!exists, "Call to Exists expected to return false.")
 
 	// some error calling list
@@ -462,7 +464,7 @@ func (lt *locationTestSuite) TestExists() {
 	loc, err = lt.ftpfs.NewLocation(authority, locPath)
 	lt.NoError(err)
 	exists, err = loc.Exists()
-	lt.Nil(err, "No error expected from Exists")
+	lt.NoError(err, "No error expected from Exists")
 	lt.True(!exists, "Call to Exists expected to return false.")
 
 	// error getting client

@@ -87,7 +87,7 @@ func (s *osFileTest) TestTouch() {
 	// size should be zero
 	size, err := testfile.Size()
 	s.NoError(err)
-	s.Equal(size, uint64(0), "size should be zero")
+	s.Zero(size, "size should be zero")
 
 	// capture last_modified
 	firstModTime, err := testfile.LastModified()
@@ -100,7 +100,7 @@ func (s *osFileTest) TestTouch() {
 	// size should still be zero
 	size, err = testfile.Size()
 	s.NoError(err)
-	s.Equal(size, uint64(0), "size should be zero")
+	s.Zero(size, "size should be zero")
 
 	// LastModified should be later than previous LastModified
 	nextModTime, err := testfile.LastModified()
@@ -150,7 +150,7 @@ func (s *osFileTest) TestRead() {
 	data = make([]byte, 4)
 	b, err = f.Read(data)
 	s.Error(err)
-	s.Equal(0, b)
+	s.Zero(b)
 
 	f.(*File).fileOpener = nil
 	b, err = f.Write([]byte("blah"))
@@ -161,7 +161,7 @@ func (s *osFileTest) TestRead() {
 	data = make([]byte, 4)
 	b, err = f.Read(data)
 	s.Error(err)
-	s.Equal(0, b)
+	s.Zero(b)
 }
 
 func (s *osFileTest) TestSeek() {
@@ -266,9 +266,7 @@ func (s *osFileTest) TestCopyToLocationIgnoreExtraSeparator() {
 	location := Location{"/some/path/", otherFs}
 
 	_, err := s.testFile.CopyToLocation(&location)
-	if err != nil {
-		s.Fail(err.Error())
-	}
+	s.Require().NoError(err)
 
 	otherFs.AssertCalled(s.T(), "NewFile", "", "/some/path/test.txt")
 }
@@ -329,7 +327,7 @@ func (s *osFileTest) TestMoveToLocation() {
 	mockFile := new(mocks.File)
 	mockFile.On("Location").Return(mockLocation, nil)
 	mockFile.On("Name").Return("/some/path/to/move.txt")
-	mockFile.On("Location ").Return(mockLocation, nil)
+	mockFile.On("Location").Return(mockLocation, nil)
 	mockLocation.On("NewFile", mock.Anything).Return(mockFile, nil)
 	mockfs.On("NewLocation", mock.Anything, mock.Anything).Return(mockLocation)
 
@@ -375,7 +373,7 @@ func (s *osFileTest) TestSafeOsRename() {
 
 	err = safeOsRename(badfile, newFile)
 	s.Error(err)
-	s.NotEqual(err.Error(), osCrossDeviceLinkError)
+	s.NotEqual(osCrossDeviceLinkError, err.Error())
 }
 
 func (s *osFileTest) TestOsCopy() {
@@ -466,7 +464,7 @@ func (s *osFileTest) TestMoveToFile() {
 	mockLocation.On("Close").Return(nil)
 	mockFile.On("Location").Return(mockLocation, nil)
 	mockFile.On("Name").Return("/some/path/to/file.txt")
-	mockFile.On("Location ").Return(mockLocation, nil)
+	mockFile.On("Location").Return(mockLocation, nil)
 	mockfs.On("NewLocation", mock.Anything, mock.Anything).Return(mockLocation)
 
 	s.NoError(file2.MoveToFile(mockFile))
@@ -674,7 +672,7 @@ func (s *osFileTest) TestSize() {
 	s.NoError(err)
 	size, err = noFile.Size()
 	s.Error(err)
-	s.Equal(uint64(0), size)
+	s.Zero(size)
 }
 
 func (s *osFileTest) TestPath() {

@@ -36,7 +36,7 @@ func (ts *fileSystemTestSuite) TestNewFileSystem() {
 func (ts *fileSystemTestSuite) TestNewFile() {
 	filePath := "/path/to/file.txt"
 	file, err := s3fs.NewFile("bucketName", filePath)
-	ts.Nil(err, "No errors returned by NewFile(%s)", filePath)
+	ts.NoError(err, "No errors returned by NewFile(%s)", filePath)
 	ts.NotNil(file, "fs.NewFile(%s) should assign all but first name component to key", filePath)
 }
 
@@ -108,8 +108,7 @@ func (ts *fileSystemTestSuite) TestClient() {
 	s3fs.client = nil
 	s3fs.options = badOpt
 	_, err = s3fs.Client()
-	ts.Error(err, "error found")
-	ts.Equal("unable to create client, vfs.Options must be an s3.Options", err.Error(), "client was already set")
+	ts.EqualError(err, "unable to create client, vfs.Options must be an s3.Options", "client was already set")
 
 	s3fs = &FileSystem{}
 	client, err = s3fs.Client()

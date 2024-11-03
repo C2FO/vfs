@@ -489,7 +489,7 @@ func (f *File) Size() (uint64, error) {
 	return uint64(len(f.readWriteSeeker.Bytes())), nil
 }
 
-// Touch takes a in-memory vfs.File, makes it existent, and updates the lastModified
+// Touch takes an in-memory vfs.File, makes it existent, and updates the lastModified
 func (f *File) Touch() error {
 	if f.memFile.exists {
 		f.memFile.lastModified = time.Now()

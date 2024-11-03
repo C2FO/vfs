@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v6"
@@ -54,24 +53,24 @@ func (s *osLocationTest) TestList() {
 
 func (s *osLocationTest) TestList_NonExistentDirectory() {
 	location, err := s.testFile.Location().NewLocation("not/a/directory/")
-	s.Nil(err, "error isn't expected")
+	s.NoError(err, "error isn't expected")
 
 	exists, err := location.Exists()
-	s.Nil(err, "error isn't expected")
+	s.NoError(err, "error isn't expected")
 	s.False(exists, "location should return false for Exists")
 
 	contents, err := location.List()
-	s.Nil(err, "error isn't expected")
-	s.Equal(0, len(contents), "List should return empty slice for non-existent directory")
+	s.NoError(err, "error isn't expected")
+	s.Empty(contents, "List should return empty slice for non-existent directory")
 
 	prefixContents, err := location.ListByPrefix("anything")
-	s.Nil(err, "error isn't expected")
-	s.Equal(0, len(prefixContents), "ListByPrefix should return empty slice for non-existent directory")
+	s.NoError(err, "error isn't expected")
+	s.Empty(prefixContents, "ListByPrefix should return empty slice for non-existent directory")
 
 	regex := regexp.MustCompile("-+")
 	regexContents, err := location.ListByRegex(regex)
-	s.Nil(err, "error isn't expected")
-	s.Equal(0, len(regexContents), "ListByRegex should return empty slice for non-existent directory")
+	s.NoError(err, "error isn't expected")
+	s.Empty(regexContents, "ListByRegex should return empty slice for non-existent directory")
 }
 
 func (s *osLocationTest) TestListByPrefix() {
@@ -116,7 +115,7 @@ func (s *osLocationTest) TestChangeDir() {
 	fileLocation := otherFile.Location()
 	cwd := fileLocation.Path()
 	err := fileLocation.ChangeDir("other/")
-	assert.NoError(s.T(), err, "change dir error not expected")
+	s.NoError(err, "change dir error not expected")
 	s.Equal(fileLocation.Path(), utils.EnsureTrailingSlash(filepath.Join(cwd, "other")))
 }
 
