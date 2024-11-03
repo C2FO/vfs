@@ -142,7 +142,7 @@ func (s *LocationTestSuite) TestNewLocation() {
 func (s *LocationTestSuite) TestNewLocation_NilReceiver() {
 	var l *Location
 	nl, err := l.NewLocation("test-container/")
-	s.EqualError(err, "azure.Location receiver pointer must be non-nil", "The receiver for NewLocaiton must be non-nil so we expect an error")
+	s.EqualError(err, "azure.Location receiver pointer must be non-nil", "The receiver for NewLocation must be non-nil so we expect an error")
 	s.Nil(nl, "An error was returned so we expect a nil location to be returned")
 }
 

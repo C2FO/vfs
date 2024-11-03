@@ -180,7 +180,7 @@ func (a *DefaultClient) Copy(srcFile, tgtFile vfs.File) error {
 }
 
 // List will return a listing of the contents of the given location.  Each item in the list will contain the full key
-// as specified by the azure blob (incliding the virtual 'path').
+// as specified by the azure blob (including the virtual 'path').
 func (a *DefaultClient) List(l vfs.Location) ([]string, error) {
 	URL, err := url.Parse(l.(*Location).ContainerURL())
 	if err != nil {

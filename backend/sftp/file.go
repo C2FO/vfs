@@ -145,7 +145,7 @@ func (f *File) Location() vfs.Location {
 // If the copy succeeds, the source file is deleted. Any errors from the copy or delete are
 // returned.
 // If the given location is also sftp AND for the same user and host, the sftp Rename method is used, otherwise
-// we'll do a an io.Copy to the destination file then delete source file.
+// we'll do an io.Copy to the destination file then delete source file.
 func (f *File) MoveToFile(t vfs.File) error {
 	// sftp rename if vfs is sftp and for the same user/host
 	if f.fileSystem.Scheme() == t.Location().FileSystem().Scheme() &&
@@ -415,7 +415,7 @@ func (f *File) openFile(flags int) (ReadWriteSeekCloser, error) { //nolint:gocyc
 			flags = newFlags
 		}
 
-		// if we're trying to open a file for writing and it's already open for read, repoen it for read/write and
+		// if we're trying to open a file for writing and it's already open for read, reopen it for read/write and
 		// seek to current position
 		if needRw {
 			var pos int64

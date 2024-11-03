@@ -363,7 +363,7 @@ func (ts *fileTestSuite) TestGetCopyObject() {
 	}
 	actual, err := sourceFile.getCopyObjectInput(targetFile)
 	ts.NoError(err, "Error shouldn't be returned from successful call to CopyToFile")
-	ts.Nil(actual, "copyOjbectInput should be nil (can't do s3-to-s3 copyObject)")
+	ts.Nil(actual, "copyObjectInput should be nil (can't do s3-to-s3 copyObject)")
 
 	s3apiMock.AssertExpectations(ts.T())
 }
@@ -625,7 +625,7 @@ func (ts *fileTestSuite) TestLastModifiedFail() {
 	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).Return(nil,
 		errors.New("boom"))
 	m, e := testFile.LastModified()
-	ts.Error(e, "got error as exepcted")
+	ts.Error(e, "got error as expected")
 	ts.Nil(m, "nil ModTime returned")
 }
 
@@ -745,7 +745,7 @@ func (ts *fileTestSuite) TestCloseWithWrite() {
 	_, err := file.Write(contents)
 	ts.NoError(err, "Error should be nil when calling Write")
 	err = file.Close()
-	ts.Error(err, "file doesn't exists , retired 5 times ")
+	ts.Error(err, "file doesn't exists, retired 5 times")
 
 	s3Mock.AssertExpectations(ts.T())
 

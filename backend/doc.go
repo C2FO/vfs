@@ -52,7 +52,7 @@ Then ensure it registers itself on load:
 
 	// register backend
 	func init() {
-	    backend.Register("exfs", &MyExoticFilesystem{})
+	    backend.Register("exfs", &MyExoticFileSystem{})
 	}
 
 Then do use it in some other package do

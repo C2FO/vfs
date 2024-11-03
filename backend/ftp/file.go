@@ -54,7 +54,7 @@ func (f *File) stat(ctx context.Context) (*_ftp.Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	// check if MLSD command is availalbe - if so we'll want to grab file info
+	// check if MLSD command is available - if so we'll want to grab file info
 	// via MLST. otherwise we'll need to use LIST.
 	if dc.IsTimePreciseInList() {
 		entry, err := dc.GetEntry(f.Path())
@@ -175,7 +175,7 @@ func (f *File) Location() vfs.Location {
 // If the copy succeeds, the source file is deleted. Any errors from the copy or delete are
 // returned.
 // If the given location is also ftp AND for the same user and host, the ftp Rename method is used, otherwise
-// we'll do a an io.Copy to the destination file then delete source file.
+// we'll do an io.Copy to the destination file then delete source file.
 func (f *File) MoveToFile(t vfs.File) error {
 	// ftp rename if vfs is ftp and for the same user/host
 	if f.fileSystem.Scheme() == t.Location().FileSystem().Scheme() &&

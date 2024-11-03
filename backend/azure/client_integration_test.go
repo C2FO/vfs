@@ -175,7 +175,7 @@ func (s *ClientIntegrationTestSuite) TestProperties() {
 	err = client.Upload(f, strings.NewReader("Hello world!"))
 	s.NoError(err, "The file should be successfully uploaded to azure so we shouldn't get an error")
 	props, err := client.Properties(f.Location().(*Location).ContainerURL(), f.Path())
-	s.NoError(err, "Tne file exists so we shouldn't get an error")
+	s.NoError(err, "The file exists so we shouldn't get an error")
 	s.NotNil(props, "We should get a non-nil BlobProperties pointer back")
 	s.Greater(props.Size, uint64(0), "The size should be greater than zero")
 	s.NotNil(props.LastModified, "Should have a non-nil LastModified")
@@ -204,7 +204,7 @@ func (s *ClientIntegrationTestSuite) TestProperties_NonExistentFile() {
 	s.NoError(err, "Env variables (AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_ACCESS_KEY) should contain valid azure account credentials")
 
 	_, err = client.Properties(f.Location().URI(), f.Path())
-	s.Error(err, "Tne file does not exist so we expect an error")
+	s.Error(err, "The file does not exist so we expect an error")
 	s.Equal(404, err.(azblob.ResponseError).Response().StatusCode)
 }
 
@@ -216,10 +216,10 @@ func (s *ClientIntegrationTestSuite) TestDelete_NonExistentFile() {
 	s.NoError(err, "Env variables (AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_ACCESS_KEY) should contain valid azure account credentials")
 
 	err = client.Delete(f)
-	s.Error(err, "Tne file does not exist so we expect an error")
+	s.Error(err, "The file does not exist so we expect an error")
 }
 
-func (s *ClientIntegrationTestSuite) TestTouch_NonexistantContainer() {
+func (s *ClientIntegrationTestSuite) TestTouch_NonexistentContainer() {
 	fs := NewFileSystem()
 	f, err := fs.NewFile("nosuchcontainer", "/file.txt")
 	s.NoError(err)
