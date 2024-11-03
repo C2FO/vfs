@@ -14,7 +14,6 @@ Package vfs provides a pluggable, extensible, and opinionated set of file system
 functionality for Go across a number of file system types such as os, Azure, S3, GCS
 and SFTP.
 
-
 ### Philosophy
 
 When building our platform, initially we wrote a library that was something to
@@ -30,7 +29,7 @@ the effect of
       }
 ```
 
-Not only was ugly but because the behaviors of each "file system" were 
+Not only was ugly but because the behaviors of each "file system" were
 different and we had to constantly alter the file locations and pass a bucket string (even
 if the file system didn't know what a bucket was).
 
@@ -56,7 +55,6 @@ file system backends.
 * [fmt.Stringer](https://godoc.org/fmt#Stringer) interface so that the file struct passed to a log message (or other Stringer use) would show the URI
 * mockable file system
 * pluggability so that third-party implementations of our interfaces could be used
-
 
 ### Install
 
@@ -137,12 +135,11 @@ will first delegate actual copying in the following:
   3. finally, if neither 1 or 2, io.Copy will do its own buffered copy
 
 In case 3, and most implementations of cases 1 and 2, if reader is empty, Write() never gets called. What that means for
-vfs is there is no way for us to ensure that an empty file does or doesn't get written on an io.Copy().  For instance 
+vfs is there is no way for us to ensure that an empty file does or doesn't get written on an io.Copy().  For instance
 OS always creates a file, regardless of calling Write() whereas S3 must Write() and Close().
 
 As such, vfs cannot guarantee copy behavior except in our own CopyToFile, MoveToFile, CopyToLocation, and MoveToLocation
 functions.  If you need to ensure a file gets copied/moved with io.Copy(), you must do so yourself OR use vfs's [utils.TouchCopy](docs/utils.md)
-
 
 ### Third-party Backends
 
@@ -160,7 +157,7 @@ Feel free to send a pull request if you want to add your backend to the list.
   * [in-memory backend](docs/mem.md)
   * [sftp backend](docs/sftp.md)
   * [ftp backend](docs/ftp.md)
-  * [azure backend](docs/azure.md)  
+  * [azure backend](docs/azure.md)
 * [utils](docs/utils.md)
 
 ### Ideas
@@ -168,7 +165,6 @@ Feel free to send a pull request if you want to add your backend to the list.
 Things to add:
 * Provide better List() functionality with more abstracted filtering and paging (iterator?) Return File structs vs URIs?
 * Add better/any context.Context() support
-
 
 ### Contributors
 
@@ -198,12 +194,10 @@ https://github.com/c2fo/
     4. Push to the branch (`git push origin feature/fooBar`)
     5. Create a new Pull Request
 
-
 ### License
 
 Distributed under the MIT license. See `http://github.com/c2fo/vfs/License.md
 for more information.
-
 
 ### Definitions
 
@@ -305,7 +299,7 @@ type File interface {
 	//
 	// For file:///some/path/to/file.txt, it would return file.txt
 	Name() string
-	
+
 	// Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
     	// Returns error if unable to touch File.
         Touch() error
@@ -345,7 +339,7 @@ type FileSystem interface {
 	NewLocation(volume string, absLocPath string) (Location, error)
 
 	// Name returns the name of the FileSystem ie: Amazon S3, os, Google Cloud Storage, etc.
-	Name() string	
+	Name() string
 
 	// Scheme returns the uri scheme used by the FileSystem: s3, file, gs, etc.
 	Scheme() string

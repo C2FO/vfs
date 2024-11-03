@@ -9,7 +9,6 @@ supported backend file system by using full URI's:
 * Amazon S3:            s3://mybucket/path/to/file.txt
 * Google Cloud Storage: gs://mybucket/path/to/file.txt
 
-
 ### Usage
 
 Just import vfssimple.
@@ -131,16 +130,16 @@ when calling remote file systems. This adds some flexibility in how a retry on f
 
 ```go
     package main
-    
+
     import(
         "time"
-        
+
         "github.com/c2fo/vfs/v6/backend"
         "github.com/c2fo/vfs/v6/backend/gs"
     )
-    
+
     ...
-    
+
     func InitializeWithRetry() error {
         bucketAuth := gs.NewFileSystem().WithOptions(gs.Options{
             Retry: func(wrapper func() error) error {

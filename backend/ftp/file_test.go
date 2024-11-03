@@ -48,7 +48,6 @@ func clientGetterReturnsError(_ context.Context, _ utils.Authority, _ Options) (
 }
 
 func (ts *fileTestSuite) TestRead() {
-
 	// set up ftpfile
 	fp := "/some/path.txt"
 	client := mocks.NewClient(ts.T())
@@ -98,7 +97,6 @@ func (ts *fileTestSuite) TestRead() {
 }
 
 func (ts *fileTestSuite) TestClose() {
-
 	// set up ftpfile
 	fp := "/some/path.txt"
 	client := mocks.NewClient(ts.T())
@@ -503,7 +501,6 @@ func (ts *fileTestSuite) TestCopyToFile() {
 	err = sourceFile.CopyToFile(targetFile)
 	ts.Error(err, "error is expected")
 	ts.ErrorIs(err, closeErr, "error is expected kind of error")
-
 }
 
 func (ts *fileTestSuite) TestCopyToLocation() {
@@ -1016,7 +1013,6 @@ func (ts *fileTestSuite) TestDelete() {
 func (ts *fileTestSuite) TestLastModified() {
 	now := time.Now()
 	entry := &_ftp.Entry{
-
 		Name: ts.testFile.Name(),
 		Type: _ftp.EntryTypeFile,
 		Time: now,
@@ -1081,7 +1077,6 @@ func (ts *fileTestSuite) TestName() {
 func (ts *fileTestSuite) TestSize() {
 	contentLength := uint64(100)
 	entry := &_ftp.Entry{
-
 		Name: ts.testFile.Name(),
 		Type: _ftp.EntryTypeFile,
 		Size: contentLength,
@@ -1193,35 +1188,28 @@ func (f *FakeDataConn) List(p string) ([]*_ftp.Entry, error) {
 				Type: _ftp.EntryTypeFolder,
 			},
 		}, f.singleOpErr
-
 	}
 	return nil, errors.New("550")
-
 }
 
 func (f *FakeDataConn) MakeDir(p string) error {
 	return f.singleOpErr
-
 }
 
 func (f *FakeDataConn) Rename(from, to string) error {
 	return f.singleOpErr
-
 }
 
 func (f *FakeDataConn) IsSetTimeSupported() bool {
 	return false
-
 }
 
 func (f *FakeDataConn) SetTime(p string, t time.Time) error {
 	return f.singleOpErr
-
 }
 
 func (f *FakeDataConn) IsTimePreciseInList() bool {
 	return f.mlst
-
 }
 
 func (f *FakeDataConn) Read(p []byte) (int, error) {

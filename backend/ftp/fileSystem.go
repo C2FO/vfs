@@ -120,7 +120,6 @@ func (fs *FileSystem) Client(ctx context.Context, authority utils.Authority) (ty
 
 // WithOptions sets options for client and returns the filesystem (chainable)
 func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
-
 	// only set options if vfs.Options is ftp.Options
 	if opts, ok := opts.(Options); ok {
 		fs.options = opts

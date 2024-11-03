@@ -28,7 +28,6 @@ gs can be augmented with the following implementation-specific methods.  Backend
 would have to be cast as gs.FileSystem to use the following:
 
 	func DoSomething() {
-
 	    ...
 
 	    // cast if fs was created using backend.Backend().  Not necessary if created directly from gs.NewFileSystem().

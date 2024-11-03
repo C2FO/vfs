@@ -2,9 +2,7 @@
 
 ---
 
-
 Package ftp - FTP VFS implementation.
-
 
 ### Usage
 
@@ -47,7 +45,6 @@ These methods are chainable: (*FileSystem) WithClient(client interface{})
 
 ```go
       func DoSomething() {
-
     	  // cast if fs was created using backend.Backend().  Not necessary if created directly from ftp.NewFileSystem().
     	  fs := backend.Backend(ftp.Scheme)
     	  fs = fs.(*ftp.FileSystem)
@@ -90,7 +87,6 @@ The provided CopyToFile and CopyToLocation functions should be used instead in t
 
 ```go
 		func DoSomething() {
-
 		  // cast if fs was created using backend.Backend().  Not necessary if created directly from ftp.NewFileSystem().
 		  fs := backend.Backend(ftp.Scheme)
 		  fs = fs.(*ftp.FileSystem)
@@ -178,14 +174,13 @@ overridden(recommended) with Options.TLSConfig:
 
 See https://pkg.go.dev/crypto/tls#Config for all TLS configuration options.
 
-
 ### Other Options
 
 DebugWriter *io.Writer* - captures FTP command details to any writer.
 
 DialTimeout *time.Duration - sets timeout for connecting only.
 
-DisableEPSV bool - Extended Passive mode (EPSV) is attempted by default. Set to true to use regular Passive mode (PASV).  
+DisableEPSV bool - Extended Passive mode (EPSV) is attempted by default. Set to true to use regular Passive mode (PASV).
 
 ## Usage
 

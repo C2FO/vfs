@@ -4,7 +4,6 @@
 
 Package os - built-in os lib VFS implementation.
 
-
 ### Usage
 
 Rely on github.com/c2fo/vfs/v6/backend
@@ -112,7 +111,7 @@ func (f *File) MoveToFile(target vfs.File) error
 ```
 MoveToFile move a file. It accepts a target vfs.File and returns an error, if
 any.
- 
+
 __TODO:__ we might consider using os.Rename() for efficiency when
 target.Location().FileSystem().Scheme equals f.Location().FileSystem().Scheme()
 
@@ -122,7 +121,7 @@ target.Location().FileSystem().Scheme equals f.Location().FileSystem().Scheme()
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error)
 ```
 MoveToLocation moves a file to a new Location. It accepts a target vfs.Location
-and returns a vfs.File and an error, if any. 
+and returns a vfs.File and an error, if any.
 
 __TODO:__ we might consider using os.Rename() for efficiency when location.FileSystem().Scheme() equals
 f.Location().FileSystem().Scheme()

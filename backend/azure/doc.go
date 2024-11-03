@@ -28,7 +28,6 @@ azure can be augmented with the following implementation-specific methods.  Back
 would have to be cast as azure.FileSystem to use the following:
 
 	func DoSomething() {
-
 	    ...
 
 	    // cast if fs was created using backend.Backend().  Not necessary if created directly from azure.NewFileSystem().

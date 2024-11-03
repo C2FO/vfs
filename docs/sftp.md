@@ -2,12 +2,10 @@
 
 ---
 
-
 Package sftp - SFTP VFS implementation.
 
 In this backend, any new FileSystem instance is a new connection to the remote server.  It may be impolite
 to take up a large number of a server's available connections, so better to use the same filesystem.
-
 
 ### Usage
 
@@ -52,7 +50,6 @@ These methods are chainable:
 
 ```go
       func DoSomething() {
-
     	  // cast if fs was created using backend.Backend().  Not necessary if created directly from sftp.NewFileSystem().
     	  fs := backend.Backend(sftp.Scheme)
     	  fs = fs.(*sftp.FileSystem)
@@ -94,7 +91,6 @@ These methods are chainable:
       }
 ```
 
-
 ### Authentication
 
 Authentication, by default, occurs automatically when [Client()](#func-filesystem-client) is called. Since
@@ -103,10 +99,9 @@ differently than other vfs [backends](backend.md).
 
 A client is initialized lazily, meaning we only make a connection to the server
 at the last moment so we are free to modify options until then. The
-authenticated session is closed any time [WithOption()](#func-filesystem-withoptions), [WithClient()](#func-filesystem-withclient), 
+authenticated session is closed any time [WithOption()](#func-filesystem-withoptions), [WithClient()](#func-filesystem-withclient),
 or [Close()](#func-file-close) occurs. Currently, that means that closing a file belonging to an fs will break
 the connection of any other open file on the same fs.
-
 
 #### USERNAME
 
@@ -133,18 +128,17 @@ SSH keys may be passed via [Options](#type-options).KeyFilePath and (optionally)
 [Options](#type-options).KeyPassphrase. They can also be passed via environmental variables
 `VFS_SFTP_KEYFILE` and `VFS_SFTP_KEYFILE_PASSPHRASE`, respectively.
 
-
 ### Known Hosts
 
 Known hosts ensures that the server you're connecting to hasn't been somehow
 redirected to another server, collecting your info (man-in-the-middle attack).
-Handling for this can be accomplished via: 
+Handling for this can be accomplished via:
 
-1. [Options](#type-options).KnownHostsString which accepts a string. 
+1. [Options](#type-options).KnownHostsString which accepts a string.
 2. [Options](#type-options).KnownHostsFile or environmental variable `VFS_SFTP_KNOWN_HOSTS_FILE` which accepts a path to a known_hosts file.
 3. [Options](#type-options).KnownHostsCallback which allows you to specify any of the [ssh.AuthMethod](https://godoc.org/golang.org/x/crypto/ssh#AuthMethod)
-functions. Environmental variable `VFS_SFTP_INSECURE_KNOWN_HOSTS` will set this callback function to 
-[ssh.InsecureIgnoreHostKey](https://godoc.org/golang.org/x/crypto/ssh#InsecureIgnoreHostKey) which may be helpful for 
+functions. Environmental variable `VFS_SFTP_INSECURE_KNOWN_HOSTS` will set this callback function to
+[ssh.InsecureIgnoreHostKey](https://godoc.org/golang.org/x/crypto/ssh#InsecureIgnoreHostKey) which may be helpful for
 testing but should not be used in production.
 4. Defaults to trying to find and use <homedir>/.ssh/known_hosts.  For unix, system-wide location /etc/ssh/.ssh/known hosts is also checked. SSH doesn't exist natively on Windows and each third-party implementation has a different location for known_hosts. Because of this, no attempt is made to find a system-wide file for Windows.  It's better to specify in KnownHostsFile in that case.
 
@@ -207,7 +201,7 @@ should be the most desirable behavior.
 ```
 
 NOTE: AutoDisconnect has nothing to do with "keep alive".  Here we're only concerned with releasing resources, not keeping
-the server from disconnecting us.  If that is something you want, you'd have to implement yourself, injecting your own 
+the server from disconnecting us.  If that is something you want, you'd have to implement yourself, injecting your own
 client using WithClient().
 
 ## Usage

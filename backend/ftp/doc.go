@@ -37,7 +37,6 @@ These methods are chainable:
 (*FileSystem) WithOptions(opts vfs.Options) *FileSystem
 
 	  func DoSomething() {
-
 		  // cast if fs was created using backend.Backend().  Not necessary if created directly from ftp.NewFileSystem().
 		  fs := backend.Backend(ftp.Scheme)
 		  fs = fs.(*ftp.FileSystem)

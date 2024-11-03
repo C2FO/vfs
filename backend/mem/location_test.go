@@ -34,7 +34,6 @@ func (s *memLocationTest) SetupTest() {
 
 // TestFSName tests out whether or not the location knows what filesystem it is on
 func (s *memLocationTest) TestFSName() {
-
 	s.Equal(s.testFile.Location().FileSystem().Name(), "In-Memory FileSystem")
 	s.Equal(s.testFile.Location().FileSystem().Scheme(), "mem")
 }
@@ -73,7 +72,6 @@ func (s *memLocationTest) TestList_NonExistentDirectory() {
 
 // TestListByPrefix creates some files and provides a prefix. Succeeds on correct string slice returned
 func (s *memLocationTest) TestListByPrefix() {
-
 	f1, nerr := s.fileSystem.NewFile("", "/foo.txt")
 	s.NoError(nerr, "unexpected error creating a new file")
 	s.NoError(f1.Touch(), "unexpected error touching file")
@@ -108,7 +106,6 @@ func (s *memLocationTest) TestListByPrefix() {
 
 // TestListByRegex provides a simple regular expression and ensures that the correct fileNames matched that regEx
 func (s *memLocationTest) TestListByRegex() {
-
 	newFile, nerr := s.fileSystem.NewFile("", "/test_files/test.txt")
 	s.NoError(nerr, "unexpected error creating a new file")
 
@@ -129,7 +126,6 @@ func (s *memLocationTest) TestListByRegex() {
 	actual2, err := newFile.Location().ListByRegex(regex2)
 	s.NoError(err, "unexpected error listing by regEx")
 	s.Equal(expected, actual2)
-
 }
 
 // TestExists ensures that a real location exists, and one that was simply created does not
@@ -142,7 +138,6 @@ func (s *memLocationTest) TestExists() {
 
 // TestNewLocation ensures that we can create new locations, even with relative dot paths
 func (s *memLocationTest) TestNewLocation() {
-
 	otherFile, nerr := s.fileSystem.NewFile("", "/foo/foo.txt")
 	s.NoError(nerr, "unexpected error creating a new file")
 	fileLocation := otherFile.Location()
@@ -159,7 +154,6 @@ func (s *memLocationTest) TestNewLocation() {
 // TestNewLocationRelativePath tests to see whether a file can be made by passing a
 // relative path to a location object that technically does not exist
 func (s *memLocationTest) TestNewLocationRelativePath() {
-
 	newFile, nerr := s.fileSystem.NewFile("C", "/newLocTest/dir/file.txt")
 	s.NoError(nerr, "unexpected error creating a file")
 
@@ -177,7 +171,6 @@ func (s *memLocationTest) TestNewLocationRelativePath() {
 
 	s.NoError(otherFile.Touch(), "unexpected error touching file")
 	s.Equal(newFile.Location().Path(), otherFile.Location().Path(), "absolute location paths should be equal")
-
 }
 
 // TestNewFile tests that location can create a file at its current path
@@ -218,12 +211,10 @@ func (s *memLocationTest) TestNewFileSameName() {
 	s.NoError(err, "unexpected read error")
 
 	s.Equal(expectedText, string(expectedSlice))
-
 }
 
 // TestChangeDir tests that we can change the directory on a location but that it doesn't change the file's location
 func (s *memLocationTest) TestChangeDir() {
-
 	newFile, nerr := s.fileSystem.NewFile("", "/dir/to/change/change.txt")
 	s.NoError(nerr, "unexpected error creating a new file")
 
@@ -240,7 +231,6 @@ func (s *memLocationTest) TestChangeDir() {
 
 // TestVolume makes sure that the mem-fs returns the empty string for its volume
 func (s *memLocationTest) TestVolume() {
-
 	newFile, nerr := s.fileSystem.NewFile("D:", "/path/to/file/example.txt")
 	s.NoError(nerr, "unexpected error creating a file")
 	s.NoError(newFile.Touch(), "unexpected error touching file")
@@ -289,7 +279,6 @@ func (s *memLocationTest) TestStringer() {
 
 // TestDeleteFile makes files, writes to them, deletes them, all while asserting things like existence and errors
 func (s *memLocationTest) TestDeleteFile() {
-
 	newFile, err := s.fileSystem.NewFile("", "/home/bar.txt")
 	s.NoError(err, "unexpected error creating a new file")
 	// attempt to delete newFile
@@ -311,13 +300,11 @@ func (s *memLocationTest) TestDeleteFile() {
 	existence1, eerr1 := otherFile.Exists()
 	s.False(existence1)
 	s.NoError(eerr1, "unexpected existence error")
-
 }
 
 // TestWriteExistingFile tests that initializing a pre-existing file from a location, using a relative path will not result
 // in a blank file
 func (s *memLocationTest) TestWriteExistingFile() {
-
 	newFile, err := s.fileSystem.NewFile("", "/path/to/file/bar.txt")
 	s.NoError(err, "unexpected error creating a new file")
 

@@ -153,7 +153,6 @@ func (fs *FileSystem) connTimerStop() {
 
 // WithOptions sets options for client and returns the filesystem (chainable)
 func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
-
 	// only set options if vfs.Options is sftp.Options
 	if opts, ok := opts.(Options); ok {
 		fs.options = opts

@@ -2,8 +2,7 @@
 
 ---
 
-
-Package options provides a means of creating custom options that can be used with operations that are performed on components of filesystem. 
+Package options provides a means of creating custom options that can be used with operations that are performed on components of filesystem.
 
 ## DeleteOption
 Currently, we define DeleteOption interface that can be used to implement custom options that can be used for delete operation. One such implementation is the [DeleteAllVersions](./delete_options.md#DeleteAllVersions) option.
@@ -36,7 +35,7 @@ Now, in each implementation of file.Delete(... options.DeleteOptions), implement
             case delete.DeleteAllVersions:
                 deleteAllVersions = true
 			case delete.MyTakeBackupDeleteOption:
-                // do something to take backup	
+                // do something to take backup
             default:
             }
         }

@@ -426,7 +426,6 @@ func (f *File) MoveToFile(file vfs.File) error {
 // Delete removes the file from the FileSystem. Sets it path in the fsMap to nil,
 // and also nils the file's members
 func (f *File) Delete(_ ...options.DeleteOption) error {
-
 	if ex, _ := f.Exists(); !ex {
 		return fs.ErrNotExist
 	}
@@ -488,7 +487,6 @@ func (f *File) Size() (uint64, error) {
 	f.readWriteSeeker = NewReadWriteSeekerWithData(f.memFile.contents)
 
 	return uint64(len(f.readWriteSeeker.Bytes())), nil
-
 }
 
 // Touch takes an in-memory vfs.File, makes it existent, and updates the lastModified

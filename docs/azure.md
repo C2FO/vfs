@@ -5,7 +5,6 @@
 
 Package azure Microsoft Azure Blob Storage VFS Implementation
 
-
 ### Usage
 
 Rely on github.com/c2fo/vfs/backend
@@ -39,7 +38,6 @@ azure.FileSystem to use the following:
 
 ```go
     func DoSomething() {
-
         ...
 
         // cast if fs was created using backend.Backend().  Not necessary if created directly from azure.NewFileSystem().
@@ -201,7 +199,6 @@ func (a *DefaultClient) Delete(file vfs.File) error
 ```
 
 Deletes the file blob using Azure's delete blob api, then each version of the blob is deleted using Azure's delete api. NOTE that if soft deletion is enabled for the blobs in the storage account, each version will be marked as deleted and will get permanently deleted by Azure as per the soft deletion policy. Returns any error returned by the API.
-
 
 #### func (*DefaultClient) Download
 

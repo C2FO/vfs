@@ -2,10 +2,9 @@
 
 ---
 
-Package mem - in-memory backend VFS implementation. 
+Package mem - in-memory backend VFS implementation.
 
-
-### Usage 
+### Usage
 
 Rely on github.com/c2fo/vfs/v6/backend
 
@@ -24,7 +23,7 @@ Or call directly:
 
 ```go
       import _mem "github.com/c2fo/vfs/v6/backend/mem"
-      
+
       func DoSomething() {
     	fs := _mem.NewFileSystem()
           ...
@@ -205,12 +204,10 @@ FileSystem implements vfs.FileSystem for an in-memory file system.
 
 #### func  NewFileSystem
 
-
 ```go
 func NewFileSystem() *FileSystem
 ```
 NewFileSystem is used to initialize the file system struct for an in-memory FileSystem.
-
 
 #### func (*FileSystem) Name
 

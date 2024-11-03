@@ -361,7 +361,6 @@ func (lt *locationTestSuite) TestVolume() {
 }
 
 func (lt *locationTestSuite) TestPath() {
-
 	loc, err := lt.ftpfs.NewLocation("host.com", "/path/")
 	lt.NoError(err)
 	lt.Equal("/path/", loc.Path(), "Path() should return the path on location.")
@@ -481,7 +480,6 @@ func (lt *locationTestSuite) TestExists() {
 }
 
 func (lt *locationTestSuite) TestChangeDir() {
-
 	loc := &Location{fileSystem: lt.ftpfs, path: "/", Authority: utils.Authority{}}
 
 	err1 := loc.ChangeDir("../")

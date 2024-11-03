@@ -37,7 +37,6 @@ These methods are chainable:
 (*FileSystem) WithOptions(opts vfs.Options) *FileSystem
 
 	  func DoSomething() {
-
 		  // cast if fs was created using backend.Backend().  Not necessary if created directly from sftp.NewFileSystem().
 		  fs := backend.Backend(sftp.Scheme)
 		  fs = fs.(*sftp.FileSystem)

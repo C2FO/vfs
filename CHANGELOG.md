@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Unit Test improvements: report underlying unit tests errors, always run test cases in a sub-test, always use test suite functions, use more specific assert functions where possible.
 - General spelling and grammar corrections everywhere.
+- Normalize whitespace: Removed trailing whitespace and superfluous new lines.
 
 ## [6.20.0] - 2024-10-15
 ### Added
@@ -50,7 +51,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [6.14.2] - 2024-05-30
 ### Fixed
 - Fixed #187 - Update to latest jlaffaye/ftp library to fix issue where FTPS connections were failing due to a bug in the library. Also updated dataconn to continue even if it fails to MakeDir.
-
 
 ## [6.14.1] - 2024-05-28
 ### Fixed
@@ -111,7 +111,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [6.11.0] - 2024-01-22
 ### Added
-- Added support for hmac-sha1 and hmac-sha1-96 and removed hmac-ripemd160 
+- Added support for hmac-sha1 and hmac-sha1-96 and removed hmac-ripemd160
 
 ## [6.10.0] - 2023-12-28
 ### Fixed
@@ -220,11 +220,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Upgrade steps
 
-With v6.0.0, sftp.Options struct changed to accept an array of Key Exchange algorithms rather than a string. To update, change the syntax of the auth commands. 
+With v6.0.0, sftp.Options struct changed to accept an array of Key Exchange algorithms rather than a string. To update, change the syntax of the auth commands.
 ```
 "keyExchanges":"diffie-hellman-group-a256"
 ```
-becomes 
+becomes
 ```
 "keyExchanges":["diffie-hellman-group-a256"]
 ```
@@ -319,7 +319,7 @@ not just GCS.
 
 ## [5.3.0] - 2019-08-24
 ### Added
-- ACL can now be passed in as an s3.Option value. See 
+- ACL can now be passed in as an s3.Option value. See
 https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl for values.
 
 ## [5.2.3] - 2019-08-07
@@ -351,7 +351,6 @@ created in the UI or by creating a zero-length object ending with "/".  These ob
 - updated README to include "Touch()" definition under the File interface rather than the Location interface
 - updated README to exclude "in-memory-backend" from the list of ideas
 
-
 ## [5.1.0] - 2019-07-08
 ### Added
 - Added Touch() method to File interface and implemented in each backend.
@@ -382,7 +381,7 @@ than a brand new file with new location.  Since File may represent a non-existen
 
 1. Added the Retry() method to the FileSystem interface, along with a no-op default retryer.
 2. Integrated the newly defined retryer interface into the GCS implementation of VFS and now allow the retry method to be injected as a FileSystem option.
-3. Integrated the request.Retryer from the s3 client as an injectable implementation for the S3 vfs.Option. 
+3. Integrated the request.Retryer from the s3 client as an injectable implementation for the S3 vfs.Option.
 
 ### Upgrade steps
 

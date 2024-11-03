@@ -39,7 +39,6 @@ func (fs *FileSystem) Retry() vfs.Retry {
 // true for other functions as well and existence only poses a problem in the context of deletion
 // or copying FROM a non-existent file.
 func (fs *FileSystem) NewFile(volume, absFilePath string) (vfs.File, error) {
-
 	err := utils.ValidateAbsoluteFilePath(absFilePath)
 	if err != nil {
 		return nil, err
@@ -80,7 +79,6 @@ func (fs *FileSystem) NewFile(volume, absFilePath string) (vfs.File, error) {
 // A location always exists. If a file is created on a location that has not yet
 // been made in the fsMap, then the location will be created with the file
 func (fs *FileSystem) NewLocation(volume, absLocPath string) (vfs.Location, error) {
-
 	err := utils.ValidateAbsoluteLocationPath(absLocPath)
 	if err != nil {
 		return nil, err
@@ -92,7 +90,6 @@ func (fs *FileSystem) NewLocation(volume, absLocPath string) (vfs.Location, erro
 		exists:     false,
 		volume:     volume,
 	}, nil
-
 }
 
 // Name returns the name of the underlying FileSystem
@@ -107,18 +104,15 @@ func (fs *FileSystem) Scheme() string {
 
 // NewFileSystem is used to initialize the file system struct for an in-memory FileSystem.
 func NewFileSystem() *FileSystem {
-
 	return &FileSystem{
 		sync.Mutex{},
 		make(map[string]objMap),
 	}
-
 }
 
 func init() {
 	// Even though the map is being made here, a call to
 	backend.Register(Scheme, NewFileSystem())
-
 }
 
 // getKeys is used to get a list of absolute paths on a specified volume. These paths are a mixture of files and locations
@@ -133,11 +127,9 @@ func (o objMap) getKeys() []string {
 // fileHere returns a list of file pointers found at the absolute location path provided.
 // If none are there, returns an empty slice
 func (o objMap) filesHere(absLocPath string) []*memFile {
-
 	paths := o.getKeys()
 	fileList := make([]*memFile, 0)
 	for i := range paths {
-
 		object := o[paths[i]]                         // retrieve the object
 		if ok := object != nil && object.isFile; ok { // if the object is a file, cast its interface, i, to a file and append to the slice
 			file := object.i.(*memFile)
@@ -152,11 +144,9 @@ func (o objMap) filesHere(absLocPath string) []*memFile {
 // fileNamesHere returns a list of base names of files found at the absolute location path provided.
 // If none are there, returns an empty slice
 func (o objMap) fileNamesHere(absLocPath string) []string {
-
 	paths := o.getKeys()
 	fileList := make([]string, 0)
 	for i := range paths {
-
 		object := o[paths[i]]               // retrieve the object
 		if object != nil && object.isFile { // if the object is a file, cast its interface, i, to a file and append the name to the slice
 			file := object.i.(*memFile)

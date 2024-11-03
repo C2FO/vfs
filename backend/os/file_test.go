@@ -66,7 +66,6 @@ func (s *osFileTest) TestExists() {
 }
 
 func (s *osFileTest) TestTouch() {
-
 	// set up testfile
 	testfile, err := s.tmploc.NewFile("test_files/foo.txt")
 	s.NoError(err)
@@ -720,7 +719,6 @@ func TestOSFile(t *testing.T) {
 Setup TEST FILES
 */
 func setupTestFiles(baseLoc vfs.Location) {
-
 	// setup "test_files" dir
 	createDir(baseLoc, "test_files")
 

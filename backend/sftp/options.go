@@ -105,7 +105,6 @@ var defaultSSHConfig = &ssh.ClientConfig{
 }
 
 func getClient(authority utils.Authority, opts Options) (Client, io.Closer, error) {
-
 	// setup Authentication
 	authMethods, err := getAuthMethods(opts)
 	if err != nil {
@@ -170,7 +169,6 @@ func getSShConfig(opts Options) *ssh.ClientConfig {
 func getHostKeyCallback(opts Options) (ssh.HostKeyCallback, error) {
 	var knownHostsFiles []string
 	switch {
-
 	// use explicit callback in Options
 	case opts.KnownHostsCallback != nil:
 		return opts.KnownHostsCallback, nil
@@ -307,7 +305,6 @@ func getAuthMethods(opts Options) ([]ssh.AuthMethod, error) {
 }
 
 func getKeyFile(file, passphrase string) (key ssh.Signer, err error) {
-
 	buf, err := os.ReadFile(file) //nolint:gosec
 	if err != nil {
 		return

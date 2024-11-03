@@ -45,11 +45,9 @@ func (s *memFileTest) TeardownTest() {
 
 // TestZBR ensures that we can always read zero bytes
 func (s *memFileTest) TestZBR() {
-
 	byteSlice := make([]byte, 0)
 	_, err := s.testFile.Read(byteSlice)
 	s.ErrorIs(err, io.EOF, "read of 0 bytes failed")
-
 }
 
 // TestRARO ensures that read after read w/file still open (and without a seek) will incur an error
@@ -93,7 +91,6 @@ func (s *memFileTest) TestRARC() {
 	// the file before reading again, so it should reset it.
 	s.NoError(err, "read after read failed!")
 	s.Equal(byteSlice, byteSlice2)
-
 }
 
 // TestNewFileSameName creates two files with the same name and ensures
@@ -121,7 +118,6 @@ func (s *memFileTest) TestNewFileSameName() {
 // TestDelete deletes the receiver file, then creates another file and deletes it.
 // Succeeds only on both successful deletions
 func (s *memFileTest) TestDelete() {
-
 	newFile, err := s.fileSystem.NewFile("", "/home/bar.txt")
 	s.NoError(err, "unexpected creation error")
 	s.NoError(newFile.Touch(), "unexpected error touching file")
@@ -167,7 +163,6 @@ func (s *memFileTest) TestExists2() {
 
 // TestNewFile creates a file and then checks that it exists in our system at the path expected
 func (s *memFileTest) TestNewFile() {
-
 	file, err := s.fileSystem.NewFile("", "/test_file/foo.txt")
 	s.NoError(err, "unexpected error creating file")
 	s.NoError(file.Touch(), "unexpected error touching file")
@@ -175,7 +170,6 @@ func (s *memFileTest) TestNewFile() {
 	returnedFile, err := s.fileSystem.NewFile(file.Location().Volume(), filePath) // checking our system map for a match to the given fileName
 	s.NoError(err, "unexpected error retrieving file")
 	s.Equal("foo.txt", returnedFile.Name()) // casting the object to a file so we can call "Name()"
-
 }
 
 // TestSeek2 tests to ensure that we can seek to any part of the file, if it exists
@@ -225,12 +219,10 @@ func (s *memFileTest) TestSeek2() {
 	s.NoError(err, "unexpected error creating a new file")
 	_, err = f.Seek(0, 0)
 	s.ErrorIs(err, fs.ErrNotExist, "expected Seek error")
-
 }
 
 // TestNameToURI creates a file then pulls it out of the fsMap using its name and ensures its file and location URIs are correct
 func (s *memFileTest) TestNameToURI() {
-
 	name := "/test_files/examples/foo.txt"
 	file, err := s.fileSystem.NewFile("C", name)
 	s.NoError(err, "unexpected error creating file")
@@ -246,7 +238,6 @@ func (s *memFileTest) TestNameToURI() {
 	s.True(existence)
 	s.Equal("mem://C/test_files/examples/", returnedFile.Location().URI())
 	s.Equal("mem://C/test_files/examples/foo.txt", returnedFile.URI())
-
 }
 
 // TestOpenFile ensures that reading after a write without seeking or closing a file throws an error
@@ -289,14 +280,12 @@ func (s *memFileTest) TestSeek() {
 	found2, err := file.Exists()
 	s.NoError(err, "exists error not expected")
 	s.False(found2)
-
 }
 
 // TestCopyToLocation copies a file to a location that has
 // been passed in. Succeeds on existence of original file and its
 // contents in new location
 func (s *memFileTest) TestCopyToLocation() {
-
 	newFile, err := s.fileSystem.NewFile("", "/home/foo.txt")
 	s.NoError(err, "unexpected error creating file")
 	expectedText := "hello world!"
@@ -322,14 +311,12 @@ func (s *memFileTest) TestCopyToLocation() {
 	_, err = s.testFile.Read(readSlice2)
 	s.NoError(err, "unexpected read error")
 	s.Equal(readSlice2, readSlice1)
-
 }
 
 // TestCopyToLocationOW copies a file to a location that has
 // a file with the same name. Succeeds only on overwrite of file
 // in specified location
 func (s *memFileTest) TestCopyToLocationOW() {
-
 	newFile, err := s.fileSystem.NewFile("C", "/home/test.txt")
 	s.NoError(err, "unexpected error creating a file")
 	s.NoError(newFile.Touch(), "unexpected error touching file")
@@ -353,12 +340,10 @@ func (s *memFileTest) TestCopyToLocationOW() {
 	_, err = copiedFile.Read(readSlice)
 	s.NoError(err, "unexpected read error")
 	s.Equal("hello world!", string(readSlice))
-
 }
 
 // TestCopyToNilFile ensures that an error is thrown for trying to copy to a nil file
 func (s *memFileTest) TestCopyToNilFile() {
-
 	newFile, err := s.fileSystem.NewFile("", "nilFile.txt")
 	s.Error(err, "expected error creating file (bad path)")
 	err = s.testFile.CopyToFile(newFile)
@@ -368,7 +353,6 @@ func (s *memFileTest) TestCopyToNilFile() {
 // TestCopyToLocationOS copies a file from the in-memory FileSystem over
 // to a location on the  OS FileSystem and checks for success
 func (s *memFileTest) TestCopyToLocationOS() {
-
 	expectedText := "hello world!"
 	_, err := s.testFile.Write([]byte(expectedText))
 	s.NoError(err, "unexpected write error")
@@ -412,7 +396,6 @@ func (s *memFileTest) TestCopyToLocationOS() {
 
 // TestCopyToFile tests "CopyToFile()" between two files both in the in-memory FileSystem
 func (s *memFileTest) TestCopyToFile() {
-
 	expectedText := "hello world"
 	otherFile, err := s.fileSystem.NewFile("", "/test.txt")
 	s.NoError(err, "unexpected error creating file")
@@ -434,12 +417,10 @@ func (s *memFileTest) TestCopyToFile() {
 	_, err = otherFile.Read(readSlice2)
 	s.NoError(err, "unexpected read error")
 	s.Equal(readSlice1, readSlice2)
-
 }
 
 // TestCopyToFileOS tests "CopyToFile()" between one file in the in-memory FileSystem and the other in the os FileSystem
 func (s *memFileTest) TestCopyToFileOS() {
-
 	expectedText := "Hello World!"
 	var osFile vfs.File
 	var err error
@@ -464,7 +445,6 @@ func (s *memFileTest) TestCopyToFileOS() {
 	size2, err := osFile.Size()
 	s.NoError(err, "unexpected error retrieving size")
 	s.Equal(size1, size2)
-
 }
 
 // TestEmptyCopy to file creates two files,
@@ -473,7 +453,6 @@ func (s *memFileTest) TestCopyToFileOS() {
 // non-empty one. Succeeds on the non-empty
 // file becoming empty
 func (s *memFileTest) TestEmptyCopyToFile() {
-
 	expectedText := ""
 	expectedSlice := make([]byte, 0)
 	otherFile, err := s.fileSystem.NewFile("", "/some/path/otherfile.txt")
@@ -496,12 +475,10 @@ func (s *memFileTest) TestEmptyCopyToFile() {
 	_, err = otherFile.Read(expectedSlice)
 	s.ErrorIs(err, io.EOF, "expected EOF error")
 	s.Equal(expectedText, string(expectedSlice))
-
 }
 
 // TestMoveToLocation ensures that we can move files to specified locations
 func (s *memFileTest) TestMoveToLocation() {
-
 	newFile, err := s.fileSystem.NewFile("", "/otherDir/foo.txt")
 	s.NoError(err, "unexpected error creating file")
 	s.NoError(newFile.Touch(), "unexpected error touching file")
@@ -517,12 +494,10 @@ func (s *memFileTest) TestMoveToLocation() {
 	str2 := file.Path()
 	s.Equal(path.Base(str1), path.Base(str2))
 	s.Equal("/test_files/", file.Location().Path())
-
 }
 
 // TestMoveToLocation2 creates two files with the same name in different places and moves one to the other
 func (s *memFileTest) TestMoveToLocation2() {
-
 	expectedText := "Who ya calling pinhead?"
 	newFile, err := s.fileSystem.NewFile("", "/otherDir/foo.txt")
 	s.NoError(err, "unexpected error creating file")
@@ -545,13 +520,11 @@ func (s *memFileTest) TestMoveToLocation2() {
 	_, err = file.Read(readSlice)
 	s.NoError(err, "unexpected read error")
 	s.Equal(expectedText, string(readSlice))
-
 }
 
 // TestMoveToFile creates a newFile and moves the testFile to it.
 // Test succeeds if the moved file has the correct data.  They share the same name, so this is effectively a "CopyToFile" call
 func (s *memFileTest) TestMoveToFile() {
-
 	expectedSlice := []byte("Hello World!")
 	newFile, err := s.fileSystem.NewFile("", "/samples/test.txt")
 	s.NoError(err, "unexpected error creating file")
@@ -576,12 +549,10 @@ func (s *memFileTest) TestMoveToFile() {
 
 	s.Equal(expectedSlice, newFileSlice)
 	s.Equal("/samples/test.txt", newFile.Path())
-
 }
 
 // TestMoveToFile2 ensures that if a call is made on a files who don't share the same name, a new file is produced with the caller's name
 func (s *memFileTest) TestMoveToFile2() {
-
 	expectedSlice := []byte("Hello World!")
 	newFile, err := s.fileSystem.NewFile("", "/samples/diffName.txt")
 	s.NoError(err, "file creation was not successful so it does not exist")
@@ -601,7 +572,6 @@ func (s *memFileTest) TestMoveToFile2() {
 	s.NoError(err, "read unexpectedly failed")
 	s.Equal(expectedSlice, newFileSlice)
 	s.Equal("/samples/diffName.txt", newFile.Path())
-
 }
 
 // TestWrite writes a string to a file and checks for success by comparing the number of bytes
@@ -698,7 +668,6 @@ func (s *memFileTest) TestLastModified() {
 	secondTime := *t
 
 	s.True(secondTime.UnixNano() > firstTime.UnixNano())
-
 }
 
 // TestName creates a file and names it and then asserts that the given name and the return of Name() match.
@@ -726,7 +695,6 @@ func (s *memFileTest) TestSize() {
 	size2, err := otherFile.Size()
 	s.NoError(err, "unexpected error retrieving size")
 	s.True(size1 > size2)
-
 }
 
 // TestPath makes sure that locations return the correct paths, along with leading and trailing slashes
@@ -759,13 +727,11 @@ func (s *memFileTest) TestURI() {
 
 // TestStringer tests the implementation of io.Stringer
 func (s *memFileTest) TestStringer() {
-
 	file, err := s.fileSystem.NewFile("", "/test_files/lots/of/directories/here/we/go/test.txt")
 	s.NoError(err, "unexpected error creating file")
 	s.NoError(file.Touch(), "unexpected error touching file")
 	str := file.String()
 	s.Equal("mem:///test_files/lots/of/directories/here/we/go/test.txt", str)
-
 }
 
 func (s *memFileTest) TestFileNewWrite() {

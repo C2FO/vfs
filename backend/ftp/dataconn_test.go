@@ -39,11 +39,9 @@ func (s *dataConnSuite) SetupTest() {
 		},
 		path: filepath,
 	}
-
 }
 
 func (s *dataConnSuite) TestGetDataConn_alreadyExists() {
-
 	// dataconn already exists
 	s.ftpFile.fileSystem.dataconn = &dataConn{
 		mode: types.OpenRead,
@@ -54,7 +52,6 @@ func (s *dataConnSuite) TestGetDataConn_alreadyExists() {
 }
 
 func (s *dataConnSuite) TestGetDataConn_openForRead() {
-
 	// dataconn is nil - open for read
 	s.client.EXPECT().
 		RetrFrom(s.ftpFile.Path(), uint64(0)).
@@ -77,7 +74,6 @@ func (s *dataConnSuite) TestGetDataConn_errorClientSetup() {
 }
 
 func (s *dataConnSuite) TestGetDataConn_ReadError() {
-
 	// dataconn is nil - error calling client.RetrFrom
 	someErr := errors.New("some error")
 
@@ -92,7 +88,6 @@ func (s *dataConnSuite) TestGetDataConn_ReadError() {
 }
 
 func (s *dataConnSuite) TestGetDataConn_WriteLocationNotExists() {
-
 	// dataconn is nil - open for write - location doesn't exist - success
 	s.client.EXPECT().
 		List("/").
@@ -178,7 +173,6 @@ func (s *dataConnSuite) TestGetDataConn_writeSuccess() {
 }
 
 func (s *dataConnSuite) TestGetDataConn_readAfterWriteError() {
-
 	// open dataconn for read after dataconn for write exists - error on dataconn.Close
 	fakedconn := NewFakeDataConn(types.OpenWrite)
 	closeErr := errors.New("some close err")

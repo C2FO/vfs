@@ -2,7 +2,6 @@
 
 ---
 
-
 ```go
     import "github.com/c2fo/vfs/v6/utils"
 ```
@@ -61,9 +60,9 @@ GetLocationURI returns a Location URI
 ```go
 func PathToURI(p string) (string, error)
 ```
-PathToURI takes a relative or absolute path and returns an OS URI. 
-* We assume non-scheme path is an OS File or Location. 
-* We assume volume(URI authority) is empty. 
+PathToURI takes a relative or absolute path and returns an OS URI.
+* We assume non-scheme path is an OS File or Location.
+* We assume volume(URI authority) is empty.
 * We assume relative paths are relative to the pwd (program's working directory)
 * We assume an empty path is equal to the root path: "/"
 
