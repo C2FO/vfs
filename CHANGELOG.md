@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unit Test improvements: report underlying unit tests errors, always run test cases in a sub-test, always use test suite functions, use more specific assert functions where possible.
 - General spelling and grammar corrections everywhere.
 - Normalize whitespace: Removed trailing whitespace and superfluous new lines.
+- Ensure all mocked types are included in mockery configuration and regenerate.
 
 ## [6.20.0] - 2024-10-15
 ### Added
