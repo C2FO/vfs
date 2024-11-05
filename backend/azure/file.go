@@ -9,7 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
 
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/backend"
@@ -131,7 +132,7 @@ func (f *File) Exists() (bool, error) {
 	}
 	_, err = client.Properties(f.Location().(*Location).ContainerURL(), f.Path())
 	if err != nil {
-		if err.(azblob.StorageError).ServiceCode() != "BlobNotFound" {
+		if !bloberror.HasCode(err, bloberror.BlobNotFound) {
 			return false, err
 		}
 		return false, nil
@@ -292,7 +293,7 @@ func (f *File) Size() (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return props.Size, nil
+	return uint64(*props.Size), nil
 }
 
 // Path returns full path with leading slash.
@@ -336,8 +337,8 @@ func (f *File) Touch() error {
 		return err
 	}
 
-	newMetadata := make(map[string]string)
-	newMetadata["updated"] = "true"
+	newMetadata := make(map[string]*string)
+	newMetadata["updated"] = to.Ptr("true")
 	if err := client.SetMetadata(f, newMetadata); err != nil {
 		return err
 	}

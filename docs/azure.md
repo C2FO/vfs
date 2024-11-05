@@ -68,7 +68,7 @@ found:
        to containers from multiple storage accounts.
 1. The ENV vars `VFS_AZURE_STORAGE_ACCOUNT` and `VFS_AZURE_STORAGE_KEY`, a shared key authenticator is used.  This will
        allow access to any containers owned by the designated storage account.
-1. If none of the above are present, then an anonymous authenticator is created and only publicly accessible blobs
+1. If none of the above are present, then no credentials are used and only publicly accessible blobs
        will be available
 
 ## Usage
@@ -241,10 +241,10 @@ Upload uploads a new file to Azure Blob Storage
 ### func DefaultTokenCredentialFactory
 
 ```go
-func DefaultTokenCredentialFactory(tenantID, clientID, clientSecret, azureEnvName string) (azblob.TokenCredential, error)
+func DefaultTokenCredentialFactory(tenantID, clientID, clientSecret string) (azblob.TokenCredential, error)
 ```
 
-DefaultTokenCredentialFactory knows how to make azblob.TokenCredential structs
+DefaultTokenCredentialFactory knows how to make azcore.TokenCredential structs
 for OAuth authentication
 
 ### type File
@@ -657,55 +657,10 @@ func (a *MockAzureClient) Upload(file vfs.File, content io.ReadSeeker) error
 ```
 Upload returns the value of ExpectedError
 
-### type MockStorageError
-
-```go
-type MockStorageError struct {
-	azblob.ResponseError
-}
-```
-
-MockStorageError is a mock for the azblob.StorageError interface
-
-#### func (MockStorageError) Error
-
-```go
-func (mse MockStorageError) Error() string
-```
-Error returns empty string
-
-#### func (MockStorageError) Response
-
-```go
-func (mse MockStorageError) Response() *http.Response
-```
-Response returns nil
-
-#### func (MockStorageError) ServiceCode
-
-```go
-func (mse MockStorageError) ServiceCode() azblob.ServiceCodeType
-```
-ServiceCode always returns "BlobNotFound" to simulate the not found condition
-
-#### func (MockStorageError) Temporary
-
-```go
-func (mse MockStorageError) Temporary() bool
-```
-Temporary returns nil
-
-#### func (MockStorageError) Timeout
-
-```go
-func (mse MockStorageError) Timeout() bool
-```
-Timeout returns nil
-
 ### func MockTokenCredentialFactory
 
 ```go
-func MockTokenCredentialFactory(_, _, _, _ string) (azblob.TokenCredential, error)
+func MockTokenCredentialFactory(_, _, _ string) (azblob.TokenCredential, error)
 ```
 
 MockTokenCredentialFactory knows how to create a "do-nothing" credential used
@@ -735,10 +690,6 @@ type Options struct {
 	// based authentication.
 	ClientSecret string
 
-	// AzureEnvName holds the name for the Azure environment.  This field is used for OAuth token
-	// based authentication.
-	AzureEnvName string
-
 	// RetryFunc holds the retry function
 	RetryFunc vfs.Retry
 }
@@ -765,21 +716,21 @@ variables.
 #### func (*Options) Credential
 
 ```go
-func (o *Options) Credential() (azblob.Credential, error)
+func (o *Options) Credential() (azcore.TokenCredential, error)
 ```
-Credential returns an azblob.Credential struct based on how options are
+Credential returns an azcore.TokenCredential interface based on how options are
 configured. Options are checked and evaluated in the following order:
 
-    1. If TenantID, ClientID, and ClientSecret are non-empty, return azblob.TokenCredential.  This form of authentication
+    1. If TenantID, ClientID, and ClientSecret are non-empty, return azcore.TokenCredential.  This form of authentication
        is used with service accounts and can be used to access containers across multiple storage accounts.
     2. If AccountName, and AccountKey are non-empty, return azblob.SharedKeyCredential.  This form or authentication
        is used with storage accounts and only provides access to a single storage account.
-    3. Returns an anonymous credential.  This allows access only to public blobs.
+    3. Returns a nil credential.  This allows access only to public blobs.
 
 ### func TokenCredentialFactory
 
 ```go
-type TokenCredentialFactory func(tenantID, clientID, clientSecret, azureEnvName string) (azblob.TokenCredential, error)
+type TokenCredentialFactory func(tenantID, clientID, clientSecret string) (azcore.TokenCredential, error)
 ```
 
 TokenCredentialFactory creates azure.TokenCredentials. This function is provided to allow for mocking

@@ -1,12 +1,11 @@
 package azure
 
 import (
-	"time"
-
-	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
 )
 
-// MockTokenCredentialFactory creates a new azblob.TokenCredential struct
-func MockTokenCredentialFactory(string, string, string, string) (azblob.TokenCredential, error) {
-	return azblob.NewTokenCredential("aaa", func(credential azblob.TokenCredential) time.Duration { return time.Second * 1 }), nil
+// MockTokenCredentialFactory creates a new azcore.TokenCredential struct
+func MockTokenCredentialFactory(_, _, _ string) (azcore.TokenCredential, error) {
+	return &fake.TokenCredential{}, nil
 }

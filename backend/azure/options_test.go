@@ -5,7 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -38,8 +39,7 @@ func (s *OptionsTestSuite) TestCredentials_ServiceAccount() {
 	credential, err := options.Credential()
 	s.NoError(err, "service account vars are present so no error")
 	s.NotNil(credential, "expect a non-nil credential when service account vars are set")
-	_, ok := credential.(azblob.TokenCredential)
-	s.True(ok, "credentials type should be TokenCredential")
+	s.Implements((*azcore.TokenCredential)(nil), credential, "credentials type should be TokenCredential")
 }
 
 func (s *OptionsTestSuite) TestCredentials_StorageAccount() {
@@ -52,8 +52,7 @@ func (s *OptionsTestSuite) TestCredentials_StorageAccount() {
 	credential, err := options.Credential()
 	s.NoError(err, "service account vars are present so no error")
 	s.NotNil(credential, "expect a non-nil credential when service account vars are set")
-	_, ok := credential.(*azblob.SharedKeyCredential)
-	s.True(ok, "credential type should be SharedKeyCredential")
+	s.IsType((*azblob.SharedKeyCredential)(nil), credential, "credentials type should be SharedKeyCredential")
 }
 
 func (s *OptionsTestSuite) TestCredentials_Anon() {
@@ -64,12 +63,7 @@ func (s *OptionsTestSuite) TestCredentials_Anon() {
 
 	credential, err := options.Credential()
 	s.NoError(err, "anon vars are present so no error")
-	s.NotNil(credential, "expect a non-nil credential when service account vars are set")
-	s.NotNil(credential, "when no env vars are set we should get a non-nil credential")
-	_, ok := credential.(azblob.TokenCredential)
-	s.False(ok)
-	_, ok = credential.(*azblob.SharedKeyCredential)
-	s.False(ok)
+	s.Nil(credential, "when no env vars are set we should get a nil credential")
 }
 
 func TestOptions(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 
 	"github.com/c2fo/vfs/v6"
 
-	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 )
 
 // Options contains options necessary for the azure vfs implementation
@@ -29,10 +29,6 @@ type Options struct {
 	// ClientSecret holds the Azure Service Account client secret for authentication.  This field is used for OAuth token
 	// based authentication.
 	ClientSecret string
-
-	// AzureEnvName holds the name for the Azure environment.  This field is used for OAuth token
-	// based authentication.
-	AzureEnvName string
 
 	// RetryFunc holds the retry function
 	RetryFunc vfs.Retry
@@ -59,26 +55,25 @@ func NewOptions() *Options {
 		TenantID:               os.Getenv("VFS_AZURE_TENANT_ID"),
 		ClientID:               os.Getenv("VFS_AZURE_CLIENT_ID"),
 		ClientSecret:           os.Getenv("VFS_AZURE_CLIENT_SECRET"),
-		AzureEnvName:           os.Getenv("VFS_AZURE_ENV_NAME"),
 		tokenCredentialFactory: DefaultTokenCredentialFactory,
 	}
 }
 
-// Credential returns an azblob.Credential struct based on how options are configured.  Options are checked
+// Credential returns a credential based on how options are configured.  Options are checked
 // and evaluated in the following order:
-//  1. If TenantID, ClientID, and ClientSecret are non-empty, return azblob.TokenCredential.  This form of authentication
+//  1. If TenantID, ClientID, and ClientSecret are non-empty, return azcore.TokenCredential.  This form of authentication
 //     is used with service accounts and can be used to access containers across multiple storage accounts.
 //  2. If AccountName, and AccountKey are non-empty, return azblob.SharedKeyCredential.  This form or authentication
 //     is used with storage accounts and only provides access to a single storage account.
-//  3. Returns an anonymous credential.  This allows access only to public blobs.
-func (o *Options) Credential() (azblob.Credential, error) {
+//  3. Returns a nil credential.  This allows access only to public blobs.
+func (o *Options) Credential() (any, error) {
 	if o.tokenCredentialFactory == nil {
 		o.tokenCredentialFactory = DefaultTokenCredentialFactory
 	}
 
 	// Check to see if we have service account credentials
 	if o.TenantID != "" && o.ClientID != "" && o.ClientSecret != "" {
-		return o.tokenCredentialFactory(o.TenantID, o.ClientID, o.ClientSecret, o.AzureEnvName)
+		return o.tokenCredentialFactory(o.TenantID, o.ClientID, o.ClientSecret)
 	}
 
 	// Check to see if we have storage account credentials
@@ -86,6 +81,6 @@ func (o *Options) Credential() (azblob.Credential, error) {
 		return azblob.NewSharedKeyCredential(o.AccountName, o.AccountKey)
 	}
 
-	// 3. Return an anonymous credential
-	return azblob.NewAnonymousCredential(), nil
+	// 3. Return a nil credential
+	return nil, nil
 }
