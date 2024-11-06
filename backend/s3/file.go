@@ -456,6 +456,11 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	}
 	f.cursorPos = pos
 
+	// Reset readEOFSeen if seeking to the beginning of the file
+	if f.cursorPos == 0 {
+		f.readEOFSeen = false
+	}
+
 	f.seekCalled = true
 	return f.cursorPos, nil
 }

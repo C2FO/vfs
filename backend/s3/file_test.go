@@ -173,6 +173,29 @@ func (ts *fileTestSuite) TestSeek() {
 	ts.NoError(err, "Closing file should not produce an error")
 }
 
+func (ts *fileTestSuite) TestReadEOFSeenReset() {
+	contents := "hello world!"
+	file, err := fs.NewFile("bucket", "/tmp/hello.txt")
+	ts.NoError(err, "Shouldn't fail creating new file")
+
+	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).
+		Return(&s3.HeadObjectOutput{ContentLength: aws.Int64(int64(len(contents)))}, nil).
+		Maybe()
+
+	s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).
+		Return(&s3.GetObjectOutput{Body: io.NopCloser(strings.NewReader(contents))}, nil).
+		Once()
+
+	_, err = io.ReadAll(file)
+	ts.NoError(err, "Shouldn't fail reading file")
+	ts.True(file.(*File).readEOFSeen, "readEOFSeen should be true after reading the file")
+
+	// Reset cursor to the beginning of the file
+	_, err = file.Seek(0, io.SeekStart)
+	ts.NoError(err, "Shouldn't fail seeking file")
+	ts.False(file.(*File).readEOFSeen, "readEOFSeen should be reset after seeking to the beginning")
+}
+
 func (ts *fileTestSuite) TestGetLocation() {
 	file, err := fs.NewFile("bucket", "/path/hello.txt")
 	ts.NoError(err, "Shouldn't fail creating new file.")
