@@ -21,7 +21,7 @@ type Location struct {
 
 // NewFile uses the properties of the calling location to generate a vfs.File (backed by an os.File). A string
 // argument is expected to be a relative path to the location's current path.
-func (l *Location) NewFile(fileName string) (vfs.File, error) {
+func (l *Location) NewFile(fileName string, opts ...options.NewFileOption) (vfs.File, error) {
 	if l == nil {
 		return nil, errors.New("non-nil os.Location pointer is required")
 	}
@@ -33,7 +33,7 @@ func (l *Location) NewFile(fileName string) (vfs.File, error) {
 		return nil, err
 	}
 	fileName = utils.EnsureLeadingSlash(path.Clean(path.Join(l.name, fileName)))
-	return l.fileSystem.NewFile(l.Volume(), fileName)
+	return l.fileSystem.NewFile(l.Volume(), fileName, opts...)
 }
 
 // DeleteFile deletes the file of the given name at the location. This is meant to be a short cut for instantiating a

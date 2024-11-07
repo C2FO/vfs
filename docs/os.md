@@ -205,7 +205,7 @@ Name returns "os"
 #### func (*FileSystem) NewFile
 
 ```go
-func (fs *FileSystem) NewFile(volume string, name string) (vfs.File, error)
+func (fs *FileSystem) NewFile(volume string, name string, opts ...options.NewFileOption) (vfs.File, error)
 ```
 NewFile function returns the os implementation of [vfs.File](../README.md#type-file).
 
@@ -294,7 +294,7 @@ of the location.
 #### func (*Location) NewFile
 
 ```go
-func (l *Location) NewFile(fileName string) (vfs.File, error)
+func (l *Location) NewFile(fileName string, opts ...options.NewFileOption) (vfs.File, error)
 ```
 NewFile uses the properties of the calling location to generate a  [vfs.File](../README.md#type-file)
 (backed by an [os.File](#type-file)). A string argument is expected to be a relative path to

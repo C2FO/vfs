@@ -381,7 +381,7 @@ Name returns "Secure File Transfer Protocol"
 #### func (*FileSystem) NewFile
 
 ```go
-func (fs *FileSystem) NewFile(authority, filePath string) (vfs.File, error)
+func (fs *FileSystem) NewFile(authority, filePath string, opts ...options.NewFileOption) (vfs.File, error)
 ```
 NewFile function returns the FTP implementation of vfs.File.
 
@@ -498,7 +498,7 @@ considerations of List() apply here as well.
 #### func (*Location) NewFile
 
 ```go
-func (l *Location) NewFile(filePath string) (vfs.File, error)
+func (l *Location) NewFile(filePath string, opts ...options.NewFileOption) (vfs.File, error)
 ```
 NewFile uses the properties of the calling location to generate a vfs.File
 (backed by an ftp.File). The filePath argument is expected to be a relative path

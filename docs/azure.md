@@ -295,7 +295,7 @@ be done to the new file.
 ```go
 func (f *File) Delete(opts ...options.DeleteOption) error
 ```
-Deletes the file using Azure's delete blob api. If opts is of type DeleteAllVersions, after deleting the blob, each version of the blob is deleted using Azure's delete api. NOTE that if soft deletion is enabled for the blobs, each version will be marked as deleted and will get permanently deleted by Azure as per the soft deletion policy. Returns any error returned by the API.
+Deletes the file using Azure's delete blob api. If opts is of type delete.AllVersions, after deleting the blob, each version of the blob is deleted using Azure's delete api. NOTE that if soft deletion is enabled for the blobs, each version will be marked as deleted and will get permanently deleted by Azure as per the soft deletion policy. Returns any error returned by the API.
 
 #### func (*File) Exists
 
@@ -449,7 +449,7 @@ Name returns "azure"
 #### func (*FileSystem) NewFile
 
 ```go
-func (fs *FileSystem) NewFile(volume, absFilePath string) (vfs.File, error)
+func (fs *FileSystem) NewFile(volume, absFilePath string, opts ...options.NewFileOption) (vfs.File, error)
 ```
 NewFile returns the azure implementation of vfs.File
 
@@ -558,7 +558,7 @@ ListByRegex returns a list of base names that match the given regular expression
 #### func (*Location) NewFile
 
 ```go
-func (l *Location) NewFile(relFilePath string) (vfs.File, error)
+func (l *Location) NewFile(relFilePath string, opts ...options.NewFileOption) (vfs.File, error)
 ```
 NewFile returns a new file instance at the given path, relative to the current
 location.

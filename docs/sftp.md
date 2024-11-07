@@ -411,7 +411,7 @@ Name returns "Secure File Transfer Protocol"
 #### func (*FileSystem) NewFile
 
 ```go
-func (fs *FileSystem) NewFile(authority, filePath string) (vfs.File, error)
+func (fs *FileSystem) NewFile(authority, filePath string, opts ...options.NewFileOption) (vfs.File, error)
 ```
 NewFile function returns the SFTP implementation of vfs.File.
 
@@ -522,7 +522,7 @@ considerations of [List()](#func-location-list) apply here as well.
 #### func (*Location) NewFile
 
 ```go
-func (l *Location) NewFile(filePath string) (vfs.File, error)
+func (l *Location) NewFile(filePath string, opts ...options.NewFileOption) (vfs.File, error)
 ```
 NewFile uses the properties of the calling location to generate a [vfs.File](../README.md#type-file)
 (backed by an sftp.File). The filePath argument is expected to be a relative
