@@ -5,8 +5,9 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
@@ -18,12 +19,12 @@ import (
 type locationTestSuite struct {
 	suite.Suite
 	fs        *FileSystem
-	s3apiMock *mocks.S3API
+	s3cliMock *mocks.Client
 }
 
 func (lt *locationTestSuite) SetupTest() {
-	lt.s3apiMock = &mocks.S3API{}
-	lt.fs = &FileSystem{client: lt.s3apiMock}
+	lt.s3cliMock = &mocks.Client{}
+	lt.fs = &FileSystem{client: lt.s3cliMock}
 }
 
 func (lt *locationTestSuite) TestList() {
@@ -34,7 +35,7 @@ func (lt *locationTestSuite) TestList() {
 	prefix := "dir1/"
 	delimiter := "/"
 	isTruncated := false
-	lt.s3apiMock.On("ListObjects", &s3.ListObjectsInput{
+	lt.s3cliMock.On("ListObjects", matchContext, &s3.ListObjectsInput{
 		Bucket:    &bucket,
 		Prefix:    &prefix,
 		Delimiter: &delimiter,
@@ -52,7 +53,7 @@ func (lt *locationTestSuite) TestList() {
 	for _, fileKey := range fileList {
 		lt.Contains(expectedFileList, fileKey, "All returned keys should be in expected file list.")
 	}
-	lt.s3apiMock.AssertExpectations(lt.T())
+	lt.s3cliMock.AssertExpectations(lt.T())
 }
 
 func (lt *locationTestSuite) TestList_pagedCall() {
@@ -66,7 +67,7 @@ func (lt *locationTestSuite) TestList_pagedCall() {
 	delimiter := "/"
 	isTruncatedTrue := true
 	isTruncatedFalse := false
-	lt.s3apiMock.On("ListObjects", &s3.ListObjectsInput{
+	lt.s3cliMock.On("ListObjects", matchContext, &s3.ListObjectsInput{
 		Bucket:    &bucket,
 		Prefix:    &prefix,
 		Delimiter: &delimiter,
@@ -77,7 +78,7 @@ func (lt *locationTestSuite) TestList_pagedCall() {
 		Prefix:      &prefix,
 	}, nil)
 
-	lt.s3apiMock.On("ListObjects", &s3.ListObjectsInput{
+	lt.s3cliMock.On("ListObjects", matchContext, &s3.ListObjectsInput{
 		Bucket:    &bucket,
 		Prefix:    &prefix,
 		Delimiter: &delimiter,
@@ -96,7 +97,7 @@ func (lt *locationTestSuite) TestList_pagedCall() {
 	for _, expectedKey := range expectedFileList {
 		lt.Contains(fileList, expectedKey, "All returned keys should be in expected file list.")
 	}
-	lt.s3apiMock.AssertNumberOfCalls(lt.T(), "ListObjects", 2)
+	lt.s3cliMock.AssertNumberOfCalls(lt.T(), "ListObjects", 2)
 }
 
 func (lt *locationTestSuite) TestListByPrefix() {
@@ -108,7 +109,7 @@ func (lt *locationTestSuite) TestListByPrefix() {
 	apiCallPrefix := utils.RemoveLeadingSlash(path.Join(locPath, prefix))
 	delimiter := "/"
 	isTruncated := false
-	lt.s3apiMock.On("ListObjects", &s3.ListObjectsInput{
+	lt.s3cliMock.On("ListObjects", matchContext, &s3.ListObjectsInput{
 		Bucket:    &bucket,
 		Prefix:    &apiCallPrefix,
 		Delimiter: &delimiter,
@@ -125,7 +126,7 @@ func (lt *locationTestSuite) TestListByPrefix() {
 	for _, fileKey := range fileList {
 		lt.Contains(expectedFileList, fileKey, "All returned keys should be in the expected list.")
 	}
-	lt.s3apiMock.AssertExpectations(lt.T())
+	lt.s3cliMock.AssertExpectations(lt.T())
 }
 
 func (lt *locationTestSuite) TestListByRegex() {
@@ -136,7 +137,7 @@ func (lt *locationTestSuite) TestListByRegex() {
 	prefix := "blah/"
 	delimiter := "/"
 	isTruncated := false
-	lt.s3apiMock.On("ListObjects", &s3.ListObjectsInput{
+	lt.s3cliMock.On("ListObjects", matchContext, &s3.ListObjectsInput{
 		Bucket:    &bucket,
 		Prefix:    &prefix,
 		Delimiter: &delimiter,
@@ -155,7 +156,7 @@ func (lt *locationTestSuite) TestListByRegex() {
 	for _, fileKey := range fileList {
 		lt.Contains(expectedFileList, fileKey, "All returned keys should be in the expected list.")
 	}
-	lt.s3apiMock.AssertExpectations(lt.T())
+	lt.s3cliMock.AssertExpectations(lt.T())
 }
 
 func (lt *locationTestSuite) TestVolume() {
@@ -206,7 +207,7 @@ func (lt *locationTestSuite) TestNewFile() {
 
 func (lt *locationTestSuite) TestExists_true() {
 	bucket := "foo"
-	lt.s3apiMock.On("HeadBucket", &s3.HeadBucketInput{
+	lt.s3cliMock.On("HeadBucket", matchContext, &s3.HeadBucketInput{
 		Bucket: &bucket,
 	}).Return(&s3.HeadBucketOutput{}, nil).Once()
 	loc, err := lt.fs.NewLocation(bucket, "/")
@@ -214,20 +215,20 @@ func (lt *locationTestSuite) TestExists_true() {
 	exists, err := loc.Exists()
 	lt.NoError(err, "No error expected from Exists")
 	lt.True(exists, "Call to Exists expected to return true.")
-	lt.s3apiMock.AssertExpectations(lt.T())
+	lt.s3cliMock.AssertExpectations(lt.T())
 }
 
 func (lt *locationTestSuite) TestExists_false() {
 	bucket := "foo"
-	lt.s3apiMock.On("HeadBucket", &s3.HeadBucketInput{
+	lt.s3cliMock.On("HeadBucket", matchContext, &s3.HeadBucketInput{
 		Bucket: &bucket,
-	}).Return(nil, awserr.New(s3.ErrCodeNoSuchBucket, "NoSuchBucket", nil)).Once()
+	}).Return(nil, &types.NoSuchBucket{}).Once()
 	loc, err := lt.fs.NewLocation(bucket, "/")
 	lt.NoError(err)
 	exists, err := loc.Exists()
 	lt.NoError(err, "No error expected from Exists")
 	lt.False(exists, "Call to Exists expected to return true.")
-	lt.s3apiMock.AssertExpectations(lt.T())
+	lt.s3cliMock.AssertExpectations(lt.T())
 }
 
 func (lt *locationTestSuite) TestChangeDir() {
@@ -291,33 +292,33 @@ func (lt *locationTestSuite) TestStringURI() {
 }
 
 func (lt *locationTestSuite) TestDeleteFile() {
-	lt.s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
+	lt.s3cliMock.On("DeleteObject", matchContext, mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
 	loc, err := lt.fs.NewLocation("bucket", "/old/")
 	lt.NoError(err)
 
 	err = loc.DeleteFile("filename.txt")
 	lt.NoError(err, "Successful delete should not return an error.")
-	lt.s3apiMock.AssertExpectations(lt.T())
+	lt.s3cliMock.AssertExpectations(lt.T())
 }
 
 func (lt *locationTestSuite) TestDeleteFileWithDeleteAllVersionsOption() {
-	var versions []*s3.ObjectVersion
+	var versions []types.ObjectVersion
 	verIds := [...]string{"ver1", "ver2"}
 	for i := range verIds {
-		versions = append(versions, &s3.ObjectVersion{VersionId: &verIds[i]})
+		versions = append(versions, types.ObjectVersion{VersionId: &verIds[i]})
 	}
 	versOutput := s3.ListObjectVersionsOutput{
 		Versions: versions,
 	}
-	lt.s3apiMock.On("ListObjectVersions", mock.AnythingOfType("*s3.ListObjectVersionsInput")).Return(&versOutput, nil)
-	lt.s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
+	lt.s3cliMock.On("ListObjectVersions", matchContext, mock.AnythingOfType("*s3.ListObjectVersionsInput")).Return(&versOutput, nil)
+	lt.s3cliMock.On("DeleteObject", matchContext, mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
 	loc, err := lt.fs.NewLocation("bucket", "/old/")
 	lt.NoError(err)
 
 	err = loc.DeleteFile("filename.txt", delete.WithDeleteAllVersions())
 	lt.NoError(err, "Successful delete should not return an error.")
-	lt.s3apiMock.AssertExpectations(lt.T())
-	lt.s3apiMock.AssertNumberOfCalls(lt.T(), "DeleteObject", 3)
+	lt.s3cliMock.AssertExpectations(lt.T())
+	lt.s3cliMock.AssertNumberOfCalls(lt.T(), "DeleteObject", 3)
 }
 
 func TestLocation(t *testing.T) {
@@ -327,11 +328,11 @@ func TestLocation(t *testing.T) {
 /*
 Helpers
 */
-func convertKeysToS3Objects(keys []string) []*s3.Object {
-	var objects []*s3.Object
+func convertKeysToS3Objects(keys []string) []types.Object {
+	var objects []types.Object
 	for _, key := range keys {
-		object := &s3.Object{}
-		objects = append(objects, object.SetKey(key))
+		object := types.Object{Key: aws.String(key)}
+		objects = append(objects, object)
 	}
 	return objects
 }

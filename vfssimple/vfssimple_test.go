@@ -293,9 +293,9 @@ func (s *vfsSimpleSuite) TestParseSupportedURI() {
 				// check client for named registered mock
 				switch fs.Scheme() {
 				case "s3":
-					s3api, err := fs.(*s3.FileSystem).Client()
+					s3cli, err := fs.(*s3.FileSystem).Client()
 					s.NoError(err, test.message)
-					if c, ok := s3api.(*namedS3ClientMock); ok {
+					if c, ok := s3cli.(*namedS3ClientMock); ok {
 						s.Equal(c.RegName, test.regFS, test.message)
 					} else {
 						s.Fail("should have returned mock", test.message)
@@ -318,9 +318,9 @@ func (s *vfsSimpleSuite) TestNewFile() {
 	s.NoError(err, "no error expected for NewFile")
 	s.IsType(file, &s3.File{}, "should be an s3.File")
 	s.Equal(file.URI(), goodURI)
-	s3api, err := file.Location().FileSystem().(*s3.FileSystem).Client()
+	s3cli, err := file.Location().FileSystem().(*s3.FileSystem).Client()
 	s.NoError(err, "no error expected")
-	if c, ok := s3api.(*namedS3ClientMock); ok {
+	if c, ok := s3cli.(*namedS3ClientMock); ok {
 		s.Equal(c.RegName, "filetest-path", "should be 'filetest-path', not 'filetest-bucket' or 's3'")
 	} else {
 		s.Fail("should have returned mock", "should not reach this")
@@ -350,9 +350,9 @@ func (s *vfsSimpleSuite) TestNewLocation() {
 	s.NoError(err, "no error expected for NewLocation")
 	s.IsType(loc, &s3.Location{}, "should be an s3.Location")
 	s.Equal(loc.URI(), goodURI)
-	s3api, err := loc.FileSystem().(*s3.FileSystem).Client()
+	s3cli, err := loc.FileSystem().(*s3.FileSystem).Client()
 	s.NoError(err, "no error expected")
-	if c, ok := s3api.(*namedS3ClientMock); ok {
+	if c, ok := s3cli.(*namedS3ClientMock); ok {
 		s.Equal(c.RegName, "loctest-path", "should be 'loctest-path', not 'loctest-bucket' or 's3'")
 	} else {
 		s.Fail("should have returned mock", "should not reach this")
@@ -373,7 +373,7 @@ func (s *vfsSimpleSuite) TestNewLocation() {
 }
 
 type namedS3ClientMock struct {
-	*mocks.S3API
+	*mocks.Client
 	RegName string
 }
 
@@ -381,7 +381,7 @@ type namedS3ClientMock struct {
 // to introspect in the test return
 func getS3NamedClientMock(name string) *namedS3ClientMock {
 	return &namedS3ClientMock{
-		S3API:   &mocks.S3API{},
+		Client:  &mocks.Client{},
 		RegName: name,
 	}
 }

@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -22,7 +22,7 @@ func (o *optionsTestSuite) TestGetClient() {
 	client, err := getClient(opts)
 	o.NoError(err)
 	o.NotNil(client, "client is set")
-	o.Empty(*client.(*s3.S3).Config.Region, "config is empty")
+	o.Empty(client.(*s3.Client).Options().Region, "config is empty")
 
 	// options set
 	opts = Options{
@@ -34,8 +34,8 @@ func (o *optionsTestSuite) TestGetClient() {
 	client, err = getClient(opts)
 	o.NoError(err)
 	o.NotNil(client, "client is set")
-	o.Equal("some-region", *client.(*s3.S3).Config.Region, "region is set")
-	o.Truef(*client.(*s3.S3).Config.S3ForcePathStyle, "region is set")
+	o.Equal("some-region", client.(*s3.Client).Options().Region, "region is set")
+	o.Truef(client.(*s3.Client).Options().UsePathStyle, "region is set")
 
 	// env var
 	_ = os.Setenv("AWS_DEFAULT_REGION", "set-by-envvar")
@@ -43,7 +43,7 @@ func (o *optionsTestSuite) TestGetClient() {
 	client, err = getClient(opts)
 	o.NoError(err)
 	o.NotNil(client, "client is set")
-	o.Equal("set-by-envvar", *client.(*s3.S3).Config.Region, "region is set by env var")
+	o.Equal("set-by-envvar", client.(*s3.Client).Options().Region, "region is set by env var")
 }
 
 func TestOptions(t *testing.T) {
