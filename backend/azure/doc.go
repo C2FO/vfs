@@ -56,7 +56,7 @@ preferring the first location found:
     to containers from multiple storage accounts.
  2. The ENV vars VFS_AZURE_STORAGE_ACCOUNT and VFS_AZURE_STORAGE_KEY, a shared key authenticator is used.  This will
     allow access to any containers owned by the designated storage account.
- 3. If none of the above are present, then an anonymous authenticator is created and only publicly accessible blobs
+ 3. If none of the above are present, then no credentials are used and only publicly accessible blobs
     will be available
 */
 package azure

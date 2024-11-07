@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v6"
@@ -31,11 +32,12 @@ func (s *FileTestSuite) TestClose() {
 }
 
 func (s *FileTestSuite) TestClose_FlushTempFile() {
-	client := MockAzureClient{PropertiesError: MockStorageError{}}
+	client := MockAzureClient{PropertiesError: blobNotFoundErr}
 	fs := NewFileSystem().WithClient(&client)
 	f, _ := fs.NewFile("test-container", "/foo.txt")
 
-	_, _ = f.Write([]byte("Hello, World!"))
+	_, err := f.Write([]byte("Hello, World!"))
+	s.Require().NoError(err)
 	s.NoError(f.Close())
 }
 
@@ -104,7 +106,7 @@ func (s *FileTestSuite) TestExists() {
 }
 
 func (s *FileTestSuite) TestExists_NonExistentFile() {
-	client := MockAzureClient{PropertiesError: MockStorageError{}}
+	client := MockAzureClient{PropertiesError: blobNotFoundErr}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
@@ -231,7 +233,7 @@ func (s *FileTestSuite) TestLastModified() {
 }
 
 func (s *FileTestSuite) TestSize() {
-	client := MockAzureClient{PropertiesResult: &BlobProperties{Size: 5}}
+	client := MockAzureClient{PropertiesResult: &BlobProperties{Size: to.Ptr[int64](5)}}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
@@ -270,7 +272,7 @@ func (s *FileTestSuite) TestName() {
 }
 
 func (s *FileTestSuite) TestTouch() {
-	client := MockAzureClient{ExpectedResult: &BlobProperties{}, PropertiesError: MockStorageError{}}
+	client := MockAzureClient{PropertiesError: blobNotFoundErr}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
@@ -319,7 +321,7 @@ func (s *FileTestSuite) TestCheckTempFile() {
 }
 
 func (s *FileTestSuite) TestCheckTempFile_FileDoesNotExist() {
-	client := MockAzureClient{PropertiesError: MockStorageError{}}
+	client := MockAzureClient{PropertiesError: blobNotFoundErr}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt")

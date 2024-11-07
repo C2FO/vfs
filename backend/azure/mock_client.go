@@ -2,9 +2,9 @@ package azure
 
 import (
 	"io"
-	"net/http"
 
-	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
 
 	"github.com/c2fo/vfs/v6"
 )
@@ -26,7 +26,7 @@ func (a *MockAzureClient) Properties(locationURI, filePath string) (*BlobPropert
 }
 
 // SetMetadata returns the value of ExpectedError
-func (a *MockAzureClient) SetMetadata(file vfs.File, metadata map[string]string) error {
+func (a *MockAzureClient) SetMetadata(vfs.File, map[string]*string) error {
 	return a.ExpectedError
 }
 
@@ -66,32 +66,4 @@ func (a *MockAzureClient) DeleteAllVersions(file vfs.File) error {
 	return a.ExpectedError
 }
 
-// MockStorageError is a mock for the azblob.StorageError interface
-type MockStorageError struct {
-	azblob.ResponseError
-}
-
-// ServiceCode always returns "BlobNotFound" to simulate the not found condition
-func (mse MockStorageError) ServiceCode() azblob.ServiceCodeType {
-	return "BlobNotFound"
-}
-
-// Response returns nil
-func (mse MockStorageError) Response() *http.Response {
-	return nil
-}
-
-// Timeout returns nil
-func (mse MockStorageError) Timeout() bool {
-	return false
-}
-
-// Temporary returns nil
-func (mse MockStorageError) Temporary() bool {
-	return false
-}
-
-// Error returns empty string
-func (mse MockStorageError) Error() string {
-	return ""
-}
+var blobNotFoundErr = &azcore.ResponseError{ErrorCode: string(bloberror.BlobNotFound)}

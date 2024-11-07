@@ -6,19 +6,22 @@ package azure
 import (
 	"context"
 	"fmt"
-	"net/url"
+	"io"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
 	"github.com/stretchr/testify/suite"
 )
 
 type ClientIntegrationTestSuite struct {
 	suite.Suite
-	testContainerURL azblob.ContainerURL
+	testContainerURL *container.Client
 	accountName      string
 	accountKey       string
 }
@@ -31,28 +34,27 @@ func (s *ClientIntegrationTestSuite) SetupSuite() {
 		panic(err)
 	}
 
-	p := azblob.NewPipeline(credential, azblob.PipelineOptions{})
-	baseURL, err := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net", s.accountName))
+	cli, err := container.NewClientWithSharedKeyCredential(fmt.Sprintf("https://%s.blob.core.windows.net", s.accountName), credential, nil)
 	s.NoError(err)
-	serviceURL := azblob.NewServiceURL(*baseURL, p)
-	s.testContainerURL = serviceURL.NewContainerURL("test-container")
-	_, err = s.testContainerURL.Create(context.Background(), azblob.Metadata{}, azblob.PublicAccessNone)
+	s.testContainerURL = cli
+
+	_, err = s.testContainerURL.Create(context.Background(), nil)
 	s.NoError(err)
 
 	// The create function claims to be synchronous but for some reason it does not exist for a little bit so
 	// we need to wait for it to be there.
-	_, err = s.testContainerURL.GetProperties(context.Background(), azblob.LeaseAccessConditions{})
+	_, err = s.testContainerURL.GetProperties(context.Background(), nil)
 	for {
 		time.Sleep(2 * time.Second)
-		if err == nil || err.(azblob.StorageError).ServiceCode() != "BlobNotFound" {
+		if err == nil || !bloberror.HasCode(err, bloberror.BlobNotFound) {
 			break
 		}
-		_, err = s.testContainerURL.GetProperties(context.Background(), azblob.LeaseAccessConditions{})
+		_, err = s.testContainerURL.GetProperties(context.Background(), nil)
 	}
 }
 
 func (s *ClientIntegrationTestSuite) TearDownSuite() {
-	_, err := s.testContainerURL.Delete(context.Background(), azblob.ContainerAccessConditions{})
+	_, err := s.testContainerURL.Delete(context.Background(), nil)
 	s.NoError(err)
 }
 
@@ -205,7 +207,7 @@ func (s *ClientIntegrationTestSuite) TestProperties_NonExistentFile() {
 
 	_, err = client.Properties(f.Location().URI(), f.Path())
 	s.Error(err, "The file does not exist so we expect an error")
-	s.Equal(404, err.(azblob.ResponseError).Response().StatusCode)
+	s.Equal(404, err.(*azcore.ResponseError).StatusCode)
 }
 
 func (s *ClientIntegrationTestSuite) TestDelete_NonExistentFile() {
