@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
+	"path/filepath"
 	"runtime"
 	"strconv"
 
@@ -231,7 +231,7 @@ func findHomeSystemKnownHosts(knownHostsFiles []string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	homeKnownHostsPath := path.Join(home, ".ssh/known_hosts")
+	homeKnownHostsPath := filepath.Join(home, ".ssh", "known_hosts")
 	if runtime.GOOS != "windows" {
 		homeKnownHostsPath = utils.EnsureLeadingSlash(homeKnownHostsPath)
 	}
