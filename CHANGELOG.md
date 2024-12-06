@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.23.0] - 2024-12-06
+### Security
+- updated dependencies
+
 ## [6.22.0] - 2024-11-06
 ### Fixed
 - [#214](https://github.com/C2FO/vfs/issues/214) Fix issue where s3 backend didn't reset `readEOFSeen` flag when resetting the file cursor during Seek operations.
