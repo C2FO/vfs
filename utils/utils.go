@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
@@ -137,11 +138,19 @@ func PathToURI(p string) (string, error) {
 		return p, nil
 	}
 
-	// make absolute path (if not already)
-	absPath, err := filepath.Abs(p)
-	if err != nil {
-		return "", err
+	absPath := p
+	if p[0] != '/' {
+		// make absolute path (if not already)
+		absPath, err = filepath.Abs(p)
+		if err != nil {
+			return "", err
+		}
+		if runtime.GOOS == "windows" {
+			absPath = "/" + absPath
+		}
 	}
+
+	absPath = filepath.ToSlash(absPath)
 
 	// Abs() strips trailing slashes so add back if original path had slash
 	if p[len(p)-1:] == "/" {

@@ -715,6 +715,8 @@ func (s *utilsSuite) TestTouchCopy() {
 	s.NoError(err, "file should exist, so no error")
 	s.NotZero(fi, "file should have a non-zero byte size")
 
+	s.NoError(reader.Close())
+
 	// TouchCopy should fail on a reader.Size() error
 	nonexistentFile := path.Join(writer.Path(), "nonexistent.file")
 	noFile, err := osfs.NewFile("", nonexistentFile)
@@ -790,6 +792,8 @@ func (s *utilsSuite) TestTouchCopyBufferedDefaultBufferSize() {
 	s.NoError(err, "file should exist, so no error")
 	s.NotZero(fi, "file should have a non-zero byte size")
 
+	s.NoError(reader.Close())
+
 	// TouchCopyBuffered should fail on a reader.Size() error
 	nonexistentFile := path.Join(writer.Path(), "nonexistent.file")
 	noFile, err := osfs.NewFile("", nonexistentFile)
@@ -864,6 +868,8 @@ func (s *utilsSuite) TestTouchCopyBufferedNonDefaultBufferSize() {
 	fi, err = os.Stat(writer.Path())
 	s.NoError(err, "file should exist, so no error")
 	s.NotZero(fi, "file should have a non-zero byte size")
+
+	s.NoError(reader.Close())
 
 	// TouchCopyBuffered should fail on a reader.Size() error
 	nonexistentFile := path.Join(writer.Path(), "nonexistent.file")

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
 	"path"
 	"regexp"
 	"strings"
@@ -133,11 +132,8 @@ func ParsePath(p string) (host, pth string, err error) {
 	if p == "/" {
 		return "", "", errors.New("no container specified for Azure path")
 	}
-	var isLocation bool
-	if p[len(p)-1:] == string(os.PathSeparator) {
-		isLocation = true
-	}
-	l := strings.Split(p, string(os.PathSeparator))
+	isLocation := strings.HasSuffix(p, "/")
+	l := strings.Split(p, "/")
 	p = utils.EnsureLeadingSlash(path.Join(l[2:]...))
 	if isLocation {
 		p = utils.EnsureTrailingSlash(p)
