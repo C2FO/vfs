@@ -37,10 +37,10 @@ func (s *memFileTest) SetupTest() {
 	s.NoError(s.testFile.Touch(), "unexpected error touching file")
 }
 
-func (s *memFileTest) TeardownTest() {
+func (s *memFileTest) TearDownTest() {
 	err := s.testFile.Close()
 	s.NoError(err, "close error not expected")
-	s.NoError(s.testFile.Delete(), "delete failed unexpectedly")
+	_ = s.testFile.Delete()
 }
 
 // TestZBR ensures that we can always read zero bytes
@@ -382,7 +382,7 @@ func (s *memFileTest) TestCopyToLocationOS() {
 
 	s.NotNil(copiedFile)
 	s.Equal("/test_files/test.txt", s.testFile.Path())         // testFile's path should be unchanged
-	s.Equal(filepath.Join(dir, "test.txt"), copiedFile.Path()) // new path should be that
+	s.Equal(path.Join(osFile.Location().Path(), "test.txt"), copiedFile.Path()) // new path should be that
 
 	_, err = copiedFile.Read(readSlice)
 	s.NoError(err, "unexpected read error")
@@ -390,6 +390,7 @@ func (s *memFileTest) TestCopyToLocationOS() {
 	_, err = s.testFile.Read(readSlice2)
 	s.NoError(err, "unexpected read error")
 	s.Equal(readSlice2, readSlice) // both reads should be the same
+	s.Require().NoError(copiedFile.Close())
 	cleanErr := os.RemoveAll(dir)  // clean up
 	s.NoError(cleanErr, "unexpected error cleaning up osFiles")
 }

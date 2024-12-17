@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/c2fo/vfs/v6"
@@ -22,6 +23,7 @@ type opener func(filePath string) (*os.File, error)
 // File implements vfs.File interface for os fs.
 type File struct {
 	file        *os.File
+	volume      string
 	name        string
 	filesystem  *FileSystem
 	cursorPos   int64
@@ -34,7 +36,7 @@ type File struct {
 
 // Delete unlinks the file returning any error or nil.
 func (f *File) Delete(_ ...options.DeleteOption) error {
-	err := os.Remove(f.Path())
+	err := os.Remove(osFilePath(f))
 	if err == nil {
 		f.file = nil
 	}
@@ -43,7 +45,7 @@ func (f *File) Delete(_ ...options.DeleteOption) error {
 
 // LastModified returns the timestamp of the file's mtime or error, if any.
 func (f *File) LastModified() (*time.Time, error) {
-	stats, err := os.Stat(f.Path())
+	stats, err := os.Stat(osFilePath(f))
 	if err != nil {
 		return nil, err
 	}
@@ -66,12 +68,12 @@ func (f *File) Name() string {
 //
 //	someFile.Location().Path()
 func (f *File) Path() string {
-	return filepath.Join(f.Location().Path(), f.Name())
+	return path.Join(f.Location().Path(), f.Name())
 }
 
 // Size returns the size (in bytes) of the File or any error.
 func (f *File) Size() (uint64, error) {
-	stats, err := os.Stat(f.Path())
+	stats, err := os.Stat(osFilePath(f))
 	if err != nil {
 		return 0, err
 	}
@@ -181,7 +183,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 
 // Exists true if the file exists on the file system, otherwise false, and an error, if any.
 func (f *File) Exists() (bool, error) {
-	_, err := os.Stat(f.Path())
+	_, err := os.Stat(osFilePath(f))
 	if err != nil {
 		// file does not exist
 		if os.IsNotExist(err) {
@@ -217,19 +219,22 @@ func (f *File) Write(p []byte) (n int, err error) {
 func (f *File) Location() vfs.Location {
 	return &Location{
 		fileSystem: f.filesystem,
+		volume:     f.volume,
 		name:       utils.EnsureTrailingSlash(path.Dir(f.name)),
 	}
 }
 
 // MoveToFile move a file. It accepts a target vfs.File and returns an error, if any.
 func (f *File) MoveToFile(file vfs.File) error {
-	// validate seek is at 0,0 before doing copy
-	if err := backend.ValidateCopySeekPosition(f); err != nil {
-		return err
+	if f.file != nil {
+		// validate seek is at 0,0 before doing copy
+		if err := backend.ValidateCopySeekPosition(f); err != nil {
+			return err
+		}
 	}
 	// handle native os move/rename
 	if file.Location().FileSystem().Scheme() == Scheme {
-		return safeOsRename(f.Path(), file.Path())
+		return safeOsRename(osFilePath(f), osFilePath(file))
 	}
 
 	// do copy/delete move for non-native os moves
@@ -245,7 +250,7 @@ func safeOsRename(srcName, dstName string) error {
 	err := os.Rename(srcName, dstName)
 	if err != nil {
 		e, ok := err.(*os.LinkError)
-		if ok && e.Err.Error() == osCrossDeviceLinkError {
+		if ok && (e.Err.Error() == osCrossDeviceLinkError || (runtime.GOOS == "windows" && e.Err.Error() == "Access is denied.")) {
 			// do cross-device renaming
 			if err := osCopy(srcName, dstName); err != nil {
 				return err
@@ -306,9 +311,11 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 
 // CopyToFile copies the file to a new File.  It accepts a vfs.File and returns an error, if any.
 func (f *File) CopyToFile(file vfs.File) error {
-	// validate seek is at 0,0 before doing copy
-	if err := backend.ValidateCopySeekPosition(f); err != nil {
-		return err
+	if f.file != nil {
+		// validate seek is at 0,0 before doing copy
+		if err := backend.ValidateCopySeekPosition(f); err != nil {
+			return err
+		}
 	}
 	_, err := f.copyWithName(file.Name(), file.Location())
 	return err
@@ -317,9 +324,11 @@ func (f *File) CopyToFile(file vfs.File) error {
 // CopyToLocation copies existing File to new Location with the same name.
 // It accepts a vfs.Location and returns a vfs.File and error, if any.
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
-	// validate seek is at 0,0 before doing copy
-	if err := backend.ValidateCopySeekPosition(f); err != nil {
-		return nil, err
+	if f.file != nil {
+		// validate seek is at 0,0 before doing copy
+		if err := backend.ValidateCopySeekPosition(f); err != nil {
+			return nil, err
+		}
 	}
 	return f.copyWithName(f.Name(), location)
 }
@@ -351,7 +360,7 @@ func (f *File) Touch() error {
 		return f.Close()
 	}
 	now := time.Now()
-	return os.Chtimes(f.Path(), now, now)
+	return os.Chtimes(osFilePath(f), now, now)
 }
 
 func (f *File) copyWithName(name string, location vfs.Location) (vfs.File, error) {
@@ -386,7 +395,7 @@ func (f *File) openFile() (*os.File, error) {
 		openFunc = f.fileOpener
 	}
 
-	file, err := openFunc(f.Path())
+	file, err := openFunc(osFilePath(f))
 	if err != nil {
 		return nil, err
 	}
@@ -398,7 +407,7 @@ func (f *File) openFile() (*os.File, error) {
 func openOSFile(filePath string) (*os.File, error) {
 	// Ensure the path exists before opening the file, NoOp if dir already exists.
 	var fileMode os.FileMode = 0666
-	if err := os.MkdirAll(path.Dir(filePath), os.ModeDir|0750); err != nil {
+	if err := os.MkdirAll(filepath.Dir(filePath), os.ModeDir|0750); err != nil {
 		return nil, err
 	}
 
@@ -431,7 +440,7 @@ func (f *File) getInternalFile() (*os.File, error) {
 				openFunc = f.fileOpener
 			}
 
-			finalFile, err := openFunc(f.Path())
+			finalFile, err := openFunc(osFilePath(f))
 			if err != nil {
 				return nil, err
 			}
@@ -475,10 +484,11 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 			openFunc = f.fileOpener
 		}
 
-		actualFile, err := openFunc(f.Path())
+		actualFile, err := openFunc(osFilePath(f))
 		if err != nil {
 			return nil, err
 		}
+		defer func() { _ = actualFile.Close() }()
 		if _, err := io.Copy(tmpFile, actualFile); err != nil {
 			return nil, err
 		}
@@ -492,4 +502,11 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 	}
 
 	return tmpFile, nil
+}
+
+func osFilePath(f vfs.File) string {
+	if runtime.GOOS == "windows" {
+		return f.Location().Volume() + filepath.FromSlash(f.Path())
+	}
+	return f.Path()
 }
