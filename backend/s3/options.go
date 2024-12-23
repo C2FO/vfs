@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
+	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/defaults"
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -22,6 +23,7 @@ type Options struct {
 	SecretAccessKey             string `json:"secretAccessKey,omitempty"`
 	SessionToken                string `json:"sessionToken,omitempty"`
 	Region                      string `json:"region,omitempty"`
+	RoleARN                     string `json:"roleARN,omitempty"`
 	Endpoint                    string `json:"endpoint,omitempty"`
 	ACL                         string `json:"acl,omitempty"`
 	ForcePathStyle              bool   `json:"forcePathStyle,omitempty"`
@@ -74,6 +76,12 @@ func getClient(opt Options) (s3iface.S3API, error) {
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	if opt.RoleARN != "" {
+		// Create role credentials
+		creds := stscreds.NewCredentials(s, opt.RoleARN)
+		return s3.New(s, &aws.Config{Credentials: creds}), nil
 	}
 
 	// return client instance
