@@ -33,6 +33,7 @@ type File struct {
 	fileSystem *FileSystem
 	authority  utils.Authority
 	path       string
+	opts       []options.NewFileOption
 	offset     int64
 }
 

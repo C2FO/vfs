@@ -16,3 +16,8 @@ package options
 type DeleteOption interface {
 	DeleteOptionName() string
 }
+
+// NewFileOption interface contains function that should be implemented by any custom option to qualify as a new file option.
+type NewFileOption interface {
+	NewFileOptionName() string
+}

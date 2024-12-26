@@ -24,6 +24,7 @@ type File struct {
 	file        *os.File
 	name        string
 	filesystem  *FileSystem
+	opts        []options.NewFileOption
 	cursorPos   int64
 	tempFile    *os.File
 	useTempFile bool

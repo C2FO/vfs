@@ -5,6 +5,7 @@ import (
 
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/backend"
+	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -21,12 +22,12 @@ func (fs *FileSystem) Retry() vfs.Retry {
 }
 
 // NewFile function returns the os implementation of vfs.File.
-func (fs *FileSystem) NewFile(volume, name string) (vfs.File, error) {
+func (fs *FileSystem) NewFile(volume, name string, opts ...options.NewFileOption) (vfs.File, error) {
 	err := utils.ValidateAbsoluteFilePath(name)
 	if err != nil {
 		return nil, err
 	}
-	return &File{name: name, filesystem: fs}, nil
+	return &File{name: name, filesystem: fs, opts: opts}, nil
 }
 
 // NewLocation function returns the os implementation of vfs.Location.
