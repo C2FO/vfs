@@ -24,7 +24,20 @@ jobs:
           cache: false
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Test
+      - name: Set TMPDIR for Windows
+        if: matrix.os == 'windows-latest'
         run: |
-          set TEMP=%USERPROFILE%\AppData\Local\Temp
+          mkdir C:\Temp
+          echo "TMPDIR=C:\Temp" >> $GITHUB_ENV
+          echo "TEMP=C:\Temp" >> $GITHUB_ENV
+          echo "TMP=C:\Temp" >> $GITHUB_ENV
+        shell: cmd
+
+      - name: Run Tests
+        env:
+          TMPDIR: ${{ env.TMPDIR || '' }}
+          TEMP: ${{ env.TEMP || '' }}
+          TMP: ${{ env.TMP || '' }}
+        run: |
+          echo "Temporary directory: $TMPDIR"
           go test ./...
