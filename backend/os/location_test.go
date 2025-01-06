@@ -2,6 +2,7 @@ package os
 
 import (
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"testing"
@@ -116,14 +117,14 @@ func (s *osLocationTest) TestChangeDir() {
 	cwd := fileLocation.Path()
 	err := fileLocation.ChangeDir("other/")
 	s.NoError(err, "change dir error not expected")
-	s.Equal(fileLocation.Path(), utils.EnsureTrailingSlash(filepath.Join(cwd, "other")))
+	s.Equal(fileLocation.Path(), utils.EnsureTrailingSlash(path.Join(cwd, "other")))
 }
 
 func (s *osLocationTest) TestVolume() {
 	volume := s.testFile.Location().Volume()
 
 	// For Unix, this returns an empty string. For windows, it would be something like 'C:'
-	s.Equal(filepath.VolumeName("test_files/test.txt"), volume)
+	s.Equal(filepath.VolumeName(os.TempDir()), volume)
 }
 
 func (s *osLocationTest) TestPath() {

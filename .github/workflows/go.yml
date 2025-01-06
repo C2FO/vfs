@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         go-version: [1.22, 1.23]
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Install Go
@@ -24,5 +24,17 @@ jobs:
           cache: false
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Test
-        run: go test ./...
+      - name: Set TMPDIR for Windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo "TEMP=C:\Temp" >> $GITHUB_ENV
+          echo "TMP=C:\Temp" >> $GITHUB_ENV
+        shell: cmd
+
+      - name: Run Tests
+        env:
+          TEMP: ${{ env.TEMP || '' }}
+          TMP: ${{ env.TMP || '' }}
+        run: |
+          echo "Temporary directory: $TMPDIR"
+          go test ./...
