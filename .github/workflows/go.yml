@@ -27,14 +27,12 @@ jobs:
       - name: Set TMPDIR for Windows
         if: matrix.os == 'windows-latest'
         run: |
-          echo "TMPDIR=C:\Temp" >> $GITHUB_ENV
           echo "TEMP=C:\Temp" >> $GITHUB_ENV
           echo "TMP=C:\Temp" >> $GITHUB_ENV
         shell: cmd
 
       - name: Run Tests
         env:
-          TMPDIR: ${{ env.TMPDIR || '' }}
           TEMP: ${{ env.TEMP || '' }}
           TMP: ${{ env.TMP || '' }}
         run: |
