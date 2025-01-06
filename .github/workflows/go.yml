@@ -25,4 +25,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Test
-        run: go test ./...
+        run: |
+          set TEMP=%USERPROFILE%\AppData\Local\Temp
+          go test ./...
