@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Ability to run all unit tests on Windows.
 - Deprecated delete.WithDeleteAllVersions in favor of delete.WithAllVersions.
+### Security
+- Switched to new Azure SDK (from deprecated github.com/Azure/azure-storage-blob-go)
 
 ## [6.24.0] - 2024-12-16
 ### Security
