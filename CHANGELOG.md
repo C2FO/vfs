@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [6.25.0]
+## [6.25.0] - 2025-01-08
 ### Added
 - Added NewFile option for Content-Type.
 - Windows support in the os backend.
