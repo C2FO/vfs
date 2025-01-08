@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [6.25.0]
 ### Added
 - Added NewFile option for Content-Type.
 - Windows support in the os backend.
@@ -13,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Deprecated delete.WithDeleteAllVersions in favor of delete.WithAllVersions.
 ### Security
 - Switched to new Azure SDK (from deprecated github.com/Azure/azure-storage-blob-go)
+- Updated dependencies
 
 ## [6.24.0] - 2024-12-16
 ### Security
