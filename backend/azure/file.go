@@ -152,7 +152,7 @@ func (f *File) Location() vfs.Location {
 // name at the given location. If the given location is also azure, the azure API for copying
 // files will be utilized, otherwise, standard io.Copy will be done to the new file.
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
-	newFile, err := location.NewFile(utils.RemoveLeadingSlash(f.Name()))
+	newFile, err := location.NewFile(utils.RemoveLeadingSlash(f.Name()), f.opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +252,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 	var allVersions bool
 	for _, o := range opts {
 		switch o.(type) {
-		case delete.AllVersions:
+		case delete.AllVersions, delete.DeleteAllVersions:
 			allVersions = true
 		default:
 		}

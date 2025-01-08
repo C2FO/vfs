@@ -6,9 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Added NewFile option for Content-Type.
 - Windows support in the os backend.
 ### Fixed
 - Ability to run all unit tests on Windows.
+- Deprecated delete.WithDeleteAllVersions in favor of delete.WithAllVersions.
 
 ## [6.24.0] - 2024-12-16
 ### Security

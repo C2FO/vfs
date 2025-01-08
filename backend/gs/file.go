@@ -421,6 +421,11 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 
 	// do native copy if same location/auth
 	if tf, ok := file.(*File); ok {
+		// If the target file has no newfile options, use the source file's options (used if not same auth)
+		if len(f.opts) == 0 {
+			tf.opts = f.opts
+		}
+
 		opts, ok := tf.Location().FileSystem().(*FileSystem).options.(Options)
 		if ok {
 			if f.isSameAuth(&opts) {
@@ -482,7 +487,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 	var allVersions bool
 	for _, o := range opts {
 		switch o.(type) {
-		case delete.AllVersions:
+		case delete.AllVersions, delete.DeleteAllVersions:
 			allVersions = true
 		default:
 		}

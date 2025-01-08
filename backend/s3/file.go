@@ -219,7 +219,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 	var allVersions bool
 	for _, o := range opts {
 		switch o.(type) {
-		case delete.AllVersions:
+		case delete.AllVersions, delete.DeleteAllVersions:
 			allVersions = true
 		default:
 		}
@@ -571,6 +571,17 @@ func (f *File) getCopyObjectInput(targetFile *File) (*s3.CopyObjectInput, error)
 	isSameAccount := false
 	var ACL string
 
+	// get content type from source
+	var contentType string
+	if targetFile.opts == nil && f.opts != nil {
+		for _, o := range f.opts {
+			switch o := o.(type) {
+			case *newfile.ContentType:
+				contentType = string(*o)
+			}
+		}
+	}
+
 	fileOptions := f.Location().FileSystem().(*FileSystem).options
 	targetOptions := targetFile.Location().FileSystem().(*FileSystem).options
 
@@ -606,6 +617,11 @@ func (f *File) getCopyObjectInput(targetFile *File) (*s3.CopyObjectInput, error)
 			SetKey(targetFile.key).
 			SetBucket(targetFile.bucket).
 			SetCopySource(copySourceKey)
+
+		// set content type if it exists
+		if contentType != "" {
+			copyInput.SetContentType(contentType)
+		}
 
 		if f.fileSystem.options != nil && f.fileSystem.options.(Options).DisableServerSideEncryption {
 			copyInput.ServerSideEncryption = nil
