@@ -578,6 +578,7 @@ func (f *File) getCopyObjectInput(targetFile *File) (*s3.CopyObjectInput, error)
 			switch o := o.(type) {
 			case *newfile.ContentType:
 				contentType = string(*o)
+			default:
 			}
 		}
 	}
