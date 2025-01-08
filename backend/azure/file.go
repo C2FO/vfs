@@ -15,6 +15,7 @@ import (
 	"github.com/c2fo/vfs/v6/backend"
 	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/options/delete"
+	"github.com/c2fo/vfs/v6/options/newfile"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -23,6 +24,7 @@ type File struct {
 	fileSystem *FileSystem
 	container  string
 	name       string
+	opts       []options.NewFileOption
 	tempFile   *os.File
 	isDirty    bool
 }
@@ -47,7 +49,16 @@ func (f *File) Close() error {
 		}
 
 		if f.isDirty {
-			if err := client.Upload(f, f.tempFile); err != nil {
+			var contentType string
+			for _, o := range f.opts {
+				switch o := o.(type) {
+				case *newfile.ContentType:
+					contentType = *(*string)(o)
+				default:
+				}
+			}
+
+			if err := client.Upload(f, f.tempFile, contentType); err != nil {
 				return utils.WrapCloseError(err)
 			}
 		}
@@ -141,7 +152,7 @@ func (f *File) Location() vfs.Location {
 // name at the given location. If the given location is also azure, the azure API for copying
 // files will be utilized, otherwise, standard io.Copy will be done to the new file.
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
-	newFile, err := location.NewFile(utils.RemoveLeadingSlash(f.Name()))
+	newFile, err := location.NewFile(utils.RemoveLeadingSlash(f.Name()), f.opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +236,7 @@ func (f *File) MoveToFile(file vfs.File) error {
 }
 
 // Delete deletes the file.
-// If DeleteAllVersions option is provided, each version of the file is deleted. NOTE: if soft deletion is enabled,
+// If delete.AllVersions option is provided, each version of the file is deleted. NOTE: if soft deletion is enabled,
 // it will mark all versions as soft deleted, and they will be removed by Azure as per soft deletion policy.
 // Returns any error returned by the API.
 func (f *File) Delete(opts ...options.DeleteOption) error {
@@ -238,11 +249,11 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		return err
 	}
 
-	var deleteAllVersions bool
+	var allVersions bool
 	for _, o := range opts {
 		switch o.(type) {
-		case delete.DeleteAllVersions:
-			deleteAllVersions = true
+		case delete.AllVersions, delete.DeleteAllVersions:
+			allVersions = true
 		default:
 		}
 	}
@@ -251,7 +262,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		return err
 	}
 
-	if deleteAllVersions {
+	if allVersions {
 		return client.DeleteAllVersions(f)
 	}
 
@@ -308,7 +319,16 @@ func (f *File) Touch() error {
 	}
 
 	if !exists {
-		return client.Upload(f, strings.NewReader(""))
+		var contentType string
+		for _, o := range f.opts {
+			switch o := o.(type) {
+			case *newfile.ContentType:
+				contentType = *(*string)(o)
+			default:
+			}
+		}
+
+		return client.Upload(f, strings.NewReader(""), contentType)
 	}
 
 	props, err := client.Properties(f.Location().(*Location).ContainerURL(), f.Path())

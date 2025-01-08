@@ -16,6 +16,7 @@ import (
 	"github.com/c2fo/vfs/v6/backend"
 	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/options/delete"
+	"github.com/c2fo/vfs/v6/options/newfile"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -28,6 +29,7 @@ type File struct {
 	fileSystem *FileSystem
 	bucket     string
 	key        string
+	opts       []options.NewFileOption
 
 	// seek-related fields
 	cursorPos  int64
@@ -105,6 +107,14 @@ func (f *File) tempToGCS() error {
 
 	w := handle.NewWriter(f.fileSystem.ctx)
 	defer func() { _ = w.Close() }()
+
+	for _, o := range f.opts {
+		switch o := o.(type) {
+		case *newfile.ContentType:
+			w.ContentType = *(*string)(o)
+		default:
+		}
+	}
 
 	_, err = f.tempFileWriter.Seek(0, io.SeekStart)
 	if err != nil {
@@ -327,6 +337,14 @@ func (f *File) initWriters() error {
 				return err
 			}
 
+			for _, o := range f.opts {
+				switch o := o.(type) {
+				case *newfile.ContentType:
+					w.ContentType = *(*string)(o)
+				default:
+				}
+			}
+
 			// set gcsWriter
 			f.gcsWriter = w
 		}
@@ -403,6 +421,11 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 
 	// do native copy if same location/auth
 	if tf, ok := file.(*File); ok {
+		// If the target file has no newfile options, use the source file's options (used if not same auth)
+		if len(f.opts) == 0 {
+			tf.opts = f.opts
+		}
+
 		opts, ok := tf.Location().FileSystem().(*FileSystem).options.(Options)
 		if ok {
 			if f.isSameAuth(&opts) {
@@ -454,18 +477,18 @@ func (f *File) MoveToFile(file vfs.File) error {
 }
 
 // Delete clears any local temp file, or write buffer from read/writes to the file, then makes
-// a DeleteObject call to GCS for the file. If DeleteAllVersions option is provided,
+// a DeleteObject call to GCS for the file. If delete.AllVersions option is provided,
 // DeleteObject call is made to GCS for each version of the file. Returns any error returned by the API.
 func (f *File) Delete(opts ...options.DeleteOption) error {
 	if err := f.Close(); err != nil {
 		return err
 	}
 
-	var deleteAllVersions bool
+	var allVersions bool
 	for _, o := range opts {
 		switch o.(type) {
-		case delete.DeleteAllVersions:
-			deleteAllVersions = true
+		case delete.AllVersions, delete.DeleteAllVersions:
+			allVersions = true
 		default:
 		}
 	}
@@ -479,7 +502,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		return err
 	}
 
-	if deleteAllVersions {
+	if allVersions {
 		handles, err := f.getObjectGenerationHandles()
 		if err != nil {
 			return err
@@ -589,6 +612,15 @@ func (f *File) createEmptyFile() error {
 	defer cancel()
 
 	w := handle.NewWriter(ctx)
+
+	for _, o := range f.opts {
+		switch o := o.(type) {
+		case *newfile.ContentType:
+			w.ContentType = *(*string)(o)
+		default:
+		}
+	}
+
 	defer func() { _ = w.Close() }()
 	if _, err := w.Write(make([]byte, 0)); err != nil {
 		return err

@@ -157,7 +157,7 @@ func (l *Location) FileSystem() vfs.FileSystem {
 }
 
 // NewFile returns a new file instance at the given path, relative to the current location.
-func (l *Location) NewFile(filePath string) (vfs.File, error) {
+func (l *Location) NewFile(filePath string, opts ...options.NewFileOption) (vfs.File, error) {
 	if l == nil {
 		return nil, errors.New("non-nil gs.Location pointer is required")
 	}
@@ -172,6 +172,7 @@ func (l *Location) NewFile(filePath string) (vfs.File, error) {
 		fileSystem: l.fileSystem,
 		bucket:     l.bucket,
 		key:        utils.EnsureLeadingSlash(path.Join(l.prefix, filePath)),
+		opts:       opts,
 	}
 	return newFile, nil
 }

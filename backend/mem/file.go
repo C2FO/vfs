@@ -40,6 +40,7 @@ type File struct {
 	memFile         *memFile
 	readWriteSeeker *ReadWriteSeeker
 	name            string // the base name of the file
+	opts            []options.NewFileOption
 	cursor          int
 	writeMode       mode
 	isOpen          bool

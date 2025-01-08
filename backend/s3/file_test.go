@@ -24,6 +24,7 @@ import (
 	"github.com/c2fo/vfs/v6/backend/s3/mocks"
 	vfsmocks "github.com/c2fo/vfs/v6/mocks"
 	"github.com/c2fo/vfs/v6/options/delete"
+	"github.com/c2fo/vfs/v6/options/newfile"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -593,7 +594,7 @@ func (ts *fileTestSuite) TestDeleteError() {
 	s3apiMock.AssertExpectations(ts.T())
 }
 
-func (ts *fileTestSuite) TestDeleteWithDeleteAllVersionsOption() {
+func (ts *fileTestSuite) TestDeleteWithAllVersionsOption() {
 	var versions []*s3.ObjectVersion
 	verIds := [...]string{"ver1", "ver2"}
 	for i := range verIds {
@@ -605,13 +606,13 @@ func (ts *fileTestSuite) TestDeleteWithDeleteAllVersionsOption() {
 	s3apiMock.On("ListObjectVersions", mock.AnythingOfType("*s3.ListObjectVersionsInput")).Return(&versOutput, nil)
 	s3apiMock.On("DeleteObject", mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
 
-	err := testFile.Delete(delete.WithDeleteAllVersions())
+	err := testFile.Delete(delete.WithAllVersions())
 	ts.NoError(err, "Successful delete should not return an error.")
 	s3apiMock.AssertExpectations(ts.T())
 	s3apiMock.AssertNumberOfCalls(ts.T(), "DeleteObject", 3)
 }
 
-func (ts *fileTestSuite) TestDeleteWithDeleteAllVersionsOptionError() {
+func (ts *fileTestSuite) TestDeleteWithAllVersionsOptionError() {
 	var versions []*s3.ObjectVersion
 	verIds := [...]string{"ver1", "ver2"}
 	for i := range verIds {
@@ -625,7 +626,7 @@ func (ts *fileTestSuite) TestDeleteWithDeleteAllVersionsOptionError() {
 	s3apiMock.On("DeleteObject", &s3.DeleteObjectInput{Key: &testFileName, Bucket: &bucket, VersionId: &verIds[0]}).
 		Return(nil, errors.New("something went wrong"))
 
-	err := testFile.Delete(delete.WithDeleteAllVersions())
+	err := testFile.Delete(delete.WithAllVersions())
 	ts.Error(err, "Delete should return an error if s3 api had error.")
 	s3apiMock.AssertExpectations(ts.T())
 	s3apiMock.AssertNumberOfCalls(ts.T(), "DeleteObject", 2)
@@ -700,6 +701,13 @@ func (ts *fileTestSuite) TestUploadInputDisableSSE() {
 	ts.Nil(input.ServerSideEncryption, "sse was disabled")
 	ts.Equal("/some/file/test.txt", *input.Key, "key was set")
 	ts.Equal("mybucket", *input.Bucket, "bucket was set")
+}
+
+func (ts *fileTestSuite) TestUploadInputContentType() {
+	fs = FileSystem{client: &mocks.S3API{}}
+	file, _ := fs.NewFile("mybucket", "/some/file/test.txt", newfile.WithContentType("text/plain"))
+	input := uploadInput(file.(*File))
+	ts.Equal("text/plain", *input.ContentType)
 }
 
 func (ts *fileTestSuite) TestNewFile() {

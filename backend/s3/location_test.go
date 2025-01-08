@@ -300,7 +300,7 @@ func (lt *locationTestSuite) TestDeleteFile() {
 	lt.s3apiMock.AssertExpectations(lt.T())
 }
 
-func (lt *locationTestSuite) TestDeleteFileWithDeleteAllVersionsOption() {
+func (lt *locationTestSuite) TestDeleteFileWithAllVersionsOption() {
 	var versions []*s3.ObjectVersion
 	verIds := [...]string{"ver1", "ver2"}
 	for i := range verIds {
@@ -314,7 +314,7 @@ func (lt *locationTestSuite) TestDeleteFileWithDeleteAllVersionsOption() {
 	loc, err := lt.fs.NewLocation("bucket", "/old/")
 	lt.NoError(err)
 
-	err = loc.DeleteFile("filename.txt", delete.WithDeleteAllVersions())
+	err = loc.DeleteFile("filename.txt", delete.WithAllVersions())
 	lt.NoError(err, "Successful delete should not return an error.")
 	lt.s3apiMock.AssertExpectations(lt.T())
 	lt.s3apiMock.AssertNumberOfCalls(lt.T(), "DeleteObject", 3)

@@ -21,6 +21,7 @@ import (
 	"github.com/c2fo/vfs/v6/mocks"
 	"github.com/c2fo/vfs/v6/options"
 	"github.com/c2fo/vfs/v6/options/delete"
+	"github.com/c2fo/vfs/v6/options/newfile"
 	"github.com/c2fo/vfs/v6/utils"
 )
 
@@ -31,6 +32,7 @@ type File struct {
 	fileSystem *FileSystem
 	bucket     string
 	key        string
+	opts       []options.NewFileOption
 
 	// seek-related fields
 	cursorPos  int64
@@ -202,7 +204,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 // CRUD Operations
 
 // Delete clears any local temp file, or write buffer from read/writes to the file, then makes
-// a DeleteObject call to s3 for the file. If DeleteAllVersions option is provided,
+// a DeleteObject call to s3 for the file. If delete.AllVersions option is provided,
 // DeleteObject call is made to s3 for each version of the file. Returns any error returned by the API.
 func (f *File) Delete(opts ...options.DeleteOption) error {
 	if err := f.Close(); err != nil {
@@ -214,11 +216,11 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		return err
 	}
 
-	var deleteAllVersions bool
+	var allVersions bool
 	for _, o := range opts {
 		switch o.(type) {
-		case delete.DeleteAllVersions:
-			deleteAllVersions = true
+		case delete.AllVersions, delete.DeleteAllVersions:
+			allVersions = true
 		default:
 		}
 	}
@@ -231,7 +233,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		return err
 	}
 
-	if deleteAllVersions {
+	if allVersions {
 		objectVersions, err := f.getAllObjectVersions(client)
 		if err != nil {
 			return err
@@ -569,6 +571,18 @@ func (f *File) getCopyObjectInput(targetFile *File) (*s3.CopyObjectInput, error)
 	isSameAccount := false
 	var ACL string
 
+	// get content type from source
+	var contentType string
+	if targetFile.opts == nil && f.opts != nil {
+		for _, o := range f.opts {
+			switch o := o.(type) {
+			case *newfile.ContentType:
+				contentType = string(*o)
+			default:
+			}
+		}
+	}
+
 	fileOptions := f.Location().FileSystem().(*FileSystem).options
 	targetOptions := targetFile.Location().FileSystem().(*FileSystem).options
 
@@ -604,6 +618,11 @@ func (f *File) getCopyObjectInput(targetFile *File) (*s3.CopyObjectInput, error)
 			SetKey(targetFile.key).
 			SetBucket(targetFile.bucket).
 			SetCopySource(copySourceKey)
+
+		// set content type if it exists
+		if contentType != "" {
+			copyInput.SetContentType(contentType)
+		}
 
 		if f.fileSystem.options != nil && f.fileSystem.options.(Options).DisableServerSideEncryption {
 			copyInput.ServerSideEncryption = nil
@@ -656,6 +675,14 @@ func uploadInput(f *File) *s3manager.UploadInput {
 	if opts, ok := f.fileSystem.options.(Options); ok {
 		if opts.ACL != "" {
 			input.ACL = &opts.ACL
+		}
+	}
+
+	for _, o := range f.opts {
+		switch o := o.(type) {
+		case *newfile.ContentType:
+			input.ContentType = (*string)(o)
+		default:
 		}
 	}
 

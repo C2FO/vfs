@@ -28,7 +28,7 @@ type Client interface {
 
 	// Upload should create or update the blob specified by the file parameter with the contents of the content
 	// parameter
-	Upload(file vfs.File, content io.ReadSeeker) error
+	Upload(file vfs.File, content io.ReadSeeker, contentType string) error
 
 	// Download should return a reader for the blob specified by the file parameter
 	Download(file vfs.File) (io.ReadCloser, error)
@@ -102,7 +102,7 @@ func (a *DefaultClient) Properties(containerURI, filePath string) (*BlobProperti
 }
 
 // Upload uploads a new file to Azure Blob Storage
-func (a *DefaultClient) Upload(file vfs.File, content io.ReadSeeker) error {
+func (a *DefaultClient) Upload(file vfs.File, content io.ReadSeeker, contentType string) error {
 	URL, err := url.Parse(file.Location().(*Location).ContainerURL())
 	if err != nil {
 		return err
@@ -110,7 +110,7 @@ func (a *DefaultClient) Upload(file vfs.File, content io.ReadSeeker) error {
 
 	containerURL := azblob.NewContainerURL(*URL, a.pipeline)
 	blobURL := containerURL.NewBlockBlobURL(utils.RemoveLeadingSlash(file.Path()))
-	_, err = blobURL.Upload(context.Background(), content, azblob.BlobHTTPHeaders{}, azblob.Metadata{},
+	_, err = blobURL.Upload(context.Background(), content, azblob.BlobHTTPHeaders{ContentType: contentType}, azblob.Metadata{},
 		azblob.BlobAccessConditions{}, azblob.DefaultAccessTier, nil, azblob.ClientProvidedKeyOptions{}, azblob.ImmutabilityPolicyOptions{})
 	return err
 }
