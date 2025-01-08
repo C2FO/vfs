@@ -118,7 +118,7 @@ func (s *FileTestSuite) TestExists_NonExistentFile() {
 }
 
 func (s *FileTestSuite) TestCloseWithContentType() {
-	client := MockAzureClient{PropertiesError: MockStorageError{}}
+	client := MockAzureClient{PropertiesError: blobNotFoundErr}
 	fs := NewFileSystem().WithClient(&client)
 	f, _ := fs.NewFile("test-container", "/foo.txt", newfile.WithContentType("text/plain"))
 	_, _ = f.Write([]byte("Hello, World!"))
@@ -300,7 +300,7 @@ func (s *FileTestSuite) TestTouch_NonexistentContainer() {
 }
 
 func (s *FileTestSuite) TestTouchWithContentType() {
-	client := MockAzureClient{ExpectedResult: &BlobProperties{}, PropertiesError: MockStorageError{}}
+	client := MockAzureClient{ExpectedResult: &BlobProperties{}, PropertiesError: blobNotFoundErr}
 	fs := NewFileSystem().WithClient(&client)
 
 	f, err := fs.NewFile("test-container", "/foo.txt", newfile.WithContentType("text/plain"))
