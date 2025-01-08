@@ -621,7 +621,7 @@ func (f *File) getCopyObjectInput(targetFile *File) *s3.CopyObjectInput {
 
 		// set content type if it exists
 		if contentType != "" {
-			copyInput.SetContentType(contentType)
+			copyInput.ContentType = aws.String(contentType)
 		}
 
 		if f.fileSystem.options != nil && f.fileSystem.options.(Options).DisableServerSideEncryption {

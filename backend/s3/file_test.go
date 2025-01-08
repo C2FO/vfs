@@ -176,11 +176,11 @@ func (ts *fileTestSuite) TestReadEOFSeenReset() {
 	file, err := fs.NewFile("bucket", "/tmp/hello.txt")
 	ts.NoError(err, "Shouldn't fail creating new file")
 
-	s3apiMock.On("HeadObject", mock.AnythingOfType("*s3.HeadObjectInput")).
+	s3cliMock.On("HeadObject", matchContext, mock.AnythingOfType("*s3.HeadObjectInput")).
 		Return(&s3.HeadObjectOutput{ContentLength: aws.Int64(int64(len(contents)))}, nil).
 		Maybe()
 
-	s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).
+	s3cliMock.On("GetObject", matchContext, mock.AnythingOfType("*s3.GetObjectInput")).
 		Return(&s3.GetObjectOutput{Body: io.NopCloser(strings.NewReader(contents))}, nil).
 		Once()
 
@@ -687,7 +687,7 @@ func (ts *fileTestSuite) TestUploadInputDisableSSE() {
 }
 
 func (ts *fileTestSuite) TestUploadInputContentType() {
-	fs = FileSystem{client: &mocks.S3API{}}
+	fs = FileSystem{client: &mocks.Client{}}
 	file, _ := fs.NewFile("mybucket", "/some/file/test.txt", newfile.WithContentType("text/plain"))
 	input := uploadInput(file.(*File))
 	ts.Equal("text/plain", *input.ContentType)
