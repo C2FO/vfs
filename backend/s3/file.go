@@ -566,9 +566,24 @@ func (f *File) getHeadObject() (*s3.HeadObjectOutput, error) {
 
 // For copy from S3-to-S3 when credentials are the same between source and target, return *s3.CopyObjectInput or error
 func (f *File) getCopyObjectInput(targetFile *File) *s3.CopyObjectInput {
-	// first we must determine if we're using the same s3 credentials for source and target before doing a native copy
-	isSameAccount := false
-	var ACL types.ObjectCannedACL
+	// If both files use the same account, copy with native library. Otherwise, copy to disk
+	// first before pushing out to the target file's location.
+	sameAuth, ACL := f.isSameAuth(targetFile)
+	if !sameAuth {
+		// return nil if credentials aren't the same
+		return nil
+	}
+
+	// PathEscape ensures we url-encode as required by the API, including double-encoding literals
+	copySourceKey := url.PathEscape(path.Join(f.bucket, f.key))
+
+	copyInput := &s3.CopyObjectInput{
+		ServerSideEncryption: types.ServerSideEncryptionAes256,
+		ACL:                  ACL,
+		Key:                  aws.String(targetFile.key),
+		Bucket:               aws.String(targetFile.bucket),
+		CopySource:           aws.String(copySourceKey),
+	}
 
 	// get content type from source
 	var contentType string
@@ -582,57 +597,40 @@ func (f *File) getCopyObjectInput(targetFile *File) *s3.CopyObjectInput {
 		}
 	}
 
+	// set content type if it exists
+	if contentType != "" {
+		copyInput.ContentType = aws.String(contentType)
+	}
+
+	if f.fileSystem.options != nil && f.fileSystem.options.(Options).DisableServerSideEncryption {
+		copyInput.ServerSideEncryption = ""
+	}
+
+	return copyInput
+}
+
+func (f *File) isSameAuth(targetFile *File) (bool, types.ObjectCannedACL) {
 	fileOptions := f.Location().FileSystem().(*FileSystem).options
 	targetOptions := targetFile.Location().FileSystem().(*FileSystem).options
 
 	if fileOptions == nil && targetOptions == nil {
 		// if both opts are nil, we must be using the default credentials
-		isSameAccount = true
-	} else {
-		opts, hasOptions := fileOptions.(Options)
-		targetOpts, hasTargetOptions := targetOptions.(Options)
-		if hasOptions {
-			// use source ACL (even if empty), UNLESS target ACL is set
-			ACL = opts.ACL
-			if hasTargetOptions && targetOpts.ACL != "" {
+		return true, ""
+	} else if opts, ok := fileOptions.(Options); ok {
+		// use source ACL (even if empty), UNLESS target ACL is set
+		ACL := opts.ACL
+		if targetOpts, ok := targetOptions.(Options); ok {
+			if targetOpts.ACL != "" {
 				ACL = targetOpts.ACL
 			}
-			if hasTargetOptions {
-				// since accesskey and session token are mutually exclusive, one will be nil
-				// if both are the same, we're using the same credentials
-				isSameAccount = (opts.AccessKeyID == targetOpts.AccessKeyID) && (opts.SessionToken == targetOpts.SessionToken)
-			}
+			// since accesskey and session token are mutually exclusive, one will be nil
+			// if both are the same, we're using the same credentials
+			isSameAccount := (opts.AccessKeyID == targetOpts.AccessKeyID) && (opts.SessionToken == targetOpts.SessionToken)
+			return isSameAccount, ACL
 		}
+		return false, ACL
 	}
-
-	// If both files use the same account, copy with native library. Otherwise, copy to disk
-	// first before pushing out to the target file's location.
-	if isSameAccount {
-		// PathEscape ensures we url-encode as required by the API, including double-encoding literals
-		copySourceKey := url.PathEscape(path.Join(f.bucket, f.key))
-
-		copyInput := &s3.CopyObjectInput{
-			ServerSideEncryption: types.ServerSideEncryptionAes256,
-			ACL:                  ACL,
-			Key:                  aws.String(targetFile.key),
-			Bucket:               aws.String(targetFile.bucket),
-			CopySource:           aws.String(copySourceKey),
-		}
-
-		// set content type if it exists
-		if contentType != "" {
-			copyInput.ContentType = aws.String(contentType)
-		}
-
-		if f.fileSystem.options != nil && f.fileSystem.options.(Options).DisableServerSideEncryption {
-			copyInput.ServerSideEncryption = ""
-		}
-
-		return copyInput
-	}
-
-	// return nil if credentials aren't the same
-	return nil
+	return false, ""
 }
 
 func (f *File) copyS3ToLocalTempReader(tmpFile *os.File) error {
