@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.25.1] - 2025-01-09
+### Fixed
+- The intersection of features #208 and #213 was missed (during rebase).
+
 ## [6.25.0] - 2025-01-08
 ### Added
 - Added NewFile option for Content-Type.
