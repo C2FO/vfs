@@ -11,6 +11,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/streaming"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blockblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
 
 	"github.com/c2fo/vfs/v6"
@@ -110,7 +111,13 @@ func (a *DefaultClient) Upload(file vfs.File, content io.ReadSeeker, contentType
 	if !ok {
 		body = streaming.NopCloser(content)
 	}
-	_, err = blobURL.Upload(context.Background(), body, nil)
+	var opts *blockblob.UploadOptions
+	if contentType != "" {
+		opts = &blockblob.UploadOptions{
+			HTTPHeaders: &blob.HTTPHeaders{BlobContentType: &contentType},
+		}
+	}
+	_, err = blobURL.Upload(context.Background(), body, opts)
 	return err
 }
 
