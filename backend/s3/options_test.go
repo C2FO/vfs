@@ -44,6 +44,19 @@ func (o *optionsTestSuite) TestGetClient() {
 	o.NoError(err)
 	o.NotNil(client, "client is set")
 	o.Equal("set-by-envvar", *client.(*s3.S3).Config.Region, "region is set by env var")
+
+	// role ARN set
+	opts = Options{
+		AccessKeyID:     "mykey",
+		SecretAccessKey: "mysecret",
+		Region:          "some-region",
+		RoleARN:         "arn:aws:iam::123456789012:role/my-role",
+	}
+	client, err = getClient(opts)
+	o.NoError(err)
+	o.NotNil(client, "client is set")
+	o.Equal("some-region", *client.(*s3.S3).Config.Region, "region is set")
+	o.NotNil(client.(*s3.S3).Config.Credentials, "credentials are set")
 }
 
 func TestOptions(t *testing.T) {
