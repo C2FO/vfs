@@ -142,7 +142,7 @@ func (l *Location) NewFile(filePath string, opts ...options.NewFileOption) (vfs.
 	newFile := &File{
 		fileSystem: l.fileSystem,
 		bucket:     l.bucket,
-		key:        utils.EnsureLeadingSlash(path.Join(l.prefix, filePath)),
+		key:        utils.RemoveLeadingSlash(path.Join(l.prefix, filePath)),
 		opts:       opts,
 	}
 	return newFile, nil

@@ -42,7 +42,7 @@ func (fs *FileSystem) NewFile(volume, name string, opts ...options.NewFileOption
 	return &File{
 		fileSystem: fs,
 		bucket:     utils.RemoveTrailingSlash(volume),
-		key:        path.Clean(name),
+		key:        utils.RemoveLeadingSlash(path.Clean(name)),
 		opts:       opts,
 	}, nil
 }
