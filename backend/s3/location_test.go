@@ -222,7 +222,7 @@ func (lt *locationTestSuite) TestExists_false() {
 	bucket := "foo"
 	lt.s3cliMock.On("HeadBucket", matchContext, &s3.HeadBucketInput{
 		Bucket: &bucket,
-	}).Return(nil, &types.NoSuchBucket{}).Once()
+	}).Return(nil, &types.NotFound{}).Once()
 	loc, err := lt.fs.NewLocation(bucket, "/")
 	lt.NoError(err)
 	exists, err := loc.Exists()

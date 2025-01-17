@@ -81,7 +81,7 @@ func (l *Location) Exists() (bool, error) {
 	}
 	_, err = client.HeadBucket(context.Background(), headBucketInput)
 	if err != nil {
-		var terr *types.NoSuchBucket
+		var terr *types.NotFound
 		if errors.As(err, &terr) {
 			return false, nil
 		}
