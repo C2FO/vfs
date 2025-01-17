@@ -604,9 +604,10 @@ func (ts *fileTestSuite) TestDeleteWithAllVersionsOptionError() {
 	}
 	s3cliMock.On("ListObjectVersions", matchContext, mock.AnythingOfType("*s3.ListObjectVersionsInput")).
 		Return(&versOutput, nil)
-	s3cliMock.On("DeleteObject", matchContext, &s3.DeleteObjectInput{Key: &testFileName, Bucket: &bucket}).
+	key := utils.Ptr(utils.RemoveLeadingSlash(testFileName))
+	s3cliMock.On("DeleteObject", matchContext, &s3.DeleteObjectInput{Key: key, Bucket: &bucket}).
 		Return(&s3.DeleteObjectOutput{}, nil)
-	s3cliMock.On("DeleteObject", matchContext, &s3.DeleteObjectInput{Key: &testFileName, Bucket: &bucket, VersionId: &verIds[0]}).
+	s3cliMock.On("DeleteObject", matchContext, &s3.DeleteObjectInput{Key: key, Bucket: &bucket, VersionId: &verIds[0]}).
 		Return(nil, errors.New("something went wrong"))
 
 	err := testFile.Delete(delete.WithAllVersions())
@@ -672,7 +673,7 @@ func (ts *fileTestSuite) TestUploadInput() {
 	fs = FileSystem{client: &mocks.Client{}}
 	file, _ := fs.NewFile("mybucket", "/some/file/test.txt")
 	ts.Equal(types.ServerSideEncryptionAes256, uploadInput(file.(*File)).ServerSideEncryption, "sse was set")
-	ts.Equal("/some/file/test.txt", *uploadInput(file.(*File)).Key, "key was set")
+	ts.Equal("some/file/test.txt", *uploadInput(file.(*File)).Key, "key was set")
 	ts.Equal("mybucket", *uploadInput(file.(*File)).Bucket, "bucket was set")
 }
 
@@ -682,7 +683,7 @@ func (ts *fileTestSuite) TestUploadInputDisableSSE() {
 	file, _ := fs.NewFile("mybucket", "/some/file/test.txt")
 	input := uploadInput(file.(*File))
 	ts.Empty(input.ServerSideEncryption, "sse was disabled")
-	ts.Equal("/some/file/test.txt", *input.Key, "key was set")
+	ts.Equal("some/file/test.txt", *input.Key, "key was set")
 	ts.Equal("mybucket", *input.Bucket, "bucket was set")
 }
 
