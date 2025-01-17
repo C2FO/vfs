@@ -351,6 +351,12 @@ func (f *File) tempToS3() error {
 
 // Read implements the standard for io.Reader.
 func (f *File) Read(p []byte) (n int, err error) {
+	// s3 reader returns io.EOF when reading the last byte (but not past the last byte) to save on bandwidth,
+	// but we want to return io.EOF only when reading past the last byte
+	if f.readEOFSeen {
+		return 0, io.EOF
+	}
+
 	// check/initialize for reader
 	r, err := f.getReader()
 	if err != nil {
@@ -361,18 +367,6 @@ func (f *File) Read(p []byte) (n int, err error) {
 	if err != nil {
 		if !errors.Is(err, io.EOF) {
 			return 0, utils.WrapReadError(err)
-		}
-		// s3 reader returns io.EOF when reading the last byte (but not past the last byte) to save on bandwidth,
-		// but we want to return io.EOF only when reading past the last byte
-		if f.readEOFSeen {
-			return 0, io.EOF
-		}
-		sz, err := f.Size()
-		if err != nil {
-			return 0, utils.WrapReadError(err)
-		}
-		if f.cursorPos+int64(read) > int64(sz) {
-			return read, utils.WrapReadError(err)
 		}
 		f.readEOFSeen = true
 	}
@@ -457,11 +451,8 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	}
 	f.cursorPos = pos
 
-	// Reset readEOFSeen if seeking to the beginning of the file
-	if f.cursorPos == 0 {
-		f.readEOFSeen = false
-	}
-
+	// set readEOFSeen if seeking to the end of the file
+	f.readEOFSeen = f.cursorPos >= int64(length)
 	f.seekCalled = true
 	return f.cursorPos, nil
 }
