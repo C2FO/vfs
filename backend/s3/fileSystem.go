@@ -103,7 +103,10 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 	if opts, ok := opts.(Options); ok {
 		fs.options = opts
 		// we set client to nil to ensure that a new client is created using the new context when Client() is called
-		fs.client = nil
+		if opts.Region != "" || opts.ForcePathStyle || opts.Endpoint != "" || opts.Retry != nil ||
+			opts.AccessKeyID != "" || opts.SecretAccessKey != "" || opts.SessionToken != "" {
+			fs.client = nil
+		}
 	}
 	return fs
 }
