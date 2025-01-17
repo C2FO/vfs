@@ -49,7 +49,9 @@ func getClient(opt Options) (Client, error) {
 			opts.BaseEndpoint = aws.String(opt.Endpoint)
 		}
 
-		opts.Retryer = opt.Retry
+		if opt.Retry != nil {
+			opts.Retryer = opt.Retry
+		}
 
 		if opt.AccessKeyID != "" && opt.SecretAccessKey != "" {
 			opts.Credentials = credentials.NewStaticCredentialsProvider(
