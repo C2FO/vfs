@@ -47,7 +47,7 @@ type File struct {
 	s3Writer           *io.PipeWriter
 	cancelFunc         context.CancelFunc
 	writeCalled        bool
-	s3WriterCompleteCh chan struct{}
+	s3WriterCompleteCh chan error
 }
 
 // Info Functions
@@ -301,9 +301,12 @@ func (f *File) Close() error { //nolint:gocyclo
 		// read s3WriterCompleteCh if it exists
 		if f.writeCalled && f.s3Writer != nil && f.s3WriterCompleteCh != nil {
 			// wait for s3Writer to complete
-			<-f.s3WriterCompleteCh
+			err := <-f.s3WriterCompleteCh
 			// close s3WriterCompleteCh channel
 			close(f.s3WriterCompleteCh)
+			if err != nil {
+				return utils.WrapCloseError(err)
+			}
 		}
 		err := waitUntilFileExists(f, 5)
 		if err != nil {
@@ -814,7 +817,7 @@ func (f *File) initWriters() error {
 }
 
 func (f *File) getS3Writer() (*io.PipeWriter, error) {
-	f.s3WriterCompleteCh = make(chan struct{}, 1)
+	f.s3WriterCompleteCh = make(chan error, 1)
 	pr, pw := io.Pipe()
 
 	client, err := f.fileSystem.Client()
@@ -833,7 +836,7 @@ func (f *File) getS3Writer() (*io.PipeWriter, error) {
 		if err != nil {
 			_ = pw.CloseWithError(err)
 		}
-		f.s3WriterCompleteCh <- struct{}{}
+		f.s3WriterCompleteCh <- err
 	}(uploadInput)
 
 	return pw, nil
