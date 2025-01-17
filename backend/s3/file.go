@@ -766,7 +766,7 @@ func (f *File) getReader() (io.ReadCloser, error) {
 
 func handleExistsError(err error) error {
 	if err != nil {
-		var kerr *types.NoSuchKey
+		var kerr *types.NotFound
 		if errors.As(err, &kerr) {
 			return vfs.ErrNotExist
 		}

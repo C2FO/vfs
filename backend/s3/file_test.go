@@ -161,7 +161,7 @@ func (ts *fileTestSuite) TestSeek() {
 	fs.client = s3cliMock
 	s3cliMock.
 		On("HeadObject", matchContext, mock.AnythingOfType("*s3.HeadObjectInput")).
-		Return(nil, &types.NoSuchKey{}).
+		Return(nil, &types.NotFound{}).
 		Once()
 	_, err = file.Seek(0, 0)
 	ts.Require().Error(err, "error expected")
@@ -220,7 +220,7 @@ func (ts *fileTestSuite) TestNotExists() {
 	ts.Require().NoError(err, "Shouldn't fail creating new file.")
 
 	s3cliMock.On("HeadObject", matchContext, mock.AnythingOfType("*s3.HeadObjectInput")).
-		Return(&s3.HeadObjectOutput{}, &types.NoSuchKey{})
+		Return(&s3.HeadObjectOutput{}, &types.NotFound{})
 
 	exists, err := file.Exists()
 	ts.False(exists, "Should return false for exists based on setup")
@@ -466,7 +466,7 @@ func (ts *fileTestSuite) TestTouch() {
 	// test non-existent length
 	s3Mock2 := &mocks.Client{}
 	s3Mock2.On("HeadObject", matchContext, mock.AnythingOfType("*s3.HeadObjectInput")).
-		Return(&s3.HeadObjectOutput{}, &types.NoSuchKey{}).Once()
+		Return(&s3.HeadObjectOutput{}, &types.NotFound{}).Once()
 	s3Mock2.On("HeadObject", matchContext, mock.AnythingOfType("*s3.HeadObjectInput")).
 		Return(&s3.HeadObjectOutput{}, nil)
 	file2 := &File{
@@ -727,7 +727,7 @@ func (ts *fileTestSuite) TestCloseWithoutWrite() {
 func (ts *fileTestSuite) TestCloseWithWrite() {
 	s3Mock := &mocks.Client{}
 	s3Mock.On("HeadObject", matchContext, mock.AnythingOfType("*s3.HeadObjectInput")).
-		Return(&s3.HeadObjectOutput{}, &types.NoSuchKey{})
+		Return(&s3.HeadObjectOutput{}, &types.NotFound{})
 	s3Mock.On("PutObject", matchContext, mock.AnythingOfType("*s3.PutObjectInput"), mock.Anything, mock.Anything).
 		Return(&s3.PutObjectOutput{}, nil)
 	file := &File{
@@ -778,7 +778,7 @@ func (ts *fileTestSuite) TestWriteOperations() {
 			setup: func(s3Mock *mocks.Client) *File {
 				// Mock setup specific to this test case
 				s3Mock.EXPECT().HeadObject(matchContext, mock.AnythingOfType("*s3.HeadObjectInput")).
-					Return(&s3.HeadObjectOutput{}, &types.NoSuchKey{}).Times(5)
+					Return(&s3.HeadObjectOutput{}, &types.NotFound{}).Times(5)
 				// Return a new File instance with this specific mock configuration
 				return &File{
 					fileSystem: &FileSystem{
@@ -833,7 +833,7 @@ func (ts *fileTestSuite) TestWriteOperations() {
 			setup: func(s3Mock *mocks.Client) *File {
 				// Mock setup specific to this test case
 				s3Mock.EXPECT().HeadObject(matchContext, mock.AnythingOfType("*s3.HeadObjectInput")).
-					Return(nil, &types.NoSuchKey{}).Twice()
+					Return(nil, &types.NotFound{}).Twice()
 				s3Mock.EXPECT().HeadObject(matchContext, mock.AnythingOfType("*s3.HeadObjectInput")).
 					Return(&s3.HeadObjectOutput{}, nil).Once()
 
