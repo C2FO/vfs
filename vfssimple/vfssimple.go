@@ -75,9 +75,6 @@ func parseURI(uri string) (scheme, authority, path string, err error) {
 	// validate authority
 	authority = u.Host
 	path = u.Path
-	if azure.IsValidURI(u) {
-		authority, path, err = azure.ParsePath(path)
-	}
 
 	if u.User.String() != "" {
 		authority = fmt.Sprintf("%s@%s", u.User, u.Host)

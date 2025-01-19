@@ -130,7 +130,7 @@ func (f *File) Exists() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	_, err = client.Properties(f.Location().(*Location).ContainerURL(), f.Path())
+	_, err = client.Properties(f.Location().(*Location).container, f.Path())
 	if err != nil {
 		if !bloberror.HasCode(err, bloberror.BlobNotFound) {
 			return false, err
@@ -276,7 +276,7 @@ func (f *File) LastModified() (*time.Time, error) {
 	if err != nil {
 		return nil, err
 	}
-	props, err := client.Properties(f.Location().(*Location).ContainerURL(), f.Path())
+	props, err := client.Properties(f.Location().(*Location).container, f.Path())
 	if err != nil {
 		return nil, err
 	}
@@ -289,7 +289,7 @@ func (f *File) Size() (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	props, err := client.Properties(f.Location().(*Location).ContainerURL(), f.Path())
+	props, err := client.Properties(f.Location().(*Location).container, f.Path())
 	if err != nil {
 		return 0, err
 	}
@@ -332,7 +332,7 @@ func (f *File) Touch() error {
 		return client.Upload(f, strings.NewReader(""), contentType)
 	}
 
-	props, err := client.Properties(f.Location().(*Location).ContainerURL(), f.Path())
+	props, err := client.Properties(f.Location().(*Location).container, f.Path())
 	if err != nil {
 		return err
 	}
@@ -350,9 +350,9 @@ func (f *File) Touch() error {
 	return nil
 }
 
-// URI returns a full Azure URI for the file
+// URI returns the File's URI as a string.
 func (f *File) URI() string {
-	return fmt.Sprintf("%s://%s%s", f.fileSystem.Scheme(), utils.EnsureTrailingSlash(f.fileSystem.Host()), path.Join(f.container, f.name))
+	return utils.GetFileURI(f)
 }
 
 func (f *File) checkTempFile() error {
