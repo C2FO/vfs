@@ -1,0 +1,863 @@
+package testcontainers
+
+import (
+	"fmt"
+	"io"
+	"net/url"
+	"os"
+	"path"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/suite"
+
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/vfssimple"
+)
+
+type vfsTestSuite struct {
+	suite.Suite
+	testLocations map[string]vfs.Location
+}
+
+func buildExpectedURI(fs vfs.FileSystem, authorityStr, p string) string {
+	return fmt.Sprintf("%s://%s%s", fs.Scheme(), authorityStr, p)
+}
+
+func (s *vfsTestSuite) SetupSuite() {
+	registers := []func(*testing.T) string{
+		registerMem,
+		registerOS,
+		registerAtmoz,
+		registerAzurite,
+		registerGCSServer,
+		registerLocalStack,
+		registerMinio,
+		registerVSFTPD,
+	}
+	uris := make([]string, len(registers))
+	var wg sync.WaitGroup
+	for i := range registers {
+		wg.Add(1)
+		go func() {
+			uris[i] = registers[i](s.T())
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+
+	s.testLocations = make(map[string]vfs.Location)
+	for _, u := range uris {
+		l, err := vfssimple.NewLocation(u)
+		s.Require().NoError(err)
+		s.testLocations[l.FileSystem().Scheme()] = l
+	}
+}
+
+func registerMem(*testing.T) string {
+	return "mem://test/"
+}
+
+func registerOS(t *testing.T) string {
+	return fmt.Sprintf("file://%s/", filepath.ToSlash(t.TempDir()))
+}
+
+// Test Scheme
+func (s *vfsTestSuite) TestScheme() {
+	for scheme, location := range s.testLocations {
+		s.Run(scheme, func() {
+			fmt.Printf("************** TESTING scheme: %s **************\n", scheme)
+			s.FileSystem(location)
+			s.Location(location)
+			s.File(location)
+		})
+	}
+}
+
+// Test FileSystem
+func (s *vfsTestSuite) FileSystem(baseLoc vfs.Location) {
+	fmt.Println("****** testing vfs.FileSystem ******")
+
+	// setup FileSystem
+	fs := baseLoc.FileSystem()
+	// NewFile initializes a File on the specified authority string at path 'absFilePath'.
+	//
+	//   * Accepts authority and an absolute file path.
+	//   * Upon success, a vfs.File, representing the file's new path (location path + file relative path), will be returned.
+	//   * On error, nil is returned for the file.
+	//   * Note that not all file systems will have an "authority" and will therefore be "":
+	//       file:///path/to/file has an authority of "" and name /path/to/file
+	//     whereas
+	//       s3://mybucket/path/to/file has an authority of "mybucket and name /path/to/file
+	//     results in /tmp/dir1/newerdir/file.txt for the final vfs.File path.
+	//   * The file may or may not already exist.
+	filepaths := map[string]bool{
+		"/path/to/file.txt":    true,
+		"/path/./to/file.txt":  true,
+		"/path/../to/file.txt": true,
+		"path/to/file.txt":     false,
+		"./path/to/file.txt":   false,
+		"../path/to/":          false,
+		"/path/to/":            false,
+		"":                     false,
+	}
+	for name, validates := range filepaths {
+		file, err := fs.NewFile(baseLoc.Authority().String(), name)
+		if validates {
+			s.Require().NoError(err, "there should be no error")
+			expected := buildExpectedURI(fs, baseLoc.Authority().String(), path.Clean(name))
+			s.Equal(expected, file.URI(), "uri's should match")
+		} else {
+			s.Require().Error(err, "should have validation error for scheme[%s] and name[%s]", fs.Scheme(), name)
+		}
+	}
+
+	// NewLocation initializes a Location on the specified authority with the given path.
+	//
+	//   * Accepts authority and an absolute location path.
+	//   * The file may or may not already exist. Note that on key-store file systems like S3 or GCS, paths never truly exist.
+	//   * On error, nil is returned for the location.
+	//
+	// See NewFile for note on authority.
+	locpaths := map[string]bool{
+		"/path/to/":         true,
+		"/path/./to/":       true,
+		"/path/../to/":      true,
+		"path/to/":          false,
+		"./path/to/":        false,
+		"../path/to/":       false,
+		"/path/to/file.txt": false,
+		"":                  false,
+	}
+	for name, validates := range locpaths {
+		loc, err := fs.NewLocation(baseLoc.Authority().String(), name)
+		if validates {
+			s.Require().NoError(err, "there should be no error")
+			expected := buildExpectedURI(fs, baseLoc.Authority().String(), utils.EnsureTrailingSlash(path.Clean(name)))
+			s.Equal(expected, loc.URI(), "uri's should match")
+		} else {
+			s.Require().Error(err, "should have validation error for scheme[%s] and name[%s]", fs.Scheme(), name)
+		}
+	}
+}
+
+// Test Location
+func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
+	fmt.Println("****** testing vfs.Location ******")
+
+	srcLoc, err := baseLoc.NewLocation("locTestSrc/")
+	s.Require().NoError(err, "there should be no error")
+	defer func() {
+		// clean up srcLoc after test for OS
+		if srcLoc.FileSystem().Scheme() == "file" {
+			exists, err := srcLoc.Exists()
+			s.Require().NoError(err)
+			if exists {
+				s.Require().NoError(os.RemoveAll(srcLoc.Path()), "failed to clean up location test srcLoc")
+			}
+		}
+	}()
+
+	// NewLocation is an initializer for a new Location relative to the existing one.
+	//
+	// Given location:
+	//     loc := fs.NewLocation(:s3://mybucket/some/path/to/")
+	// calling:
+	//     newLoc := loc.NewLocation("../../")
+	// would return a new vfs.Location representing:
+	//     s3://mybucket/some/
+	//
+	//   * Accepts a relative location path.
+	locpaths := map[string]bool{
+		"/path/to/":         false,
+		"/path/./to/":       false,
+		"/path/../to/":      false,
+		"path/to/":          true,
+		"./path/to/":        true,
+		"../path/to/":       true,
+		"/path/to/file.txt": false,
+		"":                  false,
+	}
+	for name, validates := range locpaths {
+		loc, err := srcLoc.NewLocation(name)
+		if validates {
+			s.Require().NoError(err, "there should be no error")
+			expected := buildExpectedURI(srcLoc.FileSystem(), baseLoc.Authority().String(),
+				utils.EnsureTrailingSlash(path.Clean(path.Join(srcLoc.Path(), name))))
+			s.Equal(expected, loc.URI(), "uri's should match")
+		} else {
+			s.Require().Error(err, "should have validation error for scheme and name: %s : %s", srcLoc.FileSystem().Scheme(), name)
+		}
+	}
+
+	// NewFile will instantiate a vfs.File instance at or relative to the current location's path.
+	//
+	//   * Accepts a relative file path.
+	//   * In the case of an error, nil is returned for the file.
+	//   * Resultant File path will be the shortest path name equivalent of combining the Location path and relative path, if any.
+	//       ie, /tmp/dir1/ as location and relFilePath "newdir/./../newerdir/file.txt"
+	//       results in /tmp/dir1/newerdir/file.txt for the final vfs.File path.
+	//   * Upon success, a vfs.File, representing the file's new path (location path + file relative path), will be returned.
+	//   * The file may or may not already exist.
+	filepaths := map[string]bool{
+		"/path/to/file.txt":    false,
+		"/path/./to/file.txt":  false,
+		"/path/../to/file.txt": false,
+		"path/to/file.txt":     true,
+		"./path/to/file.txt":   true,
+		"../path/to/":          false,
+		"../path/to/file.txt":  true,
+		"/path/to/":            false,
+		"":                     false,
+	}
+	for name, validates := range filepaths {
+		file, err := srcLoc.NewFile(name)
+		if validates {
+			s.Require().NoError(err, "there should be no error")
+			expected := buildExpectedURI(srcLoc.FileSystem(), srcLoc.Authority().String(), path.Clean(path.Join(srcLoc.Path(), name)))
+			s.Equal(expected, file.URI(), "uri's should match")
+		} else {
+			s.Require().Error(err, "should have validation error for scheme and name: %s : +%s+", srcLoc.FileSystem().Scheme(), name)
+		}
+	}
+
+	// ChangeDir updates the existing Location's path to the provided relative location path.
+
+	// Given location:
+	// 	   loc := fs.NewLocation("file:///some/path/to/")
+	// calling:
+	//     loc.ChangeDir("../../")
+	// would update the current location instance to
+	// file:///some/.
+	//
+	//   * ChangeDir accepts a relative location path.
+
+	// setup test
+	cdTestLoc, err := srcLoc.NewLocation("chdirTest/")
+	s.Require().NoError(err)
+
+	_, err = cdTestLoc.NewLocation("")
+	s.Require().Error(err, "empty string should error")
+	_, err = cdTestLoc.NewLocation("/home/")
+	s.Require().Error(err, "absolute path should error")
+	_, err = cdTestLoc.NewLocation("file.txt")
+	s.Require().Error(err, "file should error")
+	cdTestLoc, err = cdTestLoc.NewLocation("l1dir1/./l2dir1/../l2dir2/")
+	s.Require().NoError(err, "should be no error for relative path")
+
+	// Path returns absolute location path, ie /some/path/to/.
+	//	==== Path() string
+	s.True(strings.HasSuffix(cdTestLoc.Path(), "locTestSrc/chdirTest/l1dir1/l2dir2/"), "should end with dot dirs resolved")
+	s.True(strings.HasPrefix(cdTestLoc.Path(), "/"), "should start with slash (abs path)")
+
+	// URI returns the fully qualified URI for the Location.  IE, s3://bucket/some/path/
+	//
+	// URI's for locations must always end with a separator character.
+	s.True(strings.HasSuffix(cdTestLoc.URI(), "locTestSrc/chdirTest/l1dir1/l2dir2/"), "should end with dot dirs resolved")
+	prefix := cdTestLoc.FileSystem().Scheme() + "://"
+	s.True(strings.HasPrefix(cdTestLoc.URI(), prefix), "should start with schema and abs slash")
+
+	/* Exists returns boolean if the location exists on the file system. Returns an error if any.
+
+		   TODO: *************************************************************************************************************
+			     note that Exists is not consistent among implementations. GCSs and S3 always return true if the bucket exist.
+		         Fundamentally, why one wants to know if location exists is to know whether you're able to write there.  But
+		         this feels unintuitive.
+	         	 *************************************************************************************************************
+
+		   Consider:
+
+				// CREATE LOCATION INSTANCE
+				loc, _ := vfssimple.NewLocation("scheme://vol/path/")
+
+				// DO EXISTS CHECK ON LOCATION
+		        if !loc.Exists() {
+		            // CREATE LOCATION ON OS
+				}
+
+		        // CREATE FILE IN LOCATION AND DO WORK
+		        myfile, _ := loc.NewFile("myfile.txt")
+		        myfile.Write("write some text")
+		        myfile.Close()
+
+		    Now consider if the context is os/sftp OR gcs/s3/mem.
+
+			==== Exists() (bool, error)
+	*/
+	exists, err := baseLoc.Exists()
+	s.Require().NoError(err)
+	s.True(exists, "baseLoc location exists check")
+
+	// setup list tests
+	f1, err := srcLoc.NewFile("file1.txt")
+	s.Require().NoError(err)
+	_, err = f1.Write([]byte("this is a test file"))
+	s.Require().NoError(err)
+	s.Require().NoError(f1.Close())
+
+	f2, err := srcLoc.NewFile("file2.txt")
+	s.Require().NoError(err)
+	s.Require().NoError(f1.CopyToFile(f2))
+	s.Require().NoError(f1.Close())
+
+	f3, err := srcLoc.NewFile("self.txt")
+	s.Require().NoError(err)
+	s.Require().NoError(f1.CopyToFile(f3))
+	s.Require().NoError(f1.Close())
+
+	subLoc, err := srcLoc.NewLocation("somepath/")
+	s.Require().NoError(err)
+
+	f4, err := subLoc.NewFile("that.txt")
+	s.Require().NoError(err)
+	s.Require().NoError(f1.CopyToFile(f4))
+	s.Require().NoError(f1.Close())
+
+	// List returns a slice of strings representing the base names of the files found at the Location.
+	//
+	//   * All implementations are expected to return ([]string{}, nil) in the case of a non-existent directory/prefix/location.
+	//   * If the user cares about the distinction between an empty location and a non-existent one, Location.Exists() should
+	//     be checked first.
+	//	====		List() ([]string, error)
+
+	files, err := srcLoc.List()
+	s.Require().NoError(err)
+	s.Len(files, 3, "list srcLoc location")
+
+	files, err = subLoc.List()
+	s.Require().NoError(err)
+	s.Len(files, 1, "list subLoc location")
+	s.Equal("that.txt", files[0], "returned basename")
+
+	files, err = cdTestLoc.List()
+	s.Require().NoError(err)
+	s.Empty(files, "non-existent location")
+
+	// ListByPrefix returns a slice of strings representing the base names of the files found in Location whose filenames
+	// match the given prefix.
+	//
+	//   * All implementations are expected to return ([]string{}, nil) in the case of a non-existent directory/prefix/location.
+	//   * "relative" prefixes are allowed, ie, ListByPrefix() from location "/some/path/" with prefix "to/somepattern"
+	//     is the same as location "/some/path/to/" with prefix of "somepattern"
+	//   * If the user cares about the distinction between an empty location and a non-existent one, Location.Exists() should
+	//     be checked first.
+	//	====	ListByPrefix(prefix string) ([]string, error)
+
+	files, err = srcLoc.ListByPrefix("file")
+	s.Require().NoError(err)
+	s.Len(files, 2, "list srcLoc location matching prefix")
+
+	files, err = srcLoc.ListByPrefix("s")
+	s.Require().NoError(err)
+	s.Len(files, 1, "list srcLoc location")
+	s.Equal("self.txt", files[0], "returned only file basename, not subdir matching prefix")
+
+	files, err = srcLoc.ListByPrefix("somepath/t")
+	s.Require().NoError(err)
+	s.Len(files, 1, "list 'somepath' location relative to srcLoc")
+	s.Equal("that.txt", files[0], "returned only file basename, using relative prefix")
+
+	files, err = cdTestLoc.List()
+	s.Require().NoError(err)
+	s.Empty(files, "non-existent location")
+
+	// ListByRegex returns a slice of strings representing the base names of the files found in the Location that matched the
+	// given regular expression.
+	//
+	//   * All implementations are expected to return ([]string{}, nil) in the case of a non-existent directory/prefix/location.
+	//   * If the user cares about the distinction between an empty location and a non-existent one, Location.Exists() should
+	//     be checked first.
+	//	====	ListByRegex(regex *regexp.Regexp) ([]string, error)
+
+	files, err = srcLoc.ListByRegex(regexp.MustCompile("^f"))
+	s.Require().NoError(err)
+	s.Len(files, 2, "list srcLoc location matching prefix")
+
+	files, err = srcLoc.ListByRegex(regexp.MustCompile(`.txt$`))
+	s.Require().NoError(err)
+	s.Len(files, 3, "list srcLoc location matching prefix")
+
+	files, err = srcLoc.ListByRegex(regexp.MustCompile(`Z`))
+	s.Require().NoError(err)
+	s.Empty(files, "list srcLoc location matching prefix")
+
+	// DeleteFile deletes the file of the given name at the location.
+	//
+	// This is meant to be a short cut for instantiating a new file and calling delete on that, with all the necessary
+	// error handling overhead.
+	//
+	// * Accepts relative file path.
+	//
+	//	====	DeleteFile(fileName string) error
+	s.Require().NoError(srcLoc.DeleteFile(f1.Name()), "deleteFile file1")
+	s.Require().NoError(srcLoc.DeleteFile(f2.Name()), "deleteFile file2")
+	s.Require().NoError(srcLoc.DeleteFile(f3.Name()), "deleteFile self.txt")
+	s.Require().NoError(srcLoc.DeleteFile("somepath/that.txt"), "deleted relative path")
+
+	// should error if file doesn't exist
+	s.Require().Error(srcLoc.DeleteFile(f1.Path()), "deleteFile trying to delete a file already deleted")
+}
+
+// Test File
+func (s *vfsTestSuite) File(baseLoc vfs.Location) {
+	fmt.Println("****** testing vfs.File ******")
+	srcLoc, err := baseLoc.NewLocation("fileTestSrc/")
+	s.Require().NoError(err)
+	defer func() {
+		// clean up srcLoc after test for OS
+		if srcLoc.FileSystem().Scheme() == "file" {
+			exists, err := srcLoc.Exists()
+			s.Require().NoError(err)
+			if exists {
+				s.Require().NoError(os.RemoveAll(srcLoc.Path()), "failed to clean up file test srcLoc")
+			}
+		}
+	}()
+
+	// setup srcFile
+	srcFile, err := srcLoc.NewFile("srcFile.txt")
+	s.Require().NoError(err)
+
+	/*
+		Location returns the vfs.Location for the File.
+
+		Location() Location
+	*/
+
+	/*
+		io.Writer
+	*/
+	sz, err := srcFile.Write([]byte("this is a test\n"))
+	s.Require().NoError(err)
+	s.Equal(15, sz)
+	sz, err = srcFile.Write([]byte("and more text"))
+	s.Require().NoError(err)
+	s.Equal(13, sz)
+
+	/*
+		io.Closer
+	*/
+	err = srcFile.Close()
+	s.Require().NoError(err)
+
+	/*
+		Exists returns boolean if the file exists on the file system.  Also returns an error if any.
+
+		Exists() (bool, error)
+	*/
+	exists, err := srcFile.Exists()
+	s.Require().NoError(err)
+	s.True(exists, "file exists")
+
+	/*
+		Name returns the base name of the file path.  For file:///some/path/to/file.txt, it would return file.txt
+
+		Name() string
+	*/
+	s.Equal("srcFile.txt", srcFile.Name(), "name test")
+
+	/*
+		Path returns absolute path (with leading slash) including filename, ie /some/path/to/file.txt
+
+		Path() string
+	*/
+	s.Equal(path.Join(baseLoc.Path(), "fileTestSrc/srcFile.txt"), srcFile.Path(), "path test")
+
+	/*
+		URI returns the fully qualified URI for the File.  IE, s3://bucket/some/path/to/file.txt
+
+		URI() string
+	*/
+	s.Equal(baseLoc.URI()+"fileTestSrc/srcFile.txt", srcFile.URI(), "uri test")
+
+	/*
+		String() must be implemented to satisfy the stringer interface.  This ends up simply calling URI().
+
+		fmt.Stringer
+	*/
+	s.Equal(baseLoc.URI()+"fileTestSrc/srcFile.txt", srcFile.String(), "string(er) explicit test")
+	s.Equal(baseLoc.URI()+"fileTestSrc/srcFile.txt", fmt.Sprintf("%s", srcFile), "string(er) implicit test") //nolint:gocritic,staticcheck
+
+	/*
+		Size returns the size of the file in bytes.
+
+		Size() (uint64, error)
+	*/
+	b, err := srcFile.Size()
+	s.Require().NoError(err)
+	s.Equal(uint64(28), b)
+
+	/*
+		LastModified returns the timestamp the file was last modified (as *time.Time).
+
+		LastModified() (*time.Time, error)
+	*/
+	t, err := srcFile.LastModified()
+	s.Require().NoError(err)
+	s.IsType((*time.Time)(nil), t, "last modified returned *time.Time")
+
+	/*
+		Exists returns boolean if the file exists on the file system.  Also returns an error if any.
+
+		Exists() (bool, error)
+	*/
+	exists, err = srcFile.Exists()
+	s.Require().NoError(err)
+	s.True(exists, "file exists")
+
+	/*
+		io.Reader and io.Seeker
+	*/
+	str, err := io.ReadAll(srcFile)
+	s.Require().NoError(err)
+	s.Equal("this is a test\nand more text", string(str), "read was successful")
+
+	offset, err := srcFile.Seek(3, 0)
+	s.Require().NoError(err)
+	s.Equal(int64(3), offset, "seek was successful")
+
+	str, err = io.ReadAll(srcFile)
+	s.Require().NoError(err)
+	s.Equal("s is a test\nand more text", string(str), "read after seek")
+	err = srcFile.Close()
+	s.Require().NoError(err)
+
+	for _, testLoc := range s.testLocations {
+		// setup dstLoc
+		dstLoc, err := testLoc.NewLocation("dstLoc/")
+		s.Require().NoError(err)
+		fmt.Printf("** location %s **\n", dstLoc)
+		if dstLoc.FileSystem().Scheme() == "file" {
+			s.T().Cleanup(func() {
+				// clean up dstLoc after test for OS
+				exists, err := dstLoc.Exists()
+				s.Require().NoError(err)
+				if exists {
+					s.Require().NoError(os.RemoveAll(dstLoc.Path()), "failed to clean up file test dstLoc")
+				}
+			})
+		}
+
+		// CopyToLocation will copy the current file to the provided location.
+		//
+		//   * Upon success, a vfs.File, representing the file at the new location, will be returned.
+		//   * In the case of an error, nil is returned for the file.
+		//   * CopyToLocation should use native functions when possible within the same scheme.
+		//   * If the file already exists at the location, the contents will be overwritten with the current file's contents.
+		_, err = srcFile.Seek(0, 0)
+		s.Require().NoError(err)
+		dst, err := srcFile.CopyToLocation(dstLoc)
+		s.Require().NoError(err)
+		exists, err := dst.Exists()
+		s.Require().NoError(err)
+		s.True(exists, "dst file should now exist")
+		exists, err = srcFile.Exists()
+		s.Require().NoError(err)
+		s.True(exists, "src file should still exist")
+
+		// CopyToFile will copy the current file to the provided file instance.
+		//
+		//   * In the case of an error, nil is returned for the file.
+		//   * CopyToLocation should use native functions when possible within the same scheme.
+		//   * If the file already exists, the contents will be overwritten with the current file's contents.
+
+		// setup dstFile
+		dstFile1, err := dstLoc.NewFile("dstFile1.txt")
+		s.Require().NoError(err)
+		exists, err = dstFile1.Exists()
+		s.Require().NoError(err)
+		s.False(exists, "dstFile1 file should not yet exist")
+		_, err = srcFile.Seek(0, 0)
+		s.Require().NoError(err)
+		err = srcFile.CopyToFile(dstFile1)
+		s.Require().NoError(err)
+		exists, err = dstFile1.Exists()
+		s.Require().NoError(err)
+		s.True(exists, "dstFile1 file should now exist")
+		exists, err = srcFile.Exists()
+		s.Require().NoError(err)
+		s.True(exists, "src file should still exist")
+
+		/*
+			io.Copy
+		*/
+		// create a local copy from srcFile with io.Copy
+		copyFile1, err := srcLoc.NewFile("copyFile1.txt")
+		s.Require().NoError(err)
+		// should not exist
+		exists, err = copyFile1.Exists()
+		s.Require().NoError(err)
+		s.False(exists, "copyFile1 should not yet exist locally")
+		// do copy
+		// skip this test for ftp files
+		buffer := make([]byte, utils.TouchCopyMinBufferSize)
+
+		if srcLoc.FileSystem().Scheme() != "ftp" {
+			_, err = srcFile.Seek(0, 0)
+			s.Require().NoError(err)
+			b1, err := io.CopyBuffer(copyFile1, srcFile, buffer)
+			s.Require().NoError(err)
+			s.Equal(int64(28), b1)
+			err = copyFile1.Close()
+			s.Require().NoError(err)
+
+			// should now exist
+			exists, err = copyFile1.Exists()
+			s.Require().NoError(err)
+			s.True(exists, "%s should now exist locally", copyFile1)
+			err = copyFile1.Close()
+			s.Require().NoError(err)
+		} else {
+			// else still have to ensure copyFile1 exists for later tests
+			err = copyFile1.Touch()
+			s.Require().NoError(err)
+		}
+
+		// create another local copy from srcFile with io.Copy
+		copyFile2, err := srcLoc.NewFile("copyFile2.txt")
+		s.Require().NoError(err)
+		// should not exist
+		exists, err = copyFile2.Exists()
+		s.Require().NoError(err)
+		s.False(exists, "copyFile2 should not yet exist locally")
+		// do copy
+		// skip this test for ftp files
+		if srcLoc.FileSystem().Scheme() != "ftp" {
+			_, err = srcFile.Seek(0, 0)
+			s.Require().NoError(err)
+			buffer = make([]byte, utils.TouchCopyMinBufferSize)
+			b2, err := io.CopyBuffer(copyFile2, srcFile, buffer)
+			s.Require().NoError(err)
+			s.Equal(int64(28), b2)
+
+			err = copyFile2.Close()
+			s.Require().NoError(err)
+			// should now exist
+			exists, err = copyFile2.Exists()
+			s.Require().NoError(err)
+			s.True(exists, "copyFile2 should now exist locally")
+			err = copyFile2.Close()
+			s.Require().NoError(err)
+		} else {
+			// else still have to ensure copyFile1 exists for later tests
+			err = copyFile2.Touch()
+			s.Require().NoError(err)
+		}
+
+		// MoveToLocation will move the current file to the provided location.
+		//
+		//   * If the file already exists at the location, the contents will be overwritten with the current file's contents.
+		//   * If the location does not exist, an attempt will be made to create it.
+		//   * Upon success, a vfs.File, representing the file at the new location, will be returned.
+		//   * In the case of an error, nil is returned for the file.
+		//   * When moving within the same Scheme, native move/rename should be used where possible.
+		//   * If the file already exists, the contents will be overwritten with the current file's contents.
+		fileForNew, err := srcLoc.NewFile("fileForNew.txt")
+		s.Require().NoError(err)
+
+		// skip this test for ftp files
+		if srcLoc.FileSystem().Scheme() != "ftp" {
+			_, err = srcFile.Seek(0, 0)
+			s.Require().NoError(err)
+			buffer = make([]byte, utils.TouchCopyMinBufferSize)
+			_, err = io.CopyBuffer(fileForNew, srcFile, buffer)
+			s.Require().NoError(err)
+			err = fileForNew.Close()
+			s.Require().NoError(err)
+
+			newLoc, err := dstLoc.NewLocation("doesnotexist/")
+			s.Require().NoError(err)
+			dstCopyNew, err := fileForNew.MoveToLocation(newLoc)
+			s.Require().NoError(err)
+			exists, err = dstCopyNew.Exists()
+			s.Require().NoError(err)
+			s.True(exists)
+			s.Require().NoError(dstCopyNew.Delete()) // clean up file
+
+			s.Require().NoError(srcFile.Close())
+		}
+
+		dstCopy1, err := copyFile1.MoveToLocation(dstLoc)
+		s.Require().NoError(err)
+		// destination file should now exist
+		exists, err = dstCopy1.Exists()
+		s.Require().NoError(err)
+		s.True(exists, "dstCopy1 file should now exist")
+		// local copy should no longer exist
+		exists, err = copyFile1.Exists()
+		s.Require().NoError(err)
+		s.False(exists, "copyFile1 should no longer exist locally")
+
+		// MoveToFile will move the current file to the provided file instance.
+		//
+		//   * If the file already exists, the contents will be overwritten with the current file's contents.
+		//   * The current instance of the file will be removed.
+		dstCopy2, err := dstLoc.NewFile("dstFile2.txt")
+		s.Require().NoError(err)
+		// destination file should not exist
+		exists, err = dstCopy2.Exists()
+		s.Require().NoError(err)
+		s.False(exists, "dstCopy2 file should not yet exist")
+		// do move file
+		err = copyFile2.MoveToFile(dstCopy2)
+		s.Require().NoError(err)
+		// local copy should no longer exist
+		exists, err = copyFile2.Exists()
+		s.Require().NoError(err)
+		s.False(exists, "copyFile2 should no longer exist locally")
+		// destination file should now exist
+		exists, err = dstCopy2.Exists()
+		s.Require().NoError(err)
+		s.True(exists, "dstCopy2 file should now exist")
+
+		// clean up files
+		err = dst.Delete()
+		s.Require().NoError(err)
+		err = dstFile1.Delete()
+		s.Require().NoError(err)
+		err = dstCopy1.Delete()
+		s.Require().NoError(err)
+		err = dstCopy2.Delete()
+		s.Require().NoError(err)
+
+		// ensure that MoveToFile() works for files with spaces
+		type moveSpaceTest struct {
+			Path, Filename string
+		}
+		tests := []moveSpaceTest{
+			{Path: "file", Filename: "has space.txt"},
+			{Path: "file", Filename: "has%20encodedSpace.txt"},
+			{Path: "path has", Filename: "space.txt"},
+			{Path: "path%20has", Filename: "encodedSpace.txt"},
+		}
+
+		for i, test := range tests {
+			s.Run(strconv.Itoa(i), func() {
+				// setup src
+				srcSpaces, err := srcLoc.NewFile(path.Join(test.Path, test.Filename))
+				s.Require().NoError(err)
+				b, err := srcSpaces.Write([]byte("something"))
+				s.Require().NoError(err)
+				s.Equal(9, b, "byte count is correct")
+				err = srcSpaces.Close()
+				s.Require().NoError(err)
+
+				testDestLoc, err := dstLoc.NewLocation(test.Path + "/")
+				s.Require().NoError(err)
+
+				dstSpaces, err := srcSpaces.MoveToLocation(testDestLoc)
+				s.Require().NoError(err)
+				exists, err := dstSpaces.Exists()
+				s.Require().NoError(err)
+				s.True(exists, "dstSpaces should now exist")
+				exists, err = srcSpaces.Exists()
+				s.Require().NoError(err)
+				s.False(exists, "srcSpaces should no longer exist")
+				s.True(
+					strings.HasSuffix(dstSpaces.URI(), path.Join(test.Path, test.Filename)) ||
+						strings.HasSuffix(dstSpaces.URI(), path.Join(url.PathEscape(test.Path), url.PathEscape(test.Filename))),
+					"destination file %s ends with source string for %s", dstSpaces.URI(), path.Join(test.Path, test.Filename),
+				)
+
+				newSrcSpaces, err := dstSpaces.MoveToLocation(srcSpaces.Location())
+				s.Require().NoError(err)
+				exists, err = newSrcSpaces.Exists()
+				s.Require().NoError(err)
+				s.True(exists, "newSrcSpaces should now exist")
+				exists, err = dstSpaces.Exists()
+				s.Require().NoError(err)
+				s.False(exists, "dstSpaces should no longer exist")
+				hasSuffix := strings.HasSuffix(newSrcSpaces.URI(), path.Join(test.Path, test.Filename)) ||
+					strings.HasSuffix(newSrcSpaces.URI(), path.Join(url.PathEscape(test.Path), url.PathEscape(test.Filename)))
+				s.True(hasSuffix, "destination file %s ends with source string for %s", dstSpaces.URI(), path.Join(test.Path, test.Filename))
+
+				err = newSrcSpaces.Delete()
+				s.Require().NoError(err)
+				exists, err = newSrcSpaces.Exists()
+				s.Require().NoError(err)
+				s.False(exists, "newSrcSpaces should now exist")
+			})
+		}
+	}
+
+	// Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
+	// Returns error if unable to touch File.
+
+	touchedFile, err := srcLoc.NewFile("touch.txt")
+	s.Require().NoError(err)
+	defer func() { _ = touchedFile.Delete() }()
+	exists, err = touchedFile.Exists()
+	s.Require().NoError(err)
+	s.False(exists, "%s shouldn't yet exist", touchedFile)
+
+	err = touchedFile.Touch()
+	s.Require().NoError(err)
+	exists, err = touchedFile.Exists()
+	s.Require().NoError(err)
+	s.True(exists, "%s now exists", touchedFile)
+
+	size, err := touchedFile.Size()
+	s.Require().NoError(err)
+	s.Zero(size, "%s should be empty", touchedFile)
+
+	// capture last modified
+	modified, err := touchedFile.LastModified()
+	s.Require().NoError(err)
+	modifiedDeRef := *modified
+	// wait for eventual consistency
+	if baseLoc.FileSystem().Scheme() == "ftp" {
+		time.Sleep(time.Duration(61-time.Now().Second()) * time.Second)
+	} else {
+		time.Sleep(time.Second)
+	}
+	err = touchedFile.Touch()
+	s.Require().NoError(err)
+	newModified, err := touchedFile.LastModified()
+	s.Require().NoError(err)
+	s.Greater(newModified.UnixNano(), modifiedDeRef.UnixNano(), "touch updated modified date for %s", touchedFile)
+
+	/*
+		Delete unlinks the File on the file system.
+
+		Delete() error
+	*/
+	err = srcFile.Delete()
+	s.Require().NoError(err)
+	exists, err = srcFile.Exists()
+	s.Require().NoError(err)
+	s.False(exists, "file no longer exists")
+
+	// The following blocks test that an error is thrown when these operations are called on a non-existent file
+	srcFile, err = srcLoc.NewFile("thisFileDoesNotExist")
+	s.Require().NoError(err, "unexpected error creating file")
+
+	exists, err = srcFile.Exists()
+	s.Require().NoError(err)
+	s.False(exists, "file should not exist")
+
+	size, err = srcFile.Size()
+	s.Require().Error(err, "expected error because file does not exist")
+	s.Zero(size)
+
+	_, err = srcFile.LastModified()
+	s.Require().Error(err, "expected error because file does not exist")
+
+	seeked, err := srcFile.Seek(-1, 2)
+	s.Require().Error(err, "expected error because file does not exist")
+	s.Zero(seeked)
+
+	_, err = srcFile.Read(make([]byte, 1))
+	s.Require().Error(err, "expected error because file does not exist")
+
+	// end existence tests
+}
+
+func TestVFS(t *testing.T) {
+	suite.Run(t, new(vfsTestSuite))
+}
