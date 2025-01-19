@@ -83,23 +83,6 @@ const Scheme = "https"
 ```
 Scheme defines the scheme for the azure implementation
 
-#### func  IsValidURI
-
-```go
-func IsValidURI(u *url.URL) bool
-```
-IsValidURI us a utility function used by vfssimple to determine if the given URI
-is a valid Azure URI
-
-#### func  ParsePath
-
-```go
-func ParsePath(p string) (host, pth string, err error)
-```
-ParsePath is a utility function used by vfssimple to separate the host from the
-path. The first parameter returned is the host and the second parameter is the
-path.
-
 ### type BlobProperties
 
 ```go
@@ -424,14 +407,6 @@ func (fs *FileSystem) Client() (Client, error)
 ```
 Client returns a Client to perform operations against Azure Blob Storage
 
-#### func (*FileSystem) Host
-
-```go
-func (fs *FileSystem) Host() string
-```
-Host returns the host portion of the URI. For azure this consists of
-<account_name>.blob.core.windows.net.
-
 #### func (*FileSystem) Name
 
 ```go
@@ -497,13 +472,6 @@ Location is the azure implementation of vfs.Location
 func (l *Location) ChangeDir(relLocPath string) error
 ```
 ChangeDir changes the current location's path to the new, relative path.
-
-#### func (*Location) ContainerURL
-
-```go
-func (l *Location) ContainerURL() string
-```
-ContainerURL returns the URL for the Azure Blob Storage container.
 
 #### func (*Location) DeleteFile
 

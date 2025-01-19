@@ -10,6 +10,9 @@ import (
 
 // Options contains options necessary for the azure vfs implementation
 type Options struct {
+	// ServiceURL holds the base URL used for all service requests.
+	ServiceURL string
+
 	// AccountName holds the Azure Blob Storage account name for authentication.  This field is required for all
 	// authentication types.
 	AccountName string
@@ -50,6 +53,7 @@ type Options struct {
 //	  *VFS_AZURE_ENV_NAME
 func NewOptions() *Options {
 	return &Options{
+		ServiceURL:             os.Getenv("VFS_AZURE_SERVICE_URL"),
 		AccountName:            os.Getenv("VFS_AZURE_STORAGE_ACCOUNT"),
 		AccountKey:             os.Getenv("VFS_AZURE_STORAGE_ACCESS_KEY"),
 		TenantID:               os.Getenv("VFS_AZURE_TENANT_ID"),
