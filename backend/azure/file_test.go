@@ -84,15 +84,15 @@ func (s *FileTestSuite) TestWrite() {
 }
 
 func (s *FileTestSuite) TestString() {
-	fs := NewFileSystem().WithOptions(Options{AccountName: "test-account"})
+	fs := NewFileSystem()
 	l, _ := fs.NewLocation("temp", "/foo/bar/")
 	f, _ := l.NewFile("blah.txt")
-	s.Equal("https://test-account.blob.core.windows.net/temp/foo/bar/blah.txt", f.String())
+	s.Equal("az://temp/foo/bar/blah.txt", f.String())
 
-	fs = NewFileSystem().WithOptions(Options{AccountName: "test-account"})
+	fs = NewFileSystem()
 	l, _ = fs.NewLocation("folder", "/blah/")
 	f, _ = l.NewFile("file.txt")
-	s.Equal("https://test-account.blob.core.windows.net/folder/blah/file.txt", f.String())
+	s.Equal("az://folder/blah/file.txt", f.String())
 }
 
 func (s *FileTestSuite) TestExists() {
@@ -127,11 +127,11 @@ func (s *FileTestSuite) TestCloseWithContentType() {
 }
 
 func (s *FileTestSuite) TestLocation() {
-	fs := NewFileSystem().WithOptions(Options{AccountName: "test-account"})
+	fs := NewFileSystem()
 	f, _ := fs.NewFile("test-container", "/file.txt")
 	l := f.Location()
 	s.NotNil(l)
-	s.Equal("https://test-account.blob.core.windows.net/test-container/", l.URI())
+	s.Equal("az://test-container/", l.URI())
 }
 
 func (s *FileTestSuite) TestCopyToLocation() {
@@ -265,7 +265,7 @@ func (s *FileTestSuite) TestSize_NonExistentFile() {
 }
 
 func (s *FileTestSuite) TestPath() {
-	fs := NewFileSystem().WithOptions(Options{AccountName: "test-account"})
+	fs := NewFileSystem()
 	f, _ := fs.NewFile("test-container", "/foo/bar/blah.txt")
 	s.Equal("/foo/bar/blah.txt", f.Path())
 
@@ -310,13 +310,13 @@ func (s *FileTestSuite) TestTouchWithContentType() {
 }
 
 func (s *FileTestSuite) TestURI() {
-	fs := NewFileSystem().WithOptions(Options{AccountName: "test-container"})
+	fs := NewFileSystem()
 	f, _ := fs.NewFile("temp", "/foo/bar/blah.txt")
-	s.Equal("https://test-container.blob.core.windows.net/temp/foo/bar/blah.txt", f.URI())
+	s.Equal("az://temp/foo/bar/blah.txt", f.URI())
 
-	fs = NewFileSystem().WithOptions(Options{AccountName: "test-container"})
+	fs = NewFileSystem()
 	f, _ = fs.NewFile("folder", "/blah/file.txt")
-	s.Equal("https://test-container.blob.core.windows.net/folder/blah/file.txt", f.URI())
+	s.Equal("az://folder/blah/file.txt", f.URI())
 }
 
 func (s *FileTestSuite) TestCheckTempFile() {
