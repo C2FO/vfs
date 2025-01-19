@@ -20,16 +20,16 @@ func (s *LocationTestSuite) TestVFSLocationImplementor() {
 }
 
 func (s *LocationTestSuite) TestString() {
-	fs := NewFileSystem().WithOptions(Options{AccountName: "test-account"})
+	fs := NewFileSystem()
 	l, _ := fs.NewLocation("test-container", "/")
-	s.Equal("https://test-account.blob.core.windows.net/test-container/", l.String())
+	s.Equal("az://test-container/", l.String())
 
 	err := l.ChangeDir("foo/bar/baz/")
 	s.NoError(err, "Should change directories successfully")
-	s.Equal("https://test-account.blob.core.windows.net/test-container/foo/bar/baz/", l.String())
+	s.Equal("az://test-container/foo/bar/baz/", l.String())
 
 	l, _ = fs.NewLocation("temp", "/foo/bar/baz/")
-	s.Equal("https://test-account.blob.core.windows.net/temp/foo/bar/baz/", l.String())
+	s.Equal("az://temp/foo/bar/baz/", l.String())
 }
 
 func (s *LocationTestSuite) TestList() {
@@ -186,7 +186,7 @@ func (s *LocationTestSuite) TestFileSystem() {
 }
 
 func (s *LocationTestSuite) TestNewFile() {
-	fs := NewFileSystem().WithOptions(Options{AccountName: "test-container"})
+	fs := NewFileSystem()
 	l, _ := fs.NewLocation("test-container", "/folder/")
 
 	f, err := l.NewFile("")
@@ -208,7 +208,7 @@ func (s *LocationTestSuite) TestNewFile() {
 	s.NoError(err, "The file path is valid so we expect no error to be returned")
 	s.NotNil(f, "The call to NewFile did not return an error so we expect a non-nil pointer to a file struct")
 	s.Equal("/folder/foo/bar.txt", f.Path())
-	s.Equal("https://test-container.blob.core.windows.net/test-container/folder/foo/bar.txt", f.URI())
+	s.Equal("az://test-container/folder/foo/bar.txt", f.URI())
 }
 
 func (s *LocationTestSuite) TestNewFile_NilReceiver() {
@@ -233,23 +233,17 @@ func (s *LocationTestSuite) TestDeleteFile_DoesNotExist() {
 }
 
 func (s *LocationTestSuite) TestURI() {
-	fs := NewFileSystem().WithOptions(Options{AccountName: "test-account"})
+	fs := NewFileSystem()
 	l, _ := fs.NewLocation("test-container", "/")
-	s.Equal("https://test-account.blob.core.windows.net/test-container/", l.URI())
+	s.Equal("az://test-container/", l.URI())
 
 	err := l.ChangeDir("foo/bar/baz/")
 	s.NoError(err, "Should change directories successfully")
-	s.Equal("https://test-account.blob.core.windows.net/test-container/foo/bar/baz/", l.URI())
+	s.Equal("az://test-container/foo/bar/baz/", l.URI())
 
 	vfsLoc, err := fs.NewLocation("temp", "/foo/bar/baz/")
 	s.NoError(err, "Path is valid so we expect no errors")
-	s.Equal("https://test-account.blob.core.windows.net/temp/foo/bar/baz/", vfsLoc.URI())
-}
-
-func (s *LocationTestSuite) TestContainerURL() {
-	fs := NewFileSystem().WithOptions(Options{AccountName: "test-account"})
-	l, _ := fs.NewLocation("test-container", "/some/folder/")
-	s.Equal("https://test-account.blob.core.windows.net/test-container/", l.(*Location).ContainerURL())
+	s.Equal("az://temp/foo/bar/baz/", vfsLoc.URI())
 }
 
 func TestAzureLocation(t *testing.T) {
