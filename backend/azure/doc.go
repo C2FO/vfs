@@ -41,8 +41,7 @@ would have to be cast as azure.FileSystem to use the following:
 	        },
 	    )
 
-	    // to pass specific client, for instance mock client
-	    client, _ := azure.NewClient(MockAzureClient{...})
+	    // to pass specific client
 	    fs = fs.WithClient(client)
 	}
 

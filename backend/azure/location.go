@@ -1,10 +1,14 @@
 package azure
 
 import (
+	"context"
 	"errors"
 	"path"
 	"regexp"
 	"strings"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
 
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/options"
@@ -20,6 +24,10 @@ type Location struct {
 	fileSystem *FileSystem
 }
 
+func (l *Location) newContainerClient() (ContainerClient, error) {
+	return containerClientFactory(l.fileSystem, l.container)
+}
+
 // String returns the URI
 func (l *Location) String() string {
 	return l.URI()
@@ -27,18 +35,26 @@ func (l *Location) String() string {
 
 // List returns a list of base names for the given location.
 func (l *Location) List() ([]string, error) {
-	client, err := l.fileSystem.Client()
-	if err != nil {
-		return nil, err
-	}
-	list, err := client.List(l)
+	cli, err := l.newContainerClient()
 	if err != nil {
 		return nil, err
 	}
 
+	pager := cli.NewListBlobsHierarchyPager("/", &container.ListBlobsHierarchyOptions{
+		Prefix:  to.Ptr(utils.RemoveLeadingSlash(utils.EnsureTrailingSlash(l.path))),
+		Include: container.ListBlobsInclude{Metadata: true, Tags: true},
+	})
+	ctx := context.Background()
 	var ret []string
-	for _, item := range list {
-		ret = append(ret, path.Base(item))
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range page.ListBlobsHierarchySegmentResponse.Segment.BlobItems {
+			ret = append(ret, path.Base(*page.ListBlobsHierarchySegmentResponse.Segment.BlobItems[i].Name))
+		}
 	}
 
 	if len(ret) == 0 {
@@ -116,11 +132,11 @@ func (l *Location) Path() string {
 // Exists returns true if the file exists and false.  In the case of errors false is always returned along with
 // the error
 func (l *Location) Exists() (bool, error) {
-	client, err := l.fileSystem.Client()
+	cli, err := l.newContainerClient()
 	if err != nil {
 		return false, err
 	}
-	_, err = client.Properties(l.container, "")
+	_, err = cli.GetProperties(context.Background(), nil)
 	if err != nil {
 		return false, nil
 	}

@@ -1,16 +1,25 @@
 package azure
 
 import (
+	"context"
 	"errors"
 	"io"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blockblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v6/backend/azure/mocks"
 	"github.com/c2fo/vfs/v6/options/delete"
 	"github.com/c2fo/vfs/v6/options/newfile"
 	"github.com/c2fo/vfs/v6/utils"
@@ -18,6 +27,22 @@ import (
 
 type FileTestSuite struct {
 	suite.Suite
+	containerCli *mocks.ContainerClient
+	blockBlobCli *mocks.BlockBlobClient
+}
+
+func (s *FileTestSuite) SetupTest() {
+	s.containerCli = mocks.NewContainerClient(s.T())
+	containerClientFactory = func(_ *FileSystem, containerName string) (ContainerClient, error) {
+		s.Require().Equal("test-container", containerName)
+		return s.containerCli, nil
+	}
+	s.blockBlobCli = mocks.NewBlockBlobClient(s.T())
+	blockBlobClientFactory = func(_ *FileSystem, containerName, path string, versionID *string) (BlockBlobClient, error) {
+		s.Require().Equal("test-container", containerName)
+		s.Require().NotEmpty(path)
+		return s.blockBlobCli, nil
+	}
 }
 
 func (s *FileTestSuite) TestVFSFileImplementor() {
@@ -26,15 +51,17 @@ func (s *FileTestSuite) TestVFSFileImplementor() {
 }
 
 func (s *FileTestSuite) TestClose() {
-	client := MockAzureClient{}
-	fs := NewFileSystem().WithClient(&client)
+	fs := NewFileSystem()
 	f, _ := fs.NewFile("test-container", "/foo.txt")
 	s.NoError(f.Close())
 }
 
 func (s *FileTestSuite) TestClose_FlushTempFile() {
-	client := MockAzureClient{PropertiesError: blobNotFoundErr}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().GetProperties(context.Background(), (*blob.GetPropertiesOptions)(nil)).
+		Return(blob.GetPropertiesResponse{}, &azcore.ResponseError{ErrorCode: string(bloberror.BlobNotFound)}).
+		Once()
+	s.expectUpload("Hello, World!", "")
+	fs := NewFileSystem()
 	f, _ := fs.NewFile("test-container", "/foo.txt")
 
 	_, err := f.Write([]byte("Hello, World!"))
@@ -43,8 +70,13 @@ func (s *FileTestSuite) TestClose_FlushTempFile() {
 }
 
 func (s *FileTestSuite) TestRead() {
-	client := MockAzureClient{ExpectedResult: io.NopCloser(strings.NewReader("Hello World!"))}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().GetProperties(context.Background(), (*blob.GetPropertiesOptions)(nil)).
+		Return(blob.GetPropertiesResponse{}, nil).
+		Once()
+	s.blockBlobCli.EXPECT().DownloadStream(context.Background(), (*blob.DownloadStreamOptions)(nil)).
+		Return(blob.DownloadStreamResponse{DownloadResponse: blob.DownloadResponse{Body: io.NopCloser(strings.NewReader("Hello World!"))}}, nil).
+		Once()
+	fs := NewFileSystem()
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.NoError(err, "The file should exist so no error should be returned")
@@ -56,8 +88,13 @@ func (s *FileTestSuite) TestRead() {
 }
 
 func (s *FileTestSuite) TestSeek() {
-	client := MockAzureClient{ExpectedResult: io.NopCloser(strings.NewReader("Hello World!"))}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().GetProperties(context.Background(), (*blob.GetPropertiesOptions)(nil)).
+		Return(blob.GetPropertiesResponse{}, nil).
+		Once()
+	s.blockBlobCli.EXPECT().DownloadStream(context.Background(), (*blob.DownloadStreamOptions)(nil)).
+		Return(blob.DownloadStreamResponse{DownloadResponse: blob.DownloadResponse{Body: io.NopCloser(strings.NewReader("Hello World!"))}}, nil).
+		Once()
+	fs := NewFileSystem()
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.NoError(err, "The file should exist so no error should be returned")
@@ -72,8 +109,13 @@ func (s *FileTestSuite) TestSeek() {
 }
 
 func (s *FileTestSuite) TestWrite() {
-	client := MockAzureClient{ExpectedResult: io.NopCloser(strings.NewReader("Hello World!"))}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().GetProperties(context.Background(), (*blob.GetPropertiesOptions)(nil)).
+		Return(blob.GetPropertiesResponse{}, nil).
+		Once()
+	s.blockBlobCli.EXPECT().DownloadStream(context.Background(), (*blob.DownloadStreamOptions)(nil)).
+		Return(blob.DownloadStreamResponse{DownloadResponse: blob.DownloadResponse{Body: io.NopCloser(strings.NewReader("Hello World!"))}}, nil).
+		Once()
+	fs := NewFileSystem()
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.NotNil(f)
@@ -96,8 +138,10 @@ func (s *FileTestSuite) TestString() {
 }
 
 func (s *FileTestSuite) TestExists() {
-	client := MockAzureClient{PropertiesResult: &BlobProperties{}}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().GetProperties(context.Background(), (*blob.GetPropertiesOptions)(nil)).
+		Return(blob.GetPropertiesResponse{}, nil).
+		Once()
+	fs := NewFileSystem()
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.NoError(err, "The file should exist so no error should be returned")
@@ -107,8 +151,10 @@ func (s *FileTestSuite) TestExists() {
 }
 
 func (s *FileTestSuite) TestExists_NonExistentFile() {
-	client := MockAzureClient{PropertiesError: blobNotFoundErr}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().GetProperties(context.Background(), (*blob.GetPropertiesOptions)(nil)).
+		Return(blob.GetPropertiesResponse{}, &azcore.ResponseError{ErrorCode: string(bloberror.BlobNotFound)}).
+		Once()
+	fs := NewFileSystem()
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.NoError(err, "The path is valid so no error should be returned")
@@ -118,12 +164,14 @@ func (s *FileTestSuite) TestExists_NonExistentFile() {
 }
 
 func (s *FileTestSuite) TestCloseWithContentType() {
-	client := MockAzureClient{PropertiesError: blobNotFoundErr}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().GetProperties(context.Background(), (*blob.GetPropertiesOptions)(nil)).
+		Return(blob.GetPropertiesResponse{}, &azcore.ResponseError{ErrorCode: string(bloberror.BlobNotFound)}).
+		Once()
+	s.expectUpload("Hello, World!", "text/plain")
+	fs := NewFileSystem()
 	f, _ := fs.NewFile("test-container", "/foo.txt", newfile.WithContentType("text/plain"))
 	_, _ = f.Write([]byte("Hello, World!"))
 	s.NoError(f.Close())
-	s.Equal("text/plain", client.UploadContentType)
 }
 
 func (s *FileTestSuite) TestLocation() {
@@ -135,9 +183,14 @@ func (s *FileTestSuite) TestLocation() {
 }
 
 func (s *FileTestSuite) TestCopyToLocation() {
-	fooReader := io.NopCloser(strings.NewReader("blah"))
-	client := MockAzureClient{ExpectedResult: fooReader}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().GetProperties(context.Background(), (*blob.GetPropertiesOptions)(nil)).
+		Return(blob.GetPropertiesResponse{}, &azcore.ResponseError{ErrorCode: string(bloberror.BlobNotFound)}).
+		Once()
+	s.blockBlobCli.EXPECT().
+		StartCopyFromURL(context.Background(), "https://blob.core.windows.net/test-container/foo.txt", (*blob.StartCopyFromURLOptions)(nil)).
+		Return(blob.StartCopyFromURLResponse{CopyStatus: to.Ptr(blob.CopyStatusTypeSuccess)}, nil).
+		Once()
+	fs := NewFileSystem()
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	targetLoc, _ := fs.NewLocation("test-container", "/new/folder/")
 	copiedFile, err := source.CopyToLocation(targetLoc)
@@ -147,9 +200,14 @@ func (s *FileTestSuite) TestCopyToLocation() {
 }
 
 func (s *FileTestSuite) TestCopyToFile() {
-	fooReader := io.NopCloser(strings.NewReader("blah"))
-	client := MockAzureClient{ExpectedResult: fooReader}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().GetProperties(context.Background(), (*blob.GetPropertiesOptions)(nil)).
+		Return(blob.GetPropertiesResponse{}, &azcore.ResponseError{ErrorCode: string(bloberror.BlobNotFound)}).
+		Once()
+	s.blockBlobCli.EXPECT().
+		StartCopyFromURL(context.Background(), "https://blob.core.windows.net/test-container/foo.txt", (*blob.StartCopyFromURLOptions)(nil)).
+		Return(blob.StartCopyFromURLResponse{CopyStatus: to.Ptr(blob.CopyStatusTypeSuccess)}, nil).
+		Once()
+	fs := NewFileSystem()
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	target, _ := fs.NewFile("test-container", "/bar.txt")
 
@@ -158,10 +216,15 @@ func (s *FileTestSuite) TestCopyToFile() {
 }
 
 func (s *FileTestSuite) TestCopyToFileBuffered() {
-	fooReader := io.NopCloser(strings.NewReader("blah"))
-	client := MockAzureClient{ExpectedResult: fooReader}
+	s.blockBlobCli.EXPECT().GetProperties(context.Background(), (*blob.GetPropertiesOptions)(nil)).
+		Return(blob.GetPropertiesResponse{}, &azcore.ResponseError{ErrorCode: string(bloberror.BlobNotFound)}).
+		Once()
+	s.blockBlobCli.EXPECT().
+		StartCopyFromURL(context.Background(), "https://blob.core.windows.net/test-container/foo.txt", (*blob.StartCopyFromURLOptions)(nil)).
+		Return(blob.StartCopyFromURLResponse{CopyStatus: to.Ptr(blob.CopyStatusTypeSuccess)}, nil).
+		Once()
 	opts := Options{FileBufferSize: 2 * utils.TouchCopyMinBufferSize}
-	fs := NewFileSystem().WithOptions(opts).WithClient(&client)
+	fs := NewFileSystem().WithOptions(opts)
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	target, _ := fs.NewFile("test-container", "/bar.txt")
 
@@ -170,9 +233,17 @@ func (s *FileTestSuite) TestCopyToFileBuffered() {
 }
 
 func (s *FileTestSuite) TestMoveToLocation() {
-	fooReader := io.NopCloser(strings.NewReader("blah"))
-	client := MockAzureClient{ExpectedResult: fooReader}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().GetProperties(context.Background(), (*blob.GetPropertiesOptions)(nil)).
+		Return(blob.GetPropertiesResponse{}, &azcore.ResponseError{ErrorCode: string(bloberror.BlobNotFound)}).
+		Once()
+	s.blockBlobCli.EXPECT().
+		StartCopyFromURL(context.Background(), "https://blob.core.windows.net/test-container/foo.txt", (*blob.StartCopyFromURLOptions)(nil)).
+		Return(blob.StartCopyFromURLResponse{CopyStatus: to.Ptr(blob.CopyStatusTypeSuccess)}, nil).
+		Once()
+	s.blockBlobCli.EXPECT().Delete(context.Background(), (*blob.DeleteOptions)(nil)).
+		Return(blob.DeleteResponse{}, nil).
+		Once()
+	fs := NewFileSystem()
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	target, _ := fs.NewLocation("test-container", "/new/folder/")
 
@@ -183,9 +254,17 @@ func (s *FileTestSuite) TestMoveToLocation() {
 }
 
 func (s *FileTestSuite) TestMoveToFile() {
-	fooReader := io.NopCloser(strings.NewReader("blah"))
-	client := MockAzureClient{ExpectedResult: fooReader}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().GetProperties(context.Background(), (*blob.GetPropertiesOptions)(nil)).
+		Return(blob.GetPropertiesResponse{}, &azcore.ResponseError{ErrorCode: string(bloberror.BlobNotFound)}).
+		Once()
+	s.blockBlobCli.EXPECT().
+		StartCopyFromURL(context.Background(), "https://blob.core.windows.net/test-container/foo.txt", (*blob.StartCopyFromURLOptions)(nil)).
+		Return(blob.StartCopyFromURLResponse{CopyStatus: to.Ptr(blob.CopyStatusTypeSuccess)}, nil).
+		Once()
+	s.blockBlobCli.EXPECT().Delete(context.Background(), (*blob.DeleteOptions)(nil)).
+		Return(blob.DeleteResponse{}, nil).
+		Once()
+	fs := NewFileSystem()
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	target, _ := fs.NewFile("test-container", "/bar.txt")
 	err := source.MoveToFile(target)
@@ -193,8 +272,10 @@ func (s *FileTestSuite) TestMoveToFile() {
 }
 
 func (s *FileTestSuite) TestDelete() {
-	client := MockAzureClient{}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().Delete(context.Background(), (*blob.DeleteOptions)(nil)).
+		Return(blob.DeleteResponse{}, nil).
+		Once()
+	fs := NewFileSystem()
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.NoError(err, "The path is valid so no error should be returned")
@@ -202,8 +283,11 @@ func (s *FileTestSuite) TestDelete() {
 }
 
 func (s *FileTestSuite) TestDeleteWithAllVersionsOption() {
-	client := MockAzureClient{}
-	fs := NewFileSystem().WithClient(&client)
+	s.expectNewListBlobsFlatPager()
+	s.blockBlobCli.EXPECT().Delete(context.Background(), (*blob.DeleteOptions)(nil)).
+		Return(blob.DeleteResponse{}, nil).
+		Once()
+	fs := NewFileSystem()
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.NoError(err, "The path is valid so no error should be returned")
@@ -211,8 +295,11 @@ func (s *FileTestSuite) TestDeleteWithAllVersionsOption() {
 }
 
 func (s *FileTestSuite) TestDeleteWithAllVersionsOption_Error() {
-	client := MockAzureClient{ExpectedError: errors.New("i always error")}
-	fs := NewFileSystem().WithClient(&client)
+	s.expectNewListBlobsFlatPager()
+	s.blockBlobCli.EXPECT().Delete(context.Background(), (*blob.DeleteOptions)(nil)).
+		Return(blob.DeleteResponse{}, errors.New("i always error")).
+		Once()
+	fs := NewFileSystem()
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.NoError(err, "The path is valid so no error should be returned")
@@ -220,9 +307,30 @@ func (s *FileTestSuite) TestDeleteWithAllVersionsOption_Error() {
 	s.Error(err, "If the file does not exist we get an error")
 }
 
+func (s *FileTestSuite) expectNewListBlobsFlatPager() {
+	s.containerCli.EXPECT().NewListBlobsFlatPager(
+		&container.ListBlobsFlatOptions{
+			Prefix:  to.Ptr("foo.txt"),
+			Include: container.ListBlobsInclude{Versions: true},
+		}).
+		Return(runtime.NewPager[container.ListBlobsFlatResponse](runtime.PagingHandler[container.ListBlobsFlatResponse]{
+			More: func(container.ListBlobsFlatResponse) bool { return false },
+			Fetcher: func(context.Context, *container.ListBlobsFlatResponse) (container.ListBlobsFlatResponse, error) {
+				return container.ListBlobsFlatResponse{
+					ListBlobsFlatSegmentResponse: container.ListBlobsFlatSegmentResponse{
+						Segment: &container.BlobFlatListSegment{BlobItems: []*container.BlobItem{{VersionID: to.Ptr("abc123")}}},
+					},
+				}, nil
+			},
+		})).
+		Once()
+}
+
 func (s *FileTestSuite) TestDelete_NonExistentFile() {
-	client := MockAzureClient{ExpectedError: errors.New("i always error")}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().Delete(context.Background(), (*blob.DeleteOptions)(nil)).
+		Return(blob.DeleteResponse{}, errors.New("i always error")).
+		Once()
+	fs := NewFileSystem()
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.NoError(err, "The path is valid so no error should be returned")
@@ -232,19 +340,23 @@ func (s *FileTestSuite) TestDelete_NonExistentFile() {
 
 func (s *FileTestSuite) TestLastModified() {
 	now := time.Now()
-	client := MockAzureClient{PropertiesResult: &BlobProperties{LastModified: &now}}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().GetProperties(context.Background(), (*blob.GetPropertiesOptions)(nil)).
+		Return(blob.GetPropertiesResponse{LastModified: to.Ptr(now)}, nil).
+		Once()
+	fs := NewFileSystem()
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.NoError(err, "The path is valid so no error should be returned")
 	t, err := f.LastModified()
 	s.NoError(err)
-	s.NotNil(t)
+	s.Equal(to.Ptr(now), t)
 }
 
 func (s *FileTestSuite) TestSize() {
-	client := MockAzureClient{PropertiesResult: &BlobProperties{Size: to.Ptr[int64](5)}}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().GetProperties(context.Background(), (*blob.GetPropertiesOptions)(nil)).
+		Return(blob.GetPropertiesResponse{ContentLength: to.Ptr[int64](5)}, nil).
+		Once()
+	fs := NewFileSystem()
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.NoError(err, "The path is valid so no error should be returned")
@@ -254,8 +366,10 @@ func (s *FileTestSuite) TestSize() {
 }
 
 func (s *FileTestSuite) TestSize_NonExistentFile() {
-	client := MockAzureClient{PropertiesError: errors.New("i always error")}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().GetProperties(context.Background(), (*blob.GetPropertiesOptions)(nil)).
+		Return(blob.GetPropertiesResponse{}, errors.New("i always error")).
+		Once()
+	fs := NewFileSystem()
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.NoError(err, "The path is valid so no error should be returned")
@@ -282,8 +396,11 @@ func (s *FileTestSuite) TestName() {
 }
 
 func (s *FileTestSuite) TestTouch() {
-	client := MockAzureClient{PropertiesError: blobNotFoundErr}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().GetProperties(context.Background(), (*blob.GetPropertiesOptions)(nil)).
+		Return(blob.GetPropertiesResponse{}, &azcore.ResponseError{ErrorCode: string(bloberror.BlobNotFound)}).
+		Once()
+	s.expectUpload("", "")
+	fs := NewFileSystem()
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.NoError(err, "The path is valid so no error should be returned")
@@ -291,22 +408,44 @@ func (s *FileTestSuite) TestTouch() {
 }
 
 func (s *FileTestSuite) TestTouch_NonexistentContainer() {
-	client := MockAzureClient{ExpectedError: errors.New("i always error")}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().GetProperties(context.Background(), (*blob.GetPropertiesOptions)(nil)).
+		Return(blob.GetPropertiesResponse{}, &azcore.ResponseError{ErrorCode: string(bloberror.BlobNotFound)}).
+		Once()
+	s.blockBlobCli.EXPECT().Upload(context.Background(), mock.Anything, (*blockblob.UploadOptions)(nil)).
+		Return(blockblob.UploadResponse{}, errors.New("i always error")).
+		Once()
+	fs := NewFileSystem()
 
-	f, err := fs.NewFile("nosuchcontainer", "/foo.txt")
+	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.NoError(err, "The path is valid so no error should be returned")
 	s.Error(f.Touch(), "The container does not exist so creating the new file should error")
 }
 
 func (s *FileTestSuite) TestTouchWithContentType() {
-	client := MockAzureClient{ExpectedResult: &BlobProperties{}, PropertiesError: blobNotFoundErr}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().GetProperties(context.Background(), (*blob.GetPropertiesOptions)(nil)).
+		Return(blob.GetPropertiesResponse{}, &azcore.ResponseError{ErrorCode: string(bloberror.BlobNotFound)}).
+		Once()
+	s.expectUpload("", "text/plain")
+	fs := NewFileSystem()
 
 	f, err := fs.NewFile("test-container", "/foo.txt", newfile.WithContentType("text/plain"))
 	s.NoError(err, "The path is valid so no error should be returned")
 	s.NoError(f.Touch())
-	s.Equal("text/plain", client.UploadContentType)
+}
+
+func (s *FileTestSuite) expectUpload(content, contentType string) {
+	var opts *blockblob.UploadOptions
+	if contentType != "" {
+		opts = &blockblob.UploadOptions{HTTPHeaders: &blob.HTTPHeaders{BlobContentType: to.Ptr("text/plain")}}
+	}
+	s.blockBlobCli.EXPECT().Upload(context.Background(), mock.Anything, opts).
+		Run(func(ctx context.Context, body io.ReadSeekCloser, options *blockblob.UploadOptions) {
+			b, err := io.ReadAll(body)
+			s.Require().NoError(err)
+			s.Require().Equal(content, string(b))
+		}).
+		Return(blockblob.UploadResponse{}, nil).
+		Once()
 }
 
 func (s *FileTestSuite) TestURI() {
@@ -320,8 +459,13 @@ func (s *FileTestSuite) TestURI() {
 }
 
 func (s *FileTestSuite) TestCheckTempFile() {
-	client := MockAzureClient{ExpectedResult: io.NopCloser(strings.NewReader("Hello World!"))}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().GetProperties(context.Background(), (*blob.GetPropertiesOptions)(nil)).
+		Return(blob.GetPropertiesResponse{}, nil).
+		Once()
+	s.blockBlobCli.EXPECT().DownloadStream(context.Background(), (*blob.DownloadStreamOptions)(nil)).
+		Return(blob.DownloadStreamResponse{DownloadResponse: blob.DownloadResponse{Body: io.NopCloser(strings.NewReader("Hello World!"))}}, nil).
+		Once()
+	fs := NewFileSystem()
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.NoError(err, "The file should exist so no error should be returned")
@@ -341,8 +485,10 @@ func (s *FileTestSuite) TestCheckTempFile() {
 }
 
 func (s *FileTestSuite) TestCheckTempFile_FileDoesNotExist() {
-	client := MockAzureClient{PropertiesError: blobNotFoundErr}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().GetProperties(context.Background(), (*blob.GetPropertiesOptions)(nil)).
+		Return(blob.GetPropertiesResponse{}, &azcore.ResponseError{ErrorCode: string(bloberror.BlobNotFound)}).
+		Once()
+	fs := NewFileSystem()
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.NoError(err, "The file should exist so no error should be returned")
@@ -362,8 +508,13 @@ func (s *FileTestSuite) TestCheckTempFile_FileDoesNotExist() {
 }
 
 func (s *FileTestSuite) TestCheckTempFile_DownloadError() {
-	client := MockAzureClient{ExpectedError: errors.New("i always error")}
-	fs := NewFileSystem().WithClient(&client)
+	s.blockBlobCli.EXPECT().GetProperties(context.Background(), (*blob.GetPropertiesOptions)(nil)).
+		Return(blob.GetPropertiesResponse{}, nil).
+		Once()
+	s.blockBlobCli.EXPECT().DownloadStream(context.Background(), (*blob.DownloadStreamOptions)(nil)).
+		Return(blob.DownloadStreamResponse{}, errors.New("i always error")).
+		Once()
+	fs := NewFileSystem()
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.NoError(err, "The file should exist so no error should be returned")

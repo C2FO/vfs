@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/service"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v6"
@@ -155,7 +156,7 @@ func (s *FileSystemTestSuite) TestWithOptions() {
 }
 
 func (s *FileSystemTestSuite) TestClient() {
-	fs := NewFileSystem().WithClient(&MockAzureClient{})
+	fs := NewFileSystem().WithClient(&service.Client{})
 	s.NotNil(fs.Client())
 
 	fs = NewFileSystem()

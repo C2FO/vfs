@@ -2,7 +2,12 @@ package azure
 
 import (
 	"errors"
+	"fmt"
 	"path"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/service"
 
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/backend"
@@ -21,7 +26,7 @@ const errNilFileSystemReceiver = "azure.FileSystem receiver pointer must be non-
 // FileSystem implements the vfs.FileSystem interface for Azure Blob Storage
 type FileSystem struct {
 	options *Options
-	client  Client
+	client  *service.Client
 }
 
 // NewFileSystem creates a new default FileSystem.  This will set the options options.AccountName and
@@ -38,20 +43,67 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 }
 
 // WithClient allows the caller to specify a specific client to be used
-func (fs *FileSystem) WithClient(client Client) *FileSystem {
+func (fs *FileSystem) WithClient(client *service.Client) *FileSystem {
 	fs.client = client
 	return fs
 }
 
 // Client returns a Client to perform operations against Azure Blob Storage
-func (fs *FileSystem) Client() (Client, error) {
+func (fs *FileSystem) Client() (*service.Client, error) {
 	if fs.client == nil {
-		client, err := NewClient(fs.options)
-		fs.client = client
-		return fs.client, err
+		credential, err := fs.options.Credential()
+		if err != nil {
+			return nil, err
+		}
+
+		switch cred := credential.(type) {
+		case azcore.TokenCredential:
+			fs.client, err = service.NewClient(fs.serviceURL(), cred, nil)
+		case *container.SharedKeyCredential:
+			fs.client, err = service.NewClientWithSharedKeyCredential(fs.serviceURL(), cred, nil)
+		default:
+			fs.client, err = service.NewClientWithNoCredential(fs.serviceURL(), nil)
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
 	return fs.client, nil
 }
+
+func (fs *FileSystem) serviceURL() string {
+	if fs.options.ServiceURL != "" {
+		return fs.options.ServiceURL
+	}
+	if fs.options.AccountName != "" {
+		return fmt.Sprintf("https://%s.blob.core.windows.net", fs.options.AccountName)
+	}
+	return "https://blob.core.windows.net"
+}
+
+var (
+	containerClientFactory = func(fs *FileSystem, container string) (ContainerClient, error) {
+		cli, err := fs.Client()
+		if err != nil {
+			return nil, err
+		}
+		return cli.NewContainerClient(container), nil
+	}
+	blockBlobClientFactory = func(fs *FileSystem, container, path string, versionID *string) (BlockBlobClient, error) {
+		cli, err := fs.Client()
+		if err != nil {
+			return nil, err
+		}
+		blobCli := cli.NewContainerClient(container).NewBlockBlobClient(path)
+		if versionID != nil {
+			blobCli, err = blobCli.WithVersionID(*versionID)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return blobCli, nil
+	}
+)
 
 // NewFile returns the azure implementation of vfs.File
 func (fs *FileSystem) NewFile(volume, absFilePath string, opts ...options.NewFileOption) (vfs.File, error) {
