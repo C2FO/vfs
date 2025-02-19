@@ -1,10 +1,5 @@
 name: golangci-lint
 on:
-  push:
-    tags:
-      - v*
-    branches:
-      - main
   pull_request:
 jobs:
   golangci:
@@ -13,7 +8,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v5
         with:
-          go-version: '^1.23.0'
+          go-version: '^1.24.0'
           cache: false
       - uses: actions/checkout@v4
       - name: golangci-lint
