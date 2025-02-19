@@ -381,7 +381,7 @@ func (s *memFileTest) TestCopyToLocationOS() {
 	s.NoError(copiedFile.Close(), "unexpected Close error")
 
 	s.NotNil(copiedFile)
-	s.Equal("/test_files/test.txt", s.testFile.Path())         // testFile's path should be unchanged
+	s.Equal("/test_files/test.txt", s.testFile.Path())                          // testFile's path should be unchanged
 	s.Equal(path.Join(osFile.Location().Path(), "test.txt"), copiedFile.Path()) // new path should be that
 
 	_, err = copiedFile.Read(readSlice)
@@ -391,7 +391,7 @@ func (s *memFileTest) TestCopyToLocationOS() {
 	s.NoError(err, "unexpected read error")
 	s.Equal(readSlice2, readSlice) // both reads should be the same
 	s.Require().NoError(copiedFile.Close())
-	cleanErr := os.RemoveAll(dir)  // clean up
+	cleanErr := os.RemoveAll(dir) // clean up
 	s.NoError(cleanErr, "unexpected error cleaning up osFiles")
 }
 

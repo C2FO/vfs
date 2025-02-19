@@ -166,25 +166,8 @@ Things to add:
 * Provide better List() functionality with more abstracted filtering and paging (iterator?) Return File structs vs URIs?
 * Add better/any context.Context() support
 
-### Contributors
-
-Brought to you by the Enterprise Pipeline team at C2FO:
-
-* John Judd - john.judd@c2fo.com
-
-* Dustin Schnee - dustin.schnee@c2fo.com
-
-* Katie Hrenchir Shields - katie.shields@c2fo.com
-
-* Grant Higgins - grant.higgins@c2fo.com
-
-* Pooja Dhondge - pooja.dhondge@c2fo.com
-
-* Chris Roush – chris.roush@c2fo.com
-
-* Anthony Ross - anthony.ross@c2fo.com
-
-https://github.com/c2fo/
+### Supported Go Versions
+This project supports the latest and previous major Go versions. Please ensure you are using one of these versions to avoid compatibility issues.
 
 ### Contributing
 

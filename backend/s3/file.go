@@ -566,7 +566,7 @@ func (f *File) getHeadObject() (*s3.HeadObjectOutput, error) {
 }
 
 // For copy from S3-to-S3 when credentials are the same between source and target, return *s3.CopyObjectInput or error
-func (f *File) getCopyObjectInput(targetFile *File) (*s3.CopyObjectInput, error) {
+func (f *File) getCopyObjectInput(targetFile *File) (*s3.CopyObjectInput, error) { //nolint:gocyclo
 	// first we must determine if we're using the same s3 credentials for source and target before doing a native copy
 	isSameAccount := false
 	var ACL string

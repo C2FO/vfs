@@ -1,0 +1,16 @@
+name: CHANGELOG.md Check
+on:
+  pull_request:
+    branches:
+      - main
+jobs:
+  verify_changelog_job:
+    runs-on: ubuntu-latest
+    name: Did CHANGELOG.md change?
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: fetch
+        run: git fetch
+      - name: run changelog.sh
+        run: 'bash ${GITHUB_WORKSPACE}/.github/workflows/scripts/changelog.sh'
