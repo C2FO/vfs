@@ -3,6 +3,7 @@
 
 # options for analysis running
 run:
+  go: "1.24"
   # default concurrency is a available CPU number
   #concurrency: 4
 
@@ -18,10 +19,6 @@ run:
   # list of build tags, all linters use it. Default is empty list.
   #build-tags:
   #  - mytag
-
-  # default is true. Enables skipping of directories:
-  #   vendor$, third_party$, testdata$, examples$, Godeps$, builtin$
-  skip-dirs-use-default: true
 
   # which files to skip: they will be analyzed, but issues from them
   # won't be reported. Default value is empty list, but there is
@@ -60,9 +57,6 @@ output:
 
   # print linter name in the end of issue text, default is true
   print-linter-name: true
-
-  # make issues output unique by line, default is true
-  uniq-by-line: true
 
   # add a prefix to the output file references; default is no prefix
   path-prefix: ""
@@ -377,8 +371,6 @@ linters-settings:
       - G115
 
   gosimple:
-    # Select the Go version to target. The default is '1.13'.
-    go: "1.21"
     # https://staticcheck.io/docs/options#checks
     checks: [ "all", "-ST1003" ]
 
@@ -437,11 +429,7 @@ linters-settings:
 
 #  makezero:
 #    # Allow only slices initialized with a length of zero. Default is false.
-#    always: false
-
-  maligned:
-    # print struct with more effective memory layout or not, false by default
-    suggest-new: true
+#    always: false\
 
   misspell:
     # Correct spellings using locale preferences for US or UK.
@@ -487,15 +475,17 @@ linters-settings:
 #    q: false
 
   nolintlint:
-    # Enable to ensure that nolint directives are all used. Default is true.
+    # Disable to ensure that all nolint directives actually have an effect.
+    # Default: false
     allow-unused: false
-    # Disable to ensure that nolint directives don't have a leading space. Default is true.
-    allow-leading-space: true
-    # Exclude following linters from requiring an explanation.  Default is [].
+    # Exclude following linters from requiring an explanation.
+    # Default: []
     allow-no-explanation: []
-    # Enable to require an explanation of nonzero length after each nolint directive. Default is false.
+    # Enable to require an explanation of nonzero length after each nolint directive.
+    # Default: false
     require-explanation: false
-    # Enable to require nolint directives to mention the specific linter being suppressed. Default is false.
+    # Enable to require nolint directives to mention the specific linter being suppressed.
+    # Default: false
     require-specific: false
 
   revive:
@@ -514,14 +504,10 @@ linters-settings:
 #            allowFloats: "0.0,0.,1.0,1.,2.0,2."
 
   staticcheck:
-    # Select the Go version to target. The default is '1.13'.
-    go: "1.21"
     # https://staticcheck.io/docs/options#checks
     checks: [ "all", "-ST1003" ]
 
   stylecheck:
-    # Select the Go version to target. The default is '1.13'.
-    go: "1.21"
     # https://staticcheck.io/docs/options#checks
     checks: [ "all", "-ST1000", "-ST1003", "-ST1016", "-ST1020", "-ST1021", "-ST1022" ]
 #    # https://staticcheck.io/docs/options#dot_import_whitelist
@@ -573,10 +559,6 @@ linters-settings:
     # if it's called for subdir of a project it can't find external interfaces. All text editor integrations
     # with golangci-lint call it on a directory with the changed file.
     check-exported: false
-
-  unused:
-    # Select the Go version to target. The default is '1.13'.
-    go: "1.21"
 
 #  whitespace:
 #    multi-if: false   # Enforces newlines (or comments) after every multi-line if statement
@@ -710,6 +692,11 @@ issues:
     - docs
     - mocks
 
+  # Enables exclude of directories:
+  # - vendor$, third_party$, testdata$, examples$, Godeps$, builtin$
+  # Default: true
+  exclude-dirs-use-default: false
+
   # The list of ids of default excludes to include or disable. By default it's empty.
 #  include:
 #    - EXC0002 # disable excluding of issues about comments from golint
@@ -727,6 +714,10 @@ issues:
   # of integration: much better don't allow issues in new code.
   # Default is false.
   new: false
+
+  # Make issues output unique by line.
+  # Default: true
+  uniq-by-line: true
 
   # Show only new issues created after git revision `REV`
   #new-from-rev: REV
@@ -746,7 +737,7 @@ severity:
   # - Code climate: https://docs.codeclimate.com/docs/issues#issue-severity
   # -   Checkstyle: https://checkstyle.sourceforge.io/property_types.html#severity
   # -       Github: https://help.github.com/en/actions/reference/workflow-commands-for-github-actions#setting-an-error-message
-  #default-severity: error
+  default-severity: error
 
   # The default value is false.
   # If set to true severity-rules regular expressions become case sensitive.
