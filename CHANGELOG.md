@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update go to 1.23 from 1.22 (1.24 is out now).
 
 ### Documentation
-- Update README.md with go version policy
+- Update README.md with go version policy.
 
 ## [6.25.1] - 2025-01-09
 ### Fixed
