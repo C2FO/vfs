@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changelog-based release generation(releasegen).
 
 ### Security
-- Update dependencies
-- Update go to 1.23 from 1.22 (1.24 is out now)
+- Update dependencies.
+- Update go to 1.23 from 1.22 (1.24 is out now).
 
 ### Documentation
 - Update README.md with go version policy

@@ -47,6 +47,5 @@ jobs:
           CUSTOM_CHANGE_TYPES: |
             documentation:patch
         run: |
-          git config --global url."https://c2fo-read-only:${{ secrets.GH_CI_READ }}@github.com/c2fo".insteadOf "https://github.com/c2fo"
           go install github.com/c2fo/ep-tools/releasegen@latest
           releasegen
