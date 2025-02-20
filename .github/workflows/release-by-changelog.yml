@@ -47,5 +47,7 @@ jobs:
           CUSTOM_CHANGE_TYPES: |
             documentation:patch
         run: |
+          go env -w GOPRIVATE=github.com/c2fo,github.com/C2FO
+          git config --global url."https://${{ secrets.GITHUB_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
           go install github.com/c2fo/ep-tools/releasegen@latest
           releasegen
