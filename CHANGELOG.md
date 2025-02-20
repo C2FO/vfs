@@ -6,13 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v6.26.0] - 2025-02-19
 ### Added
 - Add support for role based authentication in s3 backend.
-- Changelog-based release generation(ReleaseGen).
 
 ### Security
 - Update dependencies.
-- Update go to 1.23 from 1.22 (1.24 is out now).
+- Update go from 1.22 to 1.23 (since 1.24 is out now).
 
 ### Documentation
 - Update README.md with go version policy.
