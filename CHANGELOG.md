@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Add support for role based authentication in s3 backend.
-- Changelog-based release generation(releasegen).
+- Changelog-based release generation(ReleaseGen).
 
 ### Security
 - Update dependencies.
