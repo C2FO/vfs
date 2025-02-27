@@ -51,8 +51,7 @@ azure.FileSystem to use the following:
             },
         )
 
-        // to pass specific client, for instance mock client
-        client, _ := azure.NewClient(MockAzureClient{...})
+        // to pass specific client
         fs = fs.WithClient(client)
     }
 ```
@@ -82,23 +81,6 @@ Name defines the name for the azure implementation
 const Scheme = "https"
 ```
 Scheme defines the scheme for the azure implementation
-
-#### func  IsValidURI
-
-```go
-func IsValidURI(u *url.URL) bool
-```
-IsValidURI us a utility function used by vfssimple to determine if the given URI
-is a valid Azure URI
-
-#### func  ParsePath
-
-```go
-func ParsePath(p string) (host, pth string, err error)
-```
-ParsePath is a utility function used by vfssimple to separate the host from the
-path. The first parameter returned is the host and the second parameter is the
-path.
 
 ### type BlobProperties
 
@@ -424,14 +406,6 @@ func (fs *FileSystem) Client() (Client, error)
 ```
 Client returns a Client to perform operations against Azure Blob Storage
 
-#### func (*FileSystem) Host
-
-```go
-func (fs *FileSystem) Host() string
-```
-Host returns the host portion of the URI. For azure this consists of
-<account_name>.blob.core.windows.net.
-
 #### func (*FileSystem) Name
 
 ```go
@@ -497,13 +471,6 @@ Location is the azure implementation of vfs.Location
 func (l *Location) ChangeDir(relLocPath string) error
 ```
 ChangeDir changes the current location's path to the new, relative path.
-
-#### func (*Location) ContainerURL
-
-```go
-func (l *Location) ContainerURL() string
-```
-ContainerURL returns the URL for the Azure Blob Storage container.
 
 #### func (*Location) DeleteFile
 
@@ -592,70 +559,6 @@ func (l *Location) Volume() string
 ```
 Volume returns the azure container. Azure containers are equivalent to AWS
 Buckets
-
-### type MockAzureClient
-
-```go
-type MockAzureClient struct {
-	PropertiesError  error
-	PropertiesResult *BlobProperties
-	ExpectedError    error
-	ExpectedResult   interface{}
-}
-```
-
-MockAzureClient is a mock implementation of azure.Client.
-
-#### func (*MockAzureClient) Copy
-
-```go
-func (a *MockAzureClient) Copy(srcFile, tgtFile vfs.File) error
-```
-Copy returns the value of ExpectedError
-
-#### func (*MockAzureClient) Delete
-
-```go
-func (a *MockAzureClient) Delete(file vfs.File) error
-```
-Delete returns the value of ExpectedError
-
-#### func (*MockAzureClient) Download
-
-```go
-func (a *MockAzureClient) Download(file vfs.File) (io.ReadCloser, error)
-```
-Download returns ExpectedResult if it exists, otherwise it returns ExpectedError
-
-#### func (*MockAzureClient) List
-
-```go
-func (a *MockAzureClient) List(l vfs.Location) ([]string, error)
-```
-List returns the value of ExpectedResult if it exists, otherwise it returns
-ExpectedError.
-
-#### func (*MockAzureClient) Properties
-
-```go
-func (a *MockAzureClient) Properties(locationURI, filePath string) (*BlobProperties, error)
-```
-Properties returns a PropertiesResult if it exists, otherwise it will return the
-value of PropertiesError
-
-#### func (*MockAzureClient) SetMetadata
-
-```go
-func (a *MockAzureClient) SetMetadata(file vfs.File, metadata map[string]string) error
-```
-SetMetadata returns the value of ExpectedError
-
-#### func (*MockAzureClient) Upload
-
-```go
-func (a *MockAzureClient) Upload(file vfs.File, content io.ReadSeeker) error
-```
-Upload returns the value of ExpectedError
 
 ### func MockTokenCredentialFactory
 

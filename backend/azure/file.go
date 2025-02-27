@@ -1,16 +1,22 @@
 package azure
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path"
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/streaming"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blockblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
 
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/backend"
@@ -30,6 +36,14 @@ type File struct {
 	isDirty    bool
 }
 
+func (f *File) newBlockBlobClient(versionID ...string) (BlockBlobClient, error) {
+	var vid *string
+	if len(versionID) > 0 {
+		vid = &versionID[0]
+	}
+	return blockBlobClientFactory(f.fileSystem, f.container, utils.RemoveLeadingSlash(f.name), vid)
+}
+
 // Close cleans up all of the backing data structures used for reading/writing files.  This includes, closing the
 // temp file, uploading the contents of the temp file to Azure Blob Storage (if necessary), and calling Seek(0, 0).
 func (f *File) Close() error {
@@ -39,11 +53,6 @@ func (f *File) Close() error {
 			f.tempFile = nil
 			f.isDirty = false
 		}()
-
-		client, err := f.fileSystem.Client()
-		if err != nil {
-			return utils.WrapCloseError(err)
-		}
 
 		if _, err := f.Seek(0, 0); err != nil {
 			return utils.WrapCloseError(err)
@@ -59,7 +68,7 @@ func (f *File) Close() error {
 				}
 			}
 
-			if err := client.Upload(f, f.tempFile, contentType); err != nil {
+			if err := f.upload(context.Background(), f.tempFile, contentType); err != nil {
 				return utils.WrapCloseError(err)
 			}
 		}
@@ -126,11 +135,11 @@ func (f *File) String() string {
 
 // Exists returns true/false if the file exists/does not exist on Azure
 func (f *File) Exists() (bool, error) {
-	client, err := f.fileSystem.Client()
+	cli, err := f.newBlockBlobClient()
 	if err != nil {
 		return false, err
 	}
-	_, err = client.Properties(f.Location().(*Location).ContainerURL(), f.Path())
+	_, err = cli.GetProperties(context.Background(), nil)
 	if err != nil {
 		if !bloberror.HasCode(err, bloberror.BlobNotFound) {
 			return false, err
@@ -189,14 +198,8 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 	}
 
 	azFile, ok := file.(*File)
-	if ok {
-		if f.isSameAuth(azFile) {
-			client, err := f.fileSystem.Client()
-			if err != nil {
-				return err
-			}
-			return client.Copy(f, file)
-		}
+	if ok && f.isSameAuth(azFile) {
+		return azFile.copyFrom(context.Background(), f)
 	}
 
 	// Otherwise, use TouchCopyBuffered using io.CopyBuffer
@@ -215,6 +218,35 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 	}
 
 	return err
+}
+
+func (f *File) copyFrom(ctx context.Context, srcFile *File) error {
+	// Can't use url.PathEscape here since that will escape everything (even the directory separators)
+	srcURL := strings.Replace(srcFile.Path(), "%", "%25", -1)
+	u, err := url.Parse(srcFile.fileSystem.serviceURL())
+	if err != nil {
+		return err
+	}
+	srcURL = u.JoinPath(srcFile.container, srcURL).String()
+
+	cli, err := f.newBlockBlobClient()
+	if err != nil {
+		return err
+	}
+	resp, err := cli.StartCopyFromURL(ctx, srcURL, nil)
+	if err != nil {
+		return err
+	}
+
+	for *resp.CopyStatus == blob.CopyStatusTypePending {
+		time.Sleep(2 * time.Second)
+	}
+
+	if *resp.CopyStatus == blob.CopyStatusTypeSuccess {
+		return nil
+	}
+
+	return errors.New("copy failed")
 }
 
 // MoveToLocation copies the receiver to the passed location.  After the copy succeeds, the original is deleted.
@@ -245,11 +277,6 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		return err
 	}
 
-	client, err := f.fileSystem.Client()
-	if err != nil {
-		return err
-	}
-
 	var allVersions bool
 	for _, o := range opts {
 		switch o.(type) {
@@ -259,24 +286,57 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		}
 	}
 
-	if err := client.Delete(f); err != nil {
-		return err
-	}
+	ctx := context.Background()
 
 	if allVersions {
-		return client.DeleteAllVersions(f)
+		containerCli, err := containerClientFactory(f.fileSystem, f.container)
+		if err != nil {
+			return err
+		}
+
+		pager := containerCli.NewListBlobsFlatPager(&container.ListBlobsFlatOptions{
+			Prefix:  to.Ptr(utils.RemoveLeadingSlash(f.name)),
+			Include: container.ListBlobsInclude{Versions: true},
+		})
+
+		for pager.More() {
+			page, err := pager.NextPage(ctx)
+			if err != nil {
+				return err
+			}
+
+			for _, item := range page.ListBlobsFlatSegmentResponse.Segment.BlobItems {
+				// Delete a specific version
+				cli, err := f.newBlockBlobClient(*item.VersionID)
+				if err != nil {
+					return err
+				}
+				_, err = cli.Delete(ctx, nil)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	} else {
+		cli, err := f.newBlockBlobClient()
+		if err != nil {
+			return err
+		}
+		if _, err := cli.Delete(ctx, nil); err != nil {
+			return err
+		}
 	}
 
-	return err
+	return nil
 }
 
 // LastModified returns the last modified time as a time.Time
 func (f *File) LastModified() (*time.Time, error) {
-	client, err := f.fileSystem.Client()
+	cli, err := f.newBlockBlobClient()
 	if err != nil {
 		return nil, err
 	}
-	props, err := client.Properties(f.Location().(*Location).ContainerURL(), f.Path())
+	props, err := cli.GetProperties(context.Background(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -285,15 +345,15 @@ func (f *File) LastModified() (*time.Time, error) {
 
 // Size returns the size of the blob
 func (f *File) Size() (uint64, error) {
-	client, err := f.fileSystem.Client()
+	cli, err := f.newBlockBlobClient()
 	if err != nil {
 		return 0, err
 	}
-	props, err := client.Properties(f.Location().(*Location).ContainerURL(), f.Path())
+	props, err := cli.GetProperties(context.Background(), nil)
 	if err != nil {
 		return 0, err
 	}
-	return uint64(*props.Size), nil
+	return uint64(*props.ContentLength), nil
 }
 
 // Path returns full path with leading slash.
@@ -314,10 +374,7 @@ func (f *File) Touch() error {
 		return err
 	}
 
-	client, err := f.fileSystem.Client()
-	if err != nil {
-		return err
-	}
+	ctx := context.Background()
 
 	if !exists {
 		var contentType string
@@ -329,39 +386,57 @@ func (f *File) Touch() error {
 			}
 		}
 
-		return client.Upload(f, strings.NewReader(""), contentType)
+		return f.upload(ctx, strings.NewReader(""), contentType)
 	}
 
-	props, err := client.Properties(f.Location().(*Location).ContainerURL(), f.Path())
+	cli, err := f.newBlockBlobClient()
+	if err != nil {
+		return err
+	}
+	props, err := cli.GetProperties(ctx, nil)
 	if err != nil {
 		return err
 	}
 
 	newMetadata := make(map[string]*string)
 	newMetadata["updated"] = to.Ptr("true")
-	if err := client.SetMetadata(f, newMetadata); err != nil {
+	if _, err := cli.SetMetadata(ctx, newMetadata, nil); err != nil {
 		return err
 	}
 
-	if err := client.SetMetadata(f, props.Metadata); err != nil {
+	if _, err := cli.SetMetadata(ctx, props.Metadata, nil); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// URI returns a full Azure URI for the file
+// URI returns the File's URI as a string.
 func (f *File) URI() string {
-	return fmt.Sprintf("%s://%s%s", f.fileSystem.Scheme(), utils.EnsureTrailingSlash(f.fileSystem.Host()), path.Join(f.container, f.name))
+	return utils.GetFileURI(f)
+}
+
+func (f *File) upload(ctx context.Context, content io.ReadSeeker, contentType string) error {
+	cli, err := f.newBlockBlobClient()
+	if err != nil {
+		return err
+	}
+	body, ok := content.(io.ReadSeekCloser)
+	if !ok {
+		body = streaming.NopCloser(content)
+	}
+	var opts *blockblob.UploadOptions
+	if contentType != "" {
+		opts = &blockblob.UploadOptions{
+			HTTPHeaders: &blob.HTTPHeaders{BlobContentType: &contentType},
+		}
+	}
+	_, err = cli.Upload(ctx, body, opts)
+	return err
 }
 
 func (f *File) checkTempFile() error {
 	if f.tempFile == nil {
-		client, err := f.fileSystem.Client()
-		if err != nil {
-			return err
-		}
-
 		exists, err := f.Exists()
 		if err != nil {
 			return err
@@ -373,7 +448,11 @@ func (f *File) checkTempFile() error {
 			}
 			f.tempFile = tf
 		} else {
-			reader, dlErr := client.Download(f)
+			cli, err := f.newBlockBlobClient()
+			if err != nil {
+				return err
+			}
+			get, dlErr := cli.DownloadStream(context.Background(), nil)
 			if dlErr != nil {
 				return dlErr
 			}
@@ -384,7 +463,7 @@ func (f *File) checkTempFile() error {
 			}
 
 			buffer := make([]byte, utils.TouchCopyMinBufferSize)
-			if _, err := io.CopyBuffer(tf, reader, buffer); err != nil {
+			if _, err := io.CopyBuffer(tf, get.Body, buffer); err != nil {
 				return err
 			}
 

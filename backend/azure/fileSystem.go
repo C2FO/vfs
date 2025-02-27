@@ -3,10 +3,11 @@ package azure
 import (
 	"errors"
 	"fmt"
-	"net/url"
 	"path"
-	"regexp"
-	"strings"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/service"
 
 	"github.com/c2fo/vfs/v6"
 	"github.com/c2fo/vfs/v6/backend"
@@ -15,7 +16,7 @@ import (
 )
 
 // Scheme defines the scheme for the azure implementation
-const Scheme = "https"
+const Scheme = "az"
 
 // Name defines the name for the azure implementation
 const Name = "azure"
@@ -25,7 +26,7 @@ const errNilFileSystemReceiver = "azure.FileSystem receiver pointer must be non-
 // FileSystem implements the vfs.FileSystem interface for Azure Blob Storage
 type FileSystem struct {
 	options *Options
-	client  Client
+	client  *service.Client
 }
 
 // NewFileSystem creates a new default FileSystem.  This will set the options options.AccountName and
@@ -42,20 +43,67 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 }
 
 // WithClient allows the caller to specify a specific client to be used
-func (fs *FileSystem) WithClient(client Client) *FileSystem {
+func (fs *FileSystem) WithClient(client *service.Client) *FileSystem {
 	fs.client = client
 	return fs
 }
 
 // Client returns a Client to perform operations against Azure Blob Storage
-func (fs *FileSystem) Client() (Client, error) {
+func (fs *FileSystem) Client() (*service.Client, error) {
 	if fs.client == nil {
-		client, err := NewClient(fs.options)
-		fs.client = client
-		return fs.client, err
+		credential, err := fs.options.Credential()
+		if err != nil {
+			return nil, err
+		}
+
+		switch cred := credential.(type) {
+		case azcore.TokenCredential:
+			fs.client, err = service.NewClient(fs.serviceURL(), cred, nil)
+		case *container.SharedKeyCredential:
+			fs.client, err = service.NewClientWithSharedKeyCredential(fs.serviceURL(), cred, nil)
+		default:
+			fs.client, err = service.NewClientWithNoCredential(fs.serviceURL(), nil)
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
 	return fs.client, nil
 }
+
+func (fs *FileSystem) serviceURL() string {
+	if fs.options.ServiceURL != "" {
+		return fs.options.ServiceURL
+	}
+	if fs.options.AccountName != "" {
+		return fmt.Sprintf("https://%s.blob.core.windows.net", fs.options.AccountName)
+	}
+	return "https://blob.core.windows.net"
+}
+
+var (
+	containerClientFactory = func(fs *FileSystem, container string) (ContainerClient, error) {
+		cli, err := fs.Client()
+		if err != nil {
+			return nil, err
+		}
+		return cli.NewContainerClient(container), nil
+	}
+	blockBlobClientFactory = func(fs *FileSystem, container, path string, versionID *string) (BlockBlobClient, error) {
+		cli, err := fs.Client()
+		if err != nil {
+			return nil, err
+		}
+		blobCli := cli.NewContainerClient(container).NewBlockBlobClient(path)
+		if versionID != nil {
+			blobCli, err = blobCli.WithVersionID(*versionID)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return blobCli, nil
+	}
+)
 
 // NewFile returns the azure implementation of vfs.File
 func (fs *FileSystem) NewFile(volume, absFilePath string, opts ...options.NewFileOption) (vfs.File, error) {
@@ -105,14 +153,9 @@ func (fs *FileSystem) Name() string {
 	return Name
 }
 
-// Scheme returns "https" as the initial part of the URI i.e. https://..
+// Scheme returns "az" as the initial part of the URI i.e. https://..
 func (fs *FileSystem) Scheme() string {
 	return Scheme
-}
-
-// Host returns the host portion of the URI.  For azure this consists of <account_name>.blob.core.windows.net.
-func (fs *FileSystem) Host() string {
-	return fmt.Sprintf("%s.blob.core.windows.net", fs.options.AccountName)
 }
 
 // Retry returns the default retry function.  This is overridable via the WithOptions function.
@@ -126,29 +169,4 @@ func (fs *FileSystem) Retry() vfs.Retry {
 func init() {
 	// registers a default FileSystem
 	backend.Register(Scheme, NewFileSystem())
-}
-
-// ParsePath is a utility function used by vfssimple to separate the host from the path.  The first parameter returned
-// is the host and the second parameter is the path.
-func ParsePath(p string) (host, pth string, err error) {
-	if p == "/" {
-		return "", "", errors.New("no container specified for Azure path")
-	}
-	isLocation := strings.HasSuffix(p, "/")
-	l := strings.Split(p, "/")
-	p = utils.EnsureLeadingSlash(path.Join(l[2:]...))
-	if isLocation {
-		p = utils.EnsureTrailingSlash(p)
-	}
-	return l[1], p, nil
-}
-
-// IsValidURI us a utility function used by vfssimple to determine if the given URI is a valid Azure URI
-func IsValidURI(u *url.URL) bool {
-	r := regexp.MustCompile(`.*\.blob\.core\.windows\.net`)
-
-	if u.Scheme == Scheme && r.MatchString(u.Host) {
-		return true
-	}
-	return false
 }

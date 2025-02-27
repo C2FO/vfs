@@ -32,3 +32,9 @@ packages:
     config:
       all: true
       dir: "backend/ftp/mocks"
+  github.com/c2fo/vfs/v6/backend/azure:
+    config:
+      dir: "backend/azure/mocks"
+    interfaces:
+      ContainerClient:
+      BlockBlobClient:

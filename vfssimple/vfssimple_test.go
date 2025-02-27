@@ -129,10 +129,10 @@ func (s *vfsSimpleSuite) TestParseURI() {
 			path:      "/path/to/file.txt",
 		},
 		{
-			uri:       "https://myaccount.blob.core.windows.net/mycontainer/path/to/file.txt",
+			uri:       "az://mycontainer/path/to/file.txt",
 			err:       nil,
 			message:   "valid azure uri",
-			scheme:    "https",
+			scheme:    "az",
 			authority: "mycontainer",
 			path:      "/path/to/file.txt",
 		},
