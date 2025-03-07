@@ -5,8 +5,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v6.26.0] - 2025-02-19
 ### Added
 - Add support for role based authentication in s3 backend.
+
+### Security
+- Update dependencies.
+- Update go from 1.22 to 1.23 (since 1.24 is out now).
+
+### Documentation
+- Update README.md with go version policy.
 
 ## [6.25.1] - 2025-01-09
 ### Fixed
