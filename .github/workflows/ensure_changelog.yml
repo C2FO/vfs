@@ -3,6 +3,7 @@ on:
   pull_request:
     branches:
       - main
+      - v7.x-dev
 jobs:
   verify_changelog_job:
     runs-on: ubuntu-latest

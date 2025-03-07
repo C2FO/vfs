@@ -235,11 +235,11 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 			return err
 		}
 
-		for _, version := range objectVersions.Versions {
+		for idx := range objectVersions.Versions {
 			if _, err = client.DeleteObject(context.Background(), &s3.DeleteObjectInput{
 				Key:       &f.key,
 				Bucket:    &f.bucket,
-				VersionId: version.VersionId,
+				VersionId: objectVersions.Versions[idx].VersionId,
 			}); err != nil {
 				return err
 			}
