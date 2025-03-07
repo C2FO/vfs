@@ -68,7 +68,20 @@ Post 1.17:
 go install github.com/c2fo/vfs/v6
 ```
 
+### Supported Go Versions
+
+This project supports the latest and previous major Go versions. Please ensure you are using one of these versions to avoid compatibility issues.
+
 ### Upgrading
+
+#### Upgrading from v6 to v7
+
+Please review these changes and update your code accordingly to ensure compatibility with v7.
+
+##### S3 Backend
+The project now uses the `aws-sdk-go-v2` library instead of the deprecated, EOL `aws-sdk-go`.  This update necessitated a these to the S3 backend:
+- The S3 backend's s3fs.Client() function now returns an `s3.Client` which is a subset of AWS's sdk v2 functionality. This change may require updates to your code if you were relying client functionality not directly required by the s3 vfs backend.
+- The `Option.Retry` field is now an `aws.Retryer` instead of a `request.Retry`. Ensure that your Option logic is compatible with the new type.
 
 #### Upgrading from v5 to v6
 With v6.0.0, sftp.Options struct changed to accept an array of Key Exchange algorithms rather than a string. To update, change the syntax of the auth commands.

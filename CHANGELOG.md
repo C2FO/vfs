@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- S3 backend now returns an s3.Client instead of an s3iface.ClientAPI. *Breaking Change*
+- S3 backend s3.Option.Retry field is now an aws.Retryer instead of a (aws) request.Retry. *Breaking Change*
+
+### Security
+- S3 backend now uses the `aws-sdk-go-v2` library instead of the deprecated `aws-sdk-go`.
+- Updated dependencies.
+
 ## [v6.26.0] - 2025-02-19
 ### Added
 - Add support for role based authentication in s3 backend.
