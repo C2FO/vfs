@@ -44,12 +44,12 @@ would have to be cast as s3.FileSystem to use the following:
 	    )
 
 	    // to pass specific client, for instance a mock client
-	    s3apiMock := &mocks.S3API{}
-	    s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).
+	    s3cliMock := &mocks.Client{}
+	    s3cliMock.On("GetObject", matchContext, mock.AnythingOfType("*s3.GetObjectInput")).
 	        Return(&s3.GetObjectOutput{
 	            Body: nopCloser{bytes.NewBufferString("Hello world!")},
 	            }, nil)
-	    fs = fs.WithClient(s3apiMock)
+	    fs = fs.WithClient(s3cliMock)
 	}
 
 # Object ACL
@@ -86,6 +86,6 @@ and https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.ht
 
 # See Also
 
-See: https://github.com/aws/aws-sdk-go/tree/master/service/s3
+See: https://github.com/aws/aws-sdk-go-v2/tree/main/service/s3
 */
 package s3

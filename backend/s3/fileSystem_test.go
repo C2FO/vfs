@@ -1,10 +1,11 @@
 package s3
 
 import (
+	"context"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v6/utils"
@@ -19,17 +20,20 @@ var (
 )
 
 type mockClient struct {
-	*s3.S3
+	*s3.Client
 }
 
 func (ts *fileSystemTestSuite) SetupTest() {
-	sess := session.Must(session.NewSession())
-	client := mockClient{s3.New(sess)}
+	cfg, err := config.LoadDefaultConfig(context.Background())
+	if err != nil {
+		panic(err)
+	}
+	client := mockClient{s3.NewFromConfig(cfg)}
 	s3fs = &FileSystem{client: client}
 }
 
 func (ts *fileSystemTestSuite) TestNewFileSystem() {
-	newFS := NewFileSystem().WithClient(s3apiMock)
+	newFS := NewFileSystem().WithClient(s3cliMock)
 	ts.NotNil(newFS, "Should return a new fileSystem for s3")
 }
 
