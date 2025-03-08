@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/c2fo/vfs/v6/options"
+	"github.com/c2fo/vfs/v7/options"
 )
 
 // FileSystem represents a file system with any authentication accounted for.

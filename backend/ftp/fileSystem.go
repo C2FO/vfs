@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/c2fo/vfs/v6"
-	"github.com/c2fo/vfs/v6/backend"
-	"github.com/c2fo/vfs/v6/backend/ftp/types"
-	"github.com/c2fo/vfs/v6/options"
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend"
+	"github.com/c2fo/vfs/v7/backend/ftp/types"
+	"github.com/c2fo/vfs/v7/options"
+	"github.com/c2fo/vfs/v7/utils"
 )
 
 // Scheme defines the filesystem type.

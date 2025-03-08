@@ -1,5 +1,4 @@
 //go:build vfsintegration
-// +build vfsintegration
 
 package testsuite
 
@@ -16,12 +15,16 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v6"
-	"github.com/c2fo/vfs/v6/backend/azure"
-	"github.com/c2fo/vfs/v6/backend/gs"
-	"github.com/c2fo/vfs/v6/backend/sftp"
-	"github.com/c2fo/vfs/v6/utils"
-	"github.com/c2fo/vfs/v6/vfssimple"
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend/azure"
+	"github.com/c2fo/vfs/v7/backend/ftp"
+	"github.com/c2fo/vfs/v7/backend/gs"
+	"github.com/c2fo/vfs/v7/backend/mem"
+	_os "github.com/c2fo/vfs/v7/backend/os"
+	"github.com/c2fo/vfs/v7/backend/s3"
+	"github.com/c2fo/vfs/v7/backend/sftp"
+	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/vfssimple"
 )
 
 type vfsTestSuite struct {
@@ -45,19 +48,32 @@ func (s *vfsTestSuite) SetupSuite() {
 		s.NoError(err)
 		switch l.FileSystem().Scheme() {
 		case "file":
-			s.testLocations[l.FileSystem().Scheme()] = CopyOsLocation(l)
+			ret := l.(*_os.Location)
+
+			// setup os location
+			exists, err := ret.Exists()
+			if err != nil {
+				panic(err)
+			}
+			if !exists {
+				err := os.Mkdir(ret.Path(), 0750)
+				if err != nil {
+					panic(err)
+				}
+			}
+			s.testLocations[l.FileSystem().Scheme()] = ret
 		case "s3":
-			s.testLocations[l.FileSystem().Scheme()] = CopyS3Location(l)
+			s.testLocations[l.FileSystem().Scheme()] = l.(*s3.Location)
 		case "sftp":
-			s.testLocations[l.FileSystem().Scheme()] = CopySFTPLocation(l)
+			s.testLocations[l.FileSystem().Scheme()] = l.(*sftp.Location)
 		case "gs":
-			s.testLocations[l.FileSystem().Scheme()] = CopyGSLocation(l)
+			s.testLocations[l.FileSystem().Scheme()] = l.(*gs.Location)
 		case "mem":
-			s.testLocations[l.FileSystem().Scheme()] = CopyMemLocation(l)
+			s.testLocations[l.FileSystem().Scheme()] = l.(*mem.Location)
 		case "https":
-			s.testLocations[l.FileSystem().Scheme()] = CopyAzureLocation(l)
+			s.testLocations[l.FileSystem().Scheme()] = l.(*azure.Location)
 		case "ftp":
-			s.testLocations[l.FileSystem().Scheme()] = CopyFTPLocation(l)
+			s.testLocations[l.FileSystem().Scheme()] = l.(*ftp.Location)
 		default:
 			panic(fmt.Sprintf("unknown scheme: %s", l.FileSystem().Scheme()))
 		}

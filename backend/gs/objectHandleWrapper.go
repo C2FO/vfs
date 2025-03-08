@@ -7,7 +7,7 @@ import (
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
 
-	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v7"
 )
 
 // ObjectHandleWrapper is an interface which contains a subset of the functions provided

@@ -3,7 +3,7 @@ package mem
 import (
 	"io"
 
-	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v7"
 )
 
 // ReadWriteSeeker is a custom type that implements io.ReadWriteSeeker.
