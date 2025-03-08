@@ -10,10 +10,10 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v6"
-	_os "github.com/c2fo/vfs/v6/backend/os"
-	"github.com/c2fo/vfs/v6/mocks"
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7"
+	_os "github.com/c2fo/vfs/v7/backend/os"
+	"github.com/c2fo/vfs/v7/mocks"
+	"github.com/c2fo/vfs/v7/utils"
 )
 
 /**********************************

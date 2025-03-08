@@ -3,11 +3,11 @@ Package ftp - FTP VFS implementation.
 
 # Usage
 
-Rely on github.com/c2fo/vfs/v6/backend
+Rely on github.com/c2fo/vfs/v7/backend
 
 	  import(
-		  "github.com/c2fo/vfs/v6/backend"
-		  "github.com/c2fo/vfs/v6/backend/ftp"
+		  "github.com/c2fo/vfs/v7/backend"
+		  "github.com/c2fo/vfs/v7/backend/ftp"
 	  )
 
 	  func UseFs() error {
@@ -17,7 +17,7 @@ Rely on github.com/c2fo/vfs/v6/backend
 
 Or call directly:
 
-	  import "github.com/c2fo/vfs/v6/backend/ftp"
+	  import "github.com/c2fo/vfs/v7/backend/ftp"
 
 	  func DoSomething() {
 		  fs := ftp.NewFileSystem()

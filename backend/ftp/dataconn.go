@@ -9,8 +9,8 @@ import (
 
 	_ftp "github.com/jlaffaye/ftp"
 
-	"github.com/c2fo/vfs/v6/backend/ftp/types"
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7/backend/ftp/types"
+	"github.com/c2fo/vfs/v7/utils"
 )
 
 type dataConn struct {
