@@ -3,11 +3,11 @@ Package s3 - AWS S3 VFS implementation.
 
 # Usage
 
-Rely on github.com/c2fo/vfs/v6/backend
+Rely on github.com/c2fo/vfs/v7/backend
 
 	import(
-	    "github.com/c2fo/vfs/v6/backend"
-	    "github.com/c2fo/vfs/v6/backend/s3"
+	    "github.com/c2fo/vfs/v7/backend"
+	    "github.com/c2fo/vfs/v7/backend/s3"
 	)
 
 	func UseFs() error {
@@ -17,7 +17,7 @@ Rely on github.com/c2fo/vfs/v6/backend
 
 Or call directly:
 
-	import "github.com/c2fo/vfs/v6/backend/s3"
+	import "github.com/c2fo/vfs/v7/backend/s3"
 
 	func DoSomething() {
 	    fs := s3.NewFileSystem()

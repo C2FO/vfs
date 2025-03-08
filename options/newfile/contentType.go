@@ -1,6 +1,6 @@
 package newfile
 
-import "github.com/c2fo/vfs/v6/options"
+import "github.com/c2fo/vfs/v7/options"
 
 const optionNameNewFileContentType = "newFileContentType"
 

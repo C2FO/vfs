@@ -6,8 +6,8 @@ Package gs - Google Cloud Storage VFS implementation.
 Rely on github.com/c2fo/vfs/backend
 
 	import(
-	    "github.com/c2fo/vfs/v6/backend"
-	    "github.com/c2fo/vfs/v6/backend/gs"
+	    "github.com/c2fo/vfs/v7/backend"
+	    "github.com/c2fo/vfs/v7/backend/gs"
 	)
 
 	func UseFs() error {
@@ -17,7 +17,7 @@ Rely on github.com/c2fo/vfs/backend
 
 Or call directly:
 
-	import "github.com/c2fo/vfs/v6/backend/gs"
+	import "github.com/c2fo/vfs/v7/backend/gs"
 
 	func DoSomething() {
 	    fs := gs.NewFileSystem()

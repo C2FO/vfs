@@ -12,12 +12,12 @@ import (
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
 
-	"github.com/c2fo/vfs/v6"
-	"github.com/c2fo/vfs/v6/backend"
-	"github.com/c2fo/vfs/v6/options"
-	"github.com/c2fo/vfs/v6/options/delete"
-	"github.com/c2fo/vfs/v6/options/newfile"
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend"
+	"github.com/c2fo/vfs/v7/options"
+	"github.com/c2fo/vfs/v7/options/delete"
+	"github.com/c2fo/vfs/v7/options/newfile"
+	"github.com/c2fo/vfs/v7/utils"
 )
 
 const (

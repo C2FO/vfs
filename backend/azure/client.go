@@ -14,8 +14,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blockblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
 
-	"github.com/c2fo/vfs/v6"
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/utils"
 )
 
 // The Client interface contains methods that perform specific operations to Azure Blob Storage.  This interface is

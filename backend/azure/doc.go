@@ -6,8 +6,8 @@ Package azure Microsoft Azure Blob Storage VFS Implementation
 Rely on github.com/c2fo/vfs/backend
 
 	import(
-	    "github.com/c2fo/vfs/v6/backend"
-	    "github.com/c2fo/vfs/v6/backend/azure"
+	    "github.com/c2fo/vfs/v7/backend"
+	    "github.com/c2fo/vfs/v7/backend/azure"
 	)
 
 	func UseFs() error {
@@ -17,7 +17,7 @@ Rely on github.com/c2fo/vfs/backend
 
 Or call directly:
 
-	import "github.com/c2fo/vfs/v6/backend/azure"
+	import "github.com/c2fo/vfs/v7/backend/azure"
 
 	func DoSomething() {
 	    fs := azure.NewFileSystem()

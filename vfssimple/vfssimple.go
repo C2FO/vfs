@@ -6,12 +6,12 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/c2fo/vfs/v6"
-	"github.com/c2fo/vfs/v6/backend"
-	_ "github.com/c2fo/vfs/v6/backend/all" // register all backends
-	"github.com/c2fo/vfs/v6/backend/azure"
-	"github.com/c2fo/vfs/v6/backend/mem"
-	"github.com/c2fo/vfs/v6/backend/os"
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend"
+	_ "github.com/c2fo/vfs/v7/backend/all" // register all backends
+	"github.com/c2fo/vfs/v7/backend/azure"
+	"github.com/c2fo/vfs/v7/backend/mem"
+	"github.com/c2fo/vfs/v7/backend/os"
 )
 
 var (

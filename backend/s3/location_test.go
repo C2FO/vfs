@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v6/backend/s3/mocks"
-	"github.com/c2fo/vfs/v6/options/delete"
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7/backend/s3/mocks"
+	"github.com/c2fo/vfs/v7/options/delete"
+	"github.com/c2fo/vfs/v7/utils"
 )
 
 type locationTestSuite struct {

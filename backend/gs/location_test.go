@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7/utils"
 
 	"github.com/fsouza/fake-gcs-server/fakestorage"
 )
