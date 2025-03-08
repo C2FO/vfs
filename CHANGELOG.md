@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v7.0.0-pre2] - 2025-03-08
+
+### Fixed
+- Fixed go.mod and paths to reflect v7
+
 ## [v7.0.0-pre1] - 2025-03-07
 
 ### Changed
