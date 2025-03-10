@@ -24,7 +24,7 @@ func (s *LocationTestSuite) TestString() {
 	l, _ := fs.NewLocation("test-container", "/")
 	s.Equal("az://test-container/", l.String())
 
-	err := l.ChangeDir("foo/bar/baz/")
+	l, err := l.NewLocation("foo/bar/baz/")
 	s.NoError(err, "Should change directories successfully")
 	s.Equal("az://test-container/foo/bar/baz/", l.String())
 
@@ -65,10 +65,13 @@ func (s *LocationTestSuite) TestListByRegex() {
 }
 
 func (s *LocationTestSuite) TestVolume() {
-	l := Location{container: "test-container"}
+	fs := NewFileSystem()
+	l, err := fs.NewLocation("test-container", "/")
+	s.NoError(err)
 	s.Equal("test-container", l.Volume())
 
-	l = Location{container: "another-container"}
+	l, err = fs.NewLocation("another-container", "/")
+	s.NoError(err)
 	s.Equal("another-container", l.Volume())
 }
 
@@ -237,7 +240,7 @@ func (s *LocationTestSuite) TestURI() {
 	l, _ := fs.NewLocation("test-container", "/")
 	s.Equal("az://test-container/", l.URI())
 
-	err := l.ChangeDir("foo/bar/baz/")
+	l, err := l.NewLocation("foo/bar/baz/")
 	s.NoError(err, "Should change directories successfully")
 	s.Equal("az://test-container/foo/bar/baz/", l.URI())
 
