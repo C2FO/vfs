@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/c2fo/vfs/v7/options"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 // FileSystem represents a file system with any authentication accounted for.
@@ -78,7 +79,19 @@ type Location interface {
 	// For example s3://mybucket/path/to/file.txt, volume would return "mybucket".
 	//
 	// Note: Some file systems may not have a volume and will return "".
+	//
+	// Deprecated: Use Authority instead.
+	//   authStr := loc.Authority().String()
 	Volume() string
+
+	// Authority returns the Authority for the Location.
+	//
+	// For example:
+	// 	 sftp//bob@acme.com/path/to/file.txt, Authority.String() would return "bob@acme.com".
+	//   s3://my-bucket/path/to/file.txt,     Authority.String() would return "my-bucket".
+	//   file://C/path/to/file.txt,           Authority.String() would return "C".
+	//   mem://my-namespace/path/to/file.txt, Authority.String() would return "my-namespace".
+	Authority() authority.Authority
 
 	// Path returns absolute location path, ie /some/path/to/.  An absolute path must be resolved to its shortest path:
 	// see path.Clean
@@ -92,7 +105,7 @@ type Location interface {
 	// Given location:
 	//     loc := fs.NewLocation(:s3://mybucket/some/path/to/")
 	// calling:
-	//     newLoc := loc.NewLocation("../../")
+	//     newLoc, err := loc.NewLocation("../../")
 	// would return a new vfs.Location representing:
 	//     s3://mybucket/some/
 	//
@@ -109,6 +122,9 @@ type Location interface {
 	// file:///some/.
 	//
 	//   * ChangeDir accepts a relative location path.
+	//
+	// Deprecated: Use NewLocation instead:
+	//     loc, err := loc.NewLocation("../../")
 	ChangeDir(relLocPath string) error
 
 	// FileSystem returns the underlying vfs.FileSystem struct for Location.
