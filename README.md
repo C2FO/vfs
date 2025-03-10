@@ -83,6 +83,9 @@ The project now uses the `aws-sdk-go-v2` library instead of the deprecated, EOL 
 - The S3 backend's s3fs.Client() function now returns an `s3.Client` which is a subset of AWS's sdk v2 functionality. This change may require updates to your code if you were relying client functionality not directly required by the s3 vfs backend.
 - The `Option.Retry` field is now an `aws.Retryer` instead of a `request.Retry`. Ensure that your Option logic is compatible with the new type.
 
+##### Azure Backend
+- Scheme for Azure has been updated from `https` to `az`.  Update your code to use the new scheme.
+- Authority for Azure has been updated from `blob.core.windows.net` to `<blob-container-name>`, such that the full URI is `az://<blob-container-name>/path/to/file.txt` rather than `https://<storage-account-name>.core.windows.net/<blob-container-name>/path/to/file.txt`.
 #### Upgrading from v5 to v6
 With v6.0.0, sftp.Options struct changed to accept an array of Key Exchange algorithms rather than a string. To update, change the syntax of the auth commands.
 ```

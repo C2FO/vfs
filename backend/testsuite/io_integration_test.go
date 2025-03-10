@@ -190,7 +190,7 @@ func (s *ioTestSuite) SetupSuite() {
 				s.testLocations[l.FileSystem().Scheme()] = l.(*gs.Location)
 			case "mem":
 				s.testLocations[l.FileSystem().Scheme()] = l.(*mem.Location)
-			case "https":
+			case "az":
 				s.testLocations[l.FileSystem().Scheme()] = l.(*azure.Location)
 			case "ftp":
 				s.testLocations[l.FileSystem().Scheme()] = l.(*ftp.Location)
