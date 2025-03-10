@@ -21,9 +21,9 @@ import (
 
 type ClientIntegrationTestSuite struct {
 	suite.Suite
-	testContainerURL *container.Client
-	accountName      string
-	accountKey       string
+	containerClient *container.Client
+	accountName     string
+	accountKey      string
 }
 
 func (s *ClientIntegrationTestSuite) SetupSuite() {
@@ -36,25 +36,25 @@ func (s *ClientIntegrationTestSuite) SetupSuite() {
 
 	cli, err := container.NewClientWithSharedKeyCredential(fmt.Sprintf("https://%s.blob.core.windows.net", s.accountName), credential, nil)
 	s.NoError(err)
-	s.testContainerURL = cli
+	s.containerClient = cli
 
-	_, err = s.testContainerURL.Create(context.Background(), nil)
+	_, err = s.containerClient.Create(context.Background(), nil)
 	s.NoError(err)
 
 	// The create function claims to be synchronous but for some reason it does not exist for a little bit so
 	// we need to wait for it to be there.
-	_, err = s.testContainerURL.GetProperties(context.Background(), nil)
+	_, err = s.containerClient.GetProperties(context.Background(), nil)
 	for {
 		time.Sleep(2 * time.Second)
 		if err == nil || !bloberror.HasCode(err, bloberror.BlobNotFound) {
 			break
 		}
-		_, err = s.testContainerURL.GetProperties(context.Background(), nil)
+		_, err = s.containerClient.GetProperties(context.Background(), nil)
 	}
 }
 
 func (s *ClientIntegrationTestSuite) TearDownSuite() {
-	_, err := s.testContainerURL.Delete(context.Background(), nil)
+	_, err := s.containerClient.Delete(context.Background(), nil)
 	s.NoError(err)
 }
 
@@ -118,7 +118,7 @@ func (s *ClientIntegrationTestSuite) TestAllTheThings_FileWithPath() {
 	s.NoError(err, "The file should be successfully uploaded to azure")
 
 	// check to see if it exists
-	_, err = client.Properties(f.Location().(*Location).ContainerURL(), f.Path())
+	_, err = client.Properties(f.Location().(*Location).container, f.Path())
 	s.NoError(err, "If the file exists no error should be returned")
 
 	// download it
@@ -176,7 +176,7 @@ func (s *ClientIntegrationTestSuite) TestProperties() {
 
 	err = client.Upload(f, strings.NewReader("Hello world!"), "")
 	s.NoError(err, "The file should be successfully uploaded to azure so we shouldn't get an error")
-	props, err := client.Properties(f.Location().(*Location).ContainerURL(), f.Path())
+	props, err := client.Properties(f.Location().(*Location).container, f.Path())
 	s.NoError(err, "The file exists so we shouldn't get an error")
 	s.NotNil(props, "We should get a non-nil BlobProperties pointer back")
 	s.Greater(props.Size, uint64(0), "The size should be greater than zero")
@@ -241,12 +241,12 @@ func (s *ClientIntegrationTestSuite) TestTouch_FileAlreadyExists() {
 
 	err = client.Upload(f, strings.NewReader("One fish, two fish, red fish, blue fish."), "")
 	s.NoError(err)
-	originalProps, err := client.Properties(f.Location().(*Location).ContainerURL(), f.Path())
+	originalProps, err := client.Properties(f.Location().(*Location).container, f.Path())
 	s.NoError(err, "Should get properties back from azure with no error")
 
 	err = f.Touch()
 	s.NoError(err, "Should not receive an error when touching an existing file")
-	newProps, err := client.Properties(f.Location().(*Location).ContainerURL(), f.Path())
+	newProps, err := client.Properties(f.Location().(*Location).container, f.Path())
 	s.NoError(err)
 	s.NotNil(newProps, "New props should be non-nil")
 	s.True(newProps.LastModified.After(*originalProps.LastModified), "newProps.LastModified should be after originalProps.LastModified")

@@ -6,13 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [v7.0.0-pre2] - 2025-03-08
+## [v7.0.0-pre3] - 2025-03-09
+### Changed
+- Azure backend now uses the schema `az://` instead of `https://`. *Breaking Change*
+- Azure backend authority is now the blob container name, rather than host + container name. See [README.md](README.md#azure-backend). *Breaking Change*
 
+## [v7.0.0-pre2] - 2025-03-08
 ### Fixed
 - Fixed go.mod and paths to reflect v7
 
 ## [v7.0.0-pre1] - 2025-03-07
-
 ### Changed
 - S3 backend now returns an s3.Client instead of an s3iface.ClientAPI. *Breaking Change*
 - S3 backend s3.Option.Retry field is now an aws.Retryer instead of a (aws) request.Retry. *Breaking Change*

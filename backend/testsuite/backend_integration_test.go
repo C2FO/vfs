@@ -33,10 +33,6 @@ type vfsTestSuite struct {
 }
 
 func buildExpectedURI(fs vfs.FileSystem, volume, path string) string {
-	if fs.Name() == "azure" {
-		azFs := fs.(*azure.FileSystem)
-		return fmt.Sprintf("%s://%s/%s%s", fs.Scheme(), azFs.Host(), volume, path)
-	}
 	return fmt.Sprintf("%s://%s%s", fs.Scheme(), volume, path)
 }
 
@@ -70,7 +66,7 @@ func (s *vfsTestSuite) SetupSuite() {
 			s.testLocations[l.FileSystem().Scheme()] = l.(*gs.Location)
 		case "mem":
 			s.testLocations[l.FileSystem().Scheme()] = l.(*mem.Location)
-		case "https":
+		case "az":
 			s.testLocations[l.FileSystem().Scheme()] = l.(*azure.Location)
 		case "ftp":
 			s.testLocations[l.FileSystem().Scheme()] = l.(*ftp.Location)

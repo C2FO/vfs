@@ -9,7 +9,6 @@ import (
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/backend"
 	_ "github.com/c2fo/vfs/v7/backend/all" // register all backends
-	"github.com/c2fo/vfs/v7/backend/azure"
 	"github.com/c2fo/vfs/v7/backend/mem"
 	"github.com/c2fo/vfs/v7/backend/os"
 )
@@ -75,9 +74,6 @@ func parseURI(uri string) (scheme, authority, path string, err error) {
 	// validate authority
 	authority = u.Host
 	path = u.Path
-	if azure.IsValidURI(u) {
-		authority, path, err = azure.ParsePath(path)
-	}
 
 	if u.User.String() != "" {
 		authority = fmt.Sprintf("%s@%s", u.User, u.Host)

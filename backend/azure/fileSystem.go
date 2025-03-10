@@ -2,11 +2,7 @@ package azure
 
 import (
 	"errors"
-	"fmt"
-	"net/url"
 	"path"
-	"regexp"
-	"strings"
 
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/backend"
@@ -15,7 +11,7 @@ import (
 )
 
 // Scheme defines the scheme for the azure implementation
-const Scheme = "https"
+const Scheme = "az"
 
 // Name defines the name for the azure implementation
 const Name = "azure"
@@ -105,14 +101,9 @@ func (fs *FileSystem) Name() string {
 	return Name
 }
 
-// Scheme returns "https" as the initial part of the URI i.e. https://..
+// Scheme returns "az" as the initial part of the URI i.e. https://..
 func (fs *FileSystem) Scheme() string {
 	return Scheme
-}
-
-// Host returns the host portion of the URI.  For azure this consists of <account_name>.blob.core.windows.net.
-func (fs *FileSystem) Host() string {
-	return fmt.Sprintf("%s.blob.core.windows.net", fs.options.AccountName)
 }
 
 // Retry returns the default retry function.  This is overridable via the WithOptions function.
@@ -126,29 +117,4 @@ func (fs *FileSystem) Retry() vfs.Retry {
 func init() {
 	// registers a default FileSystem
 	backend.Register(Scheme, NewFileSystem())
-}
-
-// ParsePath is a utility function used by vfssimple to separate the host from the path.  The first parameter returned
-// is the host and the second parameter is the path.
-func ParsePath(p string) (host, pth string, err error) {
-	if p == "/" {
-		return "", "", errors.New("no container specified for Azure path")
-	}
-	isLocation := strings.HasSuffix(p, "/")
-	l := strings.Split(p, "/")
-	p = utils.EnsureLeadingSlash(path.Join(l[2:]...))
-	if isLocation {
-		p = utils.EnsureTrailingSlash(p)
-	}
-	return l[1], p, nil
-}
-
-// IsValidURI us a utility function used by vfssimple to determine if the given URI is a valid Azure URI
-func IsValidURI(u *url.URL) bool {
-	r := regexp.MustCompile(`.*\.blob\.core\.windows\.net`)
-
-	if u.Scheme == Scheme && r.MatchString(u.Host) {
-		return true
-	}
-	return false
 }
