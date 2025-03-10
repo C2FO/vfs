@@ -150,26 +150,34 @@ func (s *LocationTestSuite) TestNewLocation_NilReceiver() {
 }
 
 func (s *LocationTestSuite) TestChangeDir() {
-	l := Location{}
-	err := l.ChangeDir("test-container/")
+	l, err := NewFileSystem().NewLocation("test-container", "/")
 	s.NoError(err)
-	s.Equal("/test-container/", l.Path())
+	l = l.(*Location)
+	err = l.ChangeDir("some-dir/")
+	s.NoError(err)
+	s.Equal("/some-dir/", l.Path())
 
 	err = l.ChangeDir("path/../to/./new/dir/")
 	s.NoError(err)
-	s.Equal("/test-container/to/new/dir/", l.Path())
+	s.Equal("/some-dir/to/new/dir/", l.Path())
 
-	l = Location{}
-	err = l.ChangeDir("/test-container/")
+	l, err = NewFileSystem().NewLocation("test-container", "/")
+	s.NoError(err)
+	l = l.(*Location)
+	err = l.ChangeDir("/test-dir/")
 	s.EqualError(err, "relative location path is invalid - may not include leading slash but must include trailing slash",
 		"The path begins with a slash and therefore is not a relative path so this should return an error")
 
-	l = Location{}
-	err = l.ChangeDir("test-container")
+	l, err = NewFileSystem().NewLocation("test-container", "/")
+	s.NoError(err)
+	l = l.(*Location)
+	err = l.ChangeDir("test-dir")
 	s.EqualError(err, "relative location path is invalid - may not include leading slash but must include trailing slash",
 		"The path does not end with a slash and therefore is not a relative path so this should return an error")
 
-	l = Location{}
+	l, err = NewFileSystem().NewLocation("test-container", "/")
+	s.NoError(err)
+	l = l.(*Location)
 	err = l.ChangeDir("")
 	s.EqualError(err, "relative location path is invalid - may not include leading slash but must include trailing slash",
 		"An empty relative path does not end with a slash and therefore is not a valid relative path so this should return an error")

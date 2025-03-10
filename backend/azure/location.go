@@ -150,7 +150,7 @@ func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
 	return &Location{
 		fileSystem: l.fileSystem,
 		path:       path.Join(l.path, relLocPath),
-		authority:  l.authority,
+		authority:  l.Authority(),
 	}, nil
 }
 
@@ -169,7 +169,11 @@ func (l *Location) ChangeDir(relLocPath string) error {
 		return err
 	}
 
-	l.path = path.Join(l.path, relLocPath)
+	newLoc, err := l.NewLocation(relLocPath)
+	if err != nil {
+		return err
+	}
+	*l = *newLoc.(*Location)
 
 	return nil
 }
