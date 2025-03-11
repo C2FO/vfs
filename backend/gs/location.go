@@ -12,14 +12,15 @@ import (
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/options"
 	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 // Location implements vfs.Location for gs fs.
 type Location struct {
 	fileSystem   *FileSystem
 	prefix       string
-	bucket       string
 	bucketHandle BucketHandleWrapper
+	authority    authority.Authority
 }
 
 // String returns the full URI of the location.
@@ -98,8 +99,17 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 }
 
 // Volume returns the GCS bucket name.
+//
+// Deprecated: Use Authority instead.
+//
+//	authStr := loc.Authority().String()
 func (l *Location) Volume() string {
-	return l.bucket
+	return l.Authority().String()
+}
+
+// Authority returns the Authority for the Location.
+func (l *Location) Authority() authority.Authority {
+	return l.authority
 }
 
 // Path returns the path of the file at the current location, starting with a leading '/'
@@ -125,29 +135,46 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 		return nil, errors.New("non-nil gs.Location pointer is required")
 	}
 
-	// make a copy of the original location first, then ChangeDir, leaving the original location as-is
-	newLocation := &Location{}
-	*newLocation = *l
-	err := newLocation.ChangeDir(relativePath)
-	if err != nil {
+	if relativePath == "" {
+		return nil, errors.New("non-empty string relativePath is required")
+	}
+
+	if err := utils.ValidateRelativeLocationPath(relativePath); err != nil {
 		return nil, err
 	}
-	return newLocation, nil
+
+	return &Location{
+		fileSystem: l.fileSystem,
+		prefix:     path.Join(l.prefix, relativePath),
+		authority:  l.Authority(),
+	}, nil
 }
 
 // ChangeDir changes the current location's path to the new, relative path.
+//
+// Deprecated: Use NewLocation instead:
+//
+//	loc, err := loc.NewLocation("../../")
 func (l *Location) ChangeDir(relativePath string) error {
 	if l == nil {
 		return errors.New("non-nil gs.Location pointer is required")
 	}
+
 	if relativePath == "" {
 		return errors.New("non-empty string relativePath is required")
 	}
+
 	err := utils.ValidateRelativeLocationPath(relativePath)
 	if err != nil {
 		return err
 	}
-	l.prefix = utils.EnsureTrailingSlash(utils.EnsureLeadingSlash(path.Join(l.prefix, relativePath)))
+
+	newLoc, err := l.NewLocation(relativePath)
+	if err != nil {
+		return err
+	}
+	*l = *newLoc.(*Location)
+
 	return nil
 }
 
@@ -161,20 +188,21 @@ func (l *Location) NewFile(filePath string, opts ...options.NewFileOption) (vfs.
 	if l == nil {
 		return nil, errors.New("non-nil gs.Location pointer is required")
 	}
+
 	if filePath == "" {
 		return nil, errors.New("non-empty string filePath is required")
 	}
+
 	err := utils.ValidateRelativeFilePath(filePath)
 	if err != nil {
 		return nil, err
 	}
-	newFile := &File{
-		fileSystem: l.fileSystem,
-		bucket:     l.bucket,
-		key:        utils.EnsureLeadingSlash(path.Join(l.prefix, filePath)),
-		opts:       opts,
-	}
-	return newFile, nil
+
+	return &File{
+		location: l,
+		key:      utils.EnsureLeadingSlash(path.Join(l.prefix, filePath)),
+		opts:     opts,
+	}, nil
 }
 
 // DeleteFile deletes the file at the given path, relative to the current location.
@@ -202,7 +230,7 @@ func (l *Location) getBucketHandle() (BucketHandleWrapper, error) {
 	if err != nil {
 		return nil, err
 	}
-	handler := &RetryBucketHandler{Retry: l.fileSystem.Retry(), handler: client.Bucket(l.bucket)}
+	handler := &RetryBucketHandler{Retry: l.fileSystem.Retry(), handler: client.Bucket(l.Authority().String())}
 	l.bucketHandle = handler
 	return l.bucketHandle, nil
 }

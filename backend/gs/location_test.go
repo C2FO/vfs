@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 
 	"github.com/fsouza/fake-gcs-server/fakestorage"
 )
@@ -212,7 +213,9 @@ func (lt *locationTestSuite) TestChangeDir() {
 	err := nilLoc.ChangeDir("path/to/")
 	lt.EqualErrorf(err, "non-nil gs.Location pointer is required", "error expected for nil location")
 
-	loc := &Location{fileSystem: fs, prefix: "/", bucket: "bucket"}
+	auth, err := authority.NewAuthority("bucket")
+	lt.NoError(err)
+	loc := &Location{fileSystem: fs, prefix: "/", authority: auth}
 
 	err1 := loc.ChangeDir("../")
 	lt.NoError(err1, "no error expected")
@@ -269,8 +272,9 @@ func (lt *locationTestSuite) TestStringURI() {
 	server := fakestorage.NewServer(Objects{})
 	defer server.Stop()
 	fs := NewFileSystem().WithClient(server.Client())
-
-	loc := &Location{fileSystem: fs, prefix: "some/path/to/location", bucket: "mybucket"}
+	auth, err := authority.NewAuthority("mybucket")
+	lt.NoError(err)
+	loc := &Location{fileSystem: fs, prefix: "some/path/to/location", authority: auth}
 	lt.Equal("gs://mybucket/some/path/to/location/", loc.String(), "uri is returned")
 }
 

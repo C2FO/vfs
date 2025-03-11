@@ -287,7 +287,7 @@ func (ts *fileTestSuite) TestGetLocation() {
 	location := file.Location()
 	ts.Equal("gs", location.FileSystem().Scheme(), "Should initialize location with FS underlying file.")
 	ts.Equal("/path/", location.Path(), "Should initialize path with the location of the file.")
-	ts.Equal("bucket", location.Volume(), "Should initialize bucket with the bucket containing the file.")
+	ts.Equal("bucket", location.Authority().String(), "Should initialize bucket with the bucket containing the file.")
 }
 
 func (ts *fileTestSuite) TestExists() {
