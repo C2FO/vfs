@@ -11,14 +11,15 @@ import (
 	"github.com/c2fo/vfs/v7/backend/ftp/types"
 	"github.com/c2fo/vfs/v7/options"
 	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 // Scheme defines the filesystem type.
 const Scheme = "ftp"
 const name = "File Transfer Protocol"
 
-var dataConnGetterFunc func(context.Context, utils.Authority, *FileSystem, *File, types.OpenType) (types.DataConn, error)
-var defaultClientGetter func(context.Context, utils.Authority, Options) (client types.Client, err error)
+var dataConnGetterFunc func(context.Context, authority.Authority, *FileSystem, *File, types.OpenType) (types.DataConn, error)
+var defaultClientGetter func(context.Context, authority.Authority, Options) (client types.Client, err error)
 
 // FileSystem implements vfs.FileSystem for the FTP filesystem.
 type FileSystem struct {
@@ -35,7 +36,7 @@ func (fs *FileSystem) Retry() vfs.Retry {
 }
 
 // NewFile function returns the FTP implementation of vfs.File.
-func (fs *FileSystem) NewFile(authority, filePath string, opts ...options.NewFileOption) (vfs.File, error) {
+func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.NewFileOption) (vfs.File, error) {
 	if fs == nil {
 		return nil, errors.New("non-nil ftp.FileSystem pointer is required")
 	}
@@ -46,21 +47,18 @@ func (fs *FileSystem) NewFile(authority, filePath string, opts ...options.NewFil
 		return nil, err
 	}
 
-	auth, err := utils.NewAuthority(authority)
+	// get location path
+	absLocPath := utils.EnsureTrailingSlash(path.Dir(filePath))
+	loc, err := fs.NewLocation(authorityStr, absLocPath)
 	if err != nil {
 		return nil, err
 	}
-
-	return &File{
-		fileSystem: fs,
-		authority:  auth,
-		path:       path.Clean(filePath),
-		opts:       opts,
-	}, nil
+	filename := path.Base(filePath)
+	return loc.NewFile(filename, opts...)
 }
 
 // NewLocation function returns the FTP implementation of vfs.Location.
-func (fs *FileSystem) NewLocation(authority, locPath string) (vfs.Location, error) {
+func (fs *FileSystem) NewLocation(authorityStr, locPath string) (vfs.Location, error) {
 	if fs == nil {
 		return nil, errors.New("non-nil ftp.FileSystem pointer is required")
 	}
@@ -68,7 +66,7 @@ func (fs *FileSystem) NewLocation(authority, locPath string) (vfs.Location, erro
 		return nil, err
 	}
 
-	auth, err := utils.NewAuthority(authority)
+	auth, err := authority.NewAuthority(authorityStr)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +74,7 @@ func (fs *FileSystem) NewLocation(authority, locPath string) (vfs.Location, erro
 	return &Location{
 		fileSystem: fs,
 		path:       utils.EnsureTrailingSlash(path.Clean(locPath)),
-		Authority:  auth,
+		authority:  auth,
 	}, nil
 }
 
@@ -92,7 +90,7 @@ func (fs *FileSystem) Scheme() string {
 
 // DataConn returns the underlying ftp data connection, creating it, if necessary
 // See Overview for authentication resolution
-func (fs *FileSystem) DataConn(ctx context.Context, authority utils.Authority, t types.OpenType, f *File) (types.DataConn, error) {
+func (fs *FileSystem) DataConn(ctx context.Context, authority authority.Authority, t types.OpenType, f *File) (types.DataConn, error) {
 	if t != types.SingleOp && f == nil {
 		return nil, errors.New("can not create DataConn for read or write for a nil file")
 	}
@@ -101,7 +99,7 @@ func (fs *FileSystem) DataConn(ctx context.Context, authority utils.Authority, t
 
 // Client returns the underlying ftp client, creating it, if necessary
 // See Overview for authentication resolution
-func (fs *FileSystem) Client(ctx context.Context, authority utils.Authority) (types.Client, error) {
+func (fs *FileSystem) Client(ctx context.Context, authority authority.Authority) (types.Client, error) {
 	if fs.ftpclient == nil {
 		if fs.options == nil {
 			fs.options = Options{}

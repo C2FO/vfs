@@ -30,11 +30,10 @@ func init() {
 
 // File implements vfs.File interface for FTP fs.
 type File struct {
-	fileSystem *FileSystem
-	authority  utils.Authority
-	path       string
-	opts       []options.NewFileOption
-	offset     int64
+	location *Location
+	path     string
+	opts     []options.NewFileOption
+	offset   int64
 }
 
 // Info Functions
@@ -50,7 +49,7 @@ func (f *File) LastModified() (*time.Time, error) {
 }
 
 func (f *File) stat(ctx context.Context) (*_ftp.Entry, error) {
-	dc, err := f.fileSystem.DataConn(ctx, f.authority, types.SingleOp, f)
+	dc, err := f.Location().FileSystem().(*FileSystem).DataConn(ctx, f.Location().Authority(), types.SingleOp, f)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +122,7 @@ func (f *File) Touch() error {
 	}
 
 	// if a set time function is available use that to set last modified to now
-	dc, err := f.fileSystem.DataConn(context.TODO(), f.authority, types.SingleOp, f)
+	dc, err := f.Location().FileSystem().(*FileSystem).DataConn(context.TODO(), f.Location().Authority(), types.SingleOp, f)
 	if err != nil {
 		return err
 	}
@@ -161,11 +160,7 @@ func (f *File) Size() (uint64, error) {
 // Location returns a vfs.Location at the location of the file. IE: if file is at
 // ftp://someuser@host.com/here/is/the/file.txt the location points to ftp://someuser@host.com/here/is/the/
 func (f *File) Location() vfs.Location {
-	return &Location{
-		fileSystem: f.fileSystem,
-		path:       path.Dir(f.path),
-		Authority:  f.authority,
-	}
+	return f.location
 }
 
 // Move/Copy Operations
@@ -177,15 +172,15 @@ func (f *File) Location() vfs.Location {
 // we'll do an io.Copy to the destination file then delete source file.
 func (f *File) MoveToFile(t vfs.File) error {
 	// ftp rename if vfs is ftp and for the same user/host
-	if f.fileSystem.Scheme() == t.Location().FileSystem().Scheme() &&
-		f.authority.UserInfo().Username() == t.(*File).authority.UserInfo().Username() &&
-		f.authority.HostPortStr() == t.(*File).authority.HostPortStr() {
+	if f.Location().FileSystem().Scheme() == t.Location().FileSystem().Scheme() &&
+		f.Location().Authority().UserInfo().Username() == t.(*File).Location().Authority().UserInfo().Username() &&
+		f.Location().Authority().HostPortStr() == t.(*File).Location().Authority().HostPortStr() {
 		// ensure destination exists before moving
 		exists, err := t.Location().Exists()
 		if err != nil {
 			return err
 		}
-		dc, err := f.fileSystem.DataConn(context.TODO(), f.authority, types.SingleOp, f)
+		dc, err := f.Location().FileSystem().(*FileSystem).DataConn(context.TODO(), f.Location().Authority(), types.SingleOp, f)
 		if err != nil {
 			return err
 		}
@@ -242,9 +237,9 @@ func (f *File) CopyToFile(file vfs.File) (err error) { //nolint:gocyclo
 		return err
 	}
 
-	if f.fileSystem.Scheme() == file.Location().FileSystem().Scheme() &&
-		f.authority.UserInfo().Username() == file.(*File).authority.UserInfo().Username() &&
-		f.authority.HostPortStr() == file.(*File).authority.HostPortStr() {
+	if f.Location().FileSystem().Scheme() == file.Location().FileSystem().Scheme() &&
+		f.Location().Authority().UserInfo().Username() == file.(*File).Location().Authority().UserInfo().Username() &&
+		f.Location().Authority().HostPortStr() == file.(*File).Location().Authority().HostPortStr() {
 		// in the case that both files have the same authority we'll copy by writing a temporary
 		// file to mem and then writing it back to the ftp server
 		tempFile, err := f.createLocalTempFile()
@@ -302,7 +297,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 // Delete removes the remote file.  Error is returned, if any.
 func (f *File) Delete(_ ...options.DeleteOption) error {
-	dc, err := f.fileSystem.DataConn(context.TODO(), f.authority, types.SingleOp, f)
+	dc, err := f.Location().FileSystem().(*FileSystem).DataConn(context.TODO(), f.Location().Authority(), types.SingleOp, f)
 	if err != nil {
 		return err
 	}
@@ -311,12 +306,12 @@ func (f *File) Delete(_ ...options.DeleteOption) error {
 
 // Close calls the underlying ftp.Response Close, if opened, and clears the internal pointer
 func (f *File) Close() error {
-	if f.fileSystem.dataconn != nil {
-		err := f.fileSystem.dataconn.Close()
+	if f.Location().FileSystem().(*FileSystem).dataconn != nil {
+		err := f.Location().FileSystem().(*FileSystem).dataconn.Close()
 		if err != nil {
 			return utils.WrapCloseError(err)
 		}
-		f.fileSystem.resetConn = true
+		f.Location().FileSystem().(*FileSystem).resetConn = true
 	}
 	// no op for unopened file
 	f.offset = 0
@@ -325,7 +320,7 @@ func (f *File) Close() error {
 
 // Read calls the underlying ftp.File Read.
 func (f *File) Read(p []byte) (n int, err error) {
-	dc, err := f.fileSystem.DataConn(context.TODO(), f.authority, types.OpenRead, f)
+	dc, err := f.Location().FileSystem().(*FileSystem).DataConn(context.TODO(), f.Location().Authority(), types.OpenRead, f)
 	if err != nil {
 		return 0, utils.WrapReadError(err)
 	}
@@ -359,10 +354,10 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 
 	mode := types.OpenRead
 	// no file open yet - assume read (will get reset to write on a subsequent write)
-	if f.fileSystem.dataconn == nil {
+	if f.Location().FileSystem().(*FileSystem).dataconn == nil {
 		f.offset = offset
 	} else {
-		mode = f.fileSystem.dataconn.Mode()
+		mode = f.Location().FileSystem().(*FileSystem).dataconn.Mode()
 
 		switch whence {
 		case 0: // offset from the beginning of the file (position 0)
@@ -374,11 +369,11 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 			f.offset += offset
 
 			// close dataconn so that it reset the offset on next reopen (in StorFrom or RetrFrom)
-			err := f.fileSystem.dataconn.Close()
+			err := f.Location().FileSystem().(*FileSystem).dataconn.Close()
 			if err != nil {
 				return 0, utils.WrapSeekError(err)
 			}
-			f.fileSystem.resetConn = true
+			f.Location().FileSystem().(*FileSystem).resetConn = true
 		case 2: // offset from end of the file
 			sz, err := f.Size()
 			if err != nil {
@@ -395,16 +390,16 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 			}
 
 			// close dataconn so that it reset the offset on next reopen (in StorFrom or RetrFrom)
-			err = f.fileSystem.dataconn.Close()
+			err = f.Location().FileSystem().(*FileSystem).dataconn.Close()
 			if err != nil {
 				return 0, utils.WrapSeekError(err)
 			}
-			f.fileSystem.resetConn = true
+			f.Location().FileSystem().(*FileSystem).resetConn = true
 		}
 	}
 
 	// now that f.offset has been adjusted and mode was captured, reinitialize file
-	_, err = f.fileSystem.DataConn(context.TODO(), f.authority, mode, f)
+	_, err = f.Location().FileSystem().(*FileSystem).DataConn(context.TODO(), f.Location().Authority(), mode, f)
 	if err != nil {
 		return 0, utils.WrapSeekError(err)
 	}
@@ -415,7 +410,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 
 // Write calls the underlying ftp.File Write.
 func (f *File) Write(data []byte) (res int, err error) {
-	dc, err := f.fileSystem.DataConn(context.TODO(), f.authority, types.OpenWrite, f)
+	dc, err := f.Location().FileSystem().(*FileSystem).DataConn(context.TODO(), f.Location().Authority(), types.OpenWrite, f)
 	if err != nil {
 		return 0, utils.WrapWriteError(err)
 	}
@@ -435,9 +430,9 @@ func (f *File) Write(data []byte) (res int, err error) {
 func (f *File) URI() string {
 	loc := f.Location().(*Location)
 	return utils.EncodeURI(
-		f.fileSystem.Scheme(),
-		loc.Authority.UserInfo().Username(),
-		loc.Authority.HostPortStr(),
+		f.Location().FileSystem().(*FileSystem).Scheme(),
+		loc.Authority().UserInfo().Username(),
+		loc.Authority().HostPortStr(),
 		f.Path(),
 	)
 }

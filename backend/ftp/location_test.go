@@ -12,6 +12,7 @@ import (
 
 	"github.com/c2fo/vfs/v7/backend/ftp/mocks"
 	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 type locationTestSuite struct {
@@ -480,7 +481,7 @@ func (lt *locationTestSuite) TestExists() {
 }
 
 func (lt *locationTestSuite) TestChangeDir() {
-	loc := &Location{fileSystem: lt.ftpfs, path: "/", Authority: utils.Authority{}}
+	loc := &Location{fileSystem: lt.ftpfs, path: "/", authority: authority.Authority{}}
 
 	err1 := loc.ChangeDir("../")
 	lt.NoError(err1, "no error expected")
