@@ -16,6 +16,7 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 /**********************************
@@ -417,7 +418,7 @@ func (o *optionsSuite) TestGetAuthMethods() {
 
 type getClientTest struct {
 	options   Options
-	authority utils.Authority
+	authority authority.Authority
 	hasError  bool
 	err       error
 	errRegex  string
@@ -425,7 +426,7 @@ type getClientTest struct {
 }
 
 func (o *optionsSuite) TestGetClient() {
-	auth, err := utils.NewAuthority("someuser@badhost")
+	auth, err := authority.NewAuthority("someuser@badhost")
 	o.NoError(err)
 
 	tests := []getClientTest{

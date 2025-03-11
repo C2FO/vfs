@@ -11,6 +11,7 @@ import (
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/backend/sftp/mocks"
 	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 type fileSystemTestSuite struct {
@@ -112,7 +113,7 @@ func (ts *fileSystemTestSuite) TestWithOptions() {
 
 func (ts *fileSystemTestSuite) TestClient() {
 	// client already set
-	client, err := ts.sftpfs.Client(utils.Authority{})
+	client, err := ts.sftpfs.Client(authority.Authority{})
 	ts.NoError(err, "no error")
 	ts.Equal(ts.sftpfs.sftpclient, client, "client was already set")
 
@@ -120,7 +121,7 @@ func (ts *fileSystemTestSuite) TestClient() {
 	badOpt := "not an sftp.Options"
 	ts.sftpfs.sftpclient = nil
 	ts.sftpfs.options = badOpt
-	_, err = ts.sftpfs.Client(utils.Authority{})
+	_, err = ts.sftpfs.Client(authority.Authority{})
 	ts.EqualError(err, "unable to create client, vfs.Options must be an sftp.Options", "client was already set")
 }
 
@@ -129,7 +130,7 @@ func (ts *fileSystemTestSuite) TestClientWithAutoDisconnect() {
 	client := &mocks.Client{}
 	client.On("ReadDir", "/").Return([]os.FileInfo{}, nil).Times(3)
 	client.On("Close").Return(nil).Times(1)
-	defaultClientGetter = func(utils.Authority, Options) (Client, io.Closer, error) {
+	defaultClientGetter = func(authority.Authority, Options) (Client, io.Closer, error) {
 		getClientCount++
 		return client, nil, nil
 	}
