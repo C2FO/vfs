@@ -9,6 +9,7 @@ import (
 	"github.com/c2fo/vfs/v7/backend"
 	"github.com/c2fo/vfs/v7/options"
 	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 // Scheme defines the file system type.
@@ -28,41 +29,53 @@ func (fs *FileSystem) Retry() vfs.Retry {
 }
 
 // NewFile function returns the s3 implementation of vfs.File.
-func (fs *FileSystem) NewFile(volume, name string, opts ...options.NewFileOption) (vfs.File, error) {
+func (fs *FileSystem) NewFile(authorityStr, name string, opts ...options.NewFileOption) (vfs.File, error) {
 	if fs == nil {
 		return nil, errors.New("non-nil s3.FileSystem pointer is required")
 	}
-	if volume == "" || name == "" {
+
+	if authorityStr == "" || name == "" {
 		return nil, errors.New("non-empty strings for bucket and key are required")
 	}
+
 	if err := utils.ValidateAbsoluteFilePath(name); err != nil {
 		return nil, err
 	}
 
-	return &File{
-		fileSystem: fs,
-		bucket:     utils.RemoveTrailingSlash(volume),
-		key:        utils.RemoveLeadingSlash(path.Clean(name)),
-		opts:       opts,
-	}, nil
+	// get location path
+	absLocPath := utils.EnsureTrailingSlash(path.Dir(name))
+	loc, err := fs.NewLocation(authorityStr, absLocPath)
+	if err != nil {
+		return nil, err
+	}
+
+	filename := path.Base(name)
+	return loc.NewFile(filename, opts...)
 }
 
 // NewLocation function returns the s3 implementation of vfs.Location.
-func (fs *FileSystem) NewLocation(volume, name string) (vfs.Location, error) {
+func (fs *FileSystem) NewLocation(authorityStr, name string) (vfs.Location, error) {
 	if fs == nil {
 		return nil, errors.New("non-nil s3.FileSystem pointer is required")
 	}
-	if volume == "" || name == "" {
+
+	if authorityStr == "" || name == "" {
 		return nil, errors.New("non-empty strings for bucket and key are required")
 	}
+
 	if err := utils.ValidateAbsoluteLocationPath(name); err != nil {
+		return nil, err
+	}
+
+	auth, err := authority.NewAuthority(utils.RemoveTrailingSlash(authorityStr))
+	if err != nil {
 		return nil, err
 	}
 
 	return &Location{
 		fileSystem: fs,
 		prefix:     utils.EnsureTrailingSlash(path.Clean(name)),
-		bucket:     utils.RemoveTrailingSlash(volume),
+		authority:  auth,
 	}, nil
 }
 

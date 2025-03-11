@@ -14,6 +14,7 @@ import (
 	"github.com/c2fo/vfs/v7/backend/s3/mocks"
 	"github.com/c2fo/vfs/v7/options/delete"
 	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 type locationTestSuite struct {
@@ -237,7 +238,9 @@ func (lt *locationTestSuite) TestChangeDir() {
 	err := nilLoc.ChangeDir("path/to/")
 	lt.EqualErrorf(err, "non-nil s3.Location pointer is required", "error expected for nil location")
 
-	loc := &Location{fileSystem: lt.fs, prefix: "/", bucket: "bucket"}
+	auth, err := authority.NewAuthority("bucket")
+	lt.NoError(err)
+	loc := &Location{fileSystem: lt.fs, prefix: "/", authority: auth}
 
 	err1 := loc.ChangeDir("../")
 	lt.NoError(err1, "no error expected")
@@ -287,7 +290,9 @@ func (lt *locationTestSuite) TestNewLocation() {
 }
 
 func (lt *locationTestSuite) TestStringURI() {
-	loc := &Location{fileSystem: lt.fs, prefix: "some/path/to/location", bucket: "mybucket"}
+	auth, err := authority.NewAuthority("mybucket")
+	lt.NoError(err)
+	loc := &Location{fileSystem: lt.fs, prefix: "some/path/to/location", authority: auth}
 	lt.Equal("s3://mybucket/some/path/to/location/", loc.String(), "uri is returned")
 }
 
