@@ -152,6 +152,7 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 	if l == nil {
 		return nil, errors.New("non-nil sftp.Location pointer receiver is required")
 	}
+
 	if relativePath == "" {
 		return nil, errors.New("non-empty string relativePath is required")
 	}
@@ -177,6 +178,7 @@ func (l *Location) ChangeDir(relativePath string) error {
 	if l == nil {
 		return errors.New("non-nil sftp.Location pointer receiver is required")
 	}
+
 	if relativePath == "" {
 		return errors.New("non-empty string relativePath is required")
 	}
@@ -201,9 +203,11 @@ func (l *Location) NewFile(filePath string, opts ...options.NewFileOption) (vfs.
 	if l == nil {
 		return nil, errors.New("non-nil sftp.Location pointer receiver is required")
 	}
+
 	if filePath == "" {
 		return nil, errors.New("non-empty string filePath is required")
 	}
+
 	err := utils.ValidateRelativeFilePath(filePath)
 	if err != nil {
 		return nil, err

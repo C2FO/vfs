@@ -46,9 +46,11 @@ func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.New
 	if fs == nil {
 		return nil, errors.New("non-nil sftp.FileSystem pointer is required")
 	}
+
 	if filePath == "" {
 		return nil, errors.New("non-empty string for path is required")
 	}
+
 	if err := utils.ValidateAbsoluteFilePath(filePath); err != nil {
 		return nil, err
 	}
