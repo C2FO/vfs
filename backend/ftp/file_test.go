@@ -1179,12 +1179,12 @@ func (ts *fileTestSuite) TestNewFile() {
 	_, err = ftpFS.NewFile("user@host.com", "")
 	ts.Error(err, "non-empty strings for bucket and key are required")
 
-	authority := "user@host.com"
+	authorityStr := "user@host.com"
 	key := "/path/to/file"
-	ftpFile, err := ftpFS.NewFile(authority, key)
+	ftpFile, err := ftpFS.NewFile(authorityStr, key)
 	ts.NoError(err, "newFile should succeed")
 	ts.IsType(&File{}, ftpFile, "newFile returned a File struct")
-	ts.Equal(authority, ftpFile.Location().Volume())
+	ts.Equal(authorityStr, ftpFile.Location().Authority().String())
 	ts.Equal(key, ftpFile.Path())
 }
 
