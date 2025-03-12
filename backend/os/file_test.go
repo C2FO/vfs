@@ -16,6 +16,7 @@ import (
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/mocks"
 	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 /**********************************
@@ -302,7 +303,7 @@ func (s *osFileTest) TestMoveToLocation() {
 	s.Equal(location.Path(), movedFile.Location().Path(), "ensure file location changed")
 
 	// ensure the original file no longer exists
-	origFile, _ := s.fileSystem.NewFile(file.Location().Volume(), origFileName)
+	origFile, _ := s.fileSystem.NewFile(file.Location().Authority().String(), origFileName)
 	origFound, eerr := origFile.Exists()
 	s.NoError(eerr, "exists error not expected")
 	s.False(origFound)
@@ -311,6 +312,9 @@ func (s *osFileTest) TestMoveToLocation() {
 	mockLocation := new(mocks.Location)
 	mockfs := new(mocks.FileSystem)
 
+	auth, err := authority.NewAuthority("")
+	s.NoError(err)
+
 	// Expected behavior
 	mockfs.On("Scheme").Return("mock")
 	fsMockFile := new(mocks.File)
@@ -318,7 +322,7 @@ func (s *osFileTest) TestMoveToLocation() {
 	fsMockFile.On("Close").Return(nil)
 	mockfs.On("NewFile", mock.Anything, mock.Anything).Return(fsMockFile, nil)
 	mockLocation.On("FileSystem").Return(mockfs)
-	mockLocation.On("Volume").Return("")
+	mockLocation.On("Authority").Return(auth)
 	mockLocation.On("Path").Return("/some/path/to/")
 	mockLocation.On("Close").Return(nil)
 	mockFile := new(mocks.File)
@@ -391,7 +395,12 @@ func (s *osFileTest) TestOsCopy() {
 	file2, err := s.fileSystem.NewFile("", path.Join(dir, "move.txt"))
 	s.NoError(err)
 
-	s.NoError(osCopy(path.Join(file1.Location().Volume(), file1.Path()), path.Join(file2.Location().Volume(), file2.Path())), "test osCopy")
+	s.NoError(
+		osCopy(
+			path.Join(file1.Location().Authority().String(), file1.Path()),
+			path.Join(file2.Location().Authority().String(), file2.Path()),
+		),
+		"test osCopy")
 
 	b, err := io.ReadAll(file2)
 	s.NoError(err)
@@ -451,6 +460,9 @@ func (s *osFileTest) TestMoveToFile() {
 	mockLocation := new(mocks.Location)
 	mockfs := new(mocks.FileSystem)
 
+	auth, err := authority.NewAuthority("")
+	s.NoError(err)
+
 	// Expected behavior
 	mockfs.On("Scheme").Return("mock")
 	fsMockFile := new(mocks.File)
@@ -458,7 +470,7 @@ func (s *osFileTest) TestMoveToFile() {
 	fsMockFile.On("Close").Return(nil)
 	mockfs.On("NewFile", mock.Anything, mock.Anything).Return(fsMockFile, nil)
 	mockLocation.On("FileSystem").Return(mockfs)
-	mockLocation.On("Volume").Return("")
+	mockLocation.On("Authority").Return(auth)
 	mockLocation.On("Path").Return("/some/path/to/")
 	mockLocation.On("Close").Return(nil)
 	mockFile.On("Location").Return(mockLocation, nil)
@@ -698,16 +710,12 @@ func (s *osFileTest) TestLocationRightAfterChangeDir() {
 	file, err := s.tmploc.NewFile("chdTest.txt")
 	s.NoError(err)
 	chDir := "someDir/"
-
 	loc := file.Location()
 	s.NotContains(loc.Path(), "someDir/", "location should not contain 'someDir/'")
 
 	err = loc.ChangeDir(chDir)
 	s.NoError(err)
 	s.Contains(loc.Path(), "someDir/", "location now should contain 'someDir/'")
-
-	// file location shouldn't be affected by ChangeDir() on Location
-	s.NotContains(file.Location().Path(), "someDir/", "file location should NOT contain 'someDir/'")
 }
 
 func TestOSFile(t *testing.T) {

@@ -14,9 +14,9 @@ In this way, a caller of vfs backends can simply load the backend file system
 
     // import backend and each backend you intend to use
     import(
-        "github.com/c2fo/vfs/v6/backend"
-        "github.com/c2fo/vfs/v6/backend/os"
-        "github.com/c2fo/vfs/v6/backend/s3"
+        "github.com/c2fo/vfs/v7/backend"
+        "github.com/c2fo/vfs/v7/backend/os"
+        "github.com/c2fo/vfs/v7/backend/s3"
     )
 
     func main() {
@@ -52,8 +52,8 @@ To create your own backend, you must create a package that implements the interf
 
     import(
         ...
-        "github.com/c2fo/vfs/v6"
-        "github.com/c2fo/vfs/v6/backend"
+        "github.com/c2fo/vfs/v7"
+        "github.com/c2fo/vfs/v7/backend"
     )
 
     // IMPLEMENT vfs interfaces
@@ -71,7 +71,7 @@ Then do use it in some other package do
     package MyExoticFileSystem
 
     import(
-        "github.com/c2fo/vfs/v6/backend"
+        "github.com/c2fo/vfs/v7/backend"
         "github.com/acme/myexoticfilesystem"
     )
 

@@ -12,27 +12,27 @@ import (
 
 // FileSystem represents a file system with any authentication accounted for.
 type FileSystem interface {
-	// NewFile initializes a File on the specified volume at path 'absFilePath'.
+	// NewFile initializes a File on the specified URI authority at path 'absFilePath'.
 	//
-	//   * Accepts volume and an absolute file path.
+	//   * Accepts authority and an absolute file path.
 	//   * Upon success, a vfs.File, representing the file's new path (location path + file relative path), will be returned.
 	//   * On error, nil is returned for the file.
-	//   * Note that not all file systems will have a "volume" and will therefore be "":
-	//       file:///path/to/file has a volume of "" and name /path/to/file
+	//   * Note that not all file systems will have an "authority" and will therefore be "":
+	//       file:///path/to/file has an authority of "" and name /path/to/file
 	//     whereas
-	//       s3://mybucket/path/to/file has a volume of "mybucket and name /path/to/file
+	//       s3://mybucket/path/to/file has an authority of "mybucket and name /path/to/file
 	//     results in /tmp/dir1/newerdir/file.txt for the final vfs.File path.
 	//   * The file may or may not already exist.
-	NewFile(volume string, absFilePath string, opts ...options.NewFileOption) (File, error)
+	NewFile(authority string, absFilePath string, opts ...options.NewFileOption) (File, error)
 
-	// NewLocation initializes a Location on the specified volume with the given path.
+	// NewLocation initializes a Location on the specified URI authority with the given path.
 	//
-	//   * Accepts volume and an absolute location path.
+	//   * Accepts authority and an absolute location path.
 	//   * The file may or may not already exist. Note that on key-store file systems like S3 or GCS, paths never truly exist.
 	//   * On error, nil is returned for the location.
 	//
-	// See NewFile for note on volume.
-	NewLocation(volume string, absLocPath string) (Location, error)
+	// See NewFile for note on authority.
+	NewLocation(authority string, absLocPath string) (Location, error)
 
 	// Name returns the name of the FileSystem ie: Amazon S3, os, Google Cloud Storage, etc.
 	Name() string

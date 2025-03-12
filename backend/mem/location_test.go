@@ -118,14 +118,14 @@ func (s *memLocationTest) TestListByRegex() {
 	s.NoError(err, "unexpected error listing by regEx")
 
 	s.Equal(expected, actual)
-	err = newFile.Location().ChangeDir("../")
+	newLoc, err := newFile.Location().NewLocation("../")
 	s.NoError(err, "unexpected error changing directories")
 
 	regex2 := regexp.MustCompile("test.txt")
 
-	actual2, err := newFile.Location().ListByRegex(regex2)
+	actual2, err := newLoc.ListByRegex(regex2)
 	s.NoError(err, "unexpected error listing by regEx")
-	s.Equal(expected, actual2)
+	s.Equal([]string{}, actual2)
 }
 
 // TestExists ensures that a real location exists, and one that was simply created does not
@@ -236,7 +236,7 @@ func (s *memLocationTest) TestVolume() {
 	s.NoError(newFile.Touch(), "unexpected error touching file")
 	s.NoError(newFile.Close(), "unexpected error closing file")
 	// For Unix, this returns an empty string. For windows, it would be something like 'C:'
-	s.Equal("D:", newFile.Location().Volume())
+	s.Equal("D", newFile.Location().Volume())
 }
 
 // TestPath makes sure that locations return the correct paths, along with leading and trailing slashes

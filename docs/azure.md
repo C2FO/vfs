@@ -11,8 +11,8 @@ Rely on github.com/c2fo/vfs/backend
 
 ```go
     import(
-        "github.com/c2fo/vfs/v6/backend"
-        "github.com/c2fo/vfs/v6/backend/azure"
+        "github.com/c2fo/vfs/v7/backend"
+        "github.com/c2fo/vfs/v7/backend/azure"
     )
 
     func UseFs() error {
@@ -24,7 +24,7 @@ Rely on github.com/c2fo/vfs/backend
 Or call directly:
 
 ```go
-    import "github.com/c2fo/vfs/v6/backend/azure"
+    import "github.com/c2fo/vfs/v7/backend/azure"
 
     func DoSomething() {
         fs := azure.NewFileSystem()
@@ -417,14 +417,14 @@ Name returns "azure"
 #### func (*FileSystem) NewFile
 
 ```go
-func (fs *FileSystem) NewFile(volume, absFilePath string, opts ...options.NewFileOption) (vfs.File, error)
+func (fs *FileSystem) NewFile(authority, absFilePath string, opts ...options.NewFileOption) (vfs.File, error)
 ```
 NewFile returns the azure implementation of vfs.File
 
 #### func (*FileSystem) NewLocation
 
 ```go
-func (fs *FileSystem) NewLocation(volume, absLocPath string) (vfs.Location, error)
+func (fs *FileSystem) NewLocation(authority, absLocPath string) (vfs.Location, error)
 ```
 NewLocation returns the azure implementation of vfs.Location
 

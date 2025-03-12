@@ -56,7 +56,7 @@ func (ts *fileSystemTestSuite) TestNewFile_Error() {
 
 	filePath = "/some/file.txt"
 	file, err = ts.sftpfs.NewFile("", filePath)
-	ts.EqualError(err, "authority string may not be empty", "bad authority")
+	ts.EqualError(err, "non-empty string for authority and path are required", "bad authority")
 	ts.Nil(file, "NewFile(%s) shouldn't return a file", filePath)
 }
 
@@ -85,7 +85,7 @@ func (ts *fileSystemTestSuite) TestNewLocation_Error() {
 
 	locPath = "/path/"
 	file, err = ts.sftpfs.NewLocation("", locPath)
-	ts.EqualError(err, "authority string may not be empty", "NewLocation(%s)", locPath)
+	ts.EqualError(err, "non-empty string for authority is required", "NewLocation(%s)", locPath)
 	ts.Nil(file, "NewLocation(%s) shouldn't return a file", locPath)
 }
 

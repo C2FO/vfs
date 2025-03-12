@@ -21,12 +21,12 @@ the effect of
 
 ```go
       if config.DISK == "S3" {
-    	  // do some s3 file system operation
-      } else if config.DISK == "mock" {
-          // fake something
-      } else {
-          // do some native os.xxx operation
-      }
+// do some s3 file system operation
+} else if config.DISK == "mock" {
+// fake something
+} else {
+// do some native os.xxx operation
+}
 ```
 
 Not only was ugly but because the behaviors of each "file system" were
@@ -46,31 +46,36 @@ file system backends.
 * self-contained set of structs that could be passed around like a file/dir handle
 * the struct would represent an existing or nonexistent file/dir
 * provide common (and only common) functionality across all file system so that after initialization, we don't care
-      what the underlying file system is and can therefore write our code agnostically/portably
-* use [io.*](https://godoc.org/io) interfaces such as [io.Reader](https://godoc.org/io#Reader) and [io.Writer](https://godoc.org/io#Writer) without needing to call a separate function
+  what the underlying file system is and can therefore write our code agnostically/portably
+* use [io.*](https://godoc.org/io) interfaces such as [io.Reader](https://godoc.org/io#Reader)
+  and [io.Writer](https://godoc.org/io#Writer) without needing to call a separate function
 * extensibility to easily add other needed file systems like Microsoft Azure Cloud File Storage
 * prefer native atomic functions when possible (ie S3 to S3 moving would use the native move api call rather than
-      copy-delete)
-* a uniform way of addressing files regardless of file system.  This is why we use complete URI's in vfssimple
-* [fmt.Stringer](https://godoc.org/fmt#Stringer) interface so that the file struct passed to a log message (or other Stringer use) would show the URI
+  copy-delete)
+* a uniform way of addressing files regardless of file system. This is why we use complete URI's in vfssimple
+* [fmt.Stringer](https://godoc.org/fmt#Stringer) interface so that the file struct passed to a log message (or other
+  Stringer use) would show the URI
 * mockable file system
 * pluggability so that third-party implementations of our interfaces could be used
 
 ### Install
 
 Pre 1.17:
+
 ```
 go get -u github.com/c2fo/vfs/v6
 ```
 
 Post 1.17:
+
 ```
 go install github.com/c2fo/vfs/v6
 ```
 
 ### Supported Go Versions
 
-This project supports the latest and previous major Go versions. Please ensure you are using one of these versions to avoid compatibility issues.
+This project supports the latest and previous major Go versions. Please ensure you are using one of these versions to
+avoid compatibility issues.
 
 ### Upgrading
 
@@ -79,19 +84,34 @@ This project supports the latest and previous major Go versions. Please ensure y
 Please review these changes and update your code accordingly to ensure compatibility with v7.
 
 ##### S3 Backend
-The project now uses the `aws-sdk-go-v2` library instead of the deprecated, EOL `aws-sdk-go`.  This update necessitated a these to the S3 backend:
-- The S3 backend's s3fs.Client() function now returns an `s3.Client` which is a subset of AWS's sdk v2 functionality. This change may require updates to your code if you were relying client functionality not directly required by the s3 vfs backend.
-- The `Option.Retry` field is now an `aws.Retryer` instead of a `request.Retry`. Ensure that your Option logic is compatible with the new type.
+
+The project now uses the `aws-sdk-go-v2` library instead of the deprecated, EOL `aws-sdk-go`. This update necessitated a
+these to the S3 backend:
+
+- The S3 backend's s3fs.Client() function now returns an `s3.Client` which is a subset of AWS's sdk v2 functionality.
+  This change may require updates to your code if you were relying client functionality not directly required by the s3
+  vfs backend.
+- The `Option.Retry` field is now an `aws.Retryer` instead of a `request.Retry`. Ensure that your Option logic is
+  compatible with the new type.
 
 ##### Azure Backend
-- Scheme for Azure has been updated from `https` to `az`.  Update your code to use the new scheme.
-- Authority for Azure has been updated from `blob.core.windows.net` to `<blob-container-name>`, such that the full URI is `az://<blob-container-name>/path/to/file.txt` rather than `https://<storage-account-name>.core.windows.net/<blob-container-name>/path/to/file.txt`.
+
+- Scheme for Azure has been updated from `https` to `az`. Update your code to use the new scheme.
+- Authority for Azure has been updated from `blob.core.windows.net` to `<blob-container-name>`, such that the full URI
+  is `az://<blob-container-name>/path/to/file.txt` rather than
+  `https://<storage-account-name>.core.windows.net/<blob-container-name>/path/to/file.txt`.
+
 #### Upgrading from v5 to v6
-With v6.0.0, sftp.Options struct changed to accept an array of Key Exchange algorithms rather than a string. To update, change the syntax of the auth commands.
+
+With v6.0.0, sftp.Options struct changed to accept an array of Key Exchange algorithms rather than a string. To update,
+change the syntax of the auth commands.
+
 ```
   "keyExchanges":"diffie-hellman-group-a256"
 ```
+
 becomes
+
 ```
   "keyExchanges":["diffie-hellman-group-a256"]
 ```
@@ -109,81 +129,88 @@ referencing frequently, or initialize files directly
 
 ```go
     osFile, err := vfssimple.NewFile("file:///path/to/file.txt")
-    s3File, err := vfssimple.NewFile("s3://bucket/prefix/file.txt")
+s3File, err := vfssimple.NewFile("s3://bucket/prefix/file.txt")
 
-    osLocation, err := vfssimple.NewLocation("file:///tmp/")
-    s3Location, err := vfssimple.NewLocation("s3://bucket/")
+osLocation, err := vfssimple.NewLocation("file:///tmp/")
+s3Location, err := vfssimple.NewLocation("s3://bucket/")
 
-    osTmpFile, err := osLocation.NewFile("anotherFile.txt") // file at /tmp/anotherFile.txt
+osTmpFile, err := osLocation.NewFile("anotherFile.txt") // file at /tmp/anotherFile.txt
 ```
 
 You can perform a number of actions without any consideration for the system's api or implementation details.
 
 ```go
     osFileExists, err := osFile.Exists() // true, nil
-    s3FileExists, err := s3File.Exists() // false, nil
-    err = osFile.CopyToFile(s3File) // nil
-    s3FileExists, err = s3File.Exists() // true, nil
+s3FileExists, err := s3File.Exists() // false, nil
+err = osFile.CopyToFile(s3File) // nil
+s3FileExists, err = s3File.Exists() // true, nil
 
-    movedOsFile, err := osFile.MoveToLocation(osLocation)
-    osFileExists, err = osFile.Exists() // false, nil (move actions delete the original file)
-    movedOsFileExists, err := movedOsFile.Exists() // true, nil
+movedOsFile, err := osFile.MoveToLocation(osLocation)
+osFileExists, err = osFile.Exists() // false, nil (move actions delete the original file)
+movedOsFileExists, err := movedOsFile.Exists() // true, nil
 
-    s3FileUri := s3File.URI() // s3://bucket/prefix/file.txt
-    s3FileName := s3File.Name() // file.txt
-    s3FilePath := s3File.Path() // /prefix/file.txt
+s3FileUri := s3File.URI() // s3://bucket/prefix/file.txt
+s3FileName := s3File.Name() // file.txt
+s3FilePath := s3File.Path() // /prefix/file.txt
 ```
 
 File's [io.*](https://godoc.org/io) interfaces may be used directly:
 
 ```go
     reader := strings.NewReader("Clear is better than clever")
-    gsFile, err := vfssimple.NewFile("gs://somebucket/path/to/file.txt")
+gsFile, err := vfssimple.NewFile("gs://somebucket/path/to/file.txt")
 
-    byteCount, err := io.Copy(gsFile, reader)
-    err := gsFile.Close()
+byteCount, err := io.Copy(gsFile, reader)
+err := gsFile.Close()
 ```
 
-Note: [io.Copy()](https://godoc.org/io#Copy) doesn't strictly define what happens if a reader is empty.  This is complicated because io.Copy
+Note: [io.Copy()](https://godoc.org/io#Copy) doesn't strictly define what happens if a reader is empty. This is
+complicated because io.Copy
 will first delegate actual copying in the following:
-  1. if the io.Reader also implements io.WriterTo, WriteTo() will do the copy
-  2. if the io.Writer also implements io.ReaderFrom, ReadFrom() will do the copy
-  3. finally, if neither 1 or 2, io.Copy will do its own buffered copy
+
+1. if the io.Reader also implements io.WriterTo, WriteTo() will do the copy
+2. if the io.Writer also implements io.ReaderFrom, ReadFrom() will do the copy
+3. finally, if neither 1 or 2, io.Copy will do its own buffered copy
 
 In case 3, and most implementations of cases 1 and 2, if reader is empty, Write() never gets called. What that means for
-vfs is there is no way for us to ensure that an empty file does or doesn't get written on an io.Copy().  For instance
+vfs is there is no way for us to ensure that an empty file does or doesn't get written on an io.Copy(). For instance
 OS always creates a file, regardless of calling Write() whereas S3 must Write() and Close().
 
 As such, vfs cannot guarantee copy behavior except in our own CopyToFile, MoveToFile, CopyToLocation, and MoveToLocation
-functions.  If you need to ensure a file gets copied/moved with io.Copy(), you must do so yourself OR use vfs's [utils.TouchCopy](docs/utils.md)
+functions. If you need to ensure a file gets copied/moved with io.Copy(), you must do so yourself OR use
+vfs's [utils.TouchCopy](docs/utils.md)
 
 ### Third-party Backends
 
-  * none so far
+* none so far
 
 Feel free to send a pull request if you want to add your backend to the list.
 
 ### See also:
+
 * [vfscp](docs/vfscp.md)
 * [vfssimple](docs/vfssimple.md)
 * [backend](docs/backend.md)
-  * [os backend](docs/os.md)
-  * [gs backend](docs/gs.md)
-  * [s3 backend](docs/s3.md)
-  * [in-memory backend](docs/mem.md)
-  * [sftp backend](docs/sftp.md)
-  * [ftp backend](docs/ftp.md)
-  * [azure backend](docs/azure.md)
+    * [os backend](docs/os.md)
+    * [gs backend](docs/gs.md)
+    * [s3 backend](docs/s3.md)
+    * [in-memory backend](docs/mem.md)
+    * [sftp backend](docs/sftp.md)
+    * [ftp backend](docs/ftp.md)
+    * [azure backend](docs/azure.md)
 * [utils](docs/utils.md)
 
 ### Ideas
 
 Things to add:
+
 * Provide better List() functionality with more abstracted filtering and paging (iterator?) Return File structs vs URIs?
 * Add better/any context.Context() support
 
 ### Supported Go Versions
-This project supports the latest and previous major Go versions. Please ensure you are using one of these versions to avoid compatibility issues.
+
+This project supports the latest and previous major Go versions. Please ensure you are using one of these versions to
+avoid compatibility issues.
 
 ### Contributing
 
@@ -201,26 +228,42 @@ for more information.
 ### Definitions
 
 ###### absolute path
+
 - A path is said to be absolute if it provides the entire context
-need to find a file, including the file system root. An absolute path must
-begin with a slash and may include . and .. directories.
+  need to find a file, including the file system root. An absolute path must
+  begin with a slash and may include . and .. directories.
 
 ###### file path
-- A file path ends with a filename and therefore may not end with a slash.  It may be relative or absolute.
+
+- A file path ends with a filename and therefore may not end with a slash. It may be relative or absolute.
 
 ###### location path
-- A location/directory path must end with a slash.  It may be relative or absolute.
+
+- A location/directory path must end with a slash. It may be relative or absolute.
 
 ###### relative path
+
 - A relative path is a way to locate a directory or file relative to
-another directory. A relative path may not begin with a slash but may include .
-and .. directories.
+  another directory. A relative path may not begin with a slash but may include .
+  and .. directories.
 
 ###### URI
+
 - A Uniform Resource Identifier (URI) is a string of characters that
-unambiguously identifies a particular resource. To guarantee uniformity, all
-URIs follow a predefined set of syntax rules, but also maintain extensibility
-through a separately defined hierarchical naming scheme (e.g. http://).
+  unambiguously identifies a particular resource. To guarantee uniformity, all
+  URIs follow a predefined set of syntax rules, but also maintain extensibility
+  through a separately defined hierarchical naming scheme (e.g. http://).
+
+###### authority
+
+- authority section of a URI is used to specify the authentication information for the server or service
+  being accessed. It is separated from the rest of the URI by a double slash (//). The authority section is further
+  broken down into userinfo, host, and port.
+
+###### userinfo
+
+- The userinfo section may contain a username and password separated by a colon. The username and password are
+  separated by a colon and followed by an @ symbol. The password may be omitted.
 
 ## Interfaces
 
@@ -228,83 +271,83 @@ through a separately defined hierarchical naming scheme (e.g. http://).
 
 ```go
 type File interface {
-	io.Closer
-	io.Reader
-	io.Seeker
-	io.Writer
-	fmt.Stringer
+io.Closer
+io.Reader
+io.Seeker
+io.Writer
+fmt.Stringer
 
-	// Exists returns boolean if the file exists on the file system.  Returns an error, if any.
-	Exists() (bool, error)
+// Exists returns boolean if the file exists on the file system.  Returns an error, if any.
+Exists() (bool, error)
 
-	// Location returns the vfs.Location for the File.
-	Location() Location
+// Location returns the vfs.Location for the File.
+Location() Location
 
-	// CopyToLocation will copy the current file to the provided location.
-	//
-	//   * Upon success, a vfs.File, representing the file at the new location, will be returned.
-	//   * In the case of an error, nil is returned for the file.
-	//   * CopyToLocation should use native functions when possible within the same scheme.
-	//   * If the file already exists at the location, the contents will be overwritten with the current file's contents.
-	//   * CopyToLocation will Close both the source and target Files which therefore can't be appended to without first
-	//     calling Seek() to move the cursor to the end of the file.
-	CopyToLocation(location Location) (File, error)
+// CopyToLocation will copy the current file to the provided location.
+//
+//   * Upon success, a vfs.File, representing the file at the new location, will be returned.
+//   * In the case of an error, nil is returned for the file.
+//   * CopyToLocation should use native functions when possible within the same scheme.
+//   * If the file already exists at the location, the contents will be overwritten with the current file's contents.
+//   * CopyToLocation will Close both the source and target Files which therefore can't be appended to without first
+//     calling Seek() to move the cursor to the end of the file.
+CopyToLocation(location Location) (File, error)
 
-	// CopyToFile will copy the current file to the provided file instance.
-	//
-	//   * In the case of an error, nil is returned for the file.
-	//   * CopyToLocation should use native functions when possible within the same scheme.
-	//   * If the file already exists, the contents will be overwritten with the current file's contents.
-	//   * CopyToFile will Close both the source and target Files which therefore can't be appended to without first
-	//     calling Seek() to move the cursor to the end of the file.
-	CopyToFile(file File) error
+// CopyToFile will copy the current file to the provided file instance.
+//
+//   * In the case of an error, nil is returned for the file.
+//   * CopyToLocation should use native functions when possible within the same scheme.
+//   * If the file already exists, the contents will be overwritten with the current file's contents.
+//   * CopyToFile will Close both the source and target Files which therefore can't be appended to without first
+//     calling Seek() to move the cursor to the end of the file.
+CopyToFile(file File) error
 
-	// MoveToLocation will move the current file to the provided location.
-	//
-	//   * If the file already exists at the location, the contents will be overwritten with the current file's contents.
-	//   * If the location does not exist, an attempt will be made to create it.
-	//   * Upon success, a vfs.File, representing the file at the new location, will be returned.
-	//   * In the case of an error, nil is returned for the file.
-	//   * When moving within the same Scheme, native move/rename should be used where possible.
-	//   * If the file already exists, the contents will be overwritten with the current file's contents.
-	//   * MoveToLocation will Close both the source and target Files which therefore can't be appended to without first
-	//     calling Seek() to move the cursor to the end of the file.
-	MoveToLocation(location Location) (File, error)
+// MoveToLocation will move the current file to the provided location.
+//
+//   * If the file already exists at the location, the contents will be overwritten with the current file's contents.
+//   * If the location does not exist, an attempt will be made to create it.
+//   * Upon success, a vfs.File, representing the file at the new location, will be returned.
+//   * In the case of an error, nil is returned for the file.
+//   * When moving within the same Scheme, native move/rename should be used where possible.
+//   * If the file already exists, the contents will be overwritten with the current file's contents.
+//   * MoveToLocation will Close both the source and target Files which therefore can't be appended to without first
+//     calling Seek() to move the cursor to the end of the file.
+MoveToLocation(location Location) (File, error)
 
-	// MoveToFile will move the current file to the provided file instance.
-	//
-	//   * If the file already exists, the contents will be overwritten with the current file's contents.
-	//   * The current instance of the file will be removed.
-	//   * MoveToFile will Close both the source and target Files which therefore can't be appended to without first
-	//     calling Seek() to move the cursor to the end of the file.
-	MoveToFile(file File) error
+// MoveToFile will move the current file to the provided file instance.
+//
+//   * If the file already exists, the contents will be overwritten with the current file's contents.
+//   * The current instance of the file will be removed.
+//   * MoveToFile will Close both the source and target Files which therefore can't be appended to without first
+//     calling Seek() to move the cursor to the end of the file.
+MoveToFile(file File) error
 
-	// Delete unlinks the File on the file system.
-	Delete() error
+// Delete unlinks the File on the file system.
+Delete() error
 
-	// LastModified returns the timestamp the file was last modified (as *time.Time).
-	LastModified() (*time.Time, error)
+// LastModified returns the timestamp the file was last modified (as *time.Time).
+LastModified() (*time.Time, error)
 
-	// Size returns the size of the file in bytes.
-	Size() (uint64, error)
+// Size returns the size of the file in bytes.
+Size() (uint64, error)
 
-	// Path returns absolute path, including filename, ie /some/path/to/file.txt
-	//
-	// If the directory portion of a file is desired, call
-	//   someFile.Location().Path()
-	Path() string
+// Path returns absolute path, including filename, ie /some/path/to/file.txt
+//
+// If the directory portion of a file is desired, call
+//   someFile.Location().Path()
+Path() string
 
-	// Name returns the base name of the file path.
-	//
-	// For file:///some/path/to/file.txt, it would return file.txt
-	Name() string
+// Name returns the base name of the file path.
+//
+// For file:///some/path/to/file.txt, it would return file.txt
+Name() string
 
-	// Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
-    	// Returns error if unable to touch File.
-        Touch() error
+// Touch creates a zero-length file on the vfs.File if no File exists.  Update File's last modified timestamp.
+// Returns error if unable to touch File.
+Touch() error
 
-	// URI returns the fully qualified absolute URI for the File.  IE, s3://bucket/some/path/to/file.txt
-	URI() string
+// URI returns the fully qualified absolute URI for the File.  IE, s3://bucket/some/path/to/file.txt
+URI() string
 }
 ```
 
@@ -315,36 +358,36 @@ the file system.
 
 ```go
 type FileSystem interface {
-	// NewFile initializes a File on the specified volume at path 'absFilePath'.
-	//
-	//   * Accepts volume and an absolute file path.
-	//   * Upon success, a vfs.File, representing the file's new path (location path + file relative path), will be returned.
-	//   * On error, nil is returned for the file.
-	//   * Note that not all file systems will have a "volume" and will therefore be "":
-	//       file:///path/to/file has a volume of "" and name /path/to/file
-	//     whereas
-	//       s3://mybucket/path/to/file has a volume of "mybucket and name /path/to/file
-	//     results in /tmp/dir1/newerdir/file.txt for the final vfs.File path.
-	//   * The file may or may not already exist.
-	NewFile(volume string, absFilePath string) (File, error)
+// NewFile initializes a File on the specified URI authority at path 'absFilePath'.
+//
+//   * Accepts a URI authority and an absolute file path.
+//   * Upon success, a vfs.File, representing the file's new path (location path + file relative path), will be returned.
+//   * On error, nil is returned for the file.
+//   * Note that not all file systems will have an "authority" and will therefore be "":
+//       file:///path/to/file has an authority of "" and name /path/to/file
+//     whereas
+//       s3://mybucket/path/to/file has an authority of "mybucket and name /path/to/file
+//     results in /tmp/dir1/newerdir/file.txt for the final vfs.File path.
+//   * The file may or may not already exist.
+NewFile(authority string, absFilePath string) (File, error)
 
-	// NewLocation initializes a Location on the specified volume with the given path.
-	//
-	//   * Accepts volume and an absolute location path.
-	//   * The file may or may not already exist. Note that on key-store file systems like S3 or GCS, paths never truly exist.
-	//   * On error, nil is returned for the location.
-	//
-	// See NewFile for note on volume.
-	NewLocation(volume string, absLocPath string) (Location, error)
+// NewLocation initializes a Location on the specified URI authority with the given path.
+//
+//   * Accepts authority and an absolute location path.
+//   * The file may or may not already exist. Note that on key-store file systems like S3 or GCS, paths never truly exist.
+//   * On error, nil is returned for the location.
+//
+// See NewFile for note on URI authority.
+NewLocation(authority string, absLocPath string) (Location, error)
 
-	// Name returns the name of the FileSystem ie: Amazon S3, os, Google Cloud Storage, etc.
-	Name() string
+// Name returns the name of the FileSystem ie: Amazon S3, os, Google Cloud Storage, etc.
+Name() string
 
-	// Scheme returns the uri scheme used by the FileSystem: s3, file, gs, etc.
-	Scheme() string
+// Scheme returns the uri scheme used by the FileSystem: s3, file, gs, etc.
+Scheme() string
 
-	// Retry will return the retry function to be used by any file system.
-	Retry() Retry
+// Retry will return the retry function to be used by any file system.
+Retry() Retry
 }
 ```
 
@@ -354,95 +397,110 @@ FileSystem represents a file system with any authentication accounted for.
 
 ```go
 type Location interface {
-	// String returns the fully qualified absolute URI for the Location.  IE, file://bucket/some/path/
-	fmt.Stringer
+// String returns the fully qualified absolute URI for the Location.  IE, file://bucket/some/path/
+fmt.Stringer
 
-	// List returns a slice of strings representing the base names of the files found at the Location.
-	//
-	//   * All implementations are expected to return ([]string{}, nil) in the case of a non-existent directory/prefix/location.
-	//   * If the user cares about the distinction between an empty location and a non-existent one, Location.Exists() should
-	//     be checked first.
-	List() ([]string, error)
+// List returns a slice of strings representing the base names of the files found at the Location.
+//
+//   * All implementations are expected to return ([]string{}, nil) in the case of a non-existent directory/prefix/location.
+//   * If the user cares about the distinction between an empty location and a non-existent one, Location.Exists() should
+//     be checked first.
+List() ([]string, error)
 
-	// ListByPrefix returns a slice of strings representing the base names of the files found in Location whose filenames
-	// match the given prefix.
-	//
-	//   * All implementations are expected to return ([]string{}, nil) in the case of a non-existent directory/prefix/location.
-	//   * "relative" prefixes are allowed, ie, listByPrefix from "/some/path/" with prefix "to/somepattern" is the same as
-	//     location "/some/path/to/" with prefix of "somepattern"
-	//   * If the user cares about the distinction between an empty location and a non-existent one, Location.Exists() should
-	//     be checked first.
-	ListByPrefix(prefix string) ([]string, error)
+// ListByPrefix returns a slice of strings representing the base names of the files found in Location whose filenames
+// match the given prefix.
+//
+//   * All implementations are expected to return ([]string{}, nil) in the case of a non-existent directory/prefix/location.
+//   * "relative" prefixes are allowed, ie, listByPrefix from "/some/path/" with prefix "to/somepattern" is the same as
+//     location "/some/path/to/" with prefix of "somepattern"
+//   * If the user cares about the distinction between an empty location and a non-existent one, Location.Exists() should
+//     be checked first.
+ListByPrefix(prefix string) ([]string, error)
 
-	// ListByRegex returns a slice of strings representing the base names of the files found in Location that matched the
-	// given regular expression.
-	//
-	//   * All implementations are expected to return ([]string{}, nil) in the case of a non-existent directory/prefix/location.
-	//   * If the user cares about the distinction between an empty location and a non-existent one, Location.Exists() should
-	//     be checked first.
-	ListByRegex(regex *regexp.Regexp) ([]string, error)
+// ListByRegex returns a slice of strings representing the base names of the files found in Location that matched the
+// given regular expression.
+//
+//   * All implementations are expected to return ([]string{}, nil) in the case of a non-existent directory/prefix/location.
+//   * If the user cares about the distinction between an empty location and a non-existent one, Location.Exists() should
+//     be checked first.
+ListByRegex(regex *regexp.Regexp) ([]string, error)
 
-	// Volume returns the volume as string. In URI parlance, volume equates to authority.
-	// For example s3://mybucket/path/to/file.txt, volume would return "mybucket".
-	//
-	// Note: Some file systems may not have a volume and will return "".
-	Volume() string
+// Volume returns the volume as string. In URI parlance, volume equates to authority.
+// For example s3://mybucket/path/to/file.txt, volume would return "mybucket".
+//
+// Note: Some file systems may not have a volume and will return "".
+//
+// Deprecated: Use Authority instead.
+//   authStr := loc.Authority().String()
+Volume() string
 
-	// Path returns absolute location path, ie /some/path/to/.  An absolute path must be resolved to its shortest path:
-	// see path.Clean
-	Path() string
+// Authority returns the Authority for the Location.
+//
+// For example:
+// 	 sftp//bob@acme.com/path/to/file.txt, Authority.String() would return "bob@acme.com".
+//   s3://my-bucket/path/to/file.txt,     Authority.String() would return "my-bucket".
+//   file://C/path/to/file.txt,           Authority.String() would return "C".
+//   mem://my-namespace/path/to/file.txt, Authority.String() would return "my-namespace".
+Authority() authority.Authority
 
-	// Exists returns boolean if the location exists on the file system. Returns an error if any.
-	Exists() (bool, error)
+// Path returns absolute location path, ie /some/path/to/.  An absolute path must be resolved to its shortest path:
+// see path.Clean
+Path() string
 
-	// NewLocation is an initializer for a new Location relative to the existing one.
-	//
-	// Given location:
-	//     loc := fs.NewLocation(:s3://mybucket/some/path/to/")
-	// calling:
-	//     newLoc := loc.NewLocation("../../")
-	// would return a new vfs.Location representing:
-	//     s3://mybucket/some/
-	//
-	//   * Accepts a relative location path.
-	NewLocation(relLocPath string) (Location, error)
+// Exists returns boolean if the location exists on the file system. Returns an error if any.
+Exists() (bool, error)
 
-	// Given location:
-	// 	   loc := fs.NewLocation("file:///some/path/to/")
-	// calling:
-	//     loc.ChangeDir("../../")
-	// would update the current location instance to
-	// file:///some/.
-	//
-	//   * ChangeDir accepts a relative location path.
-	ChangeDir(relLocPath string) error
+// NewLocation is an initializer for a new Location relative to the existing one.
+//
+// Given location:
+//     loc := fs.NewLocation(:s3://mybucket/some/path/to/")
+// calling:
+//     newLoc := loc.NewLocation("../../")
+// would return a new vfs.Location representing:
+//     s3://mybucket/some/
+//
+//   * Accepts a relative location path.
+NewLocation(relLocPath string) (Location, error)
 
-	//FileSystem returns the underlying vfs.FileSystem struct for Location.
-	FileSystem() FileSystem
+// Given location:
+// 	   loc := fs.NewLocation("file:///some/path/to/")
+// calling:
+//     loc.ChangeDir("../../")
+// would update the current location instance to
+// file:///some/.
+//
+//   * ChangeDir accepts a relative location path.
+//
+// Deprecated: Use NewLocation instead:
+//     loc, err := loc.NewLocation("../../")
+ChangeDir(relLocPath string) error
 
-	// NewFile will instantiate a vfs.File instance at or relative to the current location's path.
-	//
-	//   * Accepts a relative file path.
-	//   * In the case of an error, nil is returned for the file.
-	//   * Resultant File path will be the shortest path name equivalent of combining the Location path and relative path, if any.
-	//       ie, /tmp/dir1/ as location and relFilePath "newdir/./../newerdir/file.txt"
-	//       results in /tmp/dir1/newerdir/file.txt for the final vfs.File path.
-	//   * Upon success, a vfs.File, representing the file's new path (location path + file relative path), will be returned.
-	//   * The file may or may not already exist.
-	NewFile(relFilePath string) (File, error)
+// FileSystem returns the underlying vfs.FileSystem struct for Location.
+FileSystem() FileSystem
 
-	// DeleteFile deletes the file of the given name at the location.
-	//
-	// This is meant to be a short cut for instantiating a new file and calling delete on that, with all the necessary
-	// error handling overhead.
-	//
-	// * Accepts relative file path.
-	DeleteFile(relFilePath string) error
+// NewFile will instantiate a vfs.File instance at or relative to the current location's path.
+//
+//   * Accepts a relative file path.
+//   * In the case of an error, nil is returned for the file.
+//   * Resultant File path will be the shortest path name equivalent of combining the Location path and relative path, if any.
+//       ie, /tmp/dir1/ as location and relFilePath "newdir/./../newerdir/file.txt"
+//       results in /tmp/dir1/newerdir/file.txt for the final vfs.File path.
+//   * Upon success, a vfs.File, representing the file's new path (location path + file relative path), will be returned.
+//   * The file may or may not already exist.
+NewFile(relFilePath string) (File, error)
 
-	// URI returns the fully qualified absolute URI for the Location.  IE, s3://bucket/some/path/
-	//
-	// URI's for locations must always end with a slash.
-	URI() string
+// DeleteFile deletes the file of the given name at the location.
+//
+// This is meant to be a short cut for instantiating a new file and calling delete on that, with all the necessary
+// error handling overhead.
+//
+// * Accepts relative file path.
+DeleteFile(relFilePath string) error
+
+// URI returns the fully qualified absolute URI for the Location.  IE, s3://bucket/some/path/
+//
+// URI's for locations must always end with a slash.
+URI() string
 }
 ```
 
@@ -461,7 +519,7 @@ Options are structs that contain various options specific to the file system
 #### type Retry
 
 ```go
-type Retry func(wrapped func() error) error
+type Retry func (wrapped func () error) error
 ```
 
 Retry is a function that can be used to wrap any operation into a definable
@@ -469,19 +527,22 @@ retry operation. The wrapped argument is called by the underlying VFS
 implementation.
 
 Ex:
+
 ```go
-    var retrier Retry = func(wrapped func() error) error {
-      var ret error
-      for i := 0; i < 5; i++ {
-         if err := wrapped(); err != nil { ret = err; continue }
-      }
-      return ret
-    }
+    var retrier Retry = func (wrapped func () error) error {
+var ret error
+for i := 0; i < 5; i++ {
+if err := wrapped(); err != nil { ret = err; continue }
+}
+return ret
+}
 ```
+
 #### func  DefaultRetryer
 
 ```go
 func DefaultRetryer() Retry
 ```
+
 DefaultRetryer returns a no-op retryer which simply calls the wrapped command
 without looping.

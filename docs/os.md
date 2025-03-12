@@ -6,12 +6,12 @@ Package os - built-in os lib VFS implementation.
 
 ### Usage
 
-Rely on github.com/c2fo/vfs/v6/backend
+Rely on github.com/c2fo/vfs/v7/backend
 
 ```go
     import(
-        "github.com/c2fo/vfs/v6/backend"
-        "github.com/c2fo/vfs/v6/backend/os"
+        "github.com/c2fo/vfs/v7/backend"
+        "github.com/c2fo/vfs/v7/backend/os"
     )
 
     func UseFs() error {
@@ -23,7 +23,7 @@ Rely on github.com/c2fo/vfs/v6/backend
 Or call directly:
 
 ```go
-    import _os "github.com/c2fo/vfs/v6/backend/os"
+    import _os "github.com/c2fo/vfs/v7/backend/os"
 
     func DoSomething() {
         fs := &_os.FileSystem{}
@@ -205,14 +205,14 @@ Name returns "os"
 #### func (*FileSystem) NewFile
 
 ```go
-func (fs *FileSystem) NewFile(volume string, name string, opts ...options.NewFileOption) (vfs.File, error)
+func (fs *FileSystem) NewFile(authority string, name string, opts ...options.NewFileOption) (vfs.File, error)
 ```
 NewFile function returns the os implementation of [vfs.File](../README.md#type-file).
 
 #### func (*FileSystem) NewLocation
 
 ```go
-func (fs *FileSystem) NewLocation(volume string, name string) (vfs.Location, error)
+func (fs *FileSystem) NewLocation(authority string, name string) (vfs.Location, error)
 ```
 NewLocation function returns the os implementation of [vfs.Location](../README.md#type-location).
 
@@ -336,5 +336,10 @@ URI returns the [Location](#type-location)'s URI as a string.
 ```go
 func (l *Location) Volume() string
 ```
-Volume returns the volume, if any, of the location. Given "C:\foo\bar" it returns "C:" on
+Volume returns the volume, if any, of the location. Given "C:/foo/bar" it returns "C" on
 Windows. On other platforms it returns "".
+
+```go
+func (l *Location) Authority() authority.Authority
+```
+Authority returns the authority of the location, in this case the volume.

@@ -6,12 +6,12 @@ Package mem - in-memory backend VFS implementation.
 
 ### Usage
 
-Rely on github.com/c2fo/vfs/v6/backend
+Rely on github.com/c2fo/vfs/v7/backend
 
 ```go
     import(
-        "github.com/c2fo/vfs/v6/backend"
-        "github.com/c2fo/vfs/v6/backend/mem"
+        "github.com/c2fo/vfs/v7/backend"
+        "github.com/c2fo/vfs/v7/backend/mem"
     )
     func UseFs() error {
         fs := backend.Backend(mem.Scheme)
@@ -22,7 +22,7 @@ Rely on github.com/c2fo/vfs/v6/backend
 Or call directly:
 
 ```go
-      import _mem "github.com/c2fo/vfs/v6/backend/mem"
+      import _mem "github.com/c2fo/vfs/v7/backend/mem"
 
       func DoSomething() {
     	fs := _mem.NewFileSystem()
@@ -219,7 +219,7 @@ Name returns the name of the underlying FileSystem
 #### func (*FileSystem) NewFile
 
 ```go
-func (fs *FileSystem) NewFile(volume string, absFilePath string, opts ...options.NewFileOption) (vfs.File, error)
+func (fs *FileSystem) NewFile(authority string, absFilePath string, opts ...options.NewFileOption) (vfs.File, error)
 ```
 NewFile function returns the in-memory implementation of vfs.File. Since this is
 inside FileSystem, we assume that the caller knows that the CWD is the root. If
@@ -233,7 +233,7 @@ context of deletion or copying FROM a non-existent file.
 #### func (*FileSystem) NewLocation
 
 ```go
-func (fs *FileSystem) NewLocation(volume string, absLocPath string) (vfs.Location, error)
+func (fs *FileSystem) NewLocation(authority string, absLocPath string) (vfs.Location, error)
 ```
 NewLocation function returns the in-memory implementation of vfs.Location. A
 location always exists. If a file is created on a location that has not yet been
@@ -362,3 +362,8 @@ URI returns the URI of the location if the location exists
 func (l *Location) Volume() string
 ```
 Volume returns the volume of the current FileSystem.
+
+```go
+func (l *Location) Authority() authority.Authority
+```
+Authority returns the authority of the location, in this case the namespace.

@@ -9,12 +9,12 @@ to take up a large number of a server's available connections, so better to use 
 
 ### Usage
 
-Rely on github.com/c2fo/vfs/v6/backend
+Rely on github.com/c2fo/vfs/v7/backend
 
 ```go
       import(
-    	  "github.com/c2fo/vfs/v6/backend"
-    	  "github.com/c2fo/vfs/v6/backend/sftp"
+    	  "github.com/c2fo/vfs/v7/backend"
+    	  "github.com/c2fo/vfs/v7/backend/sftp"
       )
 
       func UseFs() error {
@@ -26,7 +26,7 @@ Rely on github.com/c2fo/vfs/v6/backend
 Or call directly:
 
 ```go
-      import "github.com/c2fo/vfs/v6/backend/sftp"
+      import "github.com/c2fo/vfs/v7/backend/sftp"
 
       func DoSomething() {
     	  fs := sftp.NewFileSystem()
@@ -94,7 +94,7 @@ These methods are chainable:
 ### Authentication
 
 Authentication, by default, occurs automatically when [Client()](#func-filesystem-client) is called. Since
-user is part of the URI authority section (Volume), auth is handled slightly
+user is part of the URI authority section, auth is handled slightly
 differently than other vfs [backends](backend.md).
 
 A client is initialized lazily, meaning we only make a connection to the server
@@ -105,7 +105,7 @@ the connection of any other open file on the same fs.
 
 #### USERNAME
 
-User may only be set in the [URI authority](https://tools.ietf.org/html/rfc3986#section-3.2) section (Volume in vfs parlance).
+User may only be set in the [URI authority](https://tools.ietf.org/html/rfc3986#section-3.2) section.
 
      scheme             host
      __/             ___/____  port
@@ -114,7 +114,7 @@ User may only be set in the [URI authority](https://tools.ietf.org/html/rfc3986#
            \____________________/ \______________/
            \______/       \               \
                /     authority section    path
-         username       (Volume)
+         username
 
 sftp vfs backend accepts either a password or an ssh key, with or without a
 passphrase.
@@ -566,6 +566,11 @@ URI returns the Location's URI as a string.
 func (l *Location) Volume() string
 ```
 Volume returns the [Authority](utils.md#type-authority) the location is contained in.
+
+```go
+func (l *Location) Authority() authority.Authority
+```
+Authority returns the authority of the location.
 
 ### type Options
 

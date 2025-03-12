@@ -47,8 +47,8 @@ func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.New
 		return nil, errors.New("non-nil sftp.FileSystem pointer is required")
 	}
 
-	if filePath == "" {
-		return nil, errors.New("non-empty string for path is required")
+	if authorityStr == "" || filePath == "" {
+		return nil, errors.New("non-empty string for authority and path are required")
 	}
 
 	if err := utils.ValidateAbsoluteFilePath(filePath); err != nil {
@@ -71,6 +71,11 @@ func (fs *FileSystem) NewLocation(authorityStr, locPath string) (vfs.Location, e
 	if fs == nil {
 		return nil, errors.New("non-nil sftp.FileSystem pointer is required")
 	}
+
+	if authorityStr == "" {
+		return nil, errors.New("non-empty string for authority is required")
+	}
+
 	if err := utils.ValidateAbsoluteLocationPath(locPath); err != nil {
 		return nil, err
 	}

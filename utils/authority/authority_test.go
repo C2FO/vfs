@@ -26,18 +26,6 @@ type authorityTest struct {
 func (a *authoritySuite) TestAuthority() {
 	tests := []authorityTest{
 		{
-			authorityString: "",
-			host:            "",
-			port:            0,
-			user:            "",
-			pass:            "",
-			str:             "",
-			hostPortStr:     "",
-			hasError:        true,
-			errMessage:      "authority string may not be empty",
-			message:         "empty input",
-		},
-		{
 			authorityString: "some.host.com",
 			host:            "some.host.com",
 			port:            0,

@@ -2,6 +2,7 @@ package ftp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path"
 	"regexp"
@@ -180,6 +181,9 @@ func (l *Location) Exists() (bool, error) {
 // relativePath argument, returning the resulting location. The only possible errors come from the call to
 // ChangeDir, which, for the FTP implementation doesn't ever result in an error.
 func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
+	if l == nil {
+		return nil, errors.New("non-nil ftp.Location pointer is required")
+	}
 
 	if err := utils.ValidateRelativeLocationPath(relativePath); err != nil {
 		return nil, err
@@ -217,6 +221,9 @@ func (l *Location) ChangeDir(relativePath string) error {
 // NewFile uses the properties of the calling location to generate a vfs.File (backed by an ftp.File). The filePath
 // argument is expected to be a relative path to the location's current path.
 func (l *Location) NewFile(filePath string, opts ...options.NewFileOption) (vfs.File, error) {
+	if l == nil {
+		return nil, errors.New("non-nil ftp.Location pointer is required")
+	}
 
 	if err := utils.ValidateRelativeFilePath(filePath); err != nil {
 		return nil, err
