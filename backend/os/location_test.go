@@ -111,6 +111,7 @@ func (s *osLocationTest) TestNewFile() {
 	s.Equal("/foo/bam/this.txt", newfile.Path(), "relative dot path works")
 }
 
+//nolint:staticcheck // deprecated method test
 func (s *osLocationTest) TestChangeDir() {
 	otherFile, _ := s.tmploc.NewFile("foo/foo.txt")
 	fileLocation := otherFile.Location()
@@ -120,6 +121,7 @@ func (s *osLocationTest) TestChangeDir() {
 	s.Equal(fileLocation.Path(), utils.EnsureTrailingSlash(path.Join(cwd, "other")))
 }
 
+//nolint:staticcheck // deprecated method test
 func (s *osLocationTest) TestVolume() {
 	volume := s.testFile.Location().Volume()
 

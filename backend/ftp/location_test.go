@@ -349,6 +349,7 @@ func (lt *locationTestSuite) TestString() {
 	lt.Equal("ftp://user@host.com/blah/file.txt", file.String(), "file string with user, pass, host")
 }
 
+//nolint:staticcheck // deprecated method test
 func (lt *locationTestSuite) TestVolume() {
 	authorityStr := "user@host.com:21"
 	loc, err := lt.ftpfs.NewLocation(authorityStr, "/blah/")

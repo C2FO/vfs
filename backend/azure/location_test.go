@@ -64,6 +64,7 @@ func (s *LocationTestSuite) TestListByRegex() {
 	s.Equal("file2.txt", listing[1])
 }
 
+//nolint:staticcheck // deprecated method test
 func (s *LocationTestSuite) TestVolume() {
 	fs := NewFileSystem()
 	l, err := fs.NewLocation("test-container", "/")
@@ -149,6 +150,7 @@ func (s *LocationTestSuite) TestNewLocation_NilReceiver() {
 	s.Nil(nl, "An error was returned so we expect a nil location to be returned")
 }
 
+//nolint:staticcheck // deprecated method test
 func (s *LocationTestSuite) TestChangeDir() {
 	l, err := NewFileSystem().NewLocation("test-container", "/")
 	s.NoError(err)

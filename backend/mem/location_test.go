@@ -213,7 +213,7 @@ func (s *memLocationTest) TestNewFileSameName() {
 	s.Equal(expectedText, string(expectedSlice))
 }
 
-// TestChangeDir tests that we can change the directory on a location but that it doesn't change the file's location
+//nolint:staticcheck // deprecated method test
 func (s *memLocationTest) TestChangeDir() {
 	newFile, nerr := s.fileSystem.NewFile("", "/dir/to/change/change.txt")
 	s.NoError(nerr, "unexpected error creating a new file")
@@ -229,7 +229,7 @@ func (s *memLocationTest) TestChangeDir() {
 	s.NotEqual(newFile.Location().Path(), loc.Path())
 }
 
-// TestVolume makes sure that the mem-fs returns the empty string for its volume
+//nolint:staticcheck // deprecated method test
 func (s *memLocationTest) TestVolume() {
 	newFile, nerr := s.fileSystem.NewFile("D:", "/path/to/file/example.txt")
 	s.NoError(nerr, "unexpected error creating a file")

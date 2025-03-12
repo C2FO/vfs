@@ -706,6 +706,7 @@ func (s *osFileTest) TestStringer() {
 	s.Equal(fmt.Sprintf("file://%s", filepath.ToSlash(filepath.Join(osLocationPath(s.tmploc), "some", "file", "test.txt"))), file.String())
 }
 
+//nolint:staticcheck // deprecated method test
 func (s *osFileTest) TestLocationRightAfterChangeDir() {
 	file, err := s.tmploc.NewFile("chdTest.txt")
 	s.NoError(err)

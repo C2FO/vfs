@@ -112,6 +112,7 @@ func (lt *locationTestSuite) TestList() {
 	}
 }
 
+//nolint:staticcheck // deprecated method test
 func (lt *locationTestSuite) TestVolume() {
 	server := fakestorage.NewServer(Objects{})
 	defer server.Stop()

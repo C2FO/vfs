@@ -160,6 +160,7 @@ func (lt *locationTestSuite) TestListByRegex() {
 	lt.s3cliMock.AssertExpectations(lt.T())
 }
 
+//nolint:staticcheck // deprecated method test
 func (lt *locationTestSuite) TestVolume() {
 	bucket := "bucket"
 	loc, err := lt.fs.NewLocation(bucket, "/")
