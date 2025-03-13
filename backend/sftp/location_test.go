@@ -229,6 +229,21 @@ func (lt *locationTestSuite) TestNewFile() {
 	// test validation error
 	_, err = loc.NewFile("/absolute/path/to/file.txt")
 	lt.EqualError(err, utils.ErrBadRelFilePath, "errors returned by NewLocation")
+
+	// new tests for location update
+	lt.Run("new file with relative path updates location", func() {
+		newFile, err := loc.NewFile("../newfile.txt")
+		lt.NoError(err)
+		lt.Equal("/some/path/newfile.txt", newFile.Path(), "NewFile with relative path should update location correctly")
+		lt.Equal("/some/path/", newFile.Location().Path(), "NewFile with relative path should update location correctly")
+	})
+
+	lt.Run("new file with relative path to root", func() {
+		newFile, err := loc.NewFile("../../../../newrootfile.txt")
+		lt.NoError(err)
+		lt.Equal("/newrootfile.txt", newFile.Path(), "NewFile with relative path to root should update location correctly")
+		lt.Equal("/", newFile.Location().Path(), "NewFile with relative path to root should update location correctly")
+	})
 }
 
 func (lt *locationTestSuite) TestExists() {

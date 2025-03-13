@@ -109,6 +109,21 @@ func (s *osLocationTest) TestNewFile() {
 
 	newfile, _ := loc.NewFile("../../bam/this.txt")
 	s.Equal("/foo/bam/this.txt", newfile.Path(), "relative dot path works")
+
+	// new tests for location update
+	s.Run("new file with relative path updates location", func() {
+		newFile, err := loc.NewFile("../newfile.txt")
+		s.NoError(err)
+		s.Equal("/foo/bar/newfile.txt", newFile.Path(), "NewFile with relative path should update location correctly")
+		s.Equal("/foo/bar/", newFile.Location().Path(), "NewFile with relative path should update location correctly")
+	})
+
+	s.Run("new file with relative path to root", func() {
+		newFile, err := loc.NewFile("../../../../newrootfile.txt")
+		s.NoError(err)
+		s.Equal("/newrootfile.txt", newFile.Path(), "NewFile with relative path to root should update location correctly")
+		s.Equal("/", newFile.Location().Path(), "NewFile with relative path to root should update location correctly")
+	})
 }
 
 //nolint:staticcheck // deprecated method test

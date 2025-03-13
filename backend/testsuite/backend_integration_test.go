@@ -63,6 +63,31 @@ func (s *vfsTestSuite) SetupSuite() {
 		case "sftp":
 			s.testLocations[l.FileSystem().Scheme()] = l.(*sftp.Location)
 		case "gs":
+			l.FileSystem().(*gs.FileSystem).
+				WithOptions(
+					gs.Options{
+						Retry: func(wrapped func() error) error {
+							var retryErr error
+							for i := 0; i < 5; i++ {
+								if err := wrapped(); err != nil {
+									// skip retrying for exists check
+									if err.Error() == "storage: object doesn't exist" {
+										retryErr = err
+										break
+									}
+									fmt.Printf("Initial GCS request failed. Retry (%d)\n", i+1)
+									retryErr = err
+									time.Sleep(3 * time.Second)
+									continue
+								} else {
+									retryErr = nil
+									break
+								}
+							}
+							return retryErr
+						},
+					},
+				)
 			s.testLocations[l.FileSystem().Scheme()] = l.(*gs.Location)
 		case "mem":
 			s.testLocations[l.FileSystem().Scheme()] = l.(*mem.Location)
@@ -924,7 +949,7 @@ func (s *vfsTestSuite) gsList(baseLoc vfs.Location) {
 
 func sftpRemoveAll(location *sftp.Location) error {
 	// get sftp client from FileSystem
-	client, err := location.FileSystem().(*sftp.FileSystem).Client(location.Authority)
+	client, err := location.FileSystem().(*sftp.FileSystem).Client(location.Authority())
 	if err != nil {
 		return err
 	}

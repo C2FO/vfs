@@ -193,8 +193,13 @@ func (l *Location) NewFile(relFilePath string, opts ...options.NewFileOption) (v
 		return nil, err
 	}
 
+	newLocation, err := l.NewLocation(utils.EnsureTrailingSlash(path.Dir(relFilePath)))
+	if err != nil {
+		return nil, err
+	}
+
 	return &File{
-		location: l,
+		location: newLocation.(*Location),
 		name:     path.Join(l.Path(), relFilePath),
 		opts:     opts,
 	}, nil

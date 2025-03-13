@@ -222,6 +222,21 @@ func (s *LocationTestSuite) TestNewFile() {
 	s.NotNil(f, "The call to NewFile did not return an error so we expect a non-nil pointer to a file struct")
 	s.Equal("/folder/foo/bar.txt", f.Path())
 	s.Equal("az://test-container/folder/foo/bar.txt", f.URI())
+
+	// new tests for location update
+	s.Run("new file with relative path updates location", func() {
+		newFile, err := l.NewFile("../newfile.txt")
+		s.NoError(err)
+		s.Equal("/newfile.txt", newFile.Path(), "NewFile with relative path should update location correctly")
+		s.Equal("/", newFile.Location().Path(), "NewFile with relative path should update location correctly")
+	})
+
+	s.Run("new file with relative path to root", func() {
+		newFile, err := l.NewFile("../../../../newrootfile.txt")
+		s.NoError(err)
+		s.Equal("/newrootfile.txt", newFile.Path(), "NewFile with relative path to root should update location correctly")
+		s.Equal("/", newFile.Location().Path(), "NewFile with relative path to root should update location correctly")
+	})
 }
 
 func (s *LocationTestSuite) TestNewFile_NilReceiver() {

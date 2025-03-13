@@ -155,23 +155,28 @@ func (l *Location) ChangeDir(relativePath string) error {
 
 // NewFile uses the properties of the calling location to generate a vfs.File (backed by an s3.File). The filePath
 // argument is expected to be a relative path to the location's current path.
-func (l *Location) NewFile(filePath string, opts ...options.NewFileOption) (vfs.File, error) {
+func (l *Location) NewFile(relFilePath string, opts ...options.NewFileOption) (vfs.File, error) {
 	if l == nil {
 		return nil, errors.New("non-nil s3.Location pointer is required")
 	}
 
-	if filePath == "" {
+	if relFilePath == "" {
 		return nil, errors.New("non-empty string filePath is required")
 	}
 
-	err := utils.ValidateRelativeFilePath(filePath)
+	err := utils.ValidateRelativeFilePath(relFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	newLocation, err := l.NewLocation(utils.EnsureTrailingSlash(path.Dir(relFilePath)))
 	if err != nil {
 		return nil, err
 	}
 
 	newFile := &File{
-		location: l,
-		key:      utils.RemoveLeadingSlash(path.Join(l.prefix, filePath)),
+		location: newLocation.(*Location),
+		key:      utils.RemoveLeadingSlash(path.Join(l.prefix, relFilePath)),
 		opts:     opts,
 	}
 	return newFile, nil

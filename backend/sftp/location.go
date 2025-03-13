@@ -199,23 +199,28 @@ func (l *Location) ChangeDir(relativePath string) error {
 
 // NewFile uses the properties of the calling location to generate a vfs.File (backed by an sftp.File). The filePath
 // argument is expected to be a relative path to the location's current path.
-func (l *Location) NewFile(filePath string, opts ...options.NewFileOption) (vfs.File, error) {
+func (l *Location) NewFile(relFilePath string, opts ...options.NewFileOption) (vfs.File, error) {
 	if l == nil {
 		return nil, errors.New("non-nil sftp.Location pointer receiver is required")
 	}
 
-	if filePath == "" {
+	if relFilePath == "" {
 		return nil, errors.New("non-empty string filePath is required")
 	}
 
-	err := utils.ValidateRelativeFilePath(filePath)
+	err := utils.ValidateRelativeFilePath(relFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	newLocation, err := l.NewLocation(utils.EnsureTrailingSlash(path.Dir(relFilePath)))
 	if err != nil {
 		return nil, err
 	}
 
 	return &File{
-		location: l,
-		path:     utils.EnsureLeadingSlash(path.Join(l.path, filePath)),
+		location: newLocation.(*Location),
+		path:     utils.EnsureLeadingSlash(path.Join(l.path, relFilePath)),
 		opts:     opts,
 	}, nil
 
