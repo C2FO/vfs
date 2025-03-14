@@ -101,6 +101,14 @@ these to the S3 backend:
   is `az://<blob-container-name>/path/to/file.txt` rather than
   `https://<storage-account-name>.core.windows.net/<blob-container-name>/path/to/file.txt`.
 
+##### All Backends
+Some methods in the Location interface have been deprecated because they use terminology that doesn't apply to all backends.
+They will be removed in a future release. Update your code to use the new methods.
+- `Volume()` method which returns the authority as a string has beendeprecated in favor of the `Authority()` method which
+  returns an `authority.Authority` struct. Update your code to use the `Authority().String()` method instead of `Volume()`.
+- `ChangeDir()` method ash been deprecated in favor of the existing `NewLocation()` method. Update your code to use the
+  `NewLocation()` method instead of `ChangeDir()`.
+
 #### Upgrading from v5 to v6
 
 With v6.0.0, sftp.Options struct changed to accept an array of Key Exchange algorithms rather than a string. To update,
