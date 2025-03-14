@@ -22,10 +22,9 @@ type opener func(filePath string) (*os.File, error)
 
 // File implements vfs.File interface for os fs.
 type File struct {
-	file     *os.File
-	location *Location
-	name     string
-	// filesystem  *FileSystem
+	file        *os.File
+	location    *Location
+	name        string
 	opts        []options.NewFileOption
 	cursorPos   int64
 	tempFile    *os.File
