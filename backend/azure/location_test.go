@@ -24,7 +24,7 @@ func (s *LocationTestSuite) TestString() {
 	l, _ := fs.NewLocation("test-container", "/")
 	s.Equal("az://test-container/", l.String())
 
-	err := l.ChangeDir("foo/bar/baz/")
+	l, err := l.NewLocation("foo/bar/baz/")
 	s.NoError(err, "Should change directories successfully")
 	s.Equal("az://test-container/foo/bar/baz/", l.String())
 
@@ -64,11 +64,15 @@ func (s *LocationTestSuite) TestListByRegex() {
 	s.Equal("file2.txt", listing[1])
 }
 
+//nolint:staticcheck // deprecated method test
 func (s *LocationTestSuite) TestVolume() {
-	l := Location{container: "test-container"}
+	fs := NewFileSystem()
+	l, err := fs.NewLocation("test-container", "/")
+	s.NoError(err)
 	s.Equal("test-container", l.Volume())
 
-	l = Location{container: "another-container"}
+	l, err = fs.NewLocation("another-container", "/")
+	s.NoError(err)
 	s.Equal("another-container", l.Volume())
 }
 
@@ -146,27 +150,36 @@ func (s *LocationTestSuite) TestNewLocation_NilReceiver() {
 	s.Nil(nl, "An error was returned so we expect a nil location to be returned")
 }
 
+//nolint:staticcheck // deprecated method test
 func (s *LocationTestSuite) TestChangeDir() {
-	l := Location{}
-	err := l.ChangeDir("test-container/")
+	l, err := NewFileSystem().NewLocation("test-container", "/")
 	s.NoError(err)
-	s.Equal("/test-container/", l.Path())
+	l = l.(*Location)
+	err = l.ChangeDir("some-dir/")
+	s.NoError(err)
+	s.Equal("/some-dir/", l.Path())
 
 	err = l.ChangeDir("path/../to/./new/dir/")
 	s.NoError(err)
-	s.Equal("/test-container/to/new/dir/", l.Path())
+	s.Equal("/some-dir/to/new/dir/", l.Path())
 
-	l = Location{}
-	err = l.ChangeDir("/test-container/")
+	l, err = NewFileSystem().NewLocation("test-container", "/")
+	s.NoError(err)
+	l = l.(*Location)
+	err = l.ChangeDir("/test-dir/")
 	s.EqualError(err, "relative location path is invalid - may not include leading slash but must include trailing slash",
 		"The path begins with a slash and therefore is not a relative path so this should return an error")
 
-	l = Location{}
-	err = l.ChangeDir("test-container")
+	l, err = NewFileSystem().NewLocation("test-container", "/")
+	s.NoError(err)
+	l = l.(*Location)
+	err = l.ChangeDir("test-dir")
 	s.EqualError(err, "relative location path is invalid - may not include leading slash but must include trailing slash",
 		"The path does not end with a slash and therefore is not a relative path so this should return an error")
 
-	l = Location{}
+	l, err = NewFileSystem().NewLocation("test-container", "/")
+	s.NoError(err)
+	l = l.(*Location)
 	err = l.ChangeDir("")
 	s.EqualError(err, "relative location path is invalid - may not include leading slash but must include trailing slash",
 		"An empty relative path does not end with a slash and therefore is not a valid relative path so this should return an error")
@@ -209,6 +222,21 @@ func (s *LocationTestSuite) TestNewFile() {
 	s.NotNil(f, "The call to NewFile did not return an error so we expect a non-nil pointer to a file struct")
 	s.Equal("/folder/foo/bar.txt", f.Path())
 	s.Equal("az://test-container/folder/foo/bar.txt", f.URI())
+
+	// new tests for location update
+	s.Run("new file with relative path updates location", func() {
+		newFile, err := l.NewFile("../newfile.txt")
+		s.NoError(err)
+		s.Equal("/newfile.txt", newFile.Path(), "NewFile with relative path should update location correctly")
+		s.Equal("/", newFile.Location().Path(), "NewFile with relative path should update location correctly")
+	})
+
+	s.Run("new file with relative path to root", func() {
+		newFile, err := l.NewFile("../../../../newrootfile.txt")
+		s.NoError(err)
+		s.Equal("/newrootfile.txt", newFile.Path(), "NewFile with relative path to root should update location correctly")
+		s.Equal("/", newFile.Location().Path(), "NewFile with relative path to root should update location correctly")
+	})
 }
 
 func (s *LocationTestSuite) TestNewFile_NilReceiver() {
@@ -237,7 +265,7 @@ func (s *LocationTestSuite) TestURI() {
 	l, _ := fs.NewLocation("test-container", "/")
 	s.Equal("az://test-container/", l.URI())
 
-	err := l.ChangeDir("foo/bar/baz/")
+	l, err := l.NewLocation("foo/bar/baz/")
 	s.NoError(err, "Should change directories successfully")
 	s.Equal("az://test-container/foo/bar/baz/", l.URI())
 

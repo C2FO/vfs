@@ -88,12 +88,12 @@ func ValidatePrefix(prefix string) error {
 
 // GetFileURI returns a File URI
 func GetFileURI(f vfs.File) string {
-	return fmt.Sprintf("%s://%s%s", f.Location().FileSystem().Scheme(), f.Location().Volume(), f.Path())
+	return fmt.Sprintf("%s://%s%s", f.Location().FileSystem().Scheme(), f.Location().Authority().String(), f.Path())
 }
 
 // GetLocationURI returns a Location URI
 func GetLocationURI(l vfs.Location) string {
-	return fmt.Sprintf("%s://%s%s", l.FileSystem().Scheme(), l.Volume(), l.Path())
+	return fmt.Sprintf("%s://%s%s", l.FileSystem().Scheme(), l.Authority().String(), l.Path())
 }
 
 // EnsureTrailingSlash is like AddTrailingSlash but will only ever use / since it's use for web uri's, never a Windows OS path.
@@ -114,7 +114,7 @@ func EnsureLeadingSlash(dir string) string {
 
 // PathToURI takes a relative or absolute path and returns an OS URI.
 // We assume non-scheme path is an OS File or Location.
-// We assume volume(URI authority) is empty.
+// We assume URI authority is empty.
 // We assume relative paths are relative to the pwd (program's working directory)
 //
 // /absolute/path/to/file.txt : file:///absolute/path/to/file.txt

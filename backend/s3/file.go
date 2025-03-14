@@ -28,10 +28,9 @@ const defaultPartitionSize = int64(32 * 1024 * 1024)
 
 // File implements vfs.File interface for S3 fs.
 type File struct {
-	fileSystem *FileSystem
-	bucket     string
-	key        string
-	opts       []options.NewFileOption
+	location *Location
+	key      string
+	opts     []options.NewFileOption
 
 	// seek-related fields
 	cursorPos  int64
@@ -97,11 +96,7 @@ func (f *File) Size() (uint64, error) {
 // Location returns a vfs.Location at the location of the object. IE: if file is at
 // s3://bucket/here/is/the/file.txt the location points to s3://bucket/here/is/the/
 func (f *File) Location() vfs.Location {
-	return vfs.Location(&Location{
-		fileSystem: f.fileSystem,
-		prefix:     path.Dir(f.key),
-		bucket:     f.bucket,
-	})
+	return f.location
 }
 
 // Move/Copy Operations
@@ -134,7 +129,7 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 		input := f.getCopyObjectInput(tf)
 		// if input is not nil, use it to natively copy object
 		if input != nil {
-			client, err := f.fileSystem.Client()
+			client, err := f.Location().FileSystem().(*FileSystem).Client()
 			if err != nil {
 				return err
 			}
@@ -207,7 +202,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		return err
 	}
 
-	client, err := f.fileSystem.Client()
+	client, err := f.Location().FileSystem().(*FileSystem).Client()
 	if err != nil {
 		return err
 	}
@@ -221,9 +216,10 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		}
 	}
 
+	bucket := f.Location().Authority().String()
 	_, err = client.DeleteObject(context.Background(), &s3.DeleteObjectInput{
 		Key:    &f.key,
-		Bucket: &f.bucket,
+		Bucket: &bucket,
 	})
 	if err != nil {
 		return err
@@ -238,7 +234,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		for idx := range objectVersions.Versions {
 			if _, err = client.DeleteObject(context.Background(), &s3.DeleteObjectInput{
 				Key:       &f.key,
-				Bucket:    &f.bucket,
+				Bucket:    &bucket,
 				VersionId: objectVersions.Versions[idx].VersionId,
 			}); err != nil {
 				return err
@@ -332,7 +328,7 @@ func (f *File) tempToS3() error {
 	}
 
 	// write tempFileWriter to s3
-	client, err := f.fileSystem.Client()
+	client, err := f.Location().FileSystem().(*FileSystem).Client()
 	if err != nil {
 		return err
 	}
@@ -536,19 +532,21 @@ Private helper functions
 */
 func (f *File) getAllObjectVersions(client Client) (*s3.ListObjectVersionsOutput, error) {
 	prefix := utils.RemoveLeadingSlash(f.key)
+	bucket := f.Location().Authority().String()
 	objVers, err := client.ListObjectVersions(context.Background(), &s3.ListObjectVersionsInput{
-		Bucket: &f.bucket,
+		Bucket: &bucket,
 		Prefix: &prefix,
 	})
 	return objVers, err
 }
 
 func (f *File) getHeadObject() (*s3.HeadObjectOutput, error) {
+	bucket := f.Location().Authority().String()
 	headObjectInput := &s3.HeadObjectInput{
 		Key:    aws.String(f.key),
-		Bucket: aws.String(f.bucket),
+		Bucket: aws.String(bucket),
 	}
-	client, err := f.fileSystem.Client()
+	client, err := f.Location().FileSystem().(*FileSystem).Client()
 	if err != nil {
 		return nil, err
 	}
@@ -567,15 +565,15 @@ func (f *File) getCopyObjectInput(targetFile *File) *s3.CopyObjectInput {
 		// return nil if credentials aren't the same
 		return nil
 	}
-
+	bucket := f.Location().Authority().String()
 	// PathEscape ensures we url-encode as required by the API, including double-encoding literals
-	copySourceKey := url.PathEscape(path.Join(f.bucket, f.key))
+	copySourceKey := url.PathEscape(path.Join(bucket, f.key))
 
 	copyInput := &s3.CopyObjectInput{
 		ServerSideEncryption: types.ServerSideEncryptionAes256,
 		ACL:                  ACL,
 		Key:                  aws.String(targetFile.key),
-		Bucket:               aws.String(targetFile.bucket),
+		Bucket:               aws.String(targetFile.Location().Authority().String()),
 		CopySource:           aws.String(copySourceKey),
 	}
 
@@ -596,7 +594,8 @@ func (f *File) getCopyObjectInput(targetFile *File) *s3.CopyObjectInput {
 		copyInput.ContentType = aws.String(contentType)
 	}
 
-	if f.fileSystem.options != nil && f.fileSystem.options.(Options).DisableServerSideEncryption {
+	if f.Location().FileSystem().(*FileSystem).options != nil &&
+		f.Location().FileSystem().(*FileSystem).options.(Options).DisableServerSideEncryption {
 		copyInput.ServerSideEncryption = ""
 	}
 
@@ -628,14 +627,14 @@ func (f *File) isSameAuth(targetFile *File) (bool, types.ObjectCannedACL) {
 }
 
 func (f *File) copyS3ToLocalTempReader(tmpFile *os.File) error {
-	client, err := f.fileSystem.Client()
+	client, err := f.Location().FileSystem().(*FileSystem).Client()
 	if err != nil {
 		return err
 	}
 
 	// Download file
 	input := &s3.GetObjectInput{
-		Bucket: aws.String(f.bucket),
+		Bucket: aws.String(f.Location().Authority().String()),
 		Key:    aws.String(f.key),
 	}
 	opt := withDownloadPartitionSize(f.getDownloadPartitionSize())
@@ -647,21 +646,22 @@ func (f *File) copyS3ToLocalTempReader(tmpFile *os.File) error {
 
 // TODO: need to provide an implementation-agnostic container for providing config options such as SSE
 func uploadInput(f *File) *s3.PutObjectInput {
+	bucket := f.Location().Authority().String()
 	input := &s3.PutObjectInput{
-		Bucket:               &f.bucket,
+		Bucket:               &bucket,
 		Key:                  &f.key,
 		ServerSideEncryption: types.ServerSideEncryptionAes256,
 	}
 
-	if f.fileSystem.options == nil {
-		f.fileSystem.options = Options{}
+	if f.Location().FileSystem().(*FileSystem).options == nil {
+		f.Location().FileSystem().(*FileSystem).options = Options{}
 	}
 
-	if f.fileSystem.options.(Options).DisableServerSideEncryption {
+	if f.Location().FileSystem().(*FileSystem).options.(Options).DisableServerSideEncryption {
 		input.ServerSideEncryption = ""
 	}
 
-	if opts, ok := f.fileSystem.options.(Options); ok {
+	if opts, ok := f.Location().FileSystem().(*FileSystem).options.(Options); ok {
 		if opts.ACL != "" {
 			input.ACL = opts.ACL
 		}
@@ -731,15 +731,16 @@ func (f *File) getReader() (io.ReadCloser, error) {
 				// can't set range on empty file, so just return an empty ReadCloser
 				f.reader = io.NopCloser(strings.NewReader(""))
 			} else {
+				bucket := f.Location().Authority().String()
 				// Create the request to get the object
 				input := &s3.GetObjectInput{
-					Bucket: aws.String(f.bucket),
+					Bucket: aws.String(bucket),
 					Key:    aws.String(f.key),
 					Range:  aws.String(fmt.Sprintf("bytes=%d-", f.cursorPos)),
 				}
 
 				// Get the client
-				client, err := f.fileSystem.Client()
+				client, err := f.Location().FileSystem().(*FileSystem).Client()
 				if err != nil {
 					return nil, err
 				}
@@ -811,7 +812,7 @@ func (f *File) getS3Writer() (*io.PipeWriter, error) {
 	f.s3WriterCompleteCh = make(chan error, 1)
 	pr, pw := io.Pipe()
 
-	client, err := f.fileSystem.Client()
+	client, err := f.Location().FileSystem().(*FileSystem).Client()
 	if err != nil {
 		return nil, err
 	}
@@ -835,8 +836,8 @@ func (f *File) getS3Writer() (*io.PipeWriter, error) {
 
 func (f *File) getUploadPartitionSize() int64 {
 	partSize := defaultPartitionSize
-	if f.fileSystem.options != nil {
-		if opts, ok := f.fileSystem.options.(Options); ok {
+	if f.Location().FileSystem().(*FileSystem).options != nil {
+		if opts, ok := f.Location().FileSystem().(*FileSystem).options.(Options); ok {
 			if opts.UploadPartitionSize != 0 {
 				partSize = opts.UploadPartitionSize
 			}
@@ -847,8 +848,8 @@ func (f *File) getUploadPartitionSize() int64 {
 
 func (f *File) getDownloadPartitionSize() int64 {
 	partSize := defaultPartitionSize
-	if f.fileSystem.options != nil {
-		if opts, ok := f.fileSystem.options.(Options); ok {
+	if f.Location().FileSystem().(*FileSystem).options != nil {
+		if opts, ok := f.Location().FileSystem().(*FileSystem).options.(Options); ok {
 			if opts.DownloadPartitionSize != 0 {
 				partSize = opts.DownloadPartitionSize
 			}

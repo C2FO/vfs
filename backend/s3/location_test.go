@@ -14,6 +14,7 @@ import (
 	"github.com/c2fo/vfs/v7/backend/s3/mocks"
 	"github.com/c2fo/vfs/v7/options/delete"
 	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 type locationTestSuite struct {
@@ -159,6 +160,7 @@ func (lt *locationTestSuite) TestListByRegex() {
 	lt.s3cliMock.AssertExpectations(lt.T())
 }
 
+//nolint:staticcheck // deprecated method test
 func (lt *locationTestSuite) TestVolume() {
 	bucket := "bucket"
 	loc, err := lt.fs.NewLocation(bucket, "/")
@@ -203,6 +205,21 @@ func (lt *locationTestSuite) TestNewFile() {
 	// test validation error
 	_, err = loc.NewFile("/absolute/path/to/file.txt")
 	lt.EqualError(err, utils.ErrBadRelFilePath, "errors returned by NewLocation")
+
+	// new tests for location update
+	lt.Run("new file with relative path updates location", func() {
+		newFile, err := loc.NewFile("../newfile.txt")
+		lt.NoError(err)
+		lt.Equal("/some/path/newfile.txt", newFile.Path(), "NewFile with relative path should update location correctly")
+		lt.Equal("/some/path/", newFile.Location().Path(), "NewFile with relative path should update location correctly")
+	})
+
+	lt.Run("new file with relative path to root", func() {
+		newFile, err := loc.NewFile("../../../../newrootfile.txt")
+		lt.NoError(err)
+		lt.Equal("/newrootfile.txt", newFile.Path(), "NewFile with relative path to root should update location correctly")
+		lt.Equal("/", newFile.Location().Path(), "NewFile with relative path to root should update location correctly")
+	})
 }
 
 func (lt *locationTestSuite) TestExists_true() {
@@ -237,7 +254,9 @@ func (lt *locationTestSuite) TestChangeDir() {
 	err := nilLoc.ChangeDir("path/to/")
 	lt.EqualErrorf(err, "non-nil s3.Location pointer is required", "error expected for nil location")
 
-	loc := &Location{fileSystem: lt.fs, prefix: "/", bucket: "bucket"}
+	auth, err := authority.NewAuthority("bucket")
+	lt.NoError(err)
+	loc := &Location{fileSystem: lt.fs, prefix: "/", authority: auth}
 
 	err1 := loc.ChangeDir("../")
 	lt.NoError(err1, "no error expected")
@@ -287,7 +306,9 @@ func (lt *locationTestSuite) TestNewLocation() {
 }
 
 func (lt *locationTestSuite) TestStringURI() {
-	loc := &Location{fileSystem: lt.fs, prefix: "some/path/to/location", bucket: "mybucket"}
+	auth, err := authority.NewAuthority("mybucket")
+	lt.NoError(err)
+	loc := &Location{fileSystem: lt.fs, prefix: "some/path/to/location", authority: auth}
 	lt.Equal("s3://mybucket/some/path/to/location/", loc.String(), "uri is returned")
 }
 

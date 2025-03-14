@@ -1,7 +1,6 @@
-package utils
+package authority
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -42,11 +41,17 @@ type UserInfo struct {
 
 // Username returns the username of a URI UserInfo.  May be an empty string.
 func (u UserInfo) Username() string {
+	if u.url == nil {
+		return ""
+	}
 	return u.url.User.Username()
 }
 
 // Password returns the password of a URI UserInfo.  May be an empty string.
 func (u UserInfo) Password() string {
+	if u.url == nil {
+		return ""
+	}
 	p, _ := u.url.User.Password()
 	return p
 }
@@ -73,6 +78,9 @@ func (a Authority) UserInfo() UserInfo {
 
 // Host returns the host portion of an authority
 func (a Authority) Host() string {
+	if a.url == nil {
+		return ""
+	}
 	return a.url.Hostname()
 }
 
@@ -93,9 +101,6 @@ var schemeRE = regexp.MustCompile("^[A-Za-z][A-Za-z0-9+.-]*://")
 
 // NewAuthority initializes Authority struct by parsing authority string.
 func NewAuthority(authority string) (Authority, error) {
-	if authority == "" {
-		return Authority{}, errors.New("authority string may not be empty")
-	}
 
 	var err error
 	matched := schemeRE.MatchString(authority)
@@ -108,7 +113,11 @@ func NewAuthority(authority string) (Authority, error) {
 		return Authority{}, err
 	}
 
-	host, portStr := splitHostPort(u.Host)
+	host := ""
+	if u != nil {
+		host = u.Host
+	}
+	host, portStr := splitHostPort(host)
 	var port uint16
 	if portStr != "" {
 		val, err := strconv.ParseUint(portStr, 10, 16)

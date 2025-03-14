@@ -8,6 +8,7 @@ import (
 	"github.com/c2fo/vfs/v7/backend"
 	"github.com/c2fo/vfs/v7/options"
 	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 // Scheme defines the FileSystem type's underlying implementation.
@@ -87,11 +88,16 @@ func (fs *FileSystem) NewLocation(volume, absLocPath string) (vfs.Location, erro
 		return nil, err
 	}
 	str := utils.EnsureTrailingSlash(path.Clean(absLocPath))
+
+	auth, err := authority.NewAuthority(volume)
+	if err != nil {
+		return nil, err
+	}
 	return &Location{
 		fileSystem: fs,
 		name:       str,
 		exists:     false,
-		volume:     volume,
+		authority:  auth,
 	}, nil
 }
 

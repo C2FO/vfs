@@ -12,6 +12,7 @@ import (
 
 	"github.com/c2fo/vfs/v7/backend/ftp/mocks"
 	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 type locationTestSuite struct {
@@ -48,11 +49,11 @@ func (lt *locationTestSuite) TestList() {
 			Time:   time.Now().UTC(),
 		},
 	}
-	authority := "host.com"
+	authorityStr := "host.com"
 	locPath := "/dir1/"
 	lt.client.On("List", locPath).Return(entries, nil).Once()
 
-	loc, err := lt.ftpfs.NewLocation(authority, locPath)
+	loc, err := lt.ftpfs.NewLocation(authorityStr, locPath)
 	lt.NoError(err)
 	fileList, err := loc.List()
 	lt.NoError(err, "Shouldn't return an error when successfully returning list.")
@@ -289,10 +290,10 @@ func (lt *locationTestSuite) TestListByRegex() {
 			Time:   time.Now().UTC(),
 		},
 	}
-	authority := "host.com"
+	authorityStr := "host.com"
 	locPath := "/dir1/"
 	lt.client.On("List", locPath).Return(entries, nil).Once()
-	loc, err := lt.ftpfs.NewLocation(authority, locPath)
+	loc, err := lt.ftpfs.NewLocation(authorityStr, locPath)
 	lt.NoError(err)
 
 	fileTypeRegex := regexp.MustCompile("txt$")
@@ -315,47 +316,48 @@ func (lt *locationTestSuite) TestListByRegex() {
 }
 
 func (lt *locationTestSuite) TestURI() {
-	authority := "user@host.com:21"
-	loc, err := lt.ftpfs.NewLocation(authority, "/blah/")
+	authorityStr := "user@host.com:21"
+	loc, err := lt.ftpfs.NewLocation(authorityStr, "/blah/")
 	lt.NoError(err)
 	lt.Equal("ftp://user@host.com:21/blah/", loc.URI(), "location uri with user, host, port")
 
-	authority = "user:password@host.com"
-	file, err := lt.ftpfs.NewFile(authority, "/blah/file.txt")
+	authorityStr = "user:password@host.com"
+	file, err := lt.ftpfs.NewFile(authorityStr, "/blah/file.txt")
 	lt.NoError(err)
 	lt.Equal("ftp://user@host.com/blah/file.txt", file.URI(), "file uri with user, pass, host")
 
-	authority = `domain.com\user@host.com`
-	_, err = lt.ftpfs.NewFile(authority, "/blah/file.txt")
+	authorityStr = `domain.com\user@host.com`
+	_, err = lt.ftpfs.NewFile(authorityStr, "/blah/file.txt")
 	lt.Error(err)
 	lt.ErrorContains(err, "net/url: invalid userinfo", "file uri with bad user")
 
-	authority = `domain.com%5Cuser@host.com`
-	file, err = lt.ftpfs.NewFile(authority, "/blah/file.txt")
+	authorityStr = `domain.com%5Cuser@host.com`
+	file, err = lt.ftpfs.NewFile(authorityStr, "/blah/file.txt")
 	lt.NoError(err)
 	lt.Equal(`ftp://domain.com%5Cuser@host.com/blah/file.txt`, file.URI(), "file uri with percent-encoded character in user")
 }
 
 func (lt *locationTestSuite) TestString() {
-	authority := "user@host.com:21"
-	loc, err := lt.ftpfs.NewLocation(authority, "/blah/")
+	authorityStr := "user@host.com:21"
+	loc, err := lt.ftpfs.NewLocation(authorityStr, "/blah/")
 	lt.NoError(err)
 	lt.Equal("ftp://user@host.com:21/blah/", loc.String(), "location string with user, host, port")
 
-	authority = "user:password@host.com"
-	file, err := lt.ftpfs.NewFile(authority, "/blah/file.txt")
+	authorityStr = "user:password@host.com"
+	file, err := lt.ftpfs.NewFile(authorityStr, "/blah/file.txt")
 	lt.NoError(err)
 	lt.Equal("ftp://user@host.com/blah/file.txt", file.String(), "file string with user, pass, host")
 }
 
+//nolint:staticcheck // deprecated method test
 func (lt *locationTestSuite) TestVolume() {
-	authority := "user@host.com:21"
-	loc, err := lt.ftpfs.NewLocation(authority, "/blah/")
+	authorityStr := "user@host.com:21"
+	loc, err := lt.ftpfs.NewLocation(authorityStr, "/blah/")
 	lt.NoError(err)
 	lt.Equal("user@host.com:21", loc.Volume(), "Volume() should return the authority string on location.")
 
-	authority = "user:password@host.com"
-	loc, err = lt.ftpfs.NewLocation(authority, "/blah/")
+	authorityStr = "user:password@host.com"
+	loc, err = lt.ftpfs.NewLocation(authorityStr, "/blah/")
 	lt.NoError(err)
 	lt.Equal("user@host.com", loc.Volume(), "Volume() should return the authority string on location.")
 }
@@ -392,10 +394,25 @@ func (lt *locationTestSuite) TestNewFile() {
 	// test validation error
 	_, err = loc.NewFile("/absolute/path/to/file.txt")
 	lt.EqualError(err, utils.ErrBadRelFilePath, "errors returned by NewLocation")
+
+	// new tests for location update
+	lt.Run("new file with relative path updates location", func() {
+		newFile, err := loc.NewFile("../newfile.txt")
+		lt.NoError(err)
+		lt.Equal("/some/path/newfile.txt", newFile.Path(), "NewFile with relative path should update location correctly")
+		lt.Equal("/some/path/", newFile.Location().Path(), "NewFile with relative path should update location correctly")
+	})
+
+	lt.Run("new file with relative path to root", func() {
+		newFile, err := loc.NewFile("../../../../newrootfile.txt")
+		lt.NoError(err)
+		lt.Equal("/newrootfile.txt", newFile.Path(), "NewFile with relative path to root should update location correctly")
+		lt.Equal("/", newFile.Location().Path(), "NewFile with relative path to root should update location correctly")
+	})
 }
 
 func (lt *locationTestSuite) TestExists() {
-	authority := "host.com"
+	authorityStr := "host.com"
 
 	// location exists
 	locPath := "/"
@@ -414,7 +431,7 @@ func (lt *locationTestSuite) TestExists() {
 		},
 	}
 	lt.client.On("List", locPath).Return(entries, nil).Once()
-	loc, err := lt.ftpfs.NewLocation(authority, locPath)
+	loc, err := lt.ftpfs.NewLocation(authorityStr, locPath)
 	lt.NoError(err)
 	exists, err := loc.Exists()
 	lt.NoError(err, "No error expected from Exists")
@@ -431,7 +448,7 @@ func (lt *locationTestSuite) TestExists() {
 		},
 	}
 	lt.client.On("List", "/my/").Return(entries, nil).Once()
-	loc, err = lt.ftpfs.NewLocation(authority, locPath)
+	loc, err = lt.ftpfs.NewLocation(authorityStr, locPath)
 	lt.NoError(err)
 	exists, err = loc.Exists()
 	lt.NoError(err, "No error expected from Exists")
@@ -439,7 +456,7 @@ func (lt *locationTestSuite) TestExists() {
 
 	// some error calling list
 	lt.client.On("List", "/my/").Return(entries, errors.New("some error")).Once()
-	loc, err = lt.ftpfs.NewLocation(authority, locPath)
+	loc, err = lt.ftpfs.NewLocation(authorityStr, locPath)
 	lt.NoError(err)
 	exists, err = loc.Exists()
 	lt.Error(err, "from Exists")
@@ -461,7 +478,7 @@ func (lt *locationTestSuite) TestExists() {
 		},
 	}
 	lt.client.On("List", "/my/").Return(entries, nil).Once()
-	loc, err = lt.ftpfs.NewLocation(authority, locPath)
+	loc, err = lt.ftpfs.NewLocation(authorityStr, locPath)
 	lt.NoError(err)
 	exists, err = loc.Exists()
 	lt.NoError(err, "No error expected from Exists")
@@ -480,7 +497,7 @@ func (lt *locationTestSuite) TestExists() {
 }
 
 func (lt *locationTestSuite) TestChangeDir() {
-	loc := &Location{fileSystem: lt.ftpfs, path: "/", Authority: utils.Authority{}}
+	loc := &Location{fileSystem: lt.ftpfs, path: "/", authority: authority.Authority{}}
 
 	err1 := loc.ChangeDir("../")
 	lt.NoError(err1, "no error expected")

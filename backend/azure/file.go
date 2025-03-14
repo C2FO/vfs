@@ -22,12 +22,11 @@ import (
 
 // File implements the vfs.File interface for Azure Blob Storage
 type File struct {
-	fileSystem *FileSystem
-	container  string
-	name       string
-	opts       []options.NewFileOption
-	tempFile   *os.File
-	isDirty    bool
+	location *Location
+	name     string
+	opts     []options.NewFileOption
+	tempFile *os.File
+	isDirty  bool
 }
 
 // Close cleans up all the backing data structures used for reading/writing files.  This includes, closing the
@@ -40,7 +39,7 @@ func (f *File) Close() error {
 			f.isDirty = false
 		}()
 
-		client, err := f.fileSystem.Client()
+		client, err := f.Location().FileSystem().(*FileSystem).Client()
 		if err != nil {
 			return utils.WrapCloseError(err)
 		}
@@ -126,11 +125,11 @@ func (f *File) String() string {
 
 // Exists returns true/false if the file exists/does not exist on Azure
 func (f *File) Exists() (bool, error) {
-	client, err := f.fileSystem.Client()
+	client, err := f.Location().FileSystem().(*FileSystem).Client()
 	if err != nil {
 		return false, err
 	}
-	_, err = client.Properties(f.Location().(*Location).container, f.Path())
+	_, err = client.Properties(f.Location().Authority().String(), f.Path())
 	if err != nil {
 		if !bloberror.HasCode(err, bloberror.BlobNotFound) {
 			return false, err
@@ -142,11 +141,7 @@ func (f *File) Exists() (bool, error) {
 
 // Location returns a Location instance for the files current location
 func (f *File) Location() vfs.Location {
-	return vfs.Location(&Location{
-		fileSystem: f.fileSystem,
-		container:  f.container,
-		path:       path.Dir(f.name),
-	})
+	return f.location
 }
 
 // CopyToLocation creates a copy of *File, using the file's current name as the new file's
@@ -191,7 +186,7 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 	azFile, ok := file.(*File)
 	if ok {
 		if f.isSameAuth(azFile) {
-			client, err := f.fileSystem.Client()
+			client, err := f.Location().FileSystem().(*FileSystem).Client()
 			if err != nil {
 				return err
 			}
@@ -245,7 +240,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		return err
 	}
 
-	client, err := f.fileSystem.Client()
+	client, err := f.Location().FileSystem().(*FileSystem).Client()
 	if err != nil {
 		return err
 	}
@@ -272,11 +267,11 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 
 // LastModified returns the last modified time as a time.Time
 func (f *File) LastModified() (*time.Time, error) {
-	client, err := f.fileSystem.Client()
+	client, err := f.Location().FileSystem().(*FileSystem).Client()
 	if err != nil {
 		return nil, err
 	}
-	props, err := client.Properties(f.Location().(*Location).container, f.Path())
+	props, err := client.Properties(f.Location().Authority().String(), f.Path())
 	if err != nil {
 		return nil, err
 	}
@@ -285,11 +280,11 @@ func (f *File) LastModified() (*time.Time, error) {
 
 // Size returns the size of the blob
 func (f *File) Size() (uint64, error) {
-	client, err := f.fileSystem.Client()
+	client, err := f.Location().FileSystem().(*FileSystem).Client()
 	if err != nil {
 		return 0, err
 	}
-	props, err := client.Properties(f.Location().(*Location).container, f.Path())
+	props, err := client.Properties(f.Location().Authority().String(), f.Path())
 	if err != nil {
 		return 0, err
 	}
@@ -314,7 +309,7 @@ func (f *File) Touch() error {
 		return err
 	}
 
-	client, err := f.fileSystem.Client()
+	client, err := f.Location().FileSystem().(*FileSystem).Client()
 	if err != nil {
 		return err
 	}
@@ -332,7 +327,7 @@ func (f *File) Touch() error {
 		return client.Upload(f, strings.NewReader(""), contentType)
 	}
 
-	props, err := client.Properties(f.Location().(*Location).container, f.Path())
+	props, err := client.Properties(f.Location().Authority().String(), f.Path())
 	if err != nil {
 		return err
 	}
@@ -357,7 +352,7 @@ func (f *File) URI() string {
 
 func (f *File) checkTempFile() error {
 	if f.tempFile == nil {
-		client, err := f.fileSystem.Client()
+		client, err := f.Location().FileSystem().(*FileSystem).Client()
 		if err != nil {
 			return err
 		}
@@ -399,7 +394,7 @@ func (f *File) checkTempFile() error {
 }
 
 func (f *File) isSameAuth(target *File) bool {
-	sourceOptions := f.fileSystem.options
-	targetOptions := target.fileSystem.options
+	sourceOptions := f.Location().FileSystem().(*FileSystem).options
+	targetOptions := target.Location().FileSystem().(*FileSystem).options
 	return sourceOptions.AccountKey == targetOptions.AccountKey
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/backend/ftp/mocks"
 	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 type fileSystemTestSuite struct {
@@ -53,7 +54,7 @@ func (ts *fileSystemTestSuite) TestNewFile_Error() {
 
 	filePath = "/some/file.txt"
 	file, err = ts.ftpfs.NewFile("", filePath)
-	ts.EqualError(err, "authority string may not be empty", "bad authority")
+	ts.EqualError(err, "non-empty string for authority and path is required", "bad authority")
 	ts.Nil(file, "NewFile(%s) shouldn't return a file", filePath)
 }
 
@@ -77,12 +78,12 @@ func (ts *fileSystemTestSuite) TestNewLocation_Error() {
 
 	locPath := ""
 	file, err = ts.ftpfs.NewLocation("host.com", locPath)
-	ts.EqualError(err, "absolute location path is invalid - must include leading and trailing slashes", "NewLocation(%s)", locPath)
+	ts.EqualError(err, "non-empty string for authority and path is required", "NewLocation(%s)", locPath)
 	ts.Nil(file, "NewLocation(%s) shouldn't return a file", locPath)
 
 	locPath = "/path/"
 	file, err = ts.ftpfs.NewLocation("", locPath)
-	ts.EqualError(err, "authority string may not be empty", "NewLocation(%s)", locPath)
+	ts.EqualError(err, "non-empty string for authority and path is required", "NewLocation(%s)", locPath)
 	ts.Nil(file, "NewLocation(%s) shouldn't return a file", locPath)
 }
 
@@ -110,7 +111,7 @@ func (ts *fileSystemTestSuite) TestWithOptions() {
 
 func (ts *fileSystemTestSuite) TestClient() {
 	// client already set
-	client, err := ts.ftpfs.Client(context.Background(), utils.Authority{})
+	client, err := ts.ftpfs.Client(context.Background(), authority.Authority{})
 	ts.NoError(err, "no error")
 	ts.Equal(ts.ftpfs.ftpclient, client, "client was already set")
 
@@ -118,7 +119,7 @@ func (ts *fileSystemTestSuite) TestClient() {
 	badOpt := "not an ftp.Options"
 	ts.ftpfs.ftpclient = nil
 	ts.ftpfs.options = badOpt
-	_, err = ts.ftpfs.Client(context.Background(), utils.Authority{})
+	_, err = ts.ftpfs.Client(context.Background(), authority.Authority{})
 	ts.EqualError(err, "unable to create client, vfs.Options must be an ftp.Options", "client was already set")
 }
 

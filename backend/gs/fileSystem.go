@@ -12,6 +12,7 @@ import (
 	"github.com/c2fo/vfs/v7/backend"
 	"github.com/c2fo/vfs/v7/options"
 	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 // Scheme defines the file system type.
@@ -35,41 +36,54 @@ func (fs *FileSystem) Retry() vfs.Retry {
 }
 
 // NewFile function returns the gcs implementation of vfs.File.
-func (fs *FileSystem) NewFile(volume, name string, opts ...options.NewFileOption) (vfs.File, error) {
+func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.NewFileOption) (vfs.File, error) {
 	if fs == nil {
 		return nil, errors.New("non-nil gs.FileSystem pointer is required")
 	}
-	if volume == "" || name == "" {
+
+	if authorityStr == "" || filePath == "" {
 		return nil, errors.New("non-empty strings for Bucket and Key are required")
 	}
-	if err := utils.ValidateAbsoluteFilePath(name); err != nil {
+
+	if err := utils.ValidateAbsoluteFilePath(filePath); err != nil {
 		return nil, err
 	}
-	return &File{
-		fileSystem: fs,
-		bucket:     volume,
-		key:        path.Clean(name),
-		opts:       opts,
-	}, nil
+
+	// get location path
+	absLocPath := utils.EnsureTrailingSlash(path.Dir(filePath))
+	loc, err := fs.NewLocation(authorityStr, absLocPath)
+	if err != nil {
+		return nil, err
+	}
+
+	filename := path.Base(filePath)
+	return loc.NewFile(filename, opts...)
 }
 
 // NewLocation function returns the GCS implementation of vfs.Location.
-func (fs *FileSystem) NewLocation(volume, name string) (loc vfs.Location, err error) {
+func (fs *FileSystem) NewLocation(authorityStr, locPath string) (loc vfs.Location, err error) {
 	if fs == nil {
 		return nil, errors.New("non-nil gs.FileSystem pointer is required")
 	}
-	if volume == "" || name == "" {
+
+	if authorityStr == "" || locPath == "" {
 		return nil, errors.New("non-empty strings for bucket and key are required")
 	}
-	if err := utils.ValidateAbsoluteLocationPath(name); err != nil {
+
+	if err := utils.ValidateAbsoluteLocationPath(locPath); err != nil {
 		return nil, err
 	}
-	loc = &Location{
-		fileSystem: fs,
-		bucket:     volume,
-		prefix:     utils.EnsureTrailingSlash(path.Clean(name)),
+
+	auth, err := authority.NewAuthority(authorityStr)
+	if err != nil {
+		return nil, err
 	}
-	return
+
+	return &Location{
+		fileSystem: fs,
+		prefix:     utils.EnsureTrailingSlash(path.Clean(locPath)),
+		authority:  auth,
+	}, nil
 }
 
 // Name returns "Google Cloud Storage"

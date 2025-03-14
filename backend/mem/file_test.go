@@ -167,7 +167,8 @@ func (s *memFileTest) TestNewFile() {
 	s.NoError(err, "unexpected error creating file")
 	s.NoError(file.Touch(), "unexpected error touching file")
 	filePath := file.Path()
-	returnedFile, err := s.fileSystem.NewFile(file.Location().Volume(), filePath) // checking our system map for a match to the given fileName
+	returnedFile, err := s.fileSystem.NewFile(
+		file.Location().Authority().String(), filePath) // checking our system map for a match to the given fileName
 	s.NoError(err, "unexpected error retrieving file")
 	s.Equal("foo.txt", returnedFile.Name()) // casting the object to a file so we can call "Name()"
 }

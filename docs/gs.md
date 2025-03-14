@@ -6,12 +6,12 @@ Package gs - Google Cloud Storage VFS implementation.
 
 ### Usage
 
-Rely on [github.com/c2fo/vfs/v6/backend](backend.md)
+Rely on [github.com/c2fo/vfs/v7/backend](backend.md)
 
 ```go
     import(
-        "github.com/c2fo/vfs/v6/backend"
-        "github.com/c2fo/vfs/v6/backend/gs"
+        "github.com/c2fo/vfs/v7/backend"
+        "github.com/c2fo/vfs/v7/backend/gs"
     )
 
     func UseFs() error {
@@ -23,7 +23,7 @@ Rely on [github.com/c2fo/vfs/v6/backend](backend.md)
 Or call directly:
 
 ```go
-    import "github.com/c2fo/vfs/v6/backend/gs"
+    import "github.com/c2fo/vfs/v7/backend/gs"
 
     func DoSomething() {
         fs := gs.NewFileSystem()
@@ -269,14 +269,14 @@ Name returns "Google Cloud Storage"
 #### func (*FileSystem) NewFile
 
 ```go
-func (fs *FileSystem) NewFile(volume string, name string, opts ...options.NewFileOption) (vfs.File, error)
+func (fs *FileSystem) NewFile(authority string, name string, opts ...options.NewFileOption) (vfs.File, error)
 ```
 NewFile function returns the gcs implementation of [vfs.File](../README.md#type-file).
 
 #### func (*FileSystem) NewLocation
 
 ```go
-func (fs *FileSystem) NewLocation(volume string, path string) (loc vfs.Location, err error)
+func (fs *FileSystem) NewLocation(authority string, path string) (loc vfs.Location, err error)
 ```
 NewLocation function returns the s3 implementation of [vfs.Location](../README.md#type-location).
 
@@ -415,6 +415,11 @@ URI returns a URI string for the GCS location.
 func (l *Location) Volume() string
 ```
 Volume returns the GCS bucket name.
+
+```go
+func (l *Location) Authority() authority.Authority
+```
+Authority returns the authority of the location, in this case the bucket name.
 
 ### type Options
 

@@ -14,8 +14,8 @@ Delete file using file.delete():
 
 ```go
     import(
-        "github.com/c2fo/vfs/v6/options"
-        "github.com/c2fo/vfs/v6/options/delete"
+        "github.com/c2fo/vfs/v7/options"
+        "github.com/c2fo/vfs/v7/options/delete"
     )
 
     func DeleteFile() error {
@@ -32,8 +32,8 @@ Delete file using location.delete():
 
 ```go
     import(
-        "github.com/c2fo/vfs/v6/options"
-        "github.com/c2fo/vfs/v6/options/delete"
+        "github.com/c2fo/vfs/v7/options"
+        "github.com/c2fo/vfs/v7/options/delete"
     )
 
     func DeleteFileUsingLocation() error {

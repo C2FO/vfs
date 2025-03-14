@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v7.0.0-pre4] - 2025-03-12
+### Added
+- Deprecated usage of Volume and ChangeDir.  Added Authority (to replace Volume).  Fixes #235.
+
 ## [v7.0.0-pre3] - 2025-03-09
 ### Changed
 - Azure backend now uses the schema `az://` instead of `https://`. *Breaking Change*

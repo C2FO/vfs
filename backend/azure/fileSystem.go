@@ -8,6 +8,7 @@ import (
 	"github.com/c2fo/vfs/v7/backend"
 	"github.com/c2fo/vfs/v7/options"
 	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 // Scheme defines the scheme for the azure implementation
@@ -54,12 +55,12 @@ func (fs *FileSystem) Client() (Client, error) {
 }
 
 // NewFile returns the azure implementation of vfs.File
-func (fs *FileSystem) NewFile(volume, absFilePath string, opts ...options.NewFileOption) (vfs.File, error) {
+func (fs *FileSystem) NewFile(container, absFilePath string, opts ...options.NewFileOption) (vfs.File, error) {
 	if fs == nil {
 		return nil, errors.New(errNilFileSystemReceiver)
 	}
 
-	if volume == "" || absFilePath == "" {
+	if container == "" || absFilePath == "" {
 		return nil, errors.New("non-empty strings for container and path are required")
 	}
 
@@ -67,21 +68,23 @@ func (fs *FileSystem) NewFile(volume, absFilePath string, opts ...options.NewFil
 		return nil, err
 	}
 
-	return &File{
-		fileSystem: fs,
-		container:  volume,
-		name:       path.Clean(absFilePath),
-		opts:       opts,
-	}, nil
+	// get location path
+	absLocPath := utils.EnsureTrailingSlash(path.Dir(absFilePath))
+	loc, err := fs.NewLocation(container, absLocPath)
+	if err != nil {
+		return nil, err
+	}
+	filename := path.Base(absFilePath)
+	return loc.NewFile(filename, opts...)
 }
 
 // NewLocation returns the azure implementation of vfs.Location
-func (fs *FileSystem) NewLocation(volume, absLocPath string) (vfs.Location, error) {
+func (fs *FileSystem) NewLocation(container, absLocPath string) (vfs.Location, error) {
 	if fs == nil {
 		return nil, errors.New(errNilFileSystemReceiver)
 	}
 
-	if volume == "" || absLocPath == "" {
+	if container == "" || absLocPath == "" {
 		return nil, errors.New("non-empty strings for container and path are required")
 	}
 
@@ -89,10 +92,15 @@ func (fs *FileSystem) NewLocation(volume, absLocPath string) (vfs.Location, erro
 		return nil, err
 	}
 
+	auth, err := authority.NewAuthority(container)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Location{
 		fileSystem: fs,
-		container:  volume,
 		path:       path.Clean(absLocPath),
+		authority:  auth,
 	}, nil
 }
 

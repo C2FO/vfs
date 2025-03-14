@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 type optionsSuite struct {
@@ -42,7 +42,7 @@ func (s *optionsSuite) TestFetchUsername() {
 
 	for _, test := range tests {
 		s.Run(test.description, func() {
-			auth, err := utils.NewAuthority(test.authority)
+			auth, err := authority.NewAuthority(test.authority)
 			s.NoError(err, test.description)
 
 			username := fetchUsername(auth)
@@ -116,7 +116,7 @@ func (s *optionsSuite) TestFetchHostPortString() {
 
 	for _, test := range tests {
 		s.Run(test.description, func() {
-			auth, err := utils.NewAuthority(test.authority)
+			auth, err := authority.NewAuthority(test.authority)
 			s.NoError(err, test.description)
 
 			if test.envVar != nil {
@@ -266,7 +266,7 @@ func (s *optionsSuite) TestFetchTLSConfig() {
 
 	for _, test := range tests {
 		s.Run(test.description, func() {
-			auth, err := utils.NewAuthority(test.authority)
+			auth, err := authority.NewAuthority(test.authority)
 			s.NoError(err, test.description)
 
 			tlsCfg := fetchTLSConfig(auth, test.options)
@@ -440,7 +440,7 @@ func (s *optionsSuite) TestFetchDialOptions() {
 				s.NoError(err, test.description)
 			}
 
-			auth, err := utils.NewAuthority(test.authority)
+			auth, err := authority.NewAuthority(test.authority)
 			s.NoError(err, test.description)
 
 			dialOpts := fetchDialOptions(context.Background(), auth, test.options)

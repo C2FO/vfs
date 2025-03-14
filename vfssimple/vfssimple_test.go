@@ -83,7 +83,7 @@ func (s *vfsSimpleSuite) TestParseURI() {
 		{
 			uri:       "file://c:/path/to/file.txt",
 			err:       nil,
-			message:   "valid file uri with authority(volume)",
+			message:   "valid file uri with authority",
 			scheme:    "file",
 			authority: "c:",
 			path:      "/path/to/file.txt",
@@ -91,7 +91,7 @@ func (s *vfsSimpleSuite) TestParseURI() {
 		{
 			uri:       "file://c/path/to/file.txt",
 			err:       nil,
-			message:   "valid file uri with authority(volume), no colon",
+			message:   "valid file uri with authority, no colon",
 			scheme:    "file",
 			authority: "c",
 			path:      "/path/to/file.txt",

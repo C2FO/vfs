@@ -10,6 +10,7 @@ import (
 
 	"github.com/c2fo/vfs/v7/backend/sftp/mocks"
 	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 type locationTestSuite struct {
@@ -41,11 +42,11 @@ func (lt *locationTestSuite) TestList() {
 		On("Name").Return("subdir").
 		On("IsDir").Return(true)
 	keyListFromAPI := []*mocks.FileInfo{subdir1, file1, file2}
-	authority := "host.com"
+	authorityStr := "host.com"
 	locPath := "/dir1/"
 	lt.client.On("ReadDir", locPath).Return(sliceImplementationToInterface(keyListFromAPI), nil).Once()
 
-	loc, err := lt.sftpfs.NewLocation(authority, locPath)
+	loc, err := lt.sftpfs.NewLocation(authorityStr, locPath)
 	lt.NoError(err)
 	fileList, err := loc.List()
 	lt.NoError(err, "Shouldn't return an error when successfully returning list.")
@@ -89,10 +90,10 @@ func (lt *locationTestSuite) TestListByPrefix() {
 		On("Name").Return("filedir").
 		On("IsDir").Return(true)
 	keyListFromAPI := []*mocks.FileInfo{subdir1, file1, file2, file3}
-	authority := "host.com"
+	authorityStr := "host.com"
 	locPath := "/dir1/"
 	lt.client.On("ReadDir", locPath).Return(sliceImplementationToInterface(keyListFromAPI), nil).Once()
-	loc, err := lt.sftpfs.NewLocation(authority, locPath)
+	loc, err := lt.sftpfs.NewLocation(authorityStr, locPath)
 	lt.NoError(err)
 	prefix := "fil"
 	fileList, err := loc.ListByPrefix(prefix)
@@ -128,10 +129,10 @@ func (lt *locationTestSuite) TestListByRegex() {
 		On("Name").Return("subdirtxt").
 		On("IsDir").Return(true)
 	keyListFromAPI := []*mocks.FileInfo{subdir1, file1, file2, file4}
-	authority := "host.com"
+	authorityStr := "host.com"
 	locPath := "/dir1/"
 	lt.client.On("ReadDir", locPath).Return(sliceImplementationToInterface(keyListFromAPI), nil).Once()
-	loc, err := lt.sftpfs.NewLocation(authority, locPath)
+	loc, err := lt.sftpfs.NewLocation(authorityStr, locPath)
 	lt.NoError(err)
 	fileTypeRegex := regexp.MustCompile("txt$")
 
@@ -145,47 +146,48 @@ func (lt *locationTestSuite) TestListByRegex() {
 }
 
 func (lt *locationTestSuite) TestURI() {
-	authority := "user@host.com:22"
-	loc, err := lt.sftpfs.NewLocation(authority, "/blah/")
+	authorityStr := "user@host.com:22"
+	loc, err := lt.sftpfs.NewLocation(authorityStr, "/blah/")
 	lt.NoError(err)
 	lt.Equal("sftp://user@host.com:22/blah/", loc.URI(), "location uri with user, host, port")
 
-	authority = "user:password@host.com"
-	file, err := lt.sftpfs.NewFile(authority, "/blah/file.txt")
+	authorityStr = "user:password@host.com"
+	file, err := lt.sftpfs.NewFile(authorityStr, "/blah/file.txt")
 	lt.NoError(err)
 	lt.Equal("sftp://user@host.com/blah/file.txt", file.URI(), "file uri with user, pass, host")
 
-	authority = `domain.com\user@host.com`
-	_, err = lt.sftpfs.NewFile(authority, "/blah/file.txt")
+	authorityStr = `domain.com\user@host.com`
+	_, err = lt.sftpfs.NewFile(authorityStr, "/blah/file.txt")
 	lt.Error(err)
 	lt.ErrorContains(err, "net/url: invalid userinfo", "file uri with bad user")
 
-	authority = `domain.com%5Cuser@host.com`
-	file, err = lt.sftpfs.NewFile(authority, "/blah/file.txt")
+	authorityStr = `domain.com%5Cuser@host.com`
+	file, err = lt.sftpfs.NewFile(authorityStr, "/blah/file.txt")
 	lt.NoError(err)
 	lt.Equal(`sftp://domain.com%5Cuser@host.com/blah/file.txt`, file.URI(), "file uri with percent-encoded character in user")
 }
 
 func (lt *locationTestSuite) TestString() {
-	authority := "user@host.com:22"
-	loc, err := lt.sftpfs.NewLocation(authority, "/blah/")
+	authorityStr := "user@host.com:22"
+	loc, err := lt.sftpfs.NewLocation(authorityStr, "/blah/")
 	lt.NoError(err)
 	lt.Equal("sftp://user@host.com:22/blah/", loc.String(), "location string with user, host, port")
 
-	authority = "user:password@host.com"
-	file, err := lt.sftpfs.NewFile(authority, "/blah/file.txt")
+	authorityStr = "user:password@host.com"
+	file, err := lt.sftpfs.NewFile(authorityStr, "/blah/file.txt")
 	lt.NoError(err)
 	lt.Equal("sftp://user@host.com/blah/file.txt", file.String(), "file string with user, pass, host")
 }
 
+//nolint:staticcheck // deprecated method test
 func (lt *locationTestSuite) TestVolume() {
-	authority := "user@host.com:22"
-	loc, err := lt.sftpfs.NewLocation(authority, "/blah/")
+	authorityStr := "user@host.com:22"
+	loc, err := lt.sftpfs.NewLocation(authorityStr, "/blah/")
 	lt.NoError(err)
 	lt.Equal("user@host.com:22", loc.Volume(), "Volume() should return the authority string on location.")
 
-	authority = "user:password@host.com"
-	loc, err = lt.sftpfs.NewLocation(authority, "/blah/")
+	authorityStr = "user:password@host.com"
+	loc, err = lt.sftpfs.NewLocation(authorityStr, "/blah/")
 	lt.NoError(err)
 	lt.Equal("user@host.com", loc.Volume(), "Volume() should return the authority string on location.")
 }
@@ -227,10 +229,25 @@ func (lt *locationTestSuite) TestNewFile() {
 	// test validation error
 	_, err = loc.NewFile("/absolute/path/to/file.txt")
 	lt.EqualError(err, utils.ErrBadRelFilePath, "errors returned by NewLocation")
+
+	// new tests for location update
+	lt.Run("new file with relative path updates location", func() {
+		newFile, err := loc.NewFile("../newfile.txt")
+		lt.NoError(err)
+		lt.Equal("/some/path/newfile.txt", newFile.Path(), "NewFile with relative path should update location correctly")
+		lt.Equal("/some/path/", newFile.Location().Path(), "NewFile with relative path should update location correctly")
+	})
+
+	lt.Run("new file with relative path to root", func() {
+		newFile, err := loc.NewFile("../../../../newrootfile.txt")
+		lt.NoError(err)
+		lt.Equal("/newrootfile.txt", newFile.Path(), "NewFile with relative path to root should update location correctly")
+		lt.Equal("/", newFile.Location().Path(), "NewFile with relative path to root should update location correctly")
+	})
 }
 
 func (lt *locationTestSuite) TestExists() {
-	authority := "host.com"
+	authorityStr := "host.com"
 
 	// location exists
 	locPath := "/"
@@ -239,7 +256,7 @@ func (lt *locationTestSuite) TestExists() {
 		On("Name").Return(locPath).
 		On("IsDir").Return(true)
 	lt.client.On("Stat", locPath).Return(dir1, nil).Once()
-	loc, err := lt.sftpfs.NewLocation(authority, locPath)
+	loc, err := lt.sftpfs.NewLocation(authorityStr, locPath)
 	lt.NoError(err)
 	exists, err := loc.Exists()
 	lt.NoError(err, "No error expected from Exists")
@@ -249,7 +266,7 @@ func (lt *locationTestSuite) TestExists() {
 	locPath = "/my/dir/"
 	dir1 = &mocks.FileInfo{}
 	lt.client.On("Stat", locPath).Return(dir1, os.ErrNotExist).Once()
-	loc, err = lt.sftpfs.NewLocation(authority, locPath)
+	loc, err = lt.sftpfs.NewLocation(authorityStr, locPath)
 	lt.NoError(err)
 	exists, err = loc.Exists()
 	lt.NoError(err, "No error expected from Exists")
@@ -257,7 +274,7 @@ func (lt *locationTestSuite) TestExists() {
 
 	// some error calling stat
 	lt.client.On("Stat", locPath).Return(dir1, errors.New("some error")).Once()
-	loc, err = lt.sftpfs.NewLocation(authority, locPath)
+	loc, err = lt.sftpfs.NewLocation(authorityStr, locPath)
 	lt.NoError(err)
 	exists, err = loc.Exists()
 	lt.Error(err, "from Exists")
@@ -269,7 +286,7 @@ func (lt *locationTestSuite) TestExists() {
 		On("Name").Return(locPath).
 		On("IsDir").Return(false) // set isdir false
 	lt.client.On("Stat", locPath).Return(dir1, nil).Once()
-	loc, err = lt.sftpfs.NewLocation(authority, locPath)
+	loc, err = lt.sftpfs.NewLocation(authorityStr, locPath)
 	lt.NoError(err)
 	exists, err = loc.Exists()
 	lt.NoError(err, "No error expected from Exists")
@@ -284,7 +301,7 @@ func (lt *locationTestSuite) TestChangeDir() {
 	err := nilLoc.ChangeDir("path/to/")
 	lt.EqualErrorf(err, "non-nil sftp.Location pointer receiver is required", "error expected for nil location")
 
-	loc := &Location{fileSystem: lt.sftpfs, path: "/", Authority: utils.Authority{}}
+	loc := &Location{fileSystem: lt.sftpfs, path: "/", authority: authority.Authority{}}
 
 	err1 := loc.ChangeDir("../")
 	lt.NoError(err1, "no error expected")

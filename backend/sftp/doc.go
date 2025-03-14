@@ -79,8 +79,8 @@ These methods are chainable:
 
 # Authentication
 
-Authentication, by default, occurs automatically when Client() is called. Since user is part of the URI authority section
-(Volume), auth is handled slightly differently than other vfs backends.
+Authentication, by default, occurs automatically when Client() is called. Since user is part of the URI authority section,
+auth is handled slightly differently than other vfs backends.
 
 A client is initialized lazily, meaning we only make a connection to the server at the last moment so we are free to modify
 options until then.  The authenticated session is closed any time WithOption(), WithClient(), or Close() occurs.  Currently,
@@ -88,7 +88,7 @@ that means that closing a file belonging to an fs will break the connection of a
 
 # USERNAME
 
-User may only be set in the URI authority section (Volume in vfs parlance).
+User may only be set in the URI authority section.
 
 	 scheme             host
 	 __/             ___/____  port
@@ -97,7 +97,7 @@ User may only be set in the URI authority section (Volume in vfs parlance).
 	       \____________________/ \______________/
 	       \______/       \               \
 	           /     authority section    path
-	     username       (Volume)
+	     username
 
 sftp vfs backend accepts either a password or an ssh key, with or without a passphrase.
 

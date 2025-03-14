@@ -22,6 +22,7 @@ import (
 	"github.com/c2fo/vfs/v7/options/delete"
 	"github.com/c2fo/vfs/v7/options/newfile"
 	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 type fileTestSuite struct {
@@ -201,7 +202,7 @@ func (ts *fileTestSuite) TestGetLocation() {
 	location := file.Location()
 	ts.Equal("s3", location.FileSystem().Scheme(), "Should initialize location with FS underlying file.")
 	ts.Equal("/path/", location.Path(), "Should initialize path with the location of the file.")
-	ts.Equal("bucket", location.Volume(), "Should initialize bucket with the bucket containing the file.")
+	ts.Equal("bucket", location.Authority().String(), "Should initialize bucket with the bucket containing the file.")
 }
 
 func (ts *fileTestSuite) TestExists() {
@@ -228,18 +229,22 @@ func (ts *fileTestSuite) TestNotExists() {
 }
 
 func (ts *fileTestSuite) TestCopyToFile() {
+	auth, err := authority.NewAuthority("TestBucket")
+	ts.NoError(err, "Shouldn't fail creating new authority")
 	targetFile := &File{
-		fileSystem: &FileSystem{
-			client:  s3cliMock,
-			options: defaultOptions,
+		location: &Location{
+			fileSystem: &FileSystem{
+				client:  s3cliMock,
+				options: defaultOptions,
+			},
+			authority: auth,
 		},
-		bucket: "TestBucket",
-		key:    "testKey.txt",
+		key: "testKey.txt",
 	}
 
 	s3cliMock.On("CopyObject", matchContext, mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
 
-	err := testFile.CopyToFile(targetFile)
+	err = testFile.CopyToFile(targetFile)
 	ts.NoError(err, "Error shouldn't be returned from successful call to CopyToFile")
 	s3cliMock.AssertExpectations(ts.T())
 
@@ -247,12 +252,14 @@ func (ts *fileTestSuite) TestCopyToFile() {
 	originalBufferSize := defaultOptions.FileBufferSize
 	defaultOptions.FileBufferSize = 2 * utils.TouchCopyMinBufferSize
 	targetFile = &File{
-		fileSystem: &FileSystem{
-			client:  s3cliMock,
-			options: defaultOptions,
+		location: &Location{
+			fileSystem: &FileSystem{
+				client:  s3cliMock,
+				options: defaultOptions,
+			},
+			authority: auth,
 		},
-		bucket: "TestBucket",
-		key:    "testKey.txt",
+		key: "testKey.txt",
 	}
 	defaultOptions.FileBufferSize = originalBufferSize
 
@@ -283,19 +290,23 @@ func (ts *fileTestSuite) TestEmptyCopyToFile() {
 }
 
 func (ts *fileTestSuite) TestMoveToFile() {
+	auth, err := authority.NewAuthority("TestBucket")
+	ts.NoError(err, "Shouldn't fail creating new authority")
 	targetFile := &File{
-		fileSystem: &FileSystem{
-			client:  s3cliMock,
-			options: defaultOptions,
+		location: &Location{
+			fileSystem: &FileSystem{
+				client:  s3cliMock,
+				options: defaultOptions,
+			},
+			authority: auth,
 		},
-		bucket: "TestBucket",
-		key:    "testKey.txt",
+		key: "testKey.txt",
 	}
 
 	s3cliMock.On("CopyObject", matchContext, mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
 	s3cliMock.On("DeleteObject", matchContext, mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
 
-	err := testFile.MoveToFile(targetFile)
+	err = testFile.MoveToFile(targetFile)
 	ts.NoError(err, "Error shouldn't be returned from successful call to MoveToFile")
 	s3cliMock.AssertExpectations(ts.T())
 }
@@ -327,30 +338,37 @@ func (ts *fileTestSuite) TestGetCopyObject() {
 		},
 	}
 
+	auth, err := authority.NewAuthority("TestBucket")
+	ts.NoError(err, "Shouldn't fail creating new authority")
+
 	// ensure spaces are properly encoded (or not)
 	for i, t := range tests {
 		ts.Run(fmt.Sprintf("%d", i), func() {
 			sourceFile := &File{
-				fileSystem: &FileSystem{
-					client: s3cliMock,
-					options: Options{
-						AccessKeyID:                 "abc",
-						DisableServerSideEncryption: true,
+				location: &Location{
+					fileSystem: &FileSystem{
+						client: s3cliMock,
+						options: Options{
+							AccessKeyID:                 "abc",
+							DisableServerSideEncryption: true,
+						},
 					},
+					authority: auth,
 				},
-				bucket: "TestBucket",
-				key:    t.key,
+				key: t.key,
 			}
 
 			targetFile := &File{
-				fileSystem: &FileSystem{
-					client: s3cliMock,
-					options: Options{
-						AccessKeyID: "abc",
+				location: &Location{
+					fileSystem: &FileSystem{
+						client: s3cliMock,
+						options: Options{
+							AccessKeyID: "abc",
+						},
 					},
+					authority: auth,
 				},
-				bucket: "TestBucket",
-				key:    "source.txt",
+				key: "source.txt",
 			}
 
 			// copy from t.key to /source.txt
@@ -363,24 +381,28 @@ func (ts *fileTestSuite) TestGetCopyObject() {
 	// test that different options returns nil
 	// nil means we can't do s3-to-s3 copy so use TouchCopy
 	sourceFile := &File{
-		fileSystem: &FileSystem{
-			client:  s3cliMock,
-			options: defaultOptions,
+		location: &Location{
+			fileSystem: &FileSystem{
+				client:  s3cliMock,
+				options: defaultOptions,
+			},
+			authority: auth,
 		},
-		bucket: "TestBucket",
-		key:    "/path/to/file.txt",
+		key: "/path/to/file.txt",
 	}
 
 	targetFile := &File{
-		fileSystem: &FileSystem{
-			client: s3cliMock,
-			options: Options{
-				AccessKeyID: "xyz",
-				ACL:         "SomeCannedACL",
+		location: &Location{
+			fileSystem: &FileSystem{
+				client: s3cliMock,
+				options: Options{
+					AccessKeyID: "xyz",
+					ACL:         "SomeCannedACL",
+				},
 			},
+			authority: auth,
 		},
-		bucket: "TestBucket",
-		key:    "/path/to/otherFile.txt",
+		key: "/path/to/otherFile.txt",
 	}
 	actual := sourceFile.getCopyObjectInput(targetFile)
 	ts.Nil(actual, "copyObjectInput should be nil (can't do s3-to-s3 copyObject)")
@@ -389,18 +411,22 @@ func (ts *fileTestSuite) TestGetCopyObject() {
 }
 
 func (ts *fileTestSuite) TestMoveToFile_CopyError() {
+	auth, err := authority.NewAuthority("TestBucket")
+	ts.NoError(err, "Shouldn't fail creating new authority")
 	targetFile := &File{
-		fileSystem: &FileSystem{
-			client:  s3cliMock,
-			options: defaultOptions,
+		location: &Location{
+			fileSystem: &FileSystem{
+				client:  s3cliMock,
+				options: defaultOptions,
+			},
+			authority: auth,
 		},
-		bucket: "TestBucket",
-		key:    "testKey.txt",
+		key: "testKey.txt",
 	}
 
 	s3cliMock.On("CopyObject", matchContext, mock.AnythingOfType("*s3.CopyObjectInput")).Return(nil, errors.New("some copy error"))
 
-	err := testFile.MoveToFile(targetFile)
+	err = testFile.MoveToFile(targetFile)
 	ts.Error(err, "Error shouldn't be returned from successful call to CopyToFile")
 	s3cliMock.AssertNotCalled(ts.T(), "DeleteObject", mock.Anything)
 	s3cliMock.AssertExpectations(ts.T())
@@ -412,13 +438,17 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 	s3Mock1.On("GetObject", matchContext, mock.AnythingOfType("*s3.GetObjectInput")).Return(&s3.GetObjectOutput{Body: fooReader}, nil)
 	s3Mock1.On("CopyObject", matchContext, mock.AnythingOfType("*s3.CopyObjectInput")).Return(nil, nil)
 	s3Mock1.On("HeadObject", matchContext, mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
+	auth, err := authority.NewAuthority("TestBucket")
+	ts.NoError(err, "Shouldn't fail creating new authority")
 	f := &File{
-		fileSystem: &FileSystem{
-			client:  s3Mock1,
-			options: defaultOptions,
+		location: &Location{
+			fileSystem: &FileSystem{
+				client:  s3Mock1,
+				options: defaultOptions,
+			},
+			authority: auth,
 		},
-		bucket: "bucket",
-		key:    "/hello.txt",
+		key: "/hello.txt",
 	}
 
 	defer func() {
@@ -431,12 +461,12 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 			client:  &mocks.Client{},
 			options: defaultOptions,
 		},
-		bucket: "bucket",
-		prefix: "/subdir/",
+		authority: auth,
+		prefix:    "/subdir/",
 	}
 
 	// no error "copying" objects
-	_, err := f.CopyToLocation(l)
+	_, err = f.CopyToLocation(l)
 	ts.NoError(err, "Shouldn't return error for this call to CopyToLocation")
 }
 
@@ -449,13 +479,18 @@ func (ts *fileTestSuite) TestTouch() {
 	s3Mock1.On("CopyObject", matchContext, mock.AnythingOfType("*s3.CopyObjectInput")).Return(nil, nil)
 	s3Mock1.On("DeleteObject", matchContext, mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
 
+	auth, err := authority.NewAuthority("newBucket")
+	ts.NoError(err, "Shouldn't fail creating new authority")
+
 	file := &File{
-		fileSystem: &FileSystem{
-			client:  s3Mock1,
-			options: defaultOptions,
+		location: &Location{
+			fileSystem: &FileSystem{
+				client:  s3Mock1,
+				options: defaultOptions,
+			},
+			authority: auth,
 		},
-		bucket: "newBucket",
-		key:    "/new/file/path/hello.txt",
+		key: "/new/file/path/hello.txt",
 	}
 
 	terr := file.Touch()
@@ -470,12 +505,14 @@ func (ts *fileTestSuite) TestTouch() {
 	s3Mock2.On("HeadObject", matchContext, mock.AnythingOfType("*s3.HeadObjectInput")).
 		Return(&s3.HeadObjectOutput{}, nil)
 	file2 := &File{
-		fileSystem: &FileSystem{
-			client:  s3Mock2,
-			options: defaultOptions,
+		location: &Location{
+			fileSystem: &FileSystem{
+				client:  s3Mock2,
+				options: defaultOptions,
+			},
+			authority: auth,
 		},
-		bucket: "newBucket",
-		key:    "/new/file/path/hello.txt",
+		key: "/new/file/path/hello.txt",
 	}
 
 	s3Mock2.On("PutObject", matchContext, mock.AnythingOfType("*s3.PutObjectInput"), mock.Anything, mock.Anything).
@@ -493,13 +530,19 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	s3Mock1 := &mocks.Client{}
 	s3Mock1.On("CopyObject", matchContext, mock.AnythingOfType("*s3.CopyObjectInput")).Return(nil, nil)
 	s3Mock1.On("HeadObject", matchContext, mock.AnythingOfType("*s3.HeadObjectInput")).Return(&s3.HeadObjectOutput{}, nil)
+
+	auth, err := authority.NewAuthority("newBucket")
+	ts.NoError(err, "Shouldn't fail creating new authority")
+
 	f := &File{
-		fileSystem: &FileSystem{
-			client:  s3Mock1,
-			options: defaultOptions,
+		location: &Location{
+			fileSystem: &FileSystem{
+				client:  s3Mock1,
+				options: defaultOptions,
+			},
+			authority: auth,
 		},
-		bucket: "newBucket",
-		key:    "/new/file/path/hello.txt",
+		key: "/new/file/path/hello.txt",
 	}
 	location := new(vfsmocks.Location)
 	location.On("NewFile", mock.Anything).Return(f, nil)
@@ -519,9 +562,11 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	ts.NoError(err, "no error expected")
 
 	// test non-scheme MoveToLocation
+	auth2, err := authority.NewAuthority("bucket")
+	ts.NoError(err, "Shouldn't fail creating new authority")
 	mockLocation := new(vfsmocks.Location)
 	mockLocation.On("NewFile", mock.Anything).
-		Return(&File{fileSystem: &FileSystem{client: s3Mock1}, bucket: "bucket", key: "/new/hello.txt"}, nil)
+		Return(&File{location: &Location{fileSystem: &FileSystem{client: s3Mock1}, authority: auth2}, key: "/new/hello.txt"}, nil)
 
 	s3cliMock2 := &mocks.Client{}
 	s3cliMock2.On("CopyObject", matchContext, mock.AnythingOfType("*s3.CopyObjectInput")).Return(&s3.CopyObjectOutput{}, nil)
@@ -539,10 +584,12 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 }
 
 func (ts *fileTestSuite) TestMoveToLocationFail() {
+	auth, err := authority.NewAuthority("bucket")
+	ts.NoError(err, "Shouldn't fail creating new authority")
 	// If CopyToLocation fails we need to ensure DeleteObject isn't called.
 	otherFs := new(vfsmocks.FileSystem)
 	location := new(vfsmocks.Location)
-	location.On("NewFile", mock.Anything).Return(&File{fileSystem: &fs, bucket: "bucket", key: "/new/hello.txt"}, nil)
+	location.On("NewFile", mock.Anything).Return(&File{location: &Location{fileSystem: &fs, authority: auth}, key: "/new/hello.txt"}, nil)
 
 	s3cliMock.On("CopyObject", matchContext, mock.AnythingOfType("*s3.CopyObjectInput")).Return(nil, errors.New("didn't copy, oh noes"))
 
@@ -713,7 +760,7 @@ func (ts *fileTestSuite) TestNewFile() {
 	file, err := fs.NewFile(bucket, key)
 	ts.NoError(err, "newFile should succeed")
 	ts.IsType(&File{}, file, "newFile returned a File struct")
-	ts.Equal(bucket, file.Location().Volume())
+	ts.Equal(bucket, file.Location().Authority().String())
 	ts.Equal(key, file.Path())
 }
 
@@ -731,16 +778,21 @@ func (ts *fileTestSuite) TestCloseWithWrite() {
 		Return(&s3.HeadObjectOutput{}, &types.NotFound{})
 	s3Mock.On("PutObject", matchContext, mock.AnythingOfType("*s3.PutObjectInput"), mock.Anything, mock.Anything).
 		Return(&s3.PutObjectOutput{}, nil)
+
+	auth, err := authority.NewAuthority("newBucket")
+	ts.NoError(err, "Shouldn't fail creating new authority")
 	file := &File{
-		fileSystem: &FileSystem{
-			client:  s3Mock,
-			options: defaultOptions,
+		location: &Location{
+			fileSystem: &FileSystem{
+				client:  s3Mock,
+				options: defaultOptions,
+			},
+			authority: auth,
 		},
-		bucket: "newBucket",
-		key:    "/new/file/path/hello.txt",
+		key: "/new/file/path/hello.txt",
 	}
 	contents := []byte("Hello world!")
-	_, err := file.Write(contents)
+	_, err = file.Write(contents)
 	ts.NoError(err, "Error should be nil when calling Write")
 	err = file.Close()
 	ts.Error(err, "file doesn't exists, retired 5 times")
@@ -772,6 +824,8 @@ func (ts *fileTestSuite) TestWriteOperations() {
 			}).
 			Return(&s3.PutObjectOutput{}, nil)
 	}
+	auth, err := authority.NewAuthority("newBucket")
+	ts.NoError(err, "Shouldn't fail creating new authority")
 
 	testCases := []fileTestCase{
 		{
@@ -782,12 +836,14 @@ func (ts *fileTestSuite) TestWriteOperations() {
 					Return(&s3.HeadObjectOutput{}, &types.NotFound{}).Times(5)
 				// Return a new File instance with this specific mock configuration
 				return &File{
-					fileSystem: &FileSystem{
-						client:  s3Mock,
-						options: defaultOptions,
+					location: &Location{
+						fileSystem: &FileSystem{
+							client:  s3Mock,
+							options: defaultOptions,
+						},
+						authority: auth,
 					},
-					bucket: "newBucket",
-					key:    "/new/file/path/hello.txt",
+					key: "/new/file/path/hello.txt",
 				}
 			},
 			actions: []func(*File) error{
@@ -809,12 +865,14 @@ func (ts *fileTestSuite) TestWriteOperations() {
 					Return(&s3.HeadObjectOutput{}, nil).Once()
 				// Return a new File instance with this specific mock configuration
 				return &File{
-					fileSystem: &FileSystem{
-						client:  s3Mock,
-						options: defaultOptions,
+					location: &Location{
+						fileSystem: &FileSystem{
+							client:  s3Mock,
+							options: defaultOptions,
+						},
+						authority: auth,
 					},
-					bucket: "newBucket",
-					key:    "/new/file/path/hello.txt",
+					key: "/new/file/path/hello.txt",
 				}
 			},
 			actions: []func(*File) error{
@@ -840,12 +898,14 @@ func (ts *fileTestSuite) TestWriteOperations() {
 
 				// Return a new File instance with this specific mock configuration
 				return &File{
-					fileSystem: &FileSystem{
-						client:  s3Mock,
-						options: defaultOptions,
+					location: &Location{
+						fileSystem: &FileSystem{
+							client:  s3Mock,
+							options: defaultOptions,
+						},
+						authority: auth,
 					},
-					bucket: "newBucket",
-					key:    "/new/file/path/hello.txt",
+					key: "/new/file/path/hello.txt",
 				}
 			},
 			actions: []func(*File) error{

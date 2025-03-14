@@ -22,7 +22,7 @@ func (o *optionsTestSuite) TestGetClient() {
 	client, err := getClient(opts)
 	o.NoError(err)
 	o.NotNil(client, "client is set")
-	o.Empty(client.(*s3.Client).Options().Region, "config is empty")
+	o.Empty(client.(*s3.Client).Options().AppID, "config is empty")
 
 	// options set
 	opts = Options{

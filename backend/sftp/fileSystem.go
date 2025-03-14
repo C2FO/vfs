@@ -16,6 +16,7 @@ import (
 	"github.com/c2fo/vfs/v7/backend"
 	"github.com/c2fo/vfs/v7/options"
 	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 // Scheme defines the filesystem type.
@@ -23,7 +24,7 @@ const Scheme = "sftp"
 const name = "Secure File Transfer Protocol"
 const defaultAutoDisconnectDuration = 10
 
-var defaultClientGetter func(utils.Authority, Options) (Client, io.Closer, error)
+var defaultClientGetter func(authority.Authority, Options) (Client, io.Closer, error)
 
 // FileSystem implements vfs.FileSystem for the SFTP filesystem.
 type FileSystem struct {
@@ -41,40 +42,45 @@ func (fs *FileSystem) Retry() vfs.Retry {
 }
 
 // NewFile function returns the SFTP implementation of vfs.File.
-func (fs *FileSystem) NewFile(authority, filePath string, opts ...options.NewFileOption) (vfs.File, error) {
+func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.NewFileOption) (vfs.File, error) {
 	if fs == nil {
 		return nil, errors.New("non-nil sftp.FileSystem pointer is required")
 	}
-	if filePath == "" {
-		return nil, errors.New("non-empty string for path is required")
+
+	if authorityStr == "" || filePath == "" {
+		return nil, errors.New("non-empty string for authority and path are required")
 	}
+
 	if err := utils.ValidateAbsoluteFilePath(filePath); err != nil {
 		return nil, err
 	}
 
-	auth, err := utils.NewAuthority(authority)
+	// get location path
+	absLocPath := utils.EnsureTrailingSlash(path.Dir(filePath))
+	loc, err := fs.NewLocation(authorityStr, absLocPath)
 	if err != nil {
 		return nil, err
 	}
 
-	return &File{
-		fileSystem: fs,
-		Authority:  auth,
-		path:       path.Clean(filePath),
-		opts:       opts,
-	}, nil
+	filename := path.Base(filePath)
+	return loc.NewFile(filename, opts...)
 }
 
 // NewLocation function returns the SFTP implementation of vfs.Location.
-func (fs *FileSystem) NewLocation(authority, locPath string) (vfs.Location, error) {
+func (fs *FileSystem) NewLocation(authorityStr, locPath string) (vfs.Location, error) {
 	if fs == nil {
 		return nil, errors.New("non-nil sftp.FileSystem pointer is required")
 	}
+
+	if authorityStr == "" {
+		return nil, errors.New("non-empty string for authority is required")
+	}
+
 	if err := utils.ValidateAbsoluteLocationPath(locPath); err != nil {
 		return nil, err
 	}
 
-	auth, err := utils.NewAuthority(authority)
+	auth, err := authority.NewAuthority(authorityStr)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +88,7 @@ func (fs *FileSystem) NewLocation(authority, locPath string) (vfs.Location, erro
 	return &Location{
 		fileSystem: fs,
 		path:       utils.EnsureTrailingSlash(path.Clean(locPath)),
-		Authority:  auth,
+		authority:  auth,
 	}, nil
 }
 
@@ -98,7 +104,7 @@ func (fs *FileSystem) Scheme() string {
 
 // Client returns the underlying sftp client, creating it, if necessary
 // See Overview for authentication resolution
-func (fs *FileSystem) Client(authority utils.Authority) (Client, error) {
+func (fs *FileSystem) Client(authority authority.Authority) (Client, error) {
 	// first stop connection timer, if any
 	fs.connTimerStop()
 	if fs.sftpclient == nil {

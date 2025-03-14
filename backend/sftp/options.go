@@ -15,6 +15,7 @@ import (
 	"golang.org/x/crypto/ssh/knownhosts"
 
 	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 const systemWideKnownHosts = "/etc/ssh/ssh_known_hosts"
@@ -104,7 +105,7 @@ var defaultSSHConfig = &ssh.ClientConfig{
 	},
 }
 
-func getClient(authority utils.Authority, opts Options) (Client, io.Closer, error) {
+func getClient(authority authority.Authority, opts Options) (Client, io.Closer, error) {
 	// setup Authentication
 	authMethods, err := getAuthMethods(opts)
 	if err != nil {

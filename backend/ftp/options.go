@@ -12,7 +12,7 @@ import (
 	_ftp "github.com/jlaffaye/ftp"
 
 	"github.com/c2fo/vfs/v7/backend/ftp/types"
-	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 // Options  struct implements the vfs.Options interface, providing optional parameters for creating and ftp filesystem.
@@ -43,7 +43,7 @@ const (
 	envPassword    = "VFS_FTP_PASSWORD" //nolint:gosec
 )
 
-func getClient(ctx context.Context, authority utils.Authority, opts Options) (types.Client, error) {
+func getClient(ctx context.Context, authority authority.Authority, opts Options) (types.Client, error) {
 	// dial connection
 	c, err := _ftp.Dial(fetchHostPortString(authority), fetchDialOptions(ctx, authority, opts)...)
 	if err != nil {
@@ -59,7 +59,7 @@ func getClient(ctx context.Context, authority utils.Authority, opts Options) (ty
 	return c, nil
 }
 
-func fetchUsername(auth utils.Authority) string {
+func fetchUsername(auth authority.Authority) string {
 	// set default username
 	username := defaultUsername
 
@@ -90,7 +90,7 @@ func fetchPassword(opts Options) string {
 	return password
 }
 
-func fetchHostPortString(auth utils.Authority) string {
+func fetchHostPortString(auth authority.Authority) string {
 	// get host
 	host := auth.Host()
 
@@ -104,7 +104,7 @@ func fetchHostPortString(auth utils.Authority) string {
 	return fmt.Sprintf("%s:%d", host, port)
 }
 
-func fetchDialOptions(ctx context.Context, auth utils.Authority, opts Options) []_ftp.DialOption {
+func fetchDialOptions(ctx context.Context, auth authority.Authority, opts Options) []_ftp.DialOption {
 	// set context DialOption
 	dialOptions := []_ftp.DialOption{
 		_ftp.DialWithContext(ctx),
@@ -154,7 +154,7 @@ func isDisableOption(opts Options) bool {
 	return disableEpsv
 }
 
-func fetchTLSConfig(auth utils.Authority, opts Options) *tls.Config {
+func fetchTLSConfig(auth authority.Authority, opts Options) *tls.Config {
 	// setup basic TLS config for host
 	tlsConfig := &tls.Config{
 		MinVersion:         tls.VersionTLS12,

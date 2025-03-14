@@ -19,7 +19,7 @@ Just import vfssimple.
 	import (
 		"fmt"
 
-		"github.com/c2fo/vfs/v6/vfssimple"
+		"github.com/c2fo/vfs/v7/vfssimple"
 	)
 
 	func main() {
@@ -58,9 +58,9 @@ resolve the provided URI in NewFile() or NewLocation() to the registered file sy
 	import(
 		"fmt"
 
-		"github.com/c2fo/vfs/v6/backend"
-		"github.com/c2fo/vfs/v6/backend/s3"
-		"github.com/c2fo/vfs/v6/vfssimple"
+		"github.com/c2fo/vfs/v7/backend"
+		"github.com/c2fo/vfs/v7/backend/s3"
+		"github.com/c2fo/vfs/v7/vfssimple"
 	)
 
 	func main() {
@@ -134,8 +134,8 @@ when calling remote file systems. This adds some flexibility in how a retry on f
     import(
         "time"
 
-        "github.com/c2fo/vfs/v6/backend"
-        "github.com/c2fo/vfs/v6/backend/gs"
+        "github.com/c2fo/vfs/v7/backend"
+        "github.com/c2fo/vfs/v7/backend/gs"
     )
 
     ...

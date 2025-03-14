@@ -23,9 +23,8 @@ type opener func(filePath string) (*os.File, error)
 // File implements vfs.File interface for os fs.
 type File struct {
 	file        *os.File
-	volume      string
+	location    *Location
 	name        string
-	filesystem  *FileSystem
 	opts        []options.NewFileOption
 	cursorPos   int64
 	tempFile    *os.File
@@ -218,11 +217,7 @@ func (f *File) Write(p []byte) (n int, err error) {
 
 // Location returns the underlying os.Location.
 func (f *File) Location() vfs.Location {
-	return &Location{
-		fileSystem: f.filesystem,
-		volume:     f.volume,
-		name:       utils.EnsureTrailingSlash(path.Dir(f.name)),
-	}
+	return f.location
 }
 
 // MoveToFile move a file. It accepts a target vfs.File and returns an error, if any.
@@ -365,7 +360,7 @@ func (f *File) Touch() error {
 }
 
 func (f *File) copyWithName(name string, location vfs.Location) (vfs.File, error) {
-	newFile, err := location.FileSystem().NewFile(location.Volume(), path.Join(location.Path(), name))
+	newFile, err := location.FileSystem().NewFile(location.Authority().String(), path.Join(location.Path(), name))
 	if err != nil {
 		return nil, err
 	}
@@ -507,7 +502,7 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 
 func osFilePath(f vfs.File) string {
 	if runtime.GOOS == "windows" {
-		return f.Location().Volume() + filepath.FromSlash(f.Path())
+		return f.Location().Authority().String() + filepath.FromSlash(f.Path())
 	}
 	return f.Path()
 }

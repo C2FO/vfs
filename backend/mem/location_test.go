@@ -118,14 +118,14 @@ func (s *memLocationTest) TestListByRegex() {
 	s.NoError(err, "unexpected error listing by regEx")
 
 	s.Equal(expected, actual)
-	err = newFile.Location().ChangeDir("../")
+	newLoc, err := newFile.Location().NewLocation("../")
 	s.NoError(err, "unexpected error changing directories")
 
 	regex2 := regexp.MustCompile("test.txt")
 
-	actual2, err := newFile.Location().ListByRegex(regex2)
+	actual2, err := newLoc.ListByRegex(regex2)
 	s.NoError(err, "unexpected error listing by regEx")
-	s.Equal(expected, actual2)
+	s.Equal([]string{}, actual2)
 }
 
 // TestExists ensures that a real location exists, and one that was simply created does not
@@ -181,6 +181,21 @@ func (s *memLocationTest) TestNewFile() {
 	newfile, nerr := loc.NewFile("../../bam/this.txt")
 	s.NoError(nerr, "unexpected error creating a new file")
 	s.Equal("/foo/bam/this.txt", newfile.Path(), "relative dot path works")
+
+	// new tests for location update
+	s.Run("new file with relative path updates location", func() {
+		newFile, err := loc.NewFile("../newfile.txt")
+		s.NoError(err)
+		s.Equal("/foo/bar/newfile.txt", newFile.Path(), "NewFile with relative path should update location correctly")
+		s.Equal("/foo/bar/", newFile.Location().Path(), "NewFile with relative path should update location correctly")
+	})
+
+	s.Run("new file with relative path to root", func() {
+		newFile, err := loc.NewFile("../../../../newrootfile.txt")
+		s.NoError(err)
+		s.Equal("/newrootfile.txt", newFile.Path(), "NewFile with relative path to root should update location correctly")
+		s.Equal("/", newFile.Location().Path(), "NewFile with relative path to root should update location correctly")
+	})
 }
 
 // TestNewFile creates two files with the same name and ensures
@@ -213,7 +228,7 @@ func (s *memLocationTest) TestNewFileSameName() {
 	s.Equal(expectedText, string(expectedSlice))
 }
 
-// TestChangeDir tests that we can change the directory on a location but that it doesn't change the file's location
+//nolint:staticcheck // deprecated method test
 func (s *memLocationTest) TestChangeDir() {
 	newFile, nerr := s.fileSystem.NewFile("", "/dir/to/change/change.txt")
 	s.NoError(nerr, "unexpected error creating a new file")
@@ -229,14 +244,14 @@ func (s *memLocationTest) TestChangeDir() {
 	s.NotEqual(newFile.Location().Path(), loc.Path())
 }
 
-// TestVolume makes sure that the mem-fs returns the empty string for its volume
+//nolint:staticcheck // deprecated method test
 func (s *memLocationTest) TestVolume() {
 	newFile, nerr := s.fileSystem.NewFile("D:", "/path/to/file/example.txt")
 	s.NoError(nerr, "unexpected error creating a file")
 	s.NoError(newFile.Touch(), "unexpected error touching file")
 	s.NoError(newFile.Close(), "unexpected error closing file")
 	// For Unix, this returns an empty string. For windows, it would be something like 'C:'
-	s.Equal("D:", newFile.Location().Volume())
+	s.Equal("D", newFile.Location().Volume())
 }
 
 // TestPath makes sure that locations return the correct paths, along with leading and trailing slashes
