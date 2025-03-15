@@ -33,8 +33,15 @@ func (ts *fileSystemTestSuite) SetupTest() {
 }
 
 func (ts *fileSystemTestSuite) TestNewFileSystem() {
-	newFS := NewFileSystem().WithClient(s3cliMock)
+	// test with options
+	newFS := NewFileSystem(WithOptions(Options{Region: "us-east-1"}))
 	ts.NotNil(newFS, "Should return a new fileSystem for s3")
+	ts.Equal("us-east-1", newFS.options.Region, "Should set region to us-east-1")
+
+	// test with client
+	newFS = NewFileSystem(WithClient(s3cliMock))
+	ts.NotNil(newFS, "Should return a new fileSystem for s3")
+	ts.Equal(s3cliMock, newFS.client, "Should set client to s3cliMock")
 }
 
 func (ts *fileSystemTestSuite) TestNewFile() {
@@ -106,13 +113,6 @@ func (ts *fileSystemTestSuite) TestClient() {
 	client, err := s3fs.Client()
 	ts.NoError(err, "no error")
 	ts.Equal(s3fs.client, client, "client was already set")
-
-	// bad options
-	badOpt := "not an s3.Options"
-	s3fs.client = nil
-	s3fs.options = badOpt
-	_, err = s3fs.Client()
-	ts.EqualError(err, "unable to create client, vfs.Options must be an s3.Options", "client was already set")
 
 	s3fs = &FileSystem{}
 	client, err = s3fs.Client()

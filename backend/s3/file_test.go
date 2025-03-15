@@ -725,8 +725,9 @@ func (ts *fileTestSuite) TestUploadInput() {
 }
 
 func (ts *fileTestSuite) TestUploadInputDisableSSE() {
-	fs := NewFileSystem().
-		WithOptions(Options{DisableServerSideEncryption: true})
+	fs := NewFileSystem(
+		WithOptions(Options{DisableServerSideEncryption: true}),
+	)
 	file, _ := fs.NewFile("mybucket", "/some/file/test.txt")
 	input := uploadInput(file.(*File))
 	ts.Empty(input.ServerSideEncryption, "sse was disabled")
