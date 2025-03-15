@@ -987,7 +987,7 @@ func (ts *fileTestSuite) TestSetDefaultPermissions() {
 	type testCase struct {
 		name           string
 		client         *mocks.Client
-		options        vfs.Options
+		options        Options
 		expectedError  bool
 		expectedErrMsg string
 	}
@@ -999,7 +999,7 @@ func (ts *fileTestSuite) TestSetDefaultPermissions() {
 				client := mocks.NewClient(ts.T())
 				return client
 			}(),
-			options:       nil,
+			options:       Options{},
 			expectedError: false,
 		},
 		{
@@ -1009,7 +1009,7 @@ func (ts *fileTestSuite) TestSetDefaultPermissions() {
 				client.EXPECT().Chmod("/some/path.txt", os.FileMode(0644)).Return(nil)
 				return client
 			}(),
-			options: func() vfs.Options {
+			options: func() Options {
 				opts := Options{FilePermissions: utils.Ptr("0644")}
 				return opts
 			}(),
@@ -1022,7 +1022,7 @@ func (ts *fileTestSuite) TestSetDefaultPermissions() {
 				client.EXPECT().Chmod("/some/path.txt", os.FileMode(0644)).Return(errors.New("chmod error"))
 				return client
 			}(),
-			options: func() vfs.Options {
+			options: func() Options {
 				opts := Options{FilePermissions: utils.Ptr("0644")}
 				return opts
 			}(),
@@ -1031,19 +1031,19 @@ func (ts *fileTestSuite) TestSetDefaultPermissions() {
 		},
 	}
 
-	for _, tt := range tests {
-		ts.Run(tt.name, func() {
+	for i := range tests {
+		ts.Run(tests[i].name, func() {
 			file := &File{
 				path: "/some/path.txt",
 				location: &Location{
-					fileSystem: &FileSystem{options: tt.options},
+					fileSystem: &FileSystem{options: tests[i].options},
 				},
 			}
 
-			err := file.setPermissions(tt.client, tt.options)
-			if tt.expectedError {
+			err := file.setPermissions(tests[i].client, tests[i].options)
+			if tests[i].expectedError {
 				ts.Error(err)
-				ts.Contains(err.Error(), tt.expectedErrMsg)
+				ts.Contains(err.Error(), tests[i].expectedErrMsg)
 			} else {
 				ts.NoError(err)
 			}

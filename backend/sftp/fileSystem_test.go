@@ -27,8 +27,16 @@ func (ts *fileSystemTestSuite) SetupTest() {
 }
 
 func (ts *fileSystemTestSuite) TestNewFileSystem() {
-	newFS := NewFileSystem().WithClient(&mocks.Client{})
+	// test with options
+	newFS := NewFileSystem(WithOptions(Options{KeyFilePath: "/some/path/"}))
 	ts.NotNil(newFS, "Should return a new fileSystem for sftp")
+	ts.Equal("/some/path/", newFS.options.KeyFilePath, "Should set region to us-east-1")
+
+	// test with client
+	sftpMock := mocks.NewClient(ts.T())
+	newFS = NewFileSystem(WithClient(sftpMock))
+	ts.NotNil(newFS, "Should return a new fileSystem for sftp")
+	ts.Equal(sftpMock, newFS.sftpclient, "Should set client to s3cliMock")
 }
 
 func (ts *fileSystemTestSuite) TestNewFile() {
@@ -116,13 +124,6 @@ func (ts *fileSystemTestSuite) TestClient() {
 	client, err := ts.sftpfs.Client(authority.Authority{})
 	ts.NoError(err, "no error")
 	ts.Equal(ts.sftpfs.sftpclient, client, "client was already set")
-
-	// bad options
-	badOpt := "not an sftp.Options"
-	ts.sftpfs.sftpclient = nil
-	ts.sftpfs.options = badOpt
-	_, err = ts.sftpfs.Client(authority.Authority{})
-	ts.EqualError(err, "unable to create client, vfs.Options must be an sftp.Options", "client was already set")
 }
 
 func (ts *fileSystemTestSuite) TestClientWithAutoDisconnect() {
@@ -136,8 +137,7 @@ func (ts *fileSystemTestSuite) TestClientWithAutoDisconnect() {
 	}
 
 	// setup location with auto-disconnect of one second
-	fs := &FileSystem{}
-	fs.WithOptions(Options{AutoDisconnect: 1})
+	fs := NewFileSystem(WithOptions(Options{AutoDisconnect: 1}))
 	loc, err := fs.NewLocation("user@host.com:1234", "/")
 	ts.NoError(err)
 
