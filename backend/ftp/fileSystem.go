@@ -3,7 +3,6 @@ package ftp
 import (
 	"context"
 	"errors"
-	"fmt"
 	"path"
 
 	"github.com/c2fo/vfs/v7"
@@ -23,14 +22,37 @@ var defaultClientGetter func(context.Context, authority.Authority, Options) (cli
 
 // FileSystem implements vfs.FileSystem for the FTP filesystem.
 type FileSystem struct {
-	options   vfs.Options
+	options   Options
 	ftpclient types.Client
 	dataconn  types.DataConn
 	resetConn bool
 }
 
+// NewFileSystem initializer for fileSystem struct.
+func NewFileSystem(opts ...options.NewFileSystemOption) *FileSystem {
+	fs := &FileSystem{
+		options: Options{},
+	}
+
+	// apply options
+	for _, opt := range opts {
+		switch opt.NewFileSystemOptionName() {
+		case optionNameFTPClient:
+			opt.(*clientOpt).SetClient(fs)
+		case optionNameOptions:
+			opt.(*optionsOpt).SetOptions(fs)
+		case optionNameDataConn:
+			opt.(*dataConnOpt).SetDataConn(fs)
+		}
+	}
+
+	return fs
+}
+
 // Retry will return the default no-op retrier. The FTP client provides its own retryer interface, and is available
 // to override via the ftp.FileSystem Options type.
+//
+// Deprecated: This method is deprecated and will be removed in a future release.
 func (fs *FileSystem) Retry() vfs.Retry {
 	return vfs.DefaultRetryer()
 }
@@ -108,24 +130,26 @@ func (fs *FileSystem) DataConn(ctx context.Context, authority authority.Authorit
 // See Overview for authentication resolution
 func (fs *FileSystem) Client(ctx context.Context, authority authority.Authority) (types.Client, error) {
 	if fs.ftpclient == nil {
-		if fs.options == nil {
-			fs.options = Options{}
-		}
-
-		if opts, ok := fs.options.(Options); ok {
-			var err error
-			fs.ftpclient, err = defaultClientGetter(ctx, authority, opts)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, fmt.Errorf("unable to create client, vfs.Options must be an ftp.Options")
+		var err error
+		fs.ftpclient, err = defaultClientGetter(ctx, authority, fs.options)
+		if err != nil {
+			return nil, err
 		}
 	}
+
 	return fs.ftpclient, nil
 }
 
 // WithOptions sets options for client and returns the filesystem (chainable)
+//
+// Deprecated: This method is deprecated and will be removed in a future release.
+// Use WithOptions option:
+//
+//	fs := ftp.NewFileSystem(ftp.WithOptions(opts))
+//
+// instead of:
+//
+//	fs := ftp.NewFileSystem().WithOptions(opts)
 func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 	// only set options if vfs.Options is ftp.Options
 	if opts, ok := opts.(Options); ok {
@@ -137,16 +161,20 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 }
 
 // WithClient passes in an ftp client and returns the filesystem (chainable)
+//
+// Deprecated: This method is deprecated and will be removed in a future release.
+// Use WithClient option:
+//
+//	fs := ftp.NewFileSystem(ftp.WithClient(client))
+//
+// instead of:
+//
+//	fs := ftp.NewFileSystem().WithClient(client)
 func (fs *FileSystem) WithClient(client types.Client) *FileSystem {
 	fs.ftpclient = client
-	fs.options = nil
+	fs.options = Options{}
 
 	return fs
-}
-
-// NewFileSystem initializer for fileSystem struct.
-func NewFileSystem() *FileSystem {
-	return &FileSystem{}
 }
 
 func init() {

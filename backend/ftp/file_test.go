@@ -154,7 +154,7 @@ func (ts *fileTestSuite) TestWrite() {
 	ts.NoError(err)
 	file := &File{
 		location: &Location{
-			fileSystem: NewFileSystem().WithClient(ts.ftpClientMock),
+			fileSystem: NewFileSystem(WithClient(ts.ftpClientMock)),
 			authority:  auth,
 		},
 		path: "/tmp/hello.txt",
@@ -384,7 +384,7 @@ func (ts *fileTestSuite) TestExists_noMlst() {
 
 	// stat client error
 	defaultClientGetter = clientGetterReturnsError
-	ftpfile.(*File).Location().FileSystem().(*FileSystem).WithClient(nil)
+	ftpfile.(*File).Location().FileSystem().(*FileSystem).ftpclient = nil
 	ftpfile.(*File).Location().FileSystem().(*FileSystem).dataconn = nil
 	exists, err = ftpfile.Exists()
 	ts.Error(err, "error expected")
@@ -415,7 +415,7 @@ func (ts *fileTestSuite) TestExists_mlst() {
 
 	// stat client error
 	defaultClientGetter = clientGetterReturnsError
-	ftpfile.(*File).Location().FileSystem().(*FileSystem).WithClient(nil)
+	ftpfile.(*File).Location().FileSystem().(*FileSystem).ftpclient = nil
 	ftpfile.(*File).Location().FileSystem().(*FileSystem).dataconn = nil
 	exists, err = ftpfile.Exists()
 	ts.Error(err, "error expected")
@@ -469,7 +469,7 @@ func (ts *fileTestSuite) TestCopyToFile() {
 	ts.NoError(err)
 	sourceFile := &File{
 		location: &Location{
-			fileSystem: NewFileSystem().WithClient(ts.ftpClientMock),
+			fileSystem: NewFileSystem(WithClient(ts.ftpClientMock)),
 			authority:  auth2,
 		},
 		path: "/src/hello.txt",
@@ -482,7 +482,7 @@ func (ts *fileTestSuite) TestCopyToFile() {
 	ts.NoError(err)
 	targetFile := &File{
 		location: &Location{
-			fileSystem: NewFileSystem().WithClient(ts.ftpClientMock),
+			fileSystem: NewFileSystem(WithClient(ts.ftpClientMock)),
 			authority:  auth,
 		},
 		path: "/targ/hello.txt",
@@ -532,7 +532,7 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 	ts.NoError(err)
 	sourceFile := &File{
 		location: &Location{
-			fileSystem: NewFileSystem().WithClient(ts.ftpClientMock),
+			fileSystem: NewFileSystem(WithClient(ts.ftpClientMock)),
 			authority:  auth2,
 		},
 		path: "/src/hello.txt",
@@ -580,7 +580,7 @@ func (ts *fileTestSuite) TestMoveToFile_differentAuthority() {
 	ts.NoError(err)
 	sourceFile := &File{
 		location: &Location{
-			fileSystem: NewFileSystem().WithClient(ts.ftpClientMock),
+			fileSystem: NewFileSystem(WithClient(ts.ftpClientMock)),
 			authority:  auth2,
 		},
 		path: "/src/hello.txt",
@@ -593,7 +593,7 @@ func (ts *fileTestSuite) TestMoveToFile_differentAuthority() {
 	ts.NoError(err)
 	targetFile := &File{
 		location: &Location{
-			fileSystem: NewFileSystem().WithClient(ts.ftpClientMock),
+			fileSystem: NewFileSystem(WithClient(ts.ftpClientMock)),
 			authority:  auth,
 		},
 		path: "/targ/hello.txt",
@@ -635,7 +635,7 @@ func (ts *fileTestSuite) TestMoveToFile_sameAuthority() {
 	srcMockFTPClient := &mocks.Client{}
 	sourceFile := &File{
 		location: &Location{
-			fileSystem: NewFileSystem().WithClient(srcMockFTPClient),
+			fileSystem: NewFileSystem(WithClient(srcMockFTPClient)),
 			authority:  auth2,
 		},
 		path: "/src/hello.txt",
@@ -649,7 +649,7 @@ func (ts *fileTestSuite) TestMoveToFile_sameAuthority() {
 	ts.NoError(err)
 	targetFile := &File{
 		location: &Location{
-			fileSystem: NewFileSystem().WithClient(tgtMockFTPClient),
+			fileSystem: NewFileSystem(WithClient(tgtMockFTPClient)),
 			authority:  auth,
 		},
 		path: "/targ/hello.txt",
@@ -695,13 +695,13 @@ func (ts *fileTestSuite) TestMoveToFile_sameAuthority() {
 	// get client failure
 	defaultClientGetter = clientGetterReturnsError
 	dataConnGetterFunc = getDataConn
-	sourceFile.Location().FileSystem().(*FileSystem).WithClient(nil)
+	sourceFile.Location().FileSystem().(*FileSystem).ftpclient = nil
 	sourceFile.Location().FileSystem().(*FileSystem).resetConn = true
 	err = sourceFile.MoveToFile(targetFile)
 	ts.Error(err, "error is expected")
 	ts.ErrorIs(err, errClientGetter, "error is the right kind of error")
 	defaultClientGetter = getClient
-	targetFile.Location().FileSystem().(*FileSystem).WithClient(tgtMockFTPClient)
+	targetFile.Location().FileSystem().(*FileSystem).ftpclient = tgtMockFTPClient
 	dataConnGetterFunc = getFakeDataConn
 
 	// Exists failure
@@ -743,7 +743,7 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	srcMockFTPClient := &mocks.Client{}
 	sourceFile := &File{
 		location: &Location{
-			fileSystem: NewFileSystem().WithClient(srcMockFTPClient),
+			fileSystem: NewFileSystem(WithClient(srcMockFTPClient)),
 			authority:  auth,
 		},
 		path: "/src/hello.txt",
@@ -1011,7 +1011,7 @@ func (ts *fileTestSuite) TestDelete() {
 	mockFTPClient := &mocks.Client{}
 	testFile := &File{
 		location: &Location{
-			fileSystem: NewFileSystem().WithClient(mockFTPClient),
+			fileSystem: NewFileSystem(WithClient(mockFTPClient)),
 			authority:  auth,
 		},
 		path: "/src/hello.txt",
@@ -1036,7 +1036,7 @@ func (ts *fileTestSuite) TestDelete() {
 
 	// failure getting client
 	defaultClientGetter = clientGetterReturnsError
-	testFile.Location().FileSystem().(*FileSystem).WithClient(nil)
+	testFile.Location().FileSystem().(*FileSystem).ftpclient = nil
 	testFile.Location().FileSystem().(*FileSystem).resetConn = true
 	err = testFile.Delete()
 	ts.Error(err, "failed delete should return an error")
@@ -1082,7 +1082,7 @@ func (ts *fileTestSuite) TestLastModified() {
 
 	// stat client error
 	defaultClientGetter = clientGetterReturnsError
-	ts.testFile.(*File).Location().FileSystem().(*FileSystem).WithClient(nil)
+	ts.testFile.(*File).Location().FileSystem().(*FileSystem).ftpclient = nil
 	ts.testFile.(*File).Location().FileSystem().(*FileSystem).resetConn = true
 	modTime, err = ts.testFile.LastModified()
 	ts.Error(err, "error expected")
@@ -1342,9 +1342,8 @@ func getFakeDataConn(_ context.Context, a authority.Authority, fileSystem *FileS
 	}
 
 	if f != nil && f.Location().FileSystem().(*FileSystem).resetConn {
-		if f != nil {
-			f.Location().FileSystem().(*FileSystem).resetConn = false
-		}
+		f.Location().FileSystem().(*FileSystem).resetConn = false
+
 		contents := fileSystem.dataconn.(*FakeDataConn).rw.Bytes()
 		fileSystem.dataconn = NewFakeDataConn(t)
 		_, err := fileSystem.dataconn.Write(contents)

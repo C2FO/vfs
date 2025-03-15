@@ -32,10 +32,6 @@ Or call directly:
 ftp can be augmented with some implementation-specific methods.  Backend returns vfs.FileSystem interface so it
 would have to be cast as ftp.FileSystem to use them.
 
-These methods are chainable:
-(*FileSystem) WithClient(client interface{}) *FileSystem
-(*FileSystem) WithOptions(opts vfs.Options) *FileSystem
-
 	  func DoSomething() {
 		  // cast if fs was created using backend.Backend().  Not necessary if created directly from ftp.NewFileSystem().
 		  fs := backend.Backend(ftp.Scheme)
@@ -43,19 +39,20 @@ These methods are chainable:
 
 		  // to pass specific client implementing types.Client interface (in this case, _ftp github.com/jlaffaye/ftp)
 		  client, _ := _ftp.Dial("server.com:21")
-		  fs = fs.WithClient(client)
+		  fs = ftp.NewFileSystem(ftp.WithClient(client))
 
-		  // to pass in client options. See Options for more info.  Note that changes to Options will make nil any client.
-		  // This behavior ensures that changes to settings will get applied to a newly created client.
-		  fs = fs.WithOptions(
-			  ftp.Options{
-				  Password: "s3cr3t",
-				  DisableEPSV: true,
-				  Protocol: ftp.ProtocolFTPES,
-				  DialTimeout: 15 * time.Second,
-				  DebugWriter: os.Stdout,
-				  IncludeInsecureCiphers: true,
-			  },
+
+		  fs = ftp.NewFileSystem(
+			  fs.WithOptions(
+				  ftp.Options{
+				      Password: "s3cr3t",
+				      DisableEPSV: true,
+				      Protocol: ftp.ProtocolFTPES,
+				      DialTimeout: 15 * time.Second,
+				      DebugWriter: os.Stdout,
+				      IncludeInsecureCiphers: true,
+				  },
+			  ),
 		  )
 
 		  location, err := fs.NewLocation("myuser@server.com:21", "/some/path/")
