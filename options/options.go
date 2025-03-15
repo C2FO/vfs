@@ -21,3 +21,8 @@ type DeleteOption interface {
 type NewFileOption interface {
 	NewFileOptionName() string
 }
+
+// NewFileSystemOption interface contains function that should be implemented by any custom option to qualify as a new file system option.
+type NewFileSystemOption interface {
+	NewFileSystemOptionName() string
+}

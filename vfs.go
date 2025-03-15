@@ -41,6 +41,8 @@ type FileSystem interface {
 	Scheme() string
 
 	// Retry will return the retry function to be used by any file system.
+	//
+	// Deprecated: This method is deprecated and will be removed in a future release.
 	Retry() Retry
 }
 
@@ -241,6 +243,11 @@ type File interface {
 }
 
 // Options are structs that contain various options specific to the file system
+//
+// Deprecated: This type is deprecated and will be removed in a future release.
+// Use the specific options struct for the file system with the NewFileSystem function:
+//
+//	fs := s3.NewFileSystem(s3.WithOptions(s3Opts))
 type Options interface{}
 
 // Retry is a function that can be used to wrap any operation into a definable retry operation. The wrapped argument
@@ -255,9 +262,13 @@ type Options interface{}
 //	  }
 //	  return ret
 //	}
+//
+// Deprecated: This type is deprecated and will be removed in a future release.
 type Retry func(wrapped func() error) error
 
 // DefaultRetryer returns a no-op retryer which simply calls the wrapped command without looping.
+//
+// Deprecated: This function is deprecated and will be removed in a future release.
 func DefaultRetryer() Retry {
 	return func(c func() error) error { return c() }
 }
