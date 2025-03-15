@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v7.0.0-pre5] - 2025-03-17
+### Added
+- Add NewFileSystemOption to allow for options, clients, etc to be passed to the FileSystem constructor.  Fixes #238.
+- Deprecate Retry() method in FileSystem interface and related types.
+- Deprecate vfs.Option type in favor of specific backend options passed by NewFileSystemOption.
+
 ## [v7.0.0-pre4] - 2025-03-12
 ### Added
 - Deprecated usage of Volume and ChangeDir.  Added Authority (to replace Volume).  Fixes #235.
