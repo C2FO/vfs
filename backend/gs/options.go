@@ -16,21 +16,18 @@ type Options struct {
 	FileBufferSize int // Buffer Size In Bytes Used with utils.TouchCopyBuffered
 }
 
-func parseClientOptions(opts vfs.Options) []option.ClientOption {
+func parseClientOptions(opts Options) []option.ClientOption {
 	var googleClientOpts []option.ClientOption
-
-	// we only care about 'gs.Options' types, skip anything else
-	if opts, ok := opts.(Options); ok {
-		switch {
-		case opts.APIKey != "":
-			googleClientOpts = append(googleClientOpts, option.WithAPIKey(opts.APIKey))
-		case opts.CredentialFile != "":
-			googleClientOpts = append(googleClientOpts, option.WithCredentialsFile(opts.CredentialFile))
-		case opts.Endpoint != "":
-			googleClientOpts = append(googleClientOpts, option.WithEndpoint(opts.Endpoint))
-		case len(opts.Scopes) > 0:
-			googleClientOpts = append(googleClientOpts, option.WithScopes(opts.Scopes...))
-		}
+	switch {
+	case opts.APIKey != "":
+		googleClientOpts = append(googleClientOpts, option.WithAPIKey(opts.APIKey))
+	case opts.CredentialFile != "":
+		googleClientOpts = append(googleClientOpts, option.WithCredentialsFile(opts.CredentialFile))
+	case opts.Endpoint != "":
+		googleClientOpts = append(googleClientOpts, option.WithEndpoint(opts.Endpoint))
+	case len(opts.Scopes) > 0:
+		googleClientOpts = append(googleClientOpts, option.WithScopes(opts.Scopes...))
 	}
+
 	return googleClientOpts
 }

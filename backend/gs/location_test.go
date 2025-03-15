@@ -66,7 +66,7 @@ func (lt *locationTestSuite) TestList() {
 	server := fakestorage.NewServer(objects)
 	defer server.Stop()
 
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 	for _, objectPrefix := range objectPrefixes {
 		lt.Run("list direct "+objectPrefix, func() {
 			loc, err := fs.NewLocation(bucket, "/"+objectPrefix)
@@ -116,7 +116,7 @@ func (lt *locationTestSuite) TestList() {
 func (lt *locationTestSuite) TestVolume() {
 	server := fakestorage.NewServer(Objects{})
 	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 
 	bucket := "c2fo-vfs-a"
 	loc, err := fs.NewLocation(bucket, "/")
@@ -127,7 +127,7 @@ func (lt *locationTestSuite) TestVolume() {
 func (lt *locationTestSuite) TestPath() {
 	server := fakestorage.NewServer(Objects{})
 	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 
 	loc, err := fs.NewLocation("bucket", "/path/")
 	lt.NoError(err)
@@ -145,7 +145,7 @@ func (lt *locationTestSuite) TestPath() {
 func (lt *locationTestSuite) TestNewFile() {
 	server := fakestorage.NewServer(Objects{})
 	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 
 	loc, err := fs.NewLocation("bucket", "/some/path/to/")
 	lt.NoError(err)
@@ -199,7 +199,7 @@ func (lt *locationTestSuite) TestExists_true() {
 			Content: []byte("content"),
 		}})
 	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 	loc, err := fs.NewLocation(bucket, "/")
 	lt.NoError(err)
 	exists, err := loc.Exists()
@@ -210,7 +210,7 @@ func (lt *locationTestSuite) TestExists_true() {
 func (lt *locationTestSuite) TestExists_false() {
 	server := fakestorage.NewServer(Objects{})
 	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 	bucket := "foo"
 	loc, err := fs.NewLocation(bucket, "/")
 	lt.NoError(err)
@@ -257,7 +257,7 @@ func (lt *locationTestSuite) TestChangeDir() {
 func (lt *locationTestSuite) TestNewLocation() {
 	server := fakestorage.NewServer(Objects{})
 	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 
 	loc, err := fs.NewLocation("bucket", "/old/")
 	lt.NoError(err)
@@ -287,7 +287,7 @@ func (lt *locationTestSuite) TestNewLocation() {
 func (lt *locationTestSuite) TestStringURI() {
 	server := fakestorage.NewServer(Objects{})
 	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 	auth, err := authority.NewAuthority("mybucket")
 	lt.NoError(err)
 	loc := &Location{fileSystem: fs, prefix: "some/path/to/location", authority: auth}
@@ -307,7 +307,7 @@ func (lt *locationTestSuite) TestDeleteFile() {
 			Content: []byte("content"),
 		}})
 	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 
 	loc, err := fs.NewLocation(bucket, "/old/")
 	lt.NoError(err)

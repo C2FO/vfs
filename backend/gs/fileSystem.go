@@ -23,15 +23,18 @@ const name = "Google Cloud Storage"
 type FileSystem struct {
 	client        *storage.Client
 	ctx           context.Context
-	options       vfs.Options
+	options       Options
 	clientCreator ClientCreator
 }
 
 // Retry will return a retrier provided via options, or a no-op if none is provided.
+//
+// Deprecated: This method is deprecated and will be removed in a future release.
 func (fs *FileSystem) Retry() vfs.Retry {
-	if opts, _ := fs.options.(Options); opts.Retry != nil {
-		return opts.Retry
+	if fs.options.Retry != nil {
+		return fs.options.Retry
 	}
+
 	return vfs.DefaultRetryer()
 }
 
@@ -111,14 +114,32 @@ func (fs *FileSystem) Client() (*storage.Client, error) {
 }
 
 // WithOptions sets options for client and returns the file system (chainable)
+//
+// Deprecated: This method is deprecated and will be removed in a future release.
+// Use WithClient option:
+//
+//	fs := gs.NewFileSystem(gs.WithClient(client))
+//
+// instead of:
+//
+//	fs := gs.NewFileSystem().WithClient(client)
 func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
-	fs.options = opts
+	fs.options = opts.(Options)
 	// we set client to nil to ensure that a new client is created using the new context when Client() is called
 	fs.client = nil
 	return fs
 }
 
 // WithContext passes in user context and returns the file system (chainable)
+//
+// Deprecated: This method is deprecated and will be removed in a future release.
+// Use WithContext option:
+//
+//	fs := gs.NewFileSystem(WithContext(ctx)
+//
+// instead of:
+//
+//	fs := s3.NewFileSystem().WithContext(ctx)
 func (fs *FileSystem) WithContext(ctx context.Context) *FileSystem {
 	fs.ctx = ctx
 	// we set client to nil to ensure that a new client is created using the new context when Client() is called
@@ -127,6 +148,15 @@ func (fs *FileSystem) WithContext(ctx context.Context) *FileSystem {
 }
 
 // WithClient passes in a google storage client and returns the file system (chainable)
+//
+// Deprecated: This method is deprecated and will be removed in a future release.
+// Use WithOptions option:
+//
+//	fs := gs.NewFileSystem(gs.WithOptions(opts))
+//
+// instead of:
+//
+//	fs := gs.NewFileSystem().WithOptions(opts)
 func (fs *FileSystem) WithClient(client *storage.Client) *FileSystem {
 	fs.client = client
 	return fs
@@ -146,10 +176,22 @@ func (d *defaultClientCreator) NewClient(ctx context.Context, opts ...option.Cli
 }
 
 // NewFileSystem initializer for FileSystem struct accepts google cloud storage client and returns FileSystem or error.
-func NewFileSystem() *FileSystem {
+func NewFileSystem(opts ...options.NewFileSystemOption) *FileSystem {
 	fs := &FileSystem{
 		ctx:           context.Background(),
 		clientCreator: &defaultClientCreator{},
+	}
+
+	// apply options
+	for _, opt := range opts {
+		switch opt.NewFileSystemOptionName() {
+		case optionNameClient:
+			opt.(*clientOpt).SetClient(fs)
+		case optionNameOptions:
+			opt.(*optionsOpt).SetOptions(fs)
+		case optionNameContext:
+			opt.(*contextOpt).SetContext(fs)
+		}
 	}
 
 	return fs
