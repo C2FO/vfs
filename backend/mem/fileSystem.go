@@ -28,6 +28,8 @@ type FileSystem struct {
 }
 
 // Retry will return a retrier provided via options, or a no-op if none is provided.
+//
+// Deprecated: This method is deprecated and will be removed in a future release.
 func (fs *FileSystem) Retry() vfs.Retry {
 	return vfs.DefaultRetryer()
 }
