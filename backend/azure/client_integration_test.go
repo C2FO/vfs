@@ -118,7 +118,7 @@ func (s *ClientIntegrationTestSuite) TestAllTheThings_FileWithPath() {
 	s.NoError(err, "The file should be successfully uploaded to azure")
 
 	// check to see if it exists
-	_, err = client.Properties(f.Location().(*Location).container, f.Path())
+	_, err = client.Properties(f.Location().(*Location).Authority().String(), f.Path())
 	s.NoError(err, "If the file exists no error should be returned")
 
 	// download it
@@ -176,7 +176,7 @@ func (s *ClientIntegrationTestSuite) TestProperties() {
 
 	err = client.Upload(f, strings.NewReader("Hello world!"), "")
 	s.NoError(err, "The file should be successfully uploaded to azure so we shouldn't get an error")
-	props, err := client.Properties(f.Location().(*Location).container, f.Path())
+	props, err := client.Properties(f.Location().(*Location).Authority().String(), f.Path())
 	s.NoError(err, "The file exists so we shouldn't get an error")
 	s.NotNil(props, "We should get a non-nil BlobProperties pointer back")
 	s.Greater(props.Size, uint64(0), "The size should be greater than zero")
@@ -241,12 +241,12 @@ func (s *ClientIntegrationTestSuite) TestTouch_FileAlreadyExists() {
 
 	err = client.Upload(f, strings.NewReader("One fish, two fish, red fish, blue fish."), "")
 	s.NoError(err)
-	originalProps, err := client.Properties(f.Location().(*Location).container, f.Path())
+	originalProps, err := client.Properties(f.Location().(*Location).Authority().String(), f.Path())
 	s.NoError(err, "Should get properties back from azure with no error")
 
 	err = f.Touch()
 	s.NoError(err, "Should not receive an error when touching an existing file")
-	newProps, err := client.Properties(f.Location().(*Location).container, f.Path())
+	newProps, err := client.Properties(f.Location().(*Location).Authority().String(), f.Path())
 	s.NoError(err)
 	s.NotNil(newProps, "New props should be non-nil")
 	s.True(newProps.LastModified.After(*originalProps.LastModified), "newProps.LastModified should be after originalProps.LastModified")
