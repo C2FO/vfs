@@ -102,12 +102,21 @@ these to the S3 backend:
   `https://<storage-account-name>.core.windows.net/<blob-container-name>/path/to/file.txt`.
 
 ##### All Backends
-Some methods in the Location interface have been deprecated because they use terminology that doesn't apply to all backends.
+Some methods in the Location and FileSystem interfaces have been deprecated because they use terminology that doesn't apply to all backends.
 They will be removed in a future release. Update your code to use the new methods.  See [#235](https://github.com/C2FO/vfs/issues/235).
-- `Volume()` method which returns the authority as a string has beendeprecated in favor of the `Authority()` method which
+- `location.Volume()` method which returns the authority as a string has beendeprecated in favor of the `location.Authority()` method which
   returns an `authority.Authority` struct. Update your code to use the `Authority().String()` method instead of `Volume()`.
-- `ChangeDir()` method ash been deprecated in favor of the existing `NewLocation()` method. Update your code to use the
+- `location.ChangeDir()` method ash been deprecated in favor of the existing `location.NewLocation()` method. Update your code to use the
   `NewLocation()` method instead of `ChangeDir()`.
+- `vfs.Options` struct has been deprecated in favor of using backend-specific structs.
+- `filesystem.Retry()` method has been deprecated in favor of using backend-specific functional options.
+
+Additionally, we have added functional option interface, `FileSystemOption`, to allow for more flexible configuration 
+of backends. This interface allows for more complex configuration options to be passed to the via the `NewFileSystem` function.
+This will replace backend-specific chainable functions that require casting the filesystem to the backend type first.  
+See [#238](https://github.com/C2FO/vfs/issues/238).
+
+```go
 
 #### Upgrading from v5 to v6
 

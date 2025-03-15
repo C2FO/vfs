@@ -48,25 +48,51 @@ Post 1.17:
 
 # Upgrading
 
-Upgrading from v6 to v7
+# Upgrading from v6 to v7
+
 Please review these changes and update your code accordingly to ensure compatibility with v7.
-S3 Backend
-The project now uses the `aws-sdk-go-v2` library instead of the deprecated, EOL `aws-sdk-go`. This update necessitated a
-these to the S3 backend:
 
-The S3 backend's s3fs.Client() function now returns an `s3.Client` which is a subset of AWS's sdk v2 functionality.
+# S3 Backend
 
-	This change may require updates to your code if you were relying client functionality not directly required by the s3
-	vfs backend.
+The project now uses the [aws-sdk-go-v2] library instead of the deprecated, EOL
+[aws-sdk-go]. This update necessitated a these to the S3 backend:
 
-The `Option.Retry` field is now an `aws.Retryer` instead of a `request.Retry`. Ensure that your Option logic is compatible
-with the new type.
+  - The S3 backend's filesystem.Client() function now returns an `s3.Client` which is a subset of AWS's sdk v2 functionality.
+    This change may require updates to your code if you were relying client functionality not directly required by the s3
+    vfs backend.
 
-Azure Backend
-Scheme for Azure has been updated from `https` to `az`. Update your code to use the new scheme.
-Authority for Azure has been updated from `blob.core.windows.net` to `<blob-container-name>`, such that the full URI
-is `az://<blob-container-name>/path/to/file.txt` rather than
-`https://<storage-account-name>.core.windows.net/<blob-container-name>/path/to/file.txt`.
+  - The `Option.Retry` field is now an `aws.Retryer` instead of a `request.Retry`. Ensure that your Option logic is compatible
+    with the new type.
+
+# Azure Backend
+
+  - Scheme for Azure has been updated from `https` to `az`. Update your code to use the new scheme.
+
+  - Authority for Azure has been updated from `blob.core.windows.net` to `<blob-container-name>`, such that the full URI
+    is `az://<blob-container-name>/path/to/file.txt` rather than
+    `https://<storage-account-name>.core.windows.net/<blob-container-name>/path/to/file.txt`.
+
+# All Backends
+
+Some methods in the Location and FileSystem interfaces have been deprecated because they use terminology that doesn't
+apply to all backends. They will be removed in a future release. Update your code to use the new methods.
+See https://github.com/C2FO/vfs/issues/235.
+
+  - location.Volume() method which returns the authority as a string has been deprecated in favor of the
+    location.Authority() method which returns an authority.Authority struct. Update your code to use the
+    Authority().String() method instead of Volume().
+
+  - location.ChangeDir() method ash been deprecated in favor of the existing location.NewLocation() method. Update
+    your code to use the NewLocation() method instead of ChangeDir().
+
+  - vfs.Options struct has been deprecated in favor of using backend-specific structs.
+
+  - FileSystem.Retry() method has been deprecated in favor of using backend-specific functional options.
+
+Additionally, we have added functional option interface, `NewFileSystemOption`, to allow for more flexible configuration
+of backends. This interface allows for more complex configuration options to be passed to the via the `NewFileSystem` function.
+This will replace backend-specific chainable functions that require casting the filesystem to the backend type first.
+See https://github.com/C2FO/vfs/issues/238.
 
 # Upgrading from v5 to v6
 
@@ -166,5 +192,8 @@ broken down into userinfo, host, and port.
 
 * userinfo - The userinfo section may contain a username and password separated by a colon.  The username and password are
 separated by a colon and followed by an @ symbol.  The password may be omitted.
+
+[aws-sdk-go-v2]: https://github.com/aws/aws-sdk-go-v2
+[aws-sdk-go]: https://github.com/aws/aws-sdk-go
 */
 package vfs
