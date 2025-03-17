@@ -27,20 +27,13 @@ type FileSystem struct {
 
 // NewFileSystem creates a new default FileSystem.  This will set the options options.AccountName and
 // options.AccountKey with the env variables AZURE_STORAGE_ACCOUNT and AZURE_STORAGE_ACCESS_KEY respectively.
-func NewFileSystem(opts ...options.NewFileSystemOption) *FileSystem {
+func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem {
 	fs := &FileSystem{
 		options: NewOptions(),
 	}
 
 	// apply options
-	for _, opt := range opts {
-		switch opt.NewFileSystemOptionName() {
-		case optionNameClient:
-			opt.(*clientOpt).SetClient(fs)
-		case optionNameOptions:
-			opt.(*optionsOpt).SetOptions(fs)
-		}
-	}
+	options.ApplyOptions(fs, opts...)
 
 	return fs
 }

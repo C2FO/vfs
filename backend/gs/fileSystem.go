@@ -27,6 +27,19 @@ type FileSystem struct {
 	clientCreator ClientCreator
 }
 
+// NewFileSystem initializer for FileSystem struct accepts google cloud storage client and returns FileSystem or error.
+func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem {
+	fs := &FileSystem{
+		ctx:           context.Background(),
+		clientCreator: &defaultClientCreator{},
+	}
+
+	// apply options
+	options.ApplyOptions(fs, opts...)
+
+	return fs
+}
+
 // Retry will return a retrier provided via options, or a no-op if none is provided.
 //
 // Deprecated: This method is deprecated and will be removed in a future release.
@@ -173,28 +186,6 @@ type defaultClientCreator struct{}
 // NewClient is a function that creates a new Google Cloud Storage client.
 func (d *defaultClientCreator) NewClient(ctx context.Context, opts ...option.ClientOption) (*storage.Client, error) {
 	return storage.NewClient(ctx, opts...)
-}
-
-// NewFileSystem initializer for FileSystem struct accepts google cloud storage client and returns FileSystem or error.
-func NewFileSystem(opts ...options.NewFileSystemOption) *FileSystem {
-	fs := &FileSystem{
-		ctx:           context.Background(),
-		clientCreator: &defaultClientCreator{},
-	}
-
-	// apply options
-	for _, opt := range opts {
-		switch opt.NewFileSystemOptionName() {
-		case optionNameClient:
-			opt.(*clientOpt).SetClient(fs)
-		case optionNameOptions:
-			opt.(*optionsOpt).SetOptions(fs)
-		case optionNameContext:
-			opt.(*contextOpt).SetContext(fs)
-		}
-	}
-
-	return fs
 }
 
 func init() {

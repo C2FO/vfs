@@ -29,22 +29,13 @@ type FileSystem struct {
 }
 
 // NewFileSystem initializer for fileSystem struct.
-func NewFileSystem(opts ...options.NewFileSystemOption) *FileSystem {
+func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem {
 	fs := &FileSystem{
 		options: Options{},
 	}
 
 	// apply options
-	for _, opt := range opts {
-		switch opt.NewFileSystemOptionName() {
-		case optionNameFTPClient:
-			opt.(*clientOpt).SetClient(fs)
-		case optionNameOptions:
-			opt.(*optionsOpt).SetOptions(fs)
-		case optionNameDataConn:
-			opt.(*dataConnOpt).SetDataConn(fs)
-		}
-	}
+	options.ApplyOptions(fs, opts...)
 
 	return fs
 }

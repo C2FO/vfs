@@ -22,20 +22,12 @@ type FileSystem struct {
 }
 
 // NewFileSystem initializer for FileSystem struct accepts aws-sdk client and returns Filesystem or error.
-func NewFileSystem(opts ...options.NewFileSystemOption) *FileSystem {
+func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem {
 	fs := &FileSystem{
 		options: Options{},
 	}
 
-	// apply options
-	for _, opt := range opts {
-		switch opt.NewFileSystemOptionName() {
-		case optionNameClient:
-			opt.(*clientOpt).SetClient(fs)
-		case optionNameOptions:
-			opt.(*optionsOpt).SetOptions(fs)
-		}
-	}
+	options.ApplyOptions(fs, opts...)
 
 	return fs
 }
