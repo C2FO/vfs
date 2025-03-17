@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Update golang.org/x/net to v0.36.0
+
 ## [v6.26.0] - 2025-02-19
 ### Added
 - Add support for role based authentication in s3 backend.
