@@ -20,7 +20,7 @@ Or call directly:
 	import _os "github.com/c2fo/vfs/v7/backend/os"
 
 	func DoSomething() {
-	    fs := &_os.FileSystem{}
+	    fs := &_os.NewFileSystem()
 	    ...
 	}
 

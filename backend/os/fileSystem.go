@@ -19,7 +19,19 @@ const name = "os"
 // FileSystem implements vfs.FileSystem for the OS file system.
 type FileSystem struct{}
 
+// NewFileSystem creates a new instance of the OS file system.
+func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem {
+	fs := &FileSystem{}
+
+	// apply options
+	options.ApplyOptions(fs, opts...)
+
+	return fs
+}
+
 // Retry will return a retriever provided via options, or a no-op if none is provided.
+//
+// Deprecated: This method is deprecated and will be removed in a future release.
 func (fs *FileSystem) Retry() vfs.Retry {
 	return vfs.DefaultRetryer()
 }

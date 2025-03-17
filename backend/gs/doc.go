@@ -27,30 +27,32 @@ Or call directly:
 gs can be augmented with the following implementation-specific methods.  Backend returns vfs.FileSystem interface so it
 would have to be cast as gs.FileSystem to use the following:
 
-	func DoSomething() {
-	    ...
+		func DoSomething() {
+		    ...
 
-	    // cast if fs was created using backend.Backend().  Not necessary if created directly from gs.NewFileSystem().
-	    fs = fs.(gs.FileSystem)
+		    // cast if fs was created using backend.Backend().  Not necessary if created directly from gs.NewFileSystem().
+		    fs = fs.(gs.FileSystem)
 
-	    // to use your own "context"
-	    ctx := context.Background()
-	    fs = fs.WithContext(ctx)
+		    // to use your own "context"
+		    ctx := context.Background()
+		    fs = gs.NewFileSystem(gs.WithContext(ctx))
 
-	    // to pass in client options
-	    fs = fs.WithOptions(
-	        gs.Options{
-	            CredentialFile: "/root/.gcloud/account.json",
-	            Scopes:         []string{"ScopeReadOnly"},
-	            //default scope is "ScopeFullControl"
-	        },
-	    )
+		    // to pass in client options
+		    fs = gs.NewFileSystem(
+	            gs.WithOptions(
+		            gs.Options{
+		                CredentialFile: "/root/.gcloud/account.json",
+		                Scopes:         []string{"ScopeReadOnly"},
+		                //default scope is "ScopeFullControl"
+		            },
+	            ),
+		    )
 
-	    // to pass specific client, for instance no-auth client
-	    ctx := context.Background()
-	    client, _ := storage.NewClient(ctx, option.WithoutAuthentication())
-	    fs = fs.WithClient(client)
-	}
+		    // to pass specific client, for instance no-auth client
+		    ctx := context.Background()
+		    client, _ := storage.NewClient(ctx, option.WithoutAuthentication())
+		    fs = gs.NewFileSystem(gs.WithClient(client))
+		}
 
 # Authentication
 

@@ -69,6 +69,11 @@ func (o *osFileSystemTest) TestLocation() {
 	o.Equal("file", fs.Scheme())
 }
 
+func (o *osFileSystemTest) TestNewFileSystem() {
+	fs := NewFileSystem()
+	o.IsType(&FileSystem{}, fs)
+}
+
 func TestOSFileSystem(t *testing.T) {
 	suite.Run(t, new(osFileSystemTest))
 }

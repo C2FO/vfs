@@ -2,7 +2,6 @@ package s3
 
 import (
 	"errors"
-	"fmt"
 	"path"
 
 	"github.com/c2fo/vfs/v7"
@@ -19,11 +18,24 @@ const name = "AWS S3"
 // FileSystem implements vfs.FileSystem for the S3 file system.
 type FileSystem struct {
 	client  Client
-	options vfs.Options
+	options Options
+}
+
+// NewFileSystem initializer for FileSystem struct accepts aws-sdk client and returns Filesystem or error.
+func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem {
+	fs := &FileSystem{
+		options: Options{},
+	}
+
+	options.ApplyOptions(fs, opts...)
+
+	return fs
 }
 
 // Retry will return the default no-op retrier. The S3 client provides its own retryer interface, and is available
 // to override via the s3.FileSystem Options type.
+//
+// Deprecated: This method is deprecated and will be removed in a future release.
 func (fs *FileSystem) Retry() vfs.Retry {
 	return vfs.DefaultRetryer()
 }
@@ -93,24 +105,25 @@ func (fs *FileSystem) Scheme() string {
 // See Overview for authentication resolution
 func (fs *FileSystem) Client() (Client, error) {
 	if fs.client == nil {
-		if fs.options == nil {
-			fs.options = Options{}
-		}
-
-		if opts, ok := fs.options.(Options); ok {
-			var err error
-			fs.client, err = getClient(opts)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, fmt.Errorf("unable to create client, vfs.Options must be an s3.Options")
+		var err error
+		fs.client, err = getClient(fs.options)
+		if err != nil {
+			return nil, err
 		}
 	}
 	return fs.client, nil
 }
 
 // WithOptions sets options for client and returns the file system (chainable)
+//
+// Deprecated: This method is deprecated and will be removed in a future release.
+// Use WithOptions option:
+//
+//	fs := s3.NewFileSystem(WithOptions(opts))
+//
+// instead of:
+//
+//	fs := s3.NewFileSystem().WithOptions(opts)
 func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 	// only set options if vfs.Options is s3.Options
 	if opts, ok := opts.(Options); ok {
@@ -125,17 +138,21 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 }
 
 // WithClient passes in an s3 client and returns the file system (chainable)
+//
+// Deprecated: This method is deprecated and will be removed in a future release.
+// Use WithClient option:
+//
+//	fs := s3.NewFileSystem(WithClient(client))
+//
+// instead of:
+//
+//	fs := s3.NewFileSystem().WithClient(client)
 func (fs *FileSystem) WithClient(client interface{}) *FileSystem {
 	if c, ok := client.(Client); ok {
 		fs.client = c
-		fs.options = nil
+		fs.options = Options{}
 	}
 	return fs
-}
-
-// NewFileSystem initializer for FileSystem struct accepts aws-sdk client and returns Filesystem or error.
-func NewFileSystem() *FileSystem {
-	return &FileSystem{}
 }
 
 func init() {

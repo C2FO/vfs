@@ -30,26 +30,27 @@ would have to be cast as s3.FileSystem to use the following:
 	func DoSomething() {
 	    ...
 
-	    // cast if fs was created using backend.Backend().  Not necessary if created directly from s3.NewFileSystem().
-	    fs = fs.(s3.FileSystem)
-
 	    // to pass in client options
-	    fs = fs.WithOptions(
-	        s3.Options{
-	            AccessKeyID:     "AKIAIOSFODNN7EXAMPLE",
-	            SecretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
-	            Region:          "us-west-2",
-	            ACL: 			   "bucket-owner-full-control",
-	        },
+	    fs = s3.NewFileSystem(
+	        s3.WithOptions(
+	            s3.Options{
+	                AccessKeyID:     "AKIAIOSFODNN7EXAMPLE",
+	                SecretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+	                Region:          "us-west-2",
+	                ACL: 			   "bucket-owner-full-control",
+	            },
+	        ),
 	    )
 
 	    // to pass specific client, for instance a mock client
-	    s3cliMock := &mocks.Client{}
-	    s3cliMock.On("GetObject", matchContext, mock.AnythingOfType("*s3.GetObjectInput")).
+	    s3MockClient := mocks.NewClient(t)
+	    s3MockClient.EXPECT().
+	        GetObject(matchContext, mock.AnythingOfType("*s3.GetObjectInput")).
 	        Return(&s3.GetObjectOutput{
 	            Body: nopCloser{bytes.NewBufferString("Hello world!")},
 	            }, nil)
-	    fs = fs.WithClient(s3cliMock)
+
+	    fs = s3.NewFileSystem(s3.WithClient(s3MockClient))
 	}
 
 # Object ACL

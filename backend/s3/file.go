@@ -139,11 +139,7 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 	}
 
 	// Otherwise, use TouchCopyBuffered using io.CopyBuffer
-	fileBufferSize := 0
-
-	if opts, ok := f.Location().FileSystem().(*FileSystem).options.(Options); ok {
-		fileBufferSize = opts.FileBufferSize
-	}
+	fileBufferSize := f.Location().FileSystem().(*FileSystem).options.FileBufferSize
 
 	if err := utils.TouchCopyBuffered(file, f, fileBufferSize); err != nil {
 		return err
@@ -594,8 +590,7 @@ func (f *File) getCopyObjectInput(targetFile *File) *s3.CopyObjectInput {
 		copyInput.ContentType = aws.String(contentType)
 	}
 
-	if f.Location().FileSystem().(*FileSystem).options != nil &&
-		f.Location().FileSystem().(*FileSystem).options.(Options).DisableServerSideEncryption {
+	if f.Location().FileSystem().(*FileSystem).options.DisableServerSideEncryption {
 		copyInput.ServerSideEncryption = ""
 	}
 
@@ -606,24 +601,23 @@ func (f *File) isSameAuth(targetFile *File) (bool, types.ObjectCannedACL) {
 	fileOptions := f.Location().FileSystem().(*FileSystem).options
 	targetOptions := targetFile.Location().FileSystem().(*FileSystem).options
 
-	if fileOptions == nil && targetOptions == nil {
+	if (fileOptions == Options{}) && (targetOptions == Options{}) {
 		// if both opts are nil, we must be using the default credentials
 		return true, ""
-	} else if opts, ok := fileOptions.(Options); ok {
-		// use source ACL (even if empty), UNLESS target ACL is set
-		ACL := opts.ACL
-		if targetOpts, ok := targetOptions.(Options); ok {
-			if targetOpts.ACL != "" {
-				ACL = targetOpts.ACL
-			}
-			// since accesskey and session token are mutually exclusive, one will be nil
-			// if both are the same, we're using the same credentials
-			isSameAccount := (opts.AccessKeyID == targetOpts.AccessKeyID) && (opts.SessionToken == targetOpts.SessionToken)
-			return isSameAccount, ACL
-		}
-		return false, ACL
 	}
-	return false, ""
+
+	// use source ACL (even if empty), UNLESS target ACL is set
+	ACL := fileOptions.ACL
+
+	if targetOptions.ACL != "" {
+		ACL = targetOptions.ACL
+	}
+
+	// since accesskey and session token are mutually exclusive, one will be nil
+	// if both are the same, we're using the same credentials
+	isSameAccount := (fileOptions.AccessKeyID == targetOptions.AccessKeyID) && (fileOptions.SessionToken == targetOptions.SessionToken)
+
+	return isSameAccount, ACL
 }
 
 func (f *File) copyS3ToLocalTempReader(tmpFile *os.File) error {
@@ -653,18 +647,13 @@ func uploadInput(f *File) *s3.PutObjectInput {
 		ServerSideEncryption: types.ServerSideEncryptionAes256,
 	}
 
-	if f.Location().FileSystem().(*FileSystem).options == nil {
-		f.Location().FileSystem().(*FileSystem).options = Options{}
-	}
-
-	if f.Location().FileSystem().(*FileSystem).options.(Options).DisableServerSideEncryption {
+	if f.Location().FileSystem().(*FileSystem).options.DisableServerSideEncryption {
 		input.ServerSideEncryption = ""
 	}
 
-	if opts, ok := f.Location().FileSystem().(*FileSystem).options.(Options); ok {
-		if opts.ACL != "" {
-			input.ACL = opts.ACL
-		}
+	opts := f.Location().FileSystem().(*FileSystem).options
+	if opts.ACL != "" {
+		input.ACL = opts.ACL
 	}
 
 	for _, o := range f.opts {
@@ -836,25 +825,21 @@ func (f *File) getS3Writer() (*io.PipeWriter, error) {
 
 func (f *File) getUploadPartitionSize() int64 {
 	partSize := defaultPartitionSize
-	if f.Location().FileSystem().(*FileSystem).options != nil {
-		if opts, ok := f.Location().FileSystem().(*FileSystem).options.(Options); ok {
-			if opts.UploadPartitionSize != 0 {
-				partSize = opts.UploadPartitionSize
-			}
-		}
+	opts := f.Location().FileSystem().(*FileSystem).options
+	if opts.UploadPartitionSize != 0 {
+		partSize = opts.UploadPartitionSize
 	}
+
 	return partSize
 }
 
 func (f *File) getDownloadPartitionSize() int64 {
 	partSize := defaultPartitionSize
-	if f.Location().FileSystem().(*FileSystem).options != nil {
-		if opts, ok := f.Location().FileSystem().(*FileSystem).options.(Options); ok {
-			if opts.DownloadPartitionSize != 0 {
-				partSize = opts.DownloadPartitionSize
-			}
-		}
+	opts := f.Location().FileSystem().(*FileSystem).options
+	if opts.DownloadPartitionSize != 0 {
+		partSize = opts.DownloadPartitionSize
 	}
+
 	return partSize
 }
 

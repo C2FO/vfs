@@ -134,7 +134,7 @@ func (s *FileSystemTestSuite) TestRetry() {
 	err := retryFn(doNothing)
 	s.NoError(err, "The default retry function just calls the passed func")
 
-	fs = NewFileSystem().WithOptions(Options{RetryFunc: errorRetry})
+	fs = NewFileSystem(WithOptions(Options{RetryFunc: errorRetry}))
 	retryFn = fs.Retry()
 	err = retryFn(doNothing)
 	s.EqualError(err, "i always error", "This implementation should use the retry function from the options which always errors")
@@ -143,6 +143,17 @@ func (s *FileSystemTestSuite) TestRetry() {
 func (s *FileSystemTestSuite) TestNewFileSystem() {
 	fs := NewFileSystem()
 	s.NotNil(fs, "Should return a non-nil pointer to the new file system")
+
+	// test with options
+	newFS := NewFileSystem(WithOptions(Options{AccountName: "bobby"}))
+	s.NotNil(newFS, "Should return a new fileSystem for azure")
+	s.Equal("bobby", newFS.options.AccountName, "Should set account name to bobby")
+
+	// test with client
+	azureMock := &MockAzureClient{}
+	newFS = NewFileSystem(WithClient(azureMock))
+	s.NotNil(newFS, "Should return a new fileSystem for azure")
+	s.Equal(azureMock, newFS.client, "Should set client to azureMock")
 }
 
 func (s *FileSystemTestSuite) TestWithOptions() {

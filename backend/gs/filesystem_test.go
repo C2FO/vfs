@@ -140,10 +140,8 @@ func (s *fileSystemSuite) TestName() {
 func (s *fileSystemSuite) TestRetry() {
 	sentinel := errors.New("sentinel")
 	fs := &FileSystem{
-		options: Options{
-			Retry: func(wrapped func() error) error {
-				return sentinel
-			},
+		retryer: func(wrapped func() error) error {
+			return sentinel
 		},
 	}
 	s.Equal(sentinel, fs.Retry()(nil))
@@ -226,4 +224,20 @@ func (s *fileSystemSuite) TestWithContext() {
 	ctx := context.Background()
 	fs = fs.WithContext(ctx)
 	s.Equal(ctx, fs.ctx)
+}
+
+func (s *fileSystemSuite) TestNewFileSystem() {
+	fs := NewFileSystem()
+	s.NotNil(fs, "Should return a non-nil pointer to the new file system")
+
+	// test with options
+	newFS := NewFileSystem(WithOptions(Options{APIKey: "123"}))
+	s.NotNil(newFS, "Should return a new fileSystem for gs")
+	s.Equal("123", newFS.options.APIKey, "Should set APIKey name to 123")
+
+	// test with client
+	client := &storage.Client{}
+	newFS = NewFileSystem(WithClient(client))
+	s.NotNil(newFS, "Should return a new fileSystem for gs")
+	s.Equal(client, newFS.client, "Should set client to azureMock")
 }

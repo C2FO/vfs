@@ -34,6 +34,8 @@ type Options struct {
 	ClientSecret string
 
 	// RetryFunc holds the retry function
+	//
+	// Deprecated: This field is deprecated and will be removed in a future release.
 	RetryFunc vfs.Retry
 
 	// Buffer Size In Bytes Used with utils.TouchCopyBuffered

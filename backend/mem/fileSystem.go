@@ -27,7 +27,21 @@ type FileSystem struct {
 	fsMap map[string]objMap
 }
 
+// NewFileSystem is used to initialize the file system struct for an in-memory FileSystem.
+func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem {
+	fs := &FileSystem{
+		sync.Mutex{},
+		make(map[string]objMap),
+	}
+
+	options.ApplyOptions(fs, opts...)
+
+	return fs
+}
+
 // Retry will return a retrier provided via options, or a no-op if none is provided.
+//
+// Deprecated: This method is deprecated and will be removed in a future release.
 func (fs *FileSystem) Retry() vfs.Retry {
 	return vfs.DefaultRetryer()
 }
@@ -109,14 +123,6 @@ func (fs *FileSystem) Name() string {
 // Scheme returns the scheme of the underlying FileSystem
 func (fs *FileSystem) Scheme() string {
 	return Scheme
-}
-
-// NewFileSystem is used to initialize the file system struct for an in-memory FileSystem.
-func NewFileSystem() *FileSystem {
-	return &FileSystem{
-		sync.Mutex{},
-		make(map[string]objMap),
-	}
 }
 
 func init() {

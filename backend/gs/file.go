@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"reflect"
 	"time"
 
 	"cloud.google.com/go/storage"
@@ -422,19 +423,16 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 			tf.opts = f.opts
 		}
 
-		opts, ok := tf.Location().FileSystem().(*FileSystem).options.(Options)
-		if ok {
-			if f.isSameAuth(&opts) {
-				return f.copyWithinGCSToFile(tf)
-			}
+		if f.isSameAuth(&f.Location().FileSystem().(*FileSystem).options) {
+			return f.copyWithinGCSToFile(tf)
 		}
 	}
 
 	// Otherwise, use TouchCopyBuffered using io.CopyBuffer
 	fileBufferSize := 0
 
-	if opts, ok := f.Location().FileSystem().(*FileSystem).options.(Options); ok {
-		fileBufferSize = opts.FileBufferSize
+	if f.Location().FileSystem().(*FileSystem).options.FileBufferSize > 0 {
+		fileBufferSize = f.Location().FileSystem().(*FileSystem).options.FileBufferSize
 	}
 
 	if err := utils.TouchCopyBuffered(file, f, fileBufferSize); err != nil {
@@ -627,22 +625,18 @@ func (f *File) createEmptyFile() error {
 }
 
 func (f *File) isSameAuth(opts *Options) bool {
+	fOptions := f.Location().FileSystem().(*FileSystem).options
+
 	// If options are nil on both sides, assume Google's default context is used in both cases.
-	if opts == nil && f.Location().FileSystem().(*FileSystem).options == nil {
+	if opts == nil && reflect.DeepEqual(fOptions, Options{}) {
 		return true
 	}
 
-	if opts == nil || f.Location().FileSystem().(*FileSystem).options == nil {
-		return false
-	}
-
-	fOptions := f.Location().FileSystem().(*FileSystem).options.(Options)
-
-	if opts.CredentialFile != "" && opts.CredentialFile == fOptions.CredentialFile {
+	if opts != nil && opts.CredentialFile != "" && opts.CredentialFile == fOptions.CredentialFile {
 		return true
 	}
 
-	if opts.APIKey != "" && opts.APIKey == fOptions.APIKey {
+	if opts != nil && opts.APIKey != "" && opts.APIKey == fOptions.APIKey {
 		return true
 	}
 
@@ -721,7 +715,7 @@ func (f *File) getObjectHandle() (ObjectHandleCopier, error) {
 	}
 
 	handler := client.Bucket(f.Location().Authority().String()).Object(utils.RemoveLeadingSlash(f.key))
-	return &RetryObjectHandler{Retry: f.Location().FileSystem().(*FileSystem).Retry(), handler: handler}, nil
+	return &RetryObjectHandler{Retry: f.Location().FileSystem().(*FileSystem).retryer, handler: handler}, nil
 }
 
 // getObjectGenerationHandles returns Object generation structs for file
@@ -736,7 +730,7 @@ func (f *File) getObjectGenerationHandles() ([]*storage.ObjectHandle, error) {
 
 	for {
 		attrs, err := it.Next()
-		if err == iterator.Done {
+		if errors.Is(err, iterator.Done) {
 			break
 		}
 		if err != nil {

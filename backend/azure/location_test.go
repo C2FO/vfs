@@ -34,7 +34,7 @@ func (s *LocationTestSuite) TestString() {
 
 func (s *LocationTestSuite) TestList() {
 	client := MockAzureClient{ExpectedResult: []string{"file1.txt", "file2.txt"}}
-	fs := NewFileSystem().WithClient(&client)
+	fs := NewFileSystem(WithClient(&client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	listing, err := l.List()
 	s.NoError(err)
@@ -43,7 +43,7 @@ func (s *LocationTestSuite) TestList() {
 
 func (s *LocationTestSuite) TestListByPrefix() {
 	client := MockAzureClient{ExpectedResult: []string{"file1.txt", "file2.txt", "foo.txt"}}
-	fs := NewFileSystem().WithClient(&client)
+	fs := NewFileSystem(WithClient(&client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	listing, err := l.ListByPrefix("file")
 	s.NoError(err)
@@ -54,7 +54,7 @@ func (s *LocationTestSuite) TestListByPrefix() {
 
 func (s *LocationTestSuite) TestListByRegex() {
 	client := MockAzureClient{ExpectedResult: []string{"file1.txt", "file2.txt", "foo.txt"}}
-	fs := NewFileSystem().WithClient(&client)
+	fs := NewFileSystem(WithClient(&client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	regex := regexp.MustCompile("file")
 	listing, err := l.ListByRegex(regex)
@@ -98,7 +98,7 @@ func (s *LocationTestSuite) TestPath() {
 
 func (s *LocationTestSuite) TestExists() {
 	client := MockAzureClient{}
-	fs := NewFileSystem().WithClient(&client)
+	fs := NewFileSystem(WithClient(&client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	exists, err := l.Exists()
 	s.NoError(err)
@@ -107,7 +107,7 @@ func (s *LocationTestSuite) TestExists() {
 
 func (s *LocationTestSuite) TestExists_NonExistentFile() {
 	client := MockAzureClient{PropertiesError: errors.New("no such file")}
-	fs := NewFileSystem().WithClient(&client)
+	fs := NewFileSystem(WithClient(&client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	exists, err := l.Exists()
 	s.NoError(err)
@@ -116,7 +116,7 @@ func (s *LocationTestSuite) TestExists_NonExistentFile() {
 
 func (s *LocationTestSuite) TestNewLocation() {
 	client := MockAzureClient{}
-	fs := NewFileSystem().WithClient(&client)
+	fs := NewFileSystem(WithClient(&client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	nl, err := l.NewLocation("")
 	s.Error(err, "An empty relative path does not end with a slash and therefore is not a valid relative path so this should return an error")
@@ -248,14 +248,14 @@ func (s *LocationTestSuite) TestNewFile_NilReceiver() {
 
 func (s *LocationTestSuite) TestDeleteFile() {
 	client := MockAzureClient{}
-	fs := NewFileSystem().WithClient(&client)
+	fs := NewFileSystem(WithClient(&client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	s.NoError(l.DeleteFile("clever_file.txt"), "the file exists so we do not expect an error")
 }
 
 func (s *LocationTestSuite) TestDeleteFile_DoesNotExist() {
 	client := MockAzureClient{ExpectedError: errors.New("no such file")}
-	fs := NewFileSystem().WithClient(&client)
+	fs := NewFileSystem(WithClient(&client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	s.Error(l.DeleteFile("nosuchfile.txt"), "the file does not exist so we expect an error")
 }

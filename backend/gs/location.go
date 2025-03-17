@@ -235,7 +235,7 @@ func (l *Location) getBucketHandle() (BucketHandleWrapper, error) {
 	if err != nil {
 		return nil, err
 	}
-	handler := &RetryBucketHandler{Retry: l.fileSystem.Retry(), handler: client.Bucket(l.Authority().String())}
+	handler := &RetryBucketHandler{Retry: l.fileSystem.retryer, handler: client.Bucket(l.Authority().String())}
 	l.bucketHandle = handler
 	return l.bucketHandle, nil
 }

@@ -32,10 +32,6 @@ Or call directly:
 sftp can be augmented with some implementation-specific methods.  Backend returns vfs.FileSystem interface so it
 would have to be cast as sftp.FileSystem to use them.
 
-These methods are chainable:
-(*FileSystem) WithClient(client interface{}) *FileSystem
-(*FileSystem) WithOptions(opts vfs.Options) *FileSystem
-
 	  func DoSomething() {
 		  // cast if fs was created using backend.Backend().  Not necessary if created directly from sftp.NewFileSystem().
 		  fs := backend.Backend(sftp.Scheme)
@@ -51,16 +47,18 @@ These methods are chainable:
 		  client, err := _sftp.NewClient(sshClient)
 		  #handle error
 
-		  fs = fs.WithClient(client)
+		  fs = sftp.NewFileSystem(sftp.WithClient(client))
 
 		  // to pass in client options. See Options for more info.  Note that changes to Options will make nil any client.
 		  // This behavior ensures that changes to settings will get applied to a newly created client.
-		  fs = fs.WithOptions(
-			  sftp.Options{
-				  KeyFilePath:   "/home/Bob/.ssh/id_rsa",
-				  KeyPassphrase: "s3cr3t",
-				  KnownHostsCallback: ssh.InsecureIgnoreHostKey,
-			  },
+		  fs = sftp.NewFileSystem(
+			  WithOptions(
+			      sftp.Options{
+				      KeyFilePath:   "/home/Bob/.ssh/id_rsa",
+				      KeyPassphrase: "s3cr3t",
+				      KnownHostsCallback: ssh.InsecureIgnoreHostKey,
+			      },
+			  ),
 		  )
 
 		  location, err := fs.NewLocation("myuser@server.com:22", "/some/path/")
@@ -127,15 +125,17 @@ your info (man-in-the-middle attack).  Handling for this can be accomplished via
 Passing in multiple host key algorithms, key exchange algorithms is supported - these are specified as string slices.
 Example:
 
-	fs = fs.WithOptions(
-		sftp.Options{
-			KeyExchanges: []string{ "diffie-hellman-group-a256", "ecdh-sha2-nistp256" },
-			Ciphers: []string{ "aes256-ctr", "aes192-ctr", "aes128-ctr" },
-			MACs: []string{ "hmac-sha2-256", "hmac-sha2-512" },
-			HostKeyAlgorithms: []string{ "ssh-rsa", "ssh-ed25519" },
-			// other settings
-		},
-	  )
+	fs = sftp.NewFileSystem(
+		sftp.WithOptions(
+			sftp.Options{
+				KeyExchanges: []string{ "diffie-hellman-group-a256", "ecdh-sha2-nistp256" },
+				Ciphers: []string{ "aes256-ctr", "aes192-ctr", "aes128-ctr" },
+				MACs: []string{ "hmac-sha2-256", "hmac-sha2-512" },
+				HostKeyAlgorithms: []string{ "ssh-rsa", "ssh-ed25519" },
+				// other settings
+			},
+		),
+	)
 
 # FilePermissions
 
@@ -145,12 +145,14 @@ be specified using an octal literal (e.g., `0777` for full read, write, and exec
 
 Example:
 
-		fs = fs.WithOptions(
-	 		sftp.Options{
+	fs = sftp.NewFileSystem(
+		sftp.WithOptions(
+			sftp.Options{
 	 			FilePermissions: "0777", // Correctly specify permissions as octal (in string form)
 				// other settings
 			},
-		)
+		),
+	)
 
 When a file is opened for Write() or Touch()'d, the specified `FilePermissions` will be applied to the file.
 

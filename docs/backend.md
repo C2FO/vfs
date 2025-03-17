@@ -10,35 +10,37 @@ In this way, a caller of vfs backends can simply load the backend file system
 (and ONLY those needed) and begin using it:
 
 ```go
-    package main
+package main
 
-    // import backend and each backend you intend to use
-    import(
-        "github.com/c2fo/vfs/v7/backend"
-        "github.com/c2fo/vfs/v7/backend/os"
-        "github.com/c2fo/vfs/v7/backend/s3"
-    )
+// import backend and each backend you intend to use
+import (
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend"
+	"github.com/c2fo/vfs/v7/backend/os"
+	"github.com/c2fo/vfs/v7/backend/s3"
+)
 
-    func main() {
-       var err error
-       var osfile, s3file vfs.File
+func main() {
+    var err error
+    var osfile, s3file vfs.File
 
-        // THEN begin using the file systems
-        osfile, err = backend.Backend(os.Scheme).NewFile("", "/path/to/file.txt")
-        if err != nil {
-            panic(err)
-        }
-
-        s3file, err = backend.Backend(s3.Scheme).NewFile("mybucket", "/some/file.txt")
-        if err != nil {
-            panic(err)
-        }
-
-        err = osfile.CopyTo(s3file)
-        if err != nil {
-            panic(err)
-        }
+    // THEN begin using the file systems
+    osfile, err = backend.Backend(os.Scheme).NewFile("", "/path/to/file.txt")
+    if err != nil {
+        panic(err)
     }
+
+    s3file, err = backend.Backend(s3.Scheme).NewFile("mybucket", "/some/file.txt")
+    if err != nil {
+        panic(err)
+    }
+
+    err = osfile.CopyTo(s3file)
+    if err != nil {
+        panic(err)
+    }
+}
+
 ```
 
 ### Development
@@ -48,7 +50,7 @@ To create your own backend, you must create a package that implements the interf
 [vfs.File](../README.md#type-file). Then ensure it registers itself on load:
 
 ```go
-    package myexoticfilesystem
+package myexoticfilesystem
 
     import(
         ...

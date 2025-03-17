@@ -27,11 +27,27 @@ type FileSystem struct {
 
 // NewFileSystem creates a new default FileSystem.  This will set the options options.AccountName and
 // options.AccountKey with the env variables AZURE_STORAGE_ACCOUNT and AZURE_STORAGE_ACCESS_KEY respectively.
-func NewFileSystem() *FileSystem {
-	return &FileSystem{options: NewOptions()}
+func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem {
+	fs := &FileSystem{
+		options: NewOptions(),
+	}
+
+	// apply options
+	options.ApplyOptions(fs, opts...)
+
+	return fs
 }
 
 // WithOptions allows the caller to override the default options
+//
+// Deprecated: This method is deprecated and will be removed in a future release.
+// Use WithOptions option:
+//
+//	fs := azure.NewFileSystem(azure.WithOptions(opts))
+//
+// instead of:
+//
+//	fs := azure.NewFileSystem().WithOptions(opts)
 func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 	azureOpts, _ := opts.(Options)
 	fs.options = &azureOpts
@@ -39,6 +55,15 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 }
 
 // WithClient allows the caller to specify a specific client to be used
+//
+// Deprecated: This method is deprecated and will be removed in a future release.
+// Use WithClient option:
+//
+//	fs := azure.NewFileSystem(azure.WithClient(client))
+//
+// instead of:
+//
+//	azure := s3.NewFileSystem().WithClient(client)
 func (fs *FileSystem) WithClient(client Client) *FileSystem {
 	fs.client = client
 	return fs
@@ -115,6 +140,8 @@ func (fs *FileSystem) Scheme() string {
 }
 
 // Retry returns the default retry function.  This is overridable via the WithOptions function.
+//
+// Deprecated: This method is deprecated and will be removed in a future release.
 func (fs *FileSystem) Retry() vfs.Retry {
 	if fs.options.RetryFunc != nil {
 		return fs.options.RetryFunc
