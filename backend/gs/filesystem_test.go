@@ -140,10 +140,8 @@ func (s *fileSystemSuite) TestName() {
 func (s *fileSystemSuite) TestRetry() {
 	sentinel := errors.New("sentinel")
 	fs := &FileSystem{
-		options: Options{
-			Retry: func(wrapped func() error) error {
-				return sentinel
-			},
+		retryer: func(wrapped func() error) error {
+			return sentinel
 		},
 	}
 	s.Equal(sentinel, fs.Retry()(nil))

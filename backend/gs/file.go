@@ -715,7 +715,7 @@ func (f *File) getObjectHandle() (ObjectHandleCopier, error) {
 	}
 
 	handler := client.Bucket(f.Location().Authority().String()).Object(utils.RemoveLeadingSlash(f.key))
-	return &RetryObjectHandler{Retry: f.Location().FileSystem().(*FileSystem).Retry(), handler: handler}, nil
+	return &RetryObjectHandler{Retry: f.Location().FileSystem().(*FileSystem).retryer, handler: handler}, nil
 }
 
 // getObjectGenerationHandles returns Object generation structs for file

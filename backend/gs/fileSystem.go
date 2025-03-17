@@ -25,6 +25,11 @@ type FileSystem struct {
 	ctx           context.Context
 	options       Options
 	clientCreator ClientCreator
+	retryer       Retryer
+}
+
+var noOpRetryer Retryer = func(wrapped func() error) error {
+	return wrapped()
 }
 
 // NewFileSystem initializer for FileSystem struct accepts google cloud storage client and returns FileSystem or error.
@@ -32,6 +37,7 @@ func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem 
 	fs := &FileSystem{
 		ctx:           context.Background(),
 		clientCreator: &defaultClientCreator{},
+		retryer:       noOpRetryer,
 	}
 
 	// apply options
@@ -40,15 +46,12 @@ func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem 
 	return fs
 }
 
-// Retry will return a retrier provided via options, or a no-op if none is provided.
+// Retry will return a retryer provided via options, or a no-op if none is provided.
 //
 // Deprecated: This method is deprecated and will be removed in a future release.
 func (fs *FileSystem) Retry() vfs.Retry {
-	if fs.options.Retry != nil {
-		return fs.options.Retry
-	}
 
-	return vfs.DefaultRetryer()
+	return vfs.Retry(fs.retryer)
 }
 
 // NewFile function returns the gcs implementation of vfs.File.

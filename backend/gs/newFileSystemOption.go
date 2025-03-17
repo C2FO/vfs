@@ -12,6 +12,7 @@ const (
 	optionNameClient  = "client"
 	optionNameOptions = "options"
 	optionNameContext = "context"
+	optionNameRetryer = "retryer"
 )
 
 // WithClient returns clientOpt implementation of NewFileOption
@@ -78,4 +79,24 @@ func (c *contextOpt) Apply(fs *FileSystem) {
 
 func (c *contextOpt) NewFileSystemOptionName() string {
 	return optionNameContext
+}
+
+type Retryer func(wrapped func() error) error
+
+func WithRetryer(retryer Retryer) options.NewFileSystemOption[FileSystem] {
+	return &retryerOpt{
+		retryer: retryer,
+	}
+}
+
+type retryerOpt struct {
+	retryer Retryer
+}
+
+func (r *retryerOpt) Apply(fs *FileSystem) {
+	fs.retryer = r.retryer
+}
+
+func (r *retryerOpt) NewFileSystemOptionName() string {
+	return optionNameRetryer
 }

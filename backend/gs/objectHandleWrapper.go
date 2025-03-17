@@ -6,8 +6,6 @@ import (
 
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
-
-	"github.com/c2fo/vfs/v7"
 )
 
 // ObjectHandleWrapper is an interface which contains a subset of the functions provided
@@ -40,7 +38,7 @@ type CopierWrapper interface {
 
 // RetryObjectHandler implements the ObjectHandleCopier interface (which also is composed with ObjectHandleWrapper)
 type RetryObjectHandler struct {
-	Retry   vfs.Retry
+	Retry   Retryer
 	handler *storage.ObjectHandle
 }
 
@@ -127,7 +125,7 @@ func (r *RetryObjectHandler) ObjectHandle() *storage.ObjectHandle {
 // Copier implements the CopierWrapper interface.
 type Copier struct {
 	copier *storage.Copier
-	Retry  vfs.Retry
+	Retry  Retryer
 }
 
 // ContentType is the MIME type of the object's content.
@@ -142,7 +140,7 @@ func (c *Copier) Run(ctx context.Context) (*storage.ObjectAttrs, error) {
 	})
 }
 
-func objectAttributeRetry(retry vfs.Retry, attrFunc func() (*storage.ObjectAttrs, error)) (*storage.ObjectAttrs, error) {
+func objectAttributeRetry(retry Retryer, attrFunc func() (*storage.ObjectAttrs, error)) (*storage.ObjectAttrs, error) {
 	var attrs *storage.ObjectAttrs
 	attrs, err := attrFunc()
 	if err != nil && !errors.Is(err, iterator.Done) {
