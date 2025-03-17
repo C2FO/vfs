@@ -30,7 +30,6 @@ for hybrid or evolving storage requirements.
 go get -u github.com/c2fo/vfs/v7
 ```
 
-(Or refer to the go.mod and GoDoc for more details.)
 ## Quick Start
 
 ```go
@@ -86,8 +85,8 @@ This snippet shows the basic setup: an osFile is created from a URI and written 
 
 ## FAQ
 
-**Q**: Why am I seeing an empty file when using \`io.Copy\` on some backends if my source is empty?  
-**A**: An empty \`Reader\` often means the backend doesn't write a file until data is actually written. Use \`utils.TouchCopy\` if you need to ensure a zero-byte file is created.
+**Q**: Why am I seeing an empty file when using `io.Copy` on some backends if my source is empty?  
+**A**: An empty `Reader` often means the backend doesn't write a file until data is actually written. Use `utils.TouchCopy` if you need to ensure a zero-byte file is created.
 
 **Q**: Will vfs v6 still be supported?
 **A**: Yes and no. We will continue to provide security patches and bug fixes for v6, but new features and enhancements 
@@ -166,9 +165,3 @@ becomes
 
 ## License
 Distributed under the MIT License. See the [LICENSE.md](LICENSE.md) file for details.
-
-## Additional Resources
-* [vfssimple](https\://pkg.go.dev/github.com/c2fo/vfs/v7/vfssimple)
-* [backend docs](https\://github.com/c2fo/vfs/v7/docs)
-* [utils](https\://github.com/c2fo/vfs/v7/utils)
-* [Changelog](https\://github.com/c2fo/vfs/blob/main/CHANGELOG.md)
