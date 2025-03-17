@@ -60,16 +60,8 @@ file system backends.
 
 ### Install
 
-Pre Go 1.17:
-
 ```
 go get -u github.com/c2fo/vfs/v7
-```
-
-Post Go 1.17:
-
-```
-go install github.com/c2fo/vfs/v7
 ```
 
 ### Supported Go Versions
@@ -100,6 +92,11 @@ these to the S3 backend:
 - Authority for Azure has been updated from `blob.core.windows.net` to `<blob-container-name>`, such that the full URI
   is `az://<blob-container-name>/path/to/file.txt` rather than
   `https://<storage-account-name>.core.windows.net/<blob-container-name>/path/to/file.txt`.
+
+##### GS Backend
+- The Options.Retry field, with the now deprecated vfs.Retry type, has been moved to gs.FileSystem as the new gs.Retyer
+  type.  It is now set via the gs.NewFileSystem() using functional option gs.WithRetryer.  All previous Retry usage has 
+  been replaced with gs.WithRetryer.  Update your code to use the new gs.WithRetryer functional option.
 
 ##### All Backends
 Some methods in the Location and FileSystem interfaces have been deprecated because they use terminology that doesn't apply to all backends.

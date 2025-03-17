@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add NewFileSystemOption to allow for options, clients, etc to be passed to the FileSystem constructor.  Fixes #238.
 - Deprecate Retry() method in FileSystem interface and related types.
 - Deprecate vfs.Option type in favor of specific backend options passed by NewFileSystemOption.
+- Removed gs backend use of vfs.Retry in favor of gs.Retryer, which is a more specific type and is now on the fs.Filesystem rather than gs.Options.
 
 ## [v7.0.0-pre4] - 2025-03-12
 ### Added
