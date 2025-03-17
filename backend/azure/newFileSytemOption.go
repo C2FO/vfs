@@ -21,10 +21,12 @@ type clientOpt struct {
 	client Client
 }
 
+// Apply applies the client to the filesystem
 func (ct *clientOpt) Apply(fs *FileSystem) {
 	fs.client = ct.client
 }
 
+// NewFileSystemOptionName returns the name of the option
 func (ct *clientOpt) NewFileSystemOptionName() string {
 	return optionNameClient
 }
@@ -43,10 +45,12 @@ type optionsOpt struct {
 	options Options
 }
 
+// Apply applies the options to the filesystem
 func (o *optionsOpt) Apply(fs *FileSystem) {
 	fs.options = &o.options
 }
 
+// NewFileSystemOptionName returns the name of the option
 func (o *optionsOpt) NewFileSystemOptionName() string {
 	return optionNameOptions
 }

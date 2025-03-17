@@ -19,6 +19,7 @@ const name = "os"
 // FileSystem implements vfs.FileSystem for the OS file system.
 type FileSystem struct{}
 
+// NewFileSystem creates a new instance of the OS file system.
 func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem {
 	fs := &FileSystem{}
 

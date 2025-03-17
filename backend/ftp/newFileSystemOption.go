@@ -25,10 +25,12 @@ type clientOpt struct {
 	client types.Client
 }
 
+// Apply applies the client to the filesystem
 func (ct *clientOpt) Apply(fs *FileSystem) {
 	fs.ftpclient = ct.client
 }
 
+// NewFileSystemOptionName returns the name of the option
 func (ct *clientOpt) NewFileSystemOptionName() string {
 	return optionNameFTPClient
 }
@@ -47,10 +49,12 @@ type optionsOpt struct {
 	options Options
 }
 
+// Apply applies the options to the filesystem
 func (o *optionsOpt) Apply(fs *FileSystem) {
 	fs.options = o.options
 }
 
+// NewFileSystemOptionName returns the name of the option
 func (o *optionsOpt) NewFileSystemOptionName() string {
 	return optionNameOptions
 }
@@ -69,10 +73,12 @@ type dataConnOpt struct {
 	dataconn types.DataConn
 }
 
+// Apply applies the dataconn to the filesystem
 func (d *dataConnOpt) Apply(fs *FileSystem) {
 	fs.dataconn = d.dataconn
 }
 
+// NewFileSystemOptionName returns the name of the option
 func (d *dataConnOpt) NewFileSystemOptionName() string {
 	return optionNameDataConn
 }

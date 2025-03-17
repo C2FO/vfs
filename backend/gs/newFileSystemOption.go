@@ -29,10 +29,12 @@ type clientOpt struct {
 	client *storage.Client
 }
 
+// Apply applies the client to the filesystem
 func (ct *clientOpt) Apply(fs *FileSystem) {
 	fs.client = ct.client
 }
 
+// NewFileSystemOptionName returns the name of the option
 func (ct *clientOpt) NewFileSystemOptionName() string {
 	return optionNameClient
 }
@@ -51,10 +53,12 @@ type optionsOpt struct {
 	options Options
 }
 
+// Apply applies the options to the filesystem
 func (o *optionsOpt) Apply(fs *FileSystem) {
 	fs.options = o.options
 }
 
+// NewFileSystemOptionName returns the name of the option
 func (o *optionsOpt) NewFileSystemOptionName() string {
 	return optionNameOptions
 }
@@ -73,16 +77,23 @@ type contextOpt struct {
 	ctx context.Context
 }
 
+// Apply applies the context to the filesystem
 func (c *contextOpt) Apply(fs *FileSystem) {
 	fs.ctx = c.ctx
 }
 
+// NewFileSystemOptionName returns the name of the option
 func (c *contextOpt) NewFileSystemOptionName() string {
 	return optionNameContext
 }
 
+// Retryer is a function that retries a function
 type Retryer func(wrapped func() error) error
 
+// WithRetryer returns retryerOpt implementation of NewFileOption
+//
+// WithRetryer is used to specify a Retryer for the filesystem.
+// The retryer is used to retry operations on the filesystem.
 func WithRetryer(retryer Retryer) options.NewFileSystemOption[FileSystem] {
 	return &retryerOpt{
 		retryer: retryer,
@@ -93,10 +104,12 @@ type retryerOpt struct {
 	retryer Retryer
 }
 
+// Apply applies the retryer to the filesystem
 func (r *retryerOpt) Apply(fs *FileSystem) {
 	fs.retryer = r.retryer
 }
 
+// NewFileSystemOptionName returns the name of the option
 func (r *retryerOpt) NewFileSystemOptionName() string {
 	return optionNameRetryer
 }
