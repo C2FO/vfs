@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"cloud.google.com/go/storage"
-
-	"github.com/c2fo/vfs/v6"
 )
 
 // BucketHandle is an interface which contains a subset of the functions provided
@@ -26,7 +24,7 @@ type BucketHandleWrapper interface {
 
 // RetryBucketHandler implements the BucketHandle interface
 type RetryBucketHandler struct {
-	Retry   vfs.Retry
+	Retry   Retryer
 	handler *storage.BucketHandle
 }
 
@@ -50,7 +48,7 @@ type ObjectIteratorWrapper interface {
 
 // RetryObjectIterator implements the ObjectIteratorWrapper interface
 type RetryObjectIterator struct {
-	Retry    vfs.Retry
+	Retry    Retryer
 	iterator *storage.ObjectIterator
 }
 
@@ -67,7 +65,7 @@ func (r *RetryObjectIterator) Next() (*storage.ObjectAttrs, error) {
 	})
 }
 
-func bucketAttributeRetry(retry vfs.Retry, attrFunc func() (*storage.BucketAttrs, error)) (*storage.BucketAttrs, error) {
+func bucketAttributeRetry(retry Retryer, attrFunc func() (*storage.BucketAttrs, error)) (*storage.BucketAttrs, error) {
 	var attrs *storage.BucketAttrs
 	if err := retry(func() error {
 		var retryErr error

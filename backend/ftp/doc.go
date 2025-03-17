@@ -3,11 +3,11 @@ Package ftp - FTP VFS implementation.
 
 # Usage
 
-Rely on github.com/c2fo/vfs/v6/backend
+Rely on github.com/c2fo/vfs/v7/backend
 
 	  import(
-		  "github.com/c2fo/vfs/v6/backend"
-		  "github.com/c2fo/vfs/v6/backend/ftp"
+		  "github.com/c2fo/vfs/v7/backend"
+		  "github.com/c2fo/vfs/v7/backend/ftp"
 	  )
 
 	  func UseFs() error {
@@ -17,7 +17,7 @@ Rely on github.com/c2fo/vfs/v6/backend
 
 Or call directly:
 
-	  import "github.com/c2fo/vfs/v6/backend/ftp"
+	  import "github.com/c2fo/vfs/v7/backend/ftp"
 
 	  func DoSomething() {
 		  fs := ftp.NewFileSystem()
@@ -32,10 +32,6 @@ Or call directly:
 ftp can be augmented with some implementation-specific methods.  Backend returns vfs.FileSystem interface so it
 would have to be cast as ftp.FileSystem to use them.
 
-These methods are chainable:
-(*FileSystem) WithClient(client interface{}) *FileSystem
-(*FileSystem) WithOptions(opts vfs.Options) *FileSystem
-
 	  func DoSomething() {
 		  // cast if fs was created using backend.Backend().  Not necessary if created directly from ftp.NewFileSystem().
 		  fs := backend.Backend(ftp.Scheme)
@@ -43,19 +39,20 @@ These methods are chainable:
 
 		  // to pass specific client implementing types.Client interface (in this case, _ftp github.com/jlaffaye/ftp)
 		  client, _ := _ftp.Dial("server.com:21")
-		  fs = fs.WithClient(client)
+		  fs = ftp.NewFileSystem(ftp.WithClient(client))
 
-		  // to pass in client options. See Options for more info.  Note that changes to Options will make nil any client.
-		  // This behavior ensures that changes to settings will get applied to a newly created client.
-		  fs = fs.WithOptions(
-			  ftp.Options{
-				  Password: "s3cr3t",
-				  DisableEPSV: true,
-				  Protocol: ftp.ProtocolFTPES,
-				  DialTimeout: 15 * time.Second,
-				  DebugWriter: os.Stdout,
-				  IncludeInsecureCiphers: true,
-			  },
+
+		  fs = ftp.NewFileSystem(
+			  fs.WithOptions(
+				  ftp.Options{
+				      Password: "s3cr3t",
+				      DisableEPSV: true,
+				      Protocol: ftp.ProtocolFTPES,
+				      DialTimeout: 15 * time.Second,
+				      DebugWriter: os.Stdout,
+				      IncludeInsecureCiphers: true,
+				  },
+			  ),
 		  )
 
 		  location, err := fs.NewLocation("myuser@server.com:21", "/some/path/")
@@ -98,15 +95,15 @@ The provided CopyToFile and CopyToLocation functions should be used instead in t
 
 # Authentication
 
-Authentication, by default, occurs automatically when Client() is called. Since user is part of the URI authority section
-(Volume), auth is handled slightly differently than other vfs backends (except SFTP).
+Authentication, by default, occurs automatically when Client() is called. Since user is part of the URI authority section,
+auth is handled slightly differently than other vfs backends (except SFTP).
 
 A client is initialized lazily, meaning we only make a connection to the server at the last moment, so we are free to modify
 options until then.  The authenticated session is closed any time WithOption() or WithClient() occurs.
 
 ## USERNAME
 
-User may only be set in the URI authority section (Volume in vfs parlance).
+User may only be set in the URI authority section.
 
 	 scheme             host
 	 __/             ___/____  port
@@ -115,7 +112,7 @@ User may only be set in the URI authority section (Volume in vfs parlance).
 	       \____________________/ \______________/
 	       \______/       \               \
 	           /     authority section    path
-	     username       (Volume)
+	     username
 
 ftp vfs backend defaults to "anonymous" if no username is provided in the authority, ie "ftp://service.com/".
 

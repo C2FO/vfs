@@ -6,8 +6,8 @@ Package azure Microsoft Azure Blob Storage VFS Implementation
 Rely on github.com/c2fo/vfs/backend
 
 	import(
-	    "github.com/c2fo/vfs/v6/backend"
-	    "github.com/c2fo/vfs/v6/backend/azure"
+	    "github.com/c2fo/vfs/v7/backend"
+	    "github.com/c2fo/vfs/v7/backend/azure"
 	)
 
 	func UseFs() error {
@@ -17,7 +17,7 @@ Rely on github.com/c2fo/vfs/backend
 
 Or call directly:
 
-	import "github.com/c2fo/vfs/v6/backend/azure"
+	import "github.com/c2fo/vfs/v7/backend/azure"
 
 	func DoSomething() {
 	    fs := azure.NewFileSystem()
@@ -27,24 +27,22 @@ Or call directly:
 azure can be augmented with the following implementation-specific methods.  Backend returns vfs.FileSystem interface so it
 would have to be cast as azure.FileSystem to use the following:
 
-	func DoSomething() {
-	    ...
+		func DoSomething() {
+		    ...
 
-	    // cast if fs was created using backend.Backend().  Not necessary if created directly from azure.NewFileSystem().
-	    fs = fs.(azure.FileSystem)
+		    fs = azure.NewFileSystem(
+		        azure.WithOptions(
+		            azure.Options{
+		                AccountName: "...",
+		                AccountKey: "...
+		            },
+	            ),
+		    )
 
-	    // to pass in client options
-	    fs = fs.WithOptions(
-	        azure.Options{
-	            AccountName: "...",
-	            AccountKey: "...
-	        },
-	    )
-
-	    // to pass specific client, for instance mock client
-	    client, _ := azure.NewClient(MockAzureClient{...})
-	    fs = fs.WithClient(client)
-	}
+		    // to pass specific client, for instance mock client
+		    mockClient := mocks.NewClient(t)
+		    fs = azure.NewFileSystem(azure.WithClient(mockClient))
+		}
 
 # Authentication
 

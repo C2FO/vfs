@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v7"
 )
 
 type LocationTestSuite struct {
@@ -20,21 +20,21 @@ func (s *LocationTestSuite) TestVFSLocationImplementor() {
 }
 
 func (s *LocationTestSuite) TestString() {
-	fs := NewFileSystem().WithOptions(Options{AccountName: "test-account"})
+	fs := NewFileSystem()
 	l, _ := fs.NewLocation("test-container", "/")
-	s.Equal("https://test-account.blob.core.windows.net/test-container/", l.String())
+	s.Equal("az://test-container/", l.String())
 
-	err := l.ChangeDir("foo/bar/baz/")
+	l, err := l.NewLocation("foo/bar/baz/")
 	s.NoError(err, "Should change directories successfully")
-	s.Equal("https://test-account.blob.core.windows.net/test-container/foo/bar/baz/", l.String())
+	s.Equal("az://test-container/foo/bar/baz/", l.String())
 
 	l, _ = fs.NewLocation("temp", "/foo/bar/baz/")
-	s.Equal("https://test-account.blob.core.windows.net/temp/foo/bar/baz/", l.String())
+	s.Equal("az://temp/foo/bar/baz/", l.String())
 }
 
 func (s *LocationTestSuite) TestList() {
 	client := MockAzureClient{ExpectedResult: []string{"file1.txt", "file2.txt"}}
-	fs := NewFileSystem().WithClient(&client)
+	fs := NewFileSystem(WithClient(&client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	listing, err := l.List()
 	s.NoError(err)
@@ -43,7 +43,7 @@ func (s *LocationTestSuite) TestList() {
 
 func (s *LocationTestSuite) TestListByPrefix() {
 	client := MockAzureClient{ExpectedResult: []string{"file1.txt", "file2.txt", "foo.txt"}}
-	fs := NewFileSystem().WithClient(&client)
+	fs := NewFileSystem(WithClient(&client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	listing, err := l.ListByPrefix("file")
 	s.NoError(err)
@@ -54,7 +54,7 @@ func (s *LocationTestSuite) TestListByPrefix() {
 
 func (s *LocationTestSuite) TestListByRegex() {
 	client := MockAzureClient{ExpectedResult: []string{"file1.txt", "file2.txt", "foo.txt"}}
-	fs := NewFileSystem().WithClient(&client)
+	fs := NewFileSystem(WithClient(&client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	regex := regexp.MustCompile("file")
 	listing, err := l.ListByRegex(regex)
@@ -64,11 +64,15 @@ func (s *LocationTestSuite) TestListByRegex() {
 	s.Equal("file2.txt", listing[1])
 }
 
+//nolint:staticcheck // deprecated method test
 func (s *LocationTestSuite) TestVolume() {
-	l := Location{container: "test-container"}
+	fs := NewFileSystem()
+	l, err := fs.NewLocation("test-container", "/")
+	s.NoError(err)
 	s.Equal("test-container", l.Volume())
 
-	l = Location{container: "another-container"}
+	l, err = fs.NewLocation("another-container", "/")
+	s.NoError(err)
 	s.Equal("another-container", l.Volume())
 }
 
@@ -94,7 +98,7 @@ func (s *LocationTestSuite) TestPath() {
 
 func (s *LocationTestSuite) TestExists() {
 	client := MockAzureClient{}
-	fs := NewFileSystem().WithClient(&client)
+	fs := NewFileSystem(WithClient(&client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	exists, err := l.Exists()
 	s.NoError(err)
@@ -103,7 +107,7 @@ func (s *LocationTestSuite) TestExists() {
 
 func (s *LocationTestSuite) TestExists_NonExistentFile() {
 	client := MockAzureClient{PropertiesError: errors.New("no such file")}
-	fs := NewFileSystem().WithClient(&client)
+	fs := NewFileSystem(WithClient(&client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	exists, err := l.Exists()
 	s.NoError(err)
@@ -112,7 +116,7 @@ func (s *LocationTestSuite) TestExists_NonExistentFile() {
 
 func (s *LocationTestSuite) TestNewLocation() {
 	client := MockAzureClient{}
-	fs := NewFileSystem().WithClient(&client)
+	fs := NewFileSystem(WithClient(&client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	nl, err := l.NewLocation("")
 	s.Error(err, "An empty relative path does not end with a slash and therefore is not a valid relative path so this should return an error")
@@ -146,27 +150,36 @@ func (s *LocationTestSuite) TestNewLocation_NilReceiver() {
 	s.Nil(nl, "An error was returned so we expect a nil location to be returned")
 }
 
+//nolint:staticcheck // deprecated method test
 func (s *LocationTestSuite) TestChangeDir() {
-	l := Location{}
-	err := l.ChangeDir("test-container/")
+	l, err := NewFileSystem().NewLocation("test-container", "/")
 	s.NoError(err)
-	s.Equal("/test-container/", l.Path())
+	l = l.(*Location)
+	err = l.ChangeDir("some-dir/")
+	s.NoError(err)
+	s.Equal("/some-dir/", l.Path())
 
 	err = l.ChangeDir("path/../to/./new/dir/")
 	s.NoError(err)
-	s.Equal("/test-container/to/new/dir/", l.Path())
+	s.Equal("/some-dir/to/new/dir/", l.Path())
 
-	l = Location{}
-	err = l.ChangeDir("/test-container/")
+	l, err = NewFileSystem().NewLocation("test-container", "/")
+	s.NoError(err)
+	l = l.(*Location)
+	err = l.ChangeDir("/test-dir/")
 	s.EqualError(err, "relative location path is invalid - may not include leading slash but must include trailing slash",
 		"The path begins with a slash and therefore is not a relative path so this should return an error")
 
-	l = Location{}
-	err = l.ChangeDir("test-container")
+	l, err = NewFileSystem().NewLocation("test-container", "/")
+	s.NoError(err)
+	l = l.(*Location)
+	err = l.ChangeDir("test-dir")
 	s.EqualError(err, "relative location path is invalid - may not include leading slash but must include trailing slash",
 		"The path does not end with a slash and therefore is not a relative path so this should return an error")
 
-	l = Location{}
+	l, err = NewFileSystem().NewLocation("test-container", "/")
+	s.NoError(err)
+	l = l.(*Location)
 	err = l.ChangeDir("")
 	s.EqualError(err, "relative location path is invalid - may not include leading slash but must include trailing slash",
 		"An empty relative path does not end with a slash and therefore is not a valid relative path so this should return an error")
@@ -186,7 +199,7 @@ func (s *LocationTestSuite) TestFileSystem() {
 }
 
 func (s *LocationTestSuite) TestNewFile() {
-	fs := NewFileSystem().WithOptions(Options{AccountName: "test-container"})
+	fs := NewFileSystem()
 	l, _ := fs.NewLocation("test-container", "/folder/")
 
 	f, err := l.NewFile("")
@@ -208,7 +221,22 @@ func (s *LocationTestSuite) TestNewFile() {
 	s.NoError(err, "The file path is valid so we expect no error to be returned")
 	s.NotNil(f, "The call to NewFile did not return an error so we expect a non-nil pointer to a file struct")
 	s.Equal("/folder/foo/bar.txt", f.Path())
-	s.Equal("https://test-container.blob.core.windows.net/test-container/folder/foo/bar.txt", f.URI())
+	s.Equal("az://test-container/folder/foo/bar.txt", f.URI())
+
+	// new tests for location update
+	s.Run("new file with relative path updates location", func() {
+		newFile, err := l.NewFile("../newfile.txt")
+		s.NoError(err)
+		s.Equal("/newfile.txt", newFile.Path(), "NewFile with relative path should update location correctly")
+		s.Equal("/", newFile.Location().Path(), "NewFile with relative path should update location correctly")
+	})
+
+	s.Run("new file with relative path to root", func() {
+		newFile, err := l.NewFile("../../../../newrootfile.txt")
+		s.NoError(err)
+		s.Equal("/newrootfile.txt", newFile.Path(), "NewFile with relative path to root should update location correctly")
+		s.Equal("/", newFile.Location().Path(), "NewFile with relative path to root should update location correctly")
+	})
 }
 
 func (s *LocationTestSuite) TestNewFile_NilReceiver() {
@@ -220,36 +248,30 @@ func (s *LocationTestSuite) TestNewFile_NilReceiver() {
 
 func (s *LocationTestSuite) TestDeleteFile() {
 	client := MockAzureClient{}
-	fs := NewFileSystem().WithClient(&client)
+	fs := NewFileSystem(WithClient(&client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	s.NoError(l.DeleteFile("clever_file.txt"), "the file exists so we do not expect an error")
 }
 
 func (s *LocationTestSuite) TestDeleteFile_DoesNotExist() {
 	client := MockAzureClient{ExpectedError: errors.New("no such file")}
-	fs := NewFileSystem().WithClient(&client)
+	fs := NewFileSystem(WithClient(&client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	s.Error(l.DeleteFile("nosuchfile.txt"), "the file does not exist so we expect an error")
 }
 
 func (s *LocationTestSuite) TestURI() {
-	fs := NewFileSystem().WithOptions(Options{AccountName: "test-account"})
+	fs := NewFileSystem()
 	l, _ := fs.NewLocation("test-container", "/")
-	s.Equal("https://test-account.blob.core.windows.net/test-container/", l.URI())
+	s.Equal("az://test-container/", l.URI())
 
-	err := l.ChangeDir("foo/bar/baz/")
+	l, err := l.NewLocation("foo/bar/baz/")
 	s.NoError(err, "Should change directories successfully")
-	s.Equal("https://test-account.blob.core.windows.net/test-container/foo/bar/baz/", l.URI())
+	s.Equal("az://test-container/foo/bar/baz/", l.URI())
 
 	vfsLoc, err := fs.NewLocation("temp", "/foo/bar/baz/")
 	s.NoError(err, "Path is valid so we expect no errors")
-	s.Equal("https://test-account.blob.core.windows.net/temp/foo/bar/baz/", vfsLoc.URI())
-}
-
-func (s *LocationTestSuite) TestContainerURL() {
-	fs := NewFileSystem().WithOptions(Options{AccountName: "test-account"})
-	l, _ := fs.NewLocation("test-container", "/some/folder/")
-	s.Equal("https://test-account.blob.core.windows.net/test-container/", l.(*Location).ContainerURL())
+	s.Equal("az://temp/foo/bar/baz/", vfsLoc.URI())
 }
 
 func TestAzureLocation(t *testing.T) {

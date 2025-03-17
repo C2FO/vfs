@@ -5,10 +5,11 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/c2fo/vfs/v6"
-	"github.com/c2fo/vfs/v6/backend"
-	"github.com/c2fo/vfs/v6/options"
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend"
+	"github.com/c2fo/vfs/v7/options"
+	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 // Scheme defines the file system type.
@@ -18,47 +19,74 @@ const name = "os"
 // FileSystem implements vfs.FileSystem for the OS file system.
 type FileSystem struct{}
 
+// NewFileSystem creates a new instance of the OS file system.
+func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem {
+	fs := &FileSystem{}
+
+	// apply options
+	options.ApplyOptions(fs, opts...)
+
+	return fs
+}
+
 // Retry will return a retriever provided via options, or a no-op if none is provided.
+//
+// Deprecated: This method is deprecated and will be removed in a future release.
 func (fs *FileSystem) Retry() vfs.Retry {
 	return vfs.DefaultRetryer()
 }
 
 // NewFile function returns the os implementation of vfs.File.
-func (fs *FileSystem) NewFile(volume, name string, opts ...options.NewFileOption) (vfs.File, error) {
-	if runtime.GOOS == "windows" && filepath.IsAbs(name) {
-		if v := filepath.VolumeName(name); v != "" {
-			volume = v
-			name = name[len(v):]
+func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.NewFileOption) (vfs.File, error) {
+	if runtime.GOOS == "windows" && filepath.IsAbs(filePath) {
+		if v := filepath.VolumeName(filePath); v != "" {
+			authorityStr = v
+			filePath = filePath[len(v):]
 		}
 	}
 
-	name = filepath.ToSlash(name)
-	err := utils.ValidateAbsoluteFilePath(name)
+	filePath = filepath.ToSlash(filePath)
+	err := utils.ValidateAbsoluteFilePath(filePath)
 	if err != nil {
 		return nil, err
 	}
-	return &File{volume: volume, name: name, filesystem: fs, opts: opts}, nil
+
+	loc, err := fs.NewLocation(authorityStr, utils.EnsureTrailingSlash(path.Dir(filePath)))
+	if err != nil {
+		return nil, err
+	}
+
+	return &File{
+		name:     filePath,
+		location: loc.(*Location),
+		opts:     opts,
+	}, nil
 }
 
 // NewLocation function returns the os implementation of vfs.Location.
-func (fs *FileSystem) NewLocation(volume, name string) (vfs.Location, error) {
-	if runtime.GOOS == "windows" && filepath.IsAbs(name) {
-		if v := filepath.VolumeName(name); v != "" {
-			volume = v
-			name = name[len(v):]
+func (fs *FileSystem) NewLocation(authorityStr, locPath string) (vfs.Location, error) {
+	if runtime.GOOS == "windows" && filepath.IsAbs(locPath) {
+		if v := filepath.VolumeName(locPath); v != "" {
+			authorityStr = v
+			locPath = locPath[len(v):]
 		}
 	}
 
-	name = filepath.ToSlash(name)
-	err := utils.ValidateAbsoluteLocationPath(name)
+	locPath = filepath.ToSlash(locPath)
+	err := utils.ValidateAbsoluteLocationPath(locPath)
+	if err != nil {
+		return nil, err
+	}
+
+	auth, err := authority.NewAuthority(authorityStr)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Location{
 		fileSystem: fs,
-		volume:     volume,
-		name:       utils.EnsureTrailingSlash(path.Clean(name)),
+		authority:  auth,
+		name:       utils.EnsureTrailingSlash(path.Clean(locPath)),
 	}, nil
 }
 

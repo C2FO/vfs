@@ -3,13 +3,16 @@ package azure
 import (
 	"os"
 
-	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v7"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 )
 
 // Options contains options necessary for the azure vfs implementation
 type Options struct {
+	// ServiceURL holds the base URL used for all service requests.
+	ServiceURL string
+
 	// AccountName holds the Azure Blob Storage account name for authentication.  This field is required for all
 	// authentication types.
 	AccountName string
@@ -31,6 +34,8 @@ type Options struct {
 	ClientSecret string
 
 	// RetryFunc holds the retry function
+	//
+	// Deprecated: This field is deprecated and will be removed in a future release.
 	RetryFunc vfs.Retry
 
 	// Buffer Size In Bytes Used with utils.TouchCopyBuffered
@@ -50,6 +55,7 @@ type Options struct {
 //	  *VFS_AZURE_ENV_NAME
 func NewOptions() *Options {
 	return &Options{
+		ServiceURL:             os.Getenv("VFS_AZURE_SERVICE_URL"),
 		AccountName:            os.Getenv("VFS_AZURE_STORAGE_ACCOUNT"),
 		AccountKey:             os.Getenv("VFS_AZURE_STORAGE_ACCESS_KEY"),
 		TenantID:               os.Getenv("VFS_AZURE_TENANT_ID"),

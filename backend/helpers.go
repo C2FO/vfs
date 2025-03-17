@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/c2fo/vfs/v6"
+	"github.com/c2fo/vfs/v7"
 )
 
 // ValidateCopySeekPosition return ensures current seek cursor is 0,0. This is useful to ensure it's safe to copy.  A seek position

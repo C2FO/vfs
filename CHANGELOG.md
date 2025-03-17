@@ -6,6 +6,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v7.0.0] - 2025-03-17
+### Added
+- Deprecated usage of Volume and ChangeDir.  Added Authority (to replace Volume).  Fixes #235.
+- Deprecate Retry() method in FileSystem interface and related types.
+- Deprecate vfs.Option type in favor of specific backend options passed by NewFileSystemOption.
+- Add NewFileSystemOption to allow for options, clients, etc to be passed to the FileSystem constructor.  Fixes #238.
+- New README.md with logo
+
+### Changed
+- S3 backend now returns an s3.Client instead of an s3iface.ClientAPI. *Breaking Change*
+- S3 backend s3.Option.Retry field is now an aws.Retryer instead of a (aws) request.Retry. *Breaking Change*
+- Azure backend now uses the schema `az://` instead of `https://`. *Breaking Change*
+- Azure backend authority is now the blob container name, rather than host + container name. See [README.md](README.md#azure-backend). *Breaking Change*
+- GS backend removed use of vfs.Retry in favor of gs.Retryer, which is a more specific type and is now on the fs.Filesystem rather than gs.Options.  Now set with functional option gs.WithRetryer. *BreakingChange*
+
+## [v7.0.0-pre5] - 2025-03-17
+### Added
+- Add NewFileSystemOption to allow for options, clients, etc to be passed to the FileSystem constructor.  Fixes #238.
+- Deprecate Retry() method in FileSystem interface and related types.
+- Deprecate vfs.Option type in favor of specific backend options passed by NewFileSystemOption.
+- Removed gs backend use of vfs.Retry in favor of gs.Retryer, which is a more specific type and is now on the fs.Filesystem rather than gs.Options.
+
+## [v7.0.0-pre4] - 2025-03-12
+### Added
+- Deprecated usage of Volume and ChangeDir.  Added Authority (to replace Volume).  Fixes #235.
+
+## [v7.0.0-pre3] - 2025-03-09
+### Changed
+- Azure backend now uses the schema `az://` instead of `https://`. *Breaking Change*
+- Azure backend authority is now the blob container name, rather than host + container name. See [README.md](README.md#azure-backend). *Breaking Change*
+
+## [v7.0.0-pre2] - 2025-03-08
+### Fixed
+- Fixed go.mod and paths to reflect v7
+
+## [v7.0.0-pre1] - 2025-03-07
+### Changed
+- S3 backend now returns an s3.Client instead of an s3iface.ClientAPI. *Breaking Change*
+- S3 backend s3.Option.Retry field is now an aws.Retryer instead of a (aws) request.Retry. *Breaking Change*
+
+### Security
+- S3 backend now uses the `aws-sdk-go-v2` library instead of the deprecated `aws-sdk-go`.
+- Updated dependencies.
+
 ## [v6.26.0] - 2025-02-19
 ### Added
 - Add support for role based authentication in s3 backend.

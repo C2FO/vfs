@@ -2,6 +2,7 @@ package ftp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path"
 	"regexp"
@@ -9,24 +10,25 @@ import (
 
 	_ftp "github.com/jlaffaye/ftp"
 
-	"github.com/c2fo/vfs/v6"
-	"github.com/c2fo/vfs/v6/backend/ftp/types"
-	"github.com/c2fo/vfs/v6/options"
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend/ftp/types"
+	"github.com/c2fo/vfs/v7/options"
+	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 // Location implements the vfs.Location interface specific to ftp fs.
 type Location struct {
 	fileSystem *FileSystem
 	path       string
-	Authority  utils.Authority
+	authority  authority.Authority
 }
 
 // List calls FTP ReadDir to list all files in the location's path.
 // If you have many thousands of files at the given location, this could become quite expensive.
 func (l *Location) List() ([]string, error) {
 	var filenames []string
-	dc, err := l.fileSystem.DataConn(context.TODO(), l.Authority, types.SingleOp, nil)
+	dc, err := l.fileSystem.DataConn(context.TODO(), l.Authority(), types.SingleOp, nil)
 	if err != nil {
 		return filenames, err
 	}
@@ -84,7 +86,7 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 	}
 
 	// get dataconn
-	dc, err := l.fileSystem.DataConn(context.TODO(), l.Authority, types.SingleOp, nil)
+	dc, err := l.fileSystem.DataConn(context.TODO(), l.Authority(), types.SingleOp, nil)
 	if err != nil {
 		return filenames, err
 	}
@@ -128,8 +130,17 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 }
 
 // Volume returns the Authority the location is contained in.
+//
+// Deprecated: Use Authority instead.
+//
+//	authStr := loc.Authority().String()
 func (l *Location) Volume() string {
-	return l.Authority.String()
+	return l.Authority().String()
+}
+
+// Authority returns the Authority the location is contained in.
+func (l *Location) Authority() authority.Authority {
+	return l.authority
 }
 
 // Path returns the path the location references in most FTP calls.
@@ -139,7 +150,7 @@ func (l *Location) Path() string {
 
 // Exists returns true if the remote FTP directory exists.
 func (l *Location) Exists() (bool, error) {
-	dc, err := l.fileSystem.DataConn(context.TODO(), l.Authority, types.SingleOp, nil)
+	dc, err := l.fileSystem.DataConn(context.TODO(), l.Authority(), types.SingleOp, nil)
 	if err != nil {
 		return false, err
 	}
@@ -170,41 +181,64 @@ func (l *Location) Exists() (bool, error) {
 // relativePath argument, returning the resulting location. The only possible errors come from the call to
 // ChangeDir, which, for the FTP implementation doesn't ever result in an error.
 func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
-	// make a copy of the original location first, then ChangeDir, leaving the original location as-is
-	newLocation := &Location{}
-	*newLocation = *l
-	err := newLocation.ChangeDir(relativePath)
-	if err != nil {
+	if l == nil {
+		return nil, errors.New("non-nil ftp.Location pointer is required")
+	}
+
+	if err := utils.ValidateRelativeLocationPath(relativePath); err != nil {
 		return nil, err
 	}
-	return newLocation, nil
+
+	return &Location{
+		fileSystem: l.fileSystem,
+		path:       path.Join(l.path, relativePath),
+		authority:  l.Authority(),
+	}, nil
 }
 
 // ChangeDir takes a relative path, and modifies the underlying Location's path. The caller is modified by this
 // so the only return is any error. For this implementation there are no errors.
+//
+// Deprecated: Use NewLocation instead:
+//
+//	loc, err := loc.NewLocation("../../")
 func (l *Location) ChangeDir(relativePath string) error {
+
 	err := utils.ValidateRelativeLocationPath(relativePath)
 	if err != nil {
 		return err
 	}
-	l.path = utils.EnsureLeadingSlash(utils.EnsureTrailingSlash(path.Join(l.path, relativePath)))
+
+	newLoc, err := l.NewLocation(relativePath)
+	if err != nil {
+		return err
+	}
+	*l = *newLoc.(*Location)
+
 	return nil
 }
 
 // NewFile uses the properties of the calling location to generate a vfs.File (backed by an ftp.File). The filePath
 // argument is expected to be a relative path to the location's current path.
-func (l *Location) NewFile(filePath string, opts ...options.NewFileOption) (vfs.File, error) {
-	err := utils.ValidateRelativeFilePath(filePath)
+func (l *Location) NewFile(relFilePath string, opts ...options.NewFileOption) (vfs.File, error) {
+	if l == nil {
+		return nil, errors.New("non-nil ftp.Location pointer is required")
+	}
+
+	if err := utils.ValidateRelativeFilePath(relFilePath); err != nil {
+		return nil, err
+	}
+
+	newLocation, err := l.NewLocation(utils.EnsureTrailingSlash(path.Dir(relFilePath)))
 	if err != nil {
 		return nil, err
 	}
-	newFile := &File{
-		fileSystem: l.fileSystem,
-		authority:  l.Authority,
-		path:       utils.EnsureLeadingSlash(path.Join(l.path, filePath)),
-		opts:       opts,
-	}
-	return newFile, nil
+
+	return &File{
+		location: newLocation.(*Location),
+		path:     path.Join(l.Path(), relFilePath),
+		opts:     opts,
+	}, nil
 }
 
 // DeleteFile removes the file at fileName path.
@@ -224,7 +258,7 @@ func (l *Location) FileSystem() vfs.FileSystem {
 
 // URI returns the Location's URI as a string.
 func (l *Location) URI() string {
-	return utils.EncodeURI(l.FileSystem().Scheme(), l.Authority.UserInfo().Username(), l.Authority.HostPortStr(), l.Path())
+	return utils.EncodeURI(l.FileSystem().Scheme(), l.Authority().UserInfo().Username(), l.Authority().HostPortStr(), l.Path())
 }
 
 // String implement fmt.Stringer, returning the location's URI as the default string.

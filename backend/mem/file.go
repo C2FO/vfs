@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/c2fo/vfs/v6"
-	"github.com/c2fo/vfs/v6/backend"
-	"github.com/c2fo/vfs/v6/options"
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend"
+	"github.com/c2fo/vfs/v7/options"
+	"github.com/c2fo/vfs/v7/utils"
 )
 
 type mode int
@@ -67,18 +67,18 @@ func (f *File) Close() error {
 		f.Location().FileSystem().(*FileSystem).mu.Lock()
 		defer f.Location().FileSystem().(*FileSystem).mu.Unlock()
 		mapRef := f.Location().FileSystem().(*FileSystem).fsMap
-		if _, ok := mapRef[f.Location().Volume()]; ok {
-			if _, ok := mapRef[f.Location().Volume()][f.Path()]; ok {
+		if _, ok := mapRef[f.Location().Authority().String()]; ok {
+			if _, ok := mapRef[f.Location().Authority().String()][f.Path()]; ok {
 				// memfile exists, so we update it
-				mapRef[f.Location().Volume()][f.Path()].i = f.memFile
+				mapRef[f.Location().Authority().String()][f.Path()].i = f.memFile
 			} else {
 				// memfile does not exist, so we create it
-				mapRef[f.Location().Volume()][f.Path()] = &fsObject{true, f.memFile}
+				mapRef[f.Location().Authority().String()][f.Path()] = &fsObject{true, f.memFile}
 			}
 		} else {
-			// volume does not exist, so we create it with the memfile
-			mapRef[f.Location().Volume()] = make(objMap)
-			mapRef[f.Location().Volume()][f.Path()] = &fsObject{true, f.memFile}
+			// authority does not exist, so we create it with the memfile
+			mapRef[f.Location().Authority().String()] = make(objMap)
+			mapRef[f.Location().Authority().String()][f.Path()] = &fsObject{true, f.memFile}
 		}
 	}
 
@@ -106,7 +106,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 	if existsOnFS && f.writeMode == none {
 		// get the file's contents from fsMap
 		fsMap := f.Location().FileSystem().(*FileSystem).fsMap
-		if objMap, ok := fsMap[f.Location().Volume()]; ok {
+		if objMap, ok := fsMap[f.Location().Authority().String()]; ok {
 			if obj, ok := objMap[f.Path()]; ok {
 				if obj.isFile {
 					// update the file's memFile
@@ -158,7 +158,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	if existsOnFS && f.writeMode == none {
 		// update the file's memFile
 		fsMap := f.Location().FileSystem().(*FileSystem).fsMap
-		if objMap, ok := fsMap[f.Location().Volume()]; ok {
+		if objMap, ok := fsMap[f.Location().Authority().String()]; ok {
 			if obj, ok := objMap[f.Path()]; ok {
 				if obj.isFile {
 					// update the file's memFile
@@ -232,7 +232,7 @@ func (f *File) String() string {
 // to it does.
 func (f *File) Exists() (bool, error) {
 	// does it exist on the map?
-	vol := f.Location().Volume()
+	vol := f.Location().Authority().String()
 	fullPath := f.Path()
 	loc := f.Location().(*Location)
 	mapRef := loc.fileSystem.fsMap
@@ -267,8 +267,8 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 	testPath := path.Join(path.Clean(location.Path()), f.Name())
 	thisLoc := f.Location().(*Location)
 	mapRef := thisLoc.fileSystem.fsMap
-	vol := thisLoc.Volume()
-	// making sure that this volume has keys at all
+	vol := thisLoc.Authority().String()
+	// making sure that this authority has keys at all
 	if _, ok := mapRef[vol]; ok {
 		// if file w/name exists @ loc, simply copy contents over
 		if _, ok2 := mapRef[vol][testPath]; ok2 {
@@ -367,9 +367,9 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 		loc := location.(*Location)
 		// mapRef just makes it easier to refer to "loc.fileSystem.fsMap"
 		mapRef := loc.fileSystem.fsMap
-		vol := loc.Volume()
+		vol := loc.Authority().String()
 		f.memFile.location.FileSystem().(*FileSystem).mu.Lock()
-		// this checks if the specified volume has any keys
+		// this checks if the specified authority has any keys
 		if _, ok := mapRef[vol]; ok {
 			// this block checks if the file already exists at location, if it does, deletes it and inserts the file we have
 			if _, ok2 := mapRef[vol][testPath]; ok2 {
@@ -436,10 +436,10 @@ func (f *File) Delete(_ ...options.DeleteOption) error {
 	mapRef := loc.fileSystem.fsMap
 	f.memFile.location.FileSystem().(*FileSystem).mu.Lock()
 	defer f.memFile.location.FileSystem().(*FileSystem).mu.Unlock()
-	// if there are keys at this volume
-	if _, ok := mapRef[loc.Volume()]; ok {
+	// if there are keys at this authority
+	if _, ok := mapRef[loc.Authority().String()]; ok {
 		// checking for the object that should contain the file at this key
-		if thisObj, ok2 := mapRef[loc.Volume()][f.Path()]; ok2 {
+		if thisObj, ok2 := mapRef[loc.Authority().String()][f.Path()]; ok2 {
 			str := f.Path()
 			// casting a file to the object's "i" interface
 			file := thisObj.i.(*memFile)
@@ -448,7 +448,7 @@ func (f *File) Delete(_ ...options.DeleteOption) error {
 			thisObj.i = nil
 			thisObj = nil
 			// setting that key to nil so it truly no longer lives on this system
-			delete(mapRef[loc.Volume()], str)
+			delete(mapRef[loc.Authority().String()], str)
 		}
 	}
 
@@ -499,7 +499,7 @@ func (f *File) Touch() error {
 	}
 	f.memFile.exists = true
 
-	volume := f.Location().Volume()
+	auth := f.Location().Authority().String()
 	f.memFile.lastModified = time.Now()
 	// files and locations are contained in objects of type "fsObject".
 	// An fsObject has a blank interface and a boolean that indicates whether or not it is a file
@@ -516,18 +516,18 @@ func (f *File) Touch() error {
 	defer f.memFile.location.FileSystem().(*FileSystem).mu.Unlock()
 	// just a less clunky way of accessing the fsMap
 	mapRef := f.Location().FileSystem().(*FileSystem).fsMap
-	// if the objMap map does not exist for the volume yet, then we go ahead and create it.
-	if _, ok := mapRef[volume]; !ok {
-		mapRef[volume] = make(objMap)
+	// if the objMap map does not exist for the authority yet, then we go ahead and create it.
+	if _, ok := mapRef[auth]; !ok {
+		mapRef[auth] = make(objMap)
 	}
 
-	// setting the map at Volume volume and path of f to this fileObject
-	mapRef[volume][f.Path()] = fileObject
-	f.memFile = mapRef[volume][f.Path()].i.(*memFile)
+	// setting the map at authority and path of f to this fileObject
+	mapRef[auth][f.Path()] = fileObject
+	f.memFile = mapRef[auth][f.Path()].i.(*memFile)
 	locationPath := utils.EnsureTrailingSlash(path.Clean(path.Dir(f.Path())))
 	// checking for locations that exist to avoid redundancy
-	if _, ok := mapRef[volume][locationPath]; !ok {
-		mapRef[volume][locationPath] = locObject
+	if _, ok := mapRef[auth][locationPath]; !ok {
+		mapRef[auth][locationPath] = locObject
 	}
 	return nil
 }

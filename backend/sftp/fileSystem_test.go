@@ -8,9 +8,10 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v6"
-	"github.com/c2fo/vfs/v6/backend/sftp/mocks"
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend/sftp/mocks"
+	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 type fileSystemTestSuite struct {
@@ -26,8 +27,16 @@ func (ts *fileSystemTestSuite) SetupTest() {
 }
 
 func (ts *fileSystemTestSuite) TestNewFileSystem() {
-	newFS := NewFileSystem().WithClient(&mocks.Client{})
+	// test with options
+	newFS := NewFileSystem(WithOptions(Options{KeyFilePath: "/some/path/"}))
 	ts.NotNil(newFS, "Should return a new fileSystem for sftp")
+	ts.Equal("/some/path/", newFS.options.KeyFilePath, "Should set region to us-east-1")
+
+	// test with client
+	sftpMock := mocks.NewClient(ts.T())
+	newFS = NewFileSystem(WithClient(sftpMock))
+	ts.NotNil(newFS, "Should return a new fileSystem for sftp")
+	ts.Equal(sftpMock, newFS.sftpclient, "Should set client to s3cliMock")
 }
 
 func (ts *fileSystemTestSuite) TestNewFile() {
@@ -55,7 +64,7 @@ func (ts *fileSystemTestSuite) TestNewFile_Error() {
 
 	filePath = "/some/file.txt"
 	file, err = ts.sftpfs.NewFile("", filePath)
-	ts.EqualError(err, "authority string may not be empty", "bad authority")
+	ts.EqualError(err, "non-empty string for authority and path are required", "bad authority")
 	ts.Nil(file, "NewFile(%s) shouldn't return a file", filePath)
 }
 
@@ -84,7 +93,7 @@ func (ts *fileSystemTestSuite) TestNewLocation_Error() {
 
 	locPath = "/path/"
 	file, err = ts.sftpfs.NewLocation("", locPath)
-	ts.EqualError(err, "authority string may not be empty", "NewLocation(%s)", locPath)
+	ts.EqualError(err, "non-empty string for authority is required", "NewLocation(%s)", locPath)
 	ts.Nil(file, "NewLocation(%s) shouldn't return a file", locPath)
 }
 
@@ -112,16 +121,9 @@ func (ts *fileSystemTestSuite) TestWithOptions() {
 
 func (ts *fileSystemTestSuite) TestClient() {
 	// client already set
-	client, err := ts.sftpfs.Client(utils.Authority{})
+	client, err := ts.sftpfs.Client(authority.Authority{})
 	ts.NoError(err, "no error")
 	ts.Equal(ts.sftpfs.sftpclient, client, "client was already set")
-
-	// bad options
-	badOpt := "not an sftp.Options"
-	ts.sftpfs.sftpclient = nil
-	ts.sftpfs.options = badOpt
-	_, err = ts.sftpfs.Client(utils.Authority{})
-	ts.EqualError(err, "unable to create client, vfs.Options must be an sftp.Options", "client was already set")
 }
 
 func (ts *fileSystemTestSuite) TestClientWithAutoDisconnect() {
@@ -129,14 +131,13 @@ func (ts *fileSystemTestSuite) TestClientWithAutoDisconnect() {
 	client := &mocks.Client{}
 	client.On("ReadDir", "/").Return([]os.FileInfo{}, nil).Times(3)
 	client.On("Close").Return(nil).Times(1)
-	defaultClientGetter = func(utils.Authority, Options) (Client, io.Closer, error) {
+	defaultClientGetter = func(authority.Authority, Options) (Client, io.Closer, error) {
 		getClientCount++
 		return client, nil, nil
 	}
 
 	// setup location with auto-disconnect of one second
-	fs := &FileSystem{}
-	fs.WithOptions(Options{AutoDisconnect: 1})
+	fs := NewFileSystem(WithOptions(Options{AutoDisconnect: 1}))
 	loc, err := fs.NewLocation("user@host.com:1234", "/")
 	ts.NoError(err)
 

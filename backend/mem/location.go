@@ -9,9 +9,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/c2fo/vfs/v6"
-	"github.com/c2fo/vfs/v6/options"
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/options"
+	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 // Location implements the vfs.Location interface specific to in-memory FileSystem.
@@ -19,7 +20,7 @@ type Location struct {
 	exists     bool
 	name       string // the path that this location exists on
 	fileSystem *FileSystem
-	volume     string
+	authority  authority.Authority
 }
 
 // String implements io.Stringer by returning the location's URI as a string
@@ -27,16 +28,16 @@ func (l *Location) String() string {
 	return l.URI()
 }
 
-// List finds all of the files living at the current location and returns them in a slice of strings.
+// List finds all the files living at the current location and returns them in a slice of strings.
 // If there are no files at location, then an empty slice will be returned
 func (l *Location) List() ([]string, error) {
 	locPath := l.Path()
 	// setting mapRef to this value for code readability
 	mapRef := l.fileSystem.fsMap
 	// are there paths on this volume?
-	if _, ok := mapRef[l.Volume()]; ok {
+	if _, ok := mapRef[l.Authority().String()]; ok {
 		// getting a list of the file names on this location
-		list := mapRef[l.Volume()].fileNamesHere(locPath)
+		list := mapRef[l.Authority().String()].fileNamesHere(locPath)
 		// fileNamesHere() returns an empty list if no files were found
 		return list, nil
 	}
@@ -51,8 +52,8 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 	list := make([]string, 0)
 	str := path.Join(l.Path(), prefix)
 	mapRef := l.fileSystem.fsMap
-	if _, ok := mapRef[l.volume]; ok {
-		paths := mapRef[l.volume].getKeys()
+	if _, ok := mapRef[l.Authority().String()]; ok {
+		paths := mapRef[l.Authority().String()].getKeys()
 		for i := range paths {
 			if strings.Contains(paths[i], str) {
 				if path.Ext(paths[i]) != "" && strings.Contains(str, utils.EnsureTrailingSlash(path.Dir(paths[i]))) {
@@ -74,8 +75,8 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 	list := make([]string, 0)
 	str := l.Path()
 	mapRef := l.fileSystem.fsMap
-	if _, ok := mapRef[l.Volume()]; ok {
-		namesHere := mapRef[l.Volume()].fileNamesHere(str)
+	if _, ok := mapRef[l.Authority().String()]; ok {
+		namesHere := mapRef[l.Authority().String()].fileNamesHere(str)
 		for i := range namesHere {
 			if regex.MatchString(namesHere[i]) {
 				list = append(list, namesHere[i])
@@ -86,8 +87,17 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 }
 
 // Volume returns the volume of the current FileSystem.
+//
+// Deprecated: Use Authority instead.
+//
+//	authStr := loc.Authority().String()
 func (l *Location) Volume() string {
-	return l.volume
+	return l.Authority().String()
+}
+
+// Authority returns the authority of the current location
+func (l *Location) Authority() authority.Authority {
+	return l.authority
 }
 
 // Path returns the full, absolute path of the location with leading and trailing slashes
@@ -114,11 +124,11 @@ func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
 	str = utils.EnsureTrailingSlash(path.Clean(str))
 	mapRef := l.fileSystem.fsMap
 	// if the location already exists on the map, just return that one
-	if object, ok := mapRef[l.volume]; ok {
+	if object, ok := mapRef[l.Authority().String()]; ok {
 		paths := object.getKeys()
 		for _, potentialPath := range paths {
 			if ok := potentialPath == str; ok {
-				return mapRef[l.volume][potentialPath].i.(*Location), nil
+				return mapRef[l.Authority().String()][potentialPath].i.(*Location), nil
 			}
 		}
 
@@ -127,11 +137,15 @@ func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
 		fileSystem: l.fileSystem,
 		name:       str,
 		exists:     false,
-		volume:     l.Volume(),
+		authority:  l.Authority(),
 	}, nil
 }
 
 // ChangeDir simply changes the directory of the location
+//
+// Deprecated: Use NewLocation instead:
+//
+//	loc, err := loc.NewLocation("../../")
 func (l *Location) ChangeDir(relLocPath string) error {
 	err := utils.ValidateRelativeLocationPath(relLocPath)
 	if err != nil {
@@ -160,8 +174,8 @@ func (l *Location) NewFile(relFilePath string, opts ...options.NewFileOption) (v
 	// file already exists. if it does, return a reference to it
 	mapRef := l.fileSystem.fsMap
 	relativeLocationPath := utils.EnsureTrailingSlash(path.Dir(path.Join(l.Path(), relFilePath)))
-	if _, ok := mapRef[l.volume]; ok {
-		fileList := mapRef[l.volume].filesHere(relativeLocationPath)
+	if _, ok := mapRef[l.Authority().String()]; ok {
+		fileList := mapRef[l.Authority().String()].filesHere(relativeLocationPath)
 		for _, file := range fileList {
 			if file.name == path.Base(relFilePath) {
 				fileCopy := deepCopy(file)
@@ -192,7 +206,7 @@ func (l *Location) DeleteFile(relFilePath string, _ ...options.DeleteOption) err
 	if err != nil {
 		return err
 	}
-	vol := l.Volume()
+	vol := l.Authority().String()
 	fullPath := path.Join(l.Path(), relFilePath)
 
 	l.fileSystem.mu.Lock()

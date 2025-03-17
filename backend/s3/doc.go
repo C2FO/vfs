@@ -3,11 +3,11 @@ Package s3 - AWS S3 VFS implementation.
 
 # Usage
 
-Rely on github.com/c2fo/vfs/v6/backend
+Rely on github.com/c2fo/vfs/v7/backend
 
 	import(
-	    "github.com/c2fo/vfs/v6/backend"
-	    "github.com/c2fo/vfs/v6/backend/s3"
+	    "github.com/c2fo/vfs/v7/backend"
+	    "github.com/c2fo/vfs/v7/backend/s3"
 	)
 
 	func UseFs() error {
@@ -17,7 +17,7 @@ Rely on github.com/c2fo/vfs/v6/backend
 
 Or call directly:
 
-	import "github.com/c2fo/vfs/v6/backend/s3"
+	import "github.com/c2fo/vfs/v7/backend/s3"
 
 	func DoSomething() {
 	    fs := s3.NewFileSystem()
@@ -30,26 +30,27 @@ would have to be cast as s3.FileSystem to use the following:
 	func DoSomething() {
 	    ...
 
-	    // cast if fs was created using backend.Backend().  Not necessary if created directly from s3.NewFileSystem().
-	    fs = fs.(s3.FileSystem)
-
 	    // to pass in client options
-	    fs = fs.WithOptions(
-	        s3.Options{
-	            AccessKeyID:     "AKIAIOSFODNN7EXAMPLE",
-	            SecretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
-	            Region:          "us-west-2",
-	            ACL: 			   "bucket-owner-full-control",
-	        },
+	    fs = s3.NewFileSystem(
+	        s3.WithOptions(
+	            s3.Options{
+	                AccessKeyID:     "AKIAIOSFODNN7EXAMPLE",
+	                SecretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+	                Region:          "us-west-2",
+	                ACL: 			   "bucket-owner-full-control",
+	            },
+	        ),
 	    )
 
 	    // to pass specific client, for instance a mock client
-	    s3apiMock := &mocks.S3API{}
-	    s3apiMock.On("GetObject", mock.AnythingOfType("*s3.GetObjectInput")).
+	    s3MockClient := mocks.NewClient(t)
+	    s3MockClient.EXPECT().
+	        GetObject(matchContext, mock.AnythingOfType("*s3.GetObjectInput")).
 	        Return(&s3.GetObjectOutput{
 	            Body: nopCloser{bytes.NewBufferString("Hello world!")},
 	            }, nil)
-	    fs = fs.WithClient(s3apiMock)
+
+	    fs = s3.NewFileSystem(s3.WithClient(s3MockClient))
 	}
 
 # Object ACL
@@ -86,6 +87,6 @@ and https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.ht
 
 # See Also
 
-See: https://github.com/aws/aws-sdk-go/tree/master/service/s3
+See: https://github.com/aws/aws-sdk-go-v2/tree/main/service/s3
 */
 package s3

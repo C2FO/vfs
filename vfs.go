@@ -6,32 +6,33 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/c2fo/vfs/v6/options"
+	"github.com/c2fo/vfs/v7/options"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 // FileSystem represents a file system with any authentication accounted for.
 type FileSystem interface {
-	// NewFile initializes a File on the specified volume at path 'absFilePath'.
+	// NewFile initializes a File on the specified URI authority at path 'absFilePath'.
 	//
-	//   * Accepts volume and an absolute file path.
+	//   * Accepts authority and an absolute file path.
 	//   * Upon success, a vfs.File, representing the file's new path (location path + file relative path), will be returned.
 	//   * On error, nil is returned for the file.
-	//   * Note that not all file systems will have a "volume" and will therefore be "":
-	//       file:///path/to/file has a volume of "" and name /path/to/file
+	//   * Note that not all file systems will have an "authority" and will therefore be "":
+	//       file:///path/to/file has an authority of "" and name /path/to/file
 	//     whereas
-	//       s3://mybucket/path/to/file has a volume of "mybucket and name /path/to/file
+	//       s3://mybucket/path/to/file has an authority of "mybucket and name /path/to/file
 	//     results in /tmp/dir1/newerdir/file.txt for the final vfs.File path.
 	//   * The file may or may not already exist.
-	NewFile(volume string, absFilePath string, opts ...options.NewFileOption) (File, error)
+	NewFile(authority string, absFilePath string, opts ...options.NewFileOption) (File, error)
 
-	// NewLocation initializes a Location on the specified volume with the given path.
+	// NewLocation initializes a Location on the specified URI authority with the given path.
 	//
-	//   * Accepts volume and an absolute location path.
+	//   * Accepts authority and an absolute location path.
 	//   * The file may or may not already exist. Note that on key-store file systems like S3 or GCS, paths never truly exist.
 	//   * On error, nil is returned for the location.
 	//
-	// See NewFile for note on volume.
-	NewLocation(volume string, absLocPath string) (Location, error)
+	// See NewFile for note on authority.
+	NewLocation(authority string, absLocPath string) (Location, error)
 
 	// Name returns the name of the FileSystem ie: Amazon S3, os, Google Cloud Storage, etc.
 	Name() string
@@ -40,6 +41,8 @@ type FileSystem interface {
 	Scheme() string
 
 	// Retry will return the retry function to be used by any file system.
+	//
+	// Deprecated: This method is deprecated and will be removed in a future release.
 	Retry() Retry
 }
 
@@ -78,7 +81,19 @@ type Location interface {
 	// For example s3://mybucket/path/to/file.txt, volume would return "mybucket".
 	//
 	// Note: Some file systems may not have a volume and will return "".
+	//
+	// Deprecated: Use Authority instead.
+	//   authStr := loc.Authority().String()
 	Volume() string
+
+	// Authority returns the Authority for the Location.
+	//
+	// For example:
+	// 	 sftp//bob@acme.com/path/to/file.txt, Authority.String() would return "bob@acme.com".
+	//   s3://my-bucket/path/to/file.txt,     Authority.String() would return "my-bucket".
+	//   file://C/path/to/file.txt,           Authority.String() would return "C".
+	//   mem://my-namespace/path/to/file.txt, Authority.String() would return "my-namespace".
+	Authority() authority.Authority
 
 	// Path returns absolute location path, ie /some/path/to/.  An absolute path must be resolved to its shortest path:
 	// see path.Clean
@@ -92,7 +107,7 @@ type Location interface {
 	// Given location:
 	//     loc := fs.NewLocation(:s3://mybucket/some/path/to/")
 	// calling:
-	//     newLoc := loc.NewLocation("../../")
+	//     newLoc, err := loc.NewLocation("../../")
 	// would return a new vfs.Location representing:
 	//     s3://mybucket/some/
 	//
@@ -109,6 +124,9 @@ type Location interface {
 	// file:///some/.
 	//
 	//   * ChangeDir accepts a relative location path.
+	//
+	// Deprecated: Use NewLocation instead:
+	//     loc, err := loc.NewLocation("../../")
 	ChangeDir(relLocPath string) error
 
 	// FileSystem returns the underlying vfs.FileSystem struct for Location.
@@ -225,6 +243,11 @@ type File interface {
 }
 
 // Options are structs that contain various options specific to the file system
+//
+// Deprecated: This type is deprecated and will be removed in a future release.
+// Use the specific options struct for the file system with the NewFileSystem function:
+//
+//	fs := s3.NewFileSystem(s3.WithOptions(s3Opts))
 type Options interface{}
 
 // Retry is a function that can be used to wrap any operation into a definable retry operation. The wrapped argument
@@ -239,9 +262,13 @@ type Options interface{}
 //	  }
 //	  return ret
 //	}
+//
+// Deprecated: This type is deprecated and will be removed in a future release.
 type Retry func(wrapped func() error) error
 
 // DefaultRetryer returns a no-op retryer which simply calls the wrapped command without looping.
+//
+// Deprecated: This function is deprecated and will be removed in a future release.
 func DefaultRetryer() Retry {
 	return func(c func() error) error { return c() }
 }

@@ -4,10 +4,11 @@ import (
 	"path"
 	"sync"
 
-	"github.com/c2fo/vfs/v6"
-	"github.com/c2fo/vfs/v6/backend"
-	"github.com/c2fo/vfs/v6/options"
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend"
+	"github.com/c2fo/vfs/v7/options"
+	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 // Scheme defines the FileSystem type's underlying implementation.
@@ -26,7 +27,21 @@ type FileSystem struct {
 	fsMap map[string]objMap
 }
 
+// NewFileSystem is used to initialize the file system struct for an in-memory FileSystem.
+func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem {
+	fs := &FileSystem{
+		sync.Mutex{},
+		make(map[string]objMap),
+	}
+
+	options.ApplyOptions(fs, opts...)
+
+	return fs
+}
+
 // Retry will return a retrier provided via options, or a no-op if none is provided.
+//
+// Deprecated: This method is deprecated and will be removed in a future release.
 func (fs *FileSystem) Retry() vfs.Retry {
 	return vfs.DefaultRetryer()
 }
@@ -87,11 +102,16 @@ func (fs *FileSystem) NewLocation(volume, absLocPath string) (vfs.Location, erro
 		return nil, err
 	}
 	str := utils.EnsureTrailingSlash(path.Clean(absLocPath))
+
+	auth, err := authority.NewAuthority(volume)
+	if err != nil {
+		return nil, err
+	}
 	return &Location{
 		fileSystem: fs,
 		name:       str,
 		exists:     false,
-		volume:     volume,
+		authority:  auth,
 	}, nil
 }
 
@@ -103,14 +123,6 @@ func (fs *FileSystem) Name() string {
 // Scheme returns the scheme of the underlying FileSystem
 func (fs *FileSystem) Scheme() string {
 	return Scheme
-}
-
-// NewFileSystem is used to initialize the file system struct for an in-memory FileSystem.
-func NewFileSystem() *FileSystem {
-	return &FileSystem{
-		sync.Mutex{},
-		make(map[string]objMap),
-	}
 }
 
 func init() {

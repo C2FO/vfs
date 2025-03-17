@@ -3,23 +3,17 @@ filename: "{{.InterfaceName}}.go"
 mockname: "{{.InterfaceName}}"
 outpkg: mocks
 with-expecter: true
+resolve-type-alias: false
+disable-version-string: true
+issue-845-fix: true
 packages:
-  github.com/c2fo/vfs/v6:
+  github.com/c2fo/vfs/v7:
     config:
       all: true
-  github.com/c2fo/vfs/v6/backend/s3:
+  github.com/c2fo/vfs/v7/backend/s3:
     config:
       all: true
-  github.com/aws/aws-sdk-go/service/s3/s3iface:
-    config:
-      all: true
-      dir: "backend/s3/mocks"
-  github.com/aws/aws-sdk-go/service/s3/s3manager/s3manageriface:
-    config:
-      dir: "backend/s3/mocks"
-    interfaces:
-      UploaderAPI:
-  github.com/c2fo/vfs/v6/backend/sftp:
+  github.com/c2fo/vfs/v7/backend/sftp:
     interfaces:
       Client:
       ReadWriteSeekCloser:
@@ -28,7 +22,7 @@ packages:
       dir: "backend/sftp/mocks"
     interfaces:
       FileInfo:
-  github.com/c2fo/vfs/v6/backend/ftp/types:
+  github.com/c2fo/vfs/v7/backend/ftp/types:
     config:
       all: true
       dir: "backend/ftp/mocks"

@@ -9,8 +9,8 @@ import (
 
 	_ftp "github.com/jlaffaye/ftp"
 
-	"github.com/c2fo/vfs/v6/backend/ftp/types"
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7/backend/ftp/types"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 type dataConn struct {
@@ -135,7 +135,7 @@ func (dc *dataConn) Close() error {
 	return nil
 }
 
-func getDataConn(ctx context.Context, authority utils.Authority, fs *FileSystem, f *File, t types.OpenType) (types.DataConn, error) {
+func getDataConn(ctx context.Context, authority authority.Authority, fs *FileSystem, f *File, t types.OpenType) (types.DataConn, error) {
 	if fs == nil {
 		return nil, errors.New("can not get a dataconn for a nil fileset")
 	}

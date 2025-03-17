@@ -7,7 +7,8 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 
 	"github.com/fsouza/fake-gcs-server/fakestorage"
 )
@@ -65,7 +66,7 @@ func (lt *locationTestSuite) TestList() {
 	server := fakestorage.NewServer(objects)
 	defer server.Stop()
 
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 	for _, objectPrefix := range objectPrefixes {
 		lt.Run("list direct "+objectPrefix, func() {
 			loc, err := fs.NewLocation(bucket, "/"+objectPrefix)
@@ -111,10 +112,11 @@ func (lt *locationTestSuite) TestList() {
 	}
 }
 
+//nolint:staticcheck // deprecated method test
 func (lt *locationTestSuite) TestVolume() {
 	server := fakestorage.NewServer(Objects{})
 	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 
 	bucket := "c2fo-vfs-a"
 	loc, err := fs.NewLocation(bucket, "/")
@@ -125,7 +127,7 @@ func (lt *locationTestSuite) TestVolume() {
 func (lt *locationTestSuite) TestPath() {
 	server := fakestorage.NewServer(Objects{})
 	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 
 	loc, err := fs.NewLocation("bucket", "/path/")
 	lt.NoError(err)
@@ -143,7 +145,7 @@ func (lt *locationTestSuite) TestPath() {
 func (lt *locationTestSuite) TestNewFile() {
 	server := fakestorage.NewServer(Objects{})
 	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 
 	loc, err := fs.NewLocation("bucket", "/some/path/to/")
 	lt.NoError(err)
@@ -167,6 +169,21 @@ func (lt *locationTestSuite) TestNewFile() {
 	// test validation error
 	_, err = loc.NewFile("/absolute/path/to/file.txt")
 	lt.EqualError(err, utils.ErrBadRelFilePath, "errors returned by NewLocation")
+
+	// new tests for location update
+	lt.Run("new file with relative path updates location", func() {
+		newFile, err := loc.NewFile("../newfile.txt")
+		lt.NoError(err)
+		lt.Equal("/some/path/newfile.txt", newFile.Path(), "NewFile with relative path should update location correctly")
+		lt.Equal("/some/path/", newFile.Location().Path(), "NewFile with relative path should update location correctly")
+	})
+
+	lt.Run("new file with relative path to root", func() {
+		newFile, err := loc.NewFile("../../../../newrootfile.txt")
+		lt.NoError(err)
+		lt.Equal("/newrootfile.txt", newFile.Path(), "NewFile with relative path to root should update location correctly")
+		lt.Equal("/", newFile.Location().Path(), "NewFile with relative path to root should update location correctly")
+	})
 }
 
 func (lt *locationTestSuite) TestExists_true() {
@@ -182,7 +199,7 @@ func (lt *locationTestSuite) TestExists_true() {
 			Content: []byte("content"),
 		}})
 	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 	loc, err := fs.NewLocation(bucket, "/")
 	lt.NoError(err)
 	exists, err := loc.Exists()
@@ -193,7 +210,7 @@ func (lt *locationTestSuite) TestExists_true() {
 func (lt *locationTestSuite) TestExists_false() {
 	server := fakestorage.NewServer(Objects{})
 	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 	bucket := "foo"
 	loc, err := fs.NewLocation(bucket, "/")
 	lt.NoError(err)
@@ -212,7 +229,9 @@ func (lt *locationTestSuite) TestChangeDir() {
 	err := nilLoc.ChangeDir("path/to/")
 	lt.EqualErrorf(err, "non-nil gs.Location pointer is required", "error expected for nil location")
 
-	loc := &Location{fileSystem: fs, prefix: "/", bucket: "bucket"}
+	auth, err := authority.NewAuthority("bucket")
+	lt.NoError(err)
+	loc := &Location{fileSystem: fs, prefix: "/", authority: auth}
 
 	err1 := loc.ChangeDir("../")
 	lt.NoError(err1, "no error expected")
@@ -238,7 +257,7 @@ func (lt *locationTestSuite) TestChangeDir() {
 func (lt *locationTestSuite) TestNewLocation() {
 	server := fakestorage.NewServer(Objects{})
 	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 
 	loc, err := fs.NewLocation("bucket", "/old/")
 	lt.NoError(err)
@@ -268,9 +287,10 @@ func (lt *locationTestSuite) TestNewLocation() {
 func (lt *locationTestSuite) TestStringURI() {
 	server := fakestorage.NewServer(Objects{})
 	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
-
-	loc := &Location{fileSystem: fs, prefix: "some/path/to/location", bucket: "mybucket"}
+	fs := NewFileSystem(WithClient(server.Client()))
+	auth, err := authority.NewAuthority("mybucket")
+	lt.NoError(err)
+	loc := &Location{fileSystem: fs, prefix: "some/path/to/location", authority: auth}
 	lt.Equal("gs://mybucket/some/path/to/location/", loc.String(), "uri is returned")
 }
 
@@ -287,7 +307,7 @@ func (lt *locationTestSuite) TestDeleteFile() {
 			Content: []byte("content"),
 		}})
 	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 
 	loc, err := fs.NewLocation(bucket, "/old/")
 	lt.NoError(err)

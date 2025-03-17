@@ -11,9 +11,9 @@ import (
 	"github.com/fsouza/fake-gcs-server/fakestorage"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v6/options/delete"
-	"github.com/c2fo/vfs/v6/options/newfile"
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7/options/delete"
+	"github.com/c2fo/vfs/v7/options/newfile"
+	"github.com/c2fo/vfs/v7/utils"
 )
 
 type fileTestSuite struct {
@@ -95,7 +95,7 @@ func (ts *fileTestSuite) TestRead() {
 		},
 	)
 	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 
 	file, err := fs.NewFile(bucketName, "/"+objectName)
 	ts.Require().NoError(err, "Shouldn't fail creating new file")
@@ -130,7 +130,7 @@ func (ts *fileTestSuite) TestDelete() {
 	)
 	defer server.Stop()
 	client := server.Client()
-	fs := NewFileSystem().WithClient(client)
+	fs := NewFileSystem(WithClient(client))
 
 	file, err := fs.NewFile(bucketName, "/"+objectName)
 	ts.Require().NoError(err, "Shouldn't fail creating new file")
@@ -161,7 +161,7 @@ func (ts *fileTestSuite) TestDeleteError() {
 	)
 	defer server.Stop()
 	client := server.Client()
-	fs := NewFileSystem().WithClient(client)
+	fs := NewFileSystem(WithClient(client))
 
 	file, err := fs.NewFile(bucketName, "/invalidObject")
 	ts.Require().NoError(err, "Shouldn't fail creating new file")
@@ -189,7 +189,7 @@ func (ts *fileTestSuite) TestDeleteRemoveAllVersions() {
 	)
 	defer server.Stop()
 	client := server.Client()
-	fs := NewFileSystem().WithClient(client)
+	fs := NewFileSystem(WithClient(client))
 
 	file, err := fs.NewFile(bucketName, "/"+objectName)
 	ts.Require().NoError(err, "Shouldn't fail creating new file")
@@ -215,7 +215,7 @@ func (ts *fileTestSuite) TestWrite() {
 	objectName := "some/path/file.txt"
 	server := fakestorage.NewServer(Objects{})
 	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 
 	file, err := fs.NewFile(bucketName, "/"+objectName)
 	ts.NoError(err, "Shouldn't fail creating new file")
@@ -237,7 +237,7 @@ func (ts *fileTestSuite) TestWriteWithContentType() {
 	ctx := context.Background()
 	err := bucket.Create(ctx, "", nil)
 	ts.Require().NoError(err)
-	fs := NewFileSystem().WithClient(client)
+	fs := NewFileSystem(WithClient(client))
 
 	file, err := fs.NewFile(bucketName, "/"+objectName, newfile.WithContentType("text/plain"))
 	ts.NoError(err, "Shouldn't fail creating new file")
@@ -263,7 +263,7 @@ func (ts *fileTestSuite) TestTouchWithContentType() {
 	ctx := context.Background()
 	err := bucket.Create(ctx, "", nil)
 	ts.Require().NoError(err)
-	fs := NewFileSystem().WithClient(client)
+	fs := NewFileSystem(WithClient(client))
 
 	file, err := fs.NewFile(bucketName, "/"+objectName, newfile.WithContentType("text/plain"))
 	ts.NoError(err, "Shouldn't fail creating new file")
@@ -279,7 +279,7 @@ func (ts *fileTestSuite) TestTouchWithContentType() {
 func (ts *fileTestSuite) TestGetLocation() {
 	server := fakestorage.NewServer(Objects{})
 	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 
 	file, err := fs.NewFile("bucket", "/path/hello.txt")
 	ts.NoError(err, "Shouldn't fail creating new file.")
@@ -287,7 +287,7 @@ func (ts *fileTestSuite) TestGetLocation() {
 	location := file.Location()
 	ts.Equal("gs", location.FileSystem().Scheme(), "Should initialize location with FS underlying file.")
 	ts.Equal("/path/", location.Path(), "Should initialize path with the location of the file.")
-	ts.Equal("bucket", location.Volume(), "Should initialize bucket with the bucket containing the file.")
+	ts.Equal("bucket", location.Authority().String(), "Should initialize bucket with the bucket containing the file.")
 }
 
 func (ts *fileTestSuite) TestExists() {
@@ -305,7 +305,7 @@ func (ts *fileTestSuite) TestExists() {
 			Content: []byte("content"),
 		}})
 	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 
 	file, err := fs.NewFile(bucketName, "/"+objectName)
 	ts.Require().NoError(err, "Shouldn't fail creating new file.")
@@ -318,7 +318,7 @@ func (ts *fileTestSuite) TestExists() {
 func (ts *fileTestSuite) TestNotExists() {
 	server := fakestorage.NewServer(Objects{})
 	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
+	fs := NewFileSystem(WithClient(server.Client()))
 
 	file, err := fs.NewFile("bucket", "/path/hello.txt")
 	ts.Require().NoError(err, "Shouldn't fail creating new file.")
@@ -381,7 +381,7 @@ func (ts *fileTestSuite) TestMoveAndCopy() {
 			server := fakestorage.NewServer(fakeObjects)
 			defer server.Stop()
 			client := server.Client()
-			fs := NewFileSystem().WithClient(client)
+			fs := NewFileSystem(WithClient(client))
 			sourceBucket := client.Bucket(sourceBucketName)
 			targetBucket := client.Bucket(targetBucketName)
 
@@ -486,7 +486,7 @@ func (ts *fileTestSuite) TestMoveAndCopyBuffered() {
 			defer server.Stop()
 			client := server.Client()
 			opts := Options{FileBufferSize: 2 * utils.TouchCopyMinBufferSize}
-			fs := NewFileSystem().WithOptions(opts).WithClient(client)
+			fs := NewFileSystem(WithOptions(opts), WithClient(client))
 			sourceBucket := client.Bucket(sourceBucketName)
 			targetBucket := client.Bucket(targetBucketName)
 

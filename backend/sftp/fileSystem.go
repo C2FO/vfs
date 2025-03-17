@@ -2,7 +2,6 @@ package sftp
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path"
@@ -12,10 +11,11 @@ import (
 	_sftp "github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 
-	"github.com/c2fo/vfs/v6"
-	"github.com/c2fo/vfs/v6/backend"
-	"github.com/c2fo/vfs/v6/options"
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend"
+	"github.com/c2fo/vfs/v7/options"
+	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 // Scheme defines the filesystem type.
@@ -23,58 +23,75 @@ const Scheme = "sftp"
 const name = "Secure File Transfer Protocol"
 const defaultAutoDisconnectDuration = 10
 
-var defaultClientGetter func(utils.Authority, Options) (Client, io.Closer, error)
+var defaultClientGetter func(authority.Authority, Options) (Client, io.Closer, error)
 
 // FileSystem implements vfs.FileSystem for the SFTP filesystem.
 type FileSystem struct {
-	options    vfs.Options
+	options    Options
 	sftpclient Client
 	sshConn    io.Closer
 	timerMutex sync.Mutex
 	connTimer  *time.Timer
 }
 
+// NewFileSystem initializer for fileSystem struct.
+func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem {
+	fs := &FileSystem{}
+
+	// apply options
+	options.ApplyOptions(fs, opts...)
+
+	return fs
+}
+
 // Retry will return the default no-op retrier. The SFTP client provides its own retryer interface, and is available
 // to override via the sftp.FileSystem Options type.
+//
+// Deprecated: This method is deprecated and will be removed in a future release.
 func (fs *FileSystem) Retry() vfs.Retry {
 	return vfs.DefaultRetryer()
 }
 
 // NewFile function returns the SFTP implementation of vfs.File.
-func (fs *FileSystem) NewFile(authority, filePath string, opts ...options.NewFileOption) (vfs.File, error) {
+func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.NewFileOption) (vfs.File, error) {
 	if fs == nil {
 		return nil, errors.New("non-nil sftp.FileSystem pointer is required")
 	}
-	if filePath == "" {
-		return nil, errors.New("non-empty string for path is required")
+
+	if authorityStr == "" || filePath == "" {
+		return nil, errors.New("non-empty string for authority and path are required")
 	}
+
 	if err := utils.ValidateAbsoluteFilePath(filePath); err != nil {
 		return nil, err
 	}
 
-	auth, err := utils.NewAuthority(authority)
+	// get location path
+	absLocPath := utils.EnsureTrailingSlash(path.Dir(filePath))
+	loc, err := fs.NewLocation(authorityStr, absLocPath)
 	if err != nil {
 		return nil, err
 	}
 
-	return &File{
-		fileSystem: fs,
-		Authority:  auth,
-		path:       path.Clean(filePath),
-		opts:       opts,
-	}, nil
+	filename := path.Base(filePath)
+	return loc.NewFile(filename, opts...)
 }
 
 // NewLocation function returns the SFTP implementation of vfs.Location.
-func (fs *FileSystem) NewLocation(authority, locPath string) (vfs.Location, error) {
+func (fs *FileSystem) NewLocation(authorityStr, locPath string) (vfs.Location, error) {
 	if fs == nil {
 		return nil, errors.New("non-nil sftp.FileSystem pointer is required")
 	}
+
+	if authorityStr == "" {
+		return nil, errors.New("non-empty string for authority is required")
+	}
+
 	if err := utils.ValidateAbsoluteLocationPath(locPath); err != nil {
 		return nil, err
 	}
 
-	auth, err := utils.NewAuthority(authority)
+	auth, err := authority.NewAuthority(authorityStr)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +99,7 @@ func (fs *FileSystem) NewLocation(authority, locPath string) (vfs.Location, erro
 	return &Location{
 		fileSystem: fs,
 		path:       utils.EnsureTrailingSlash(path.Clean(locPath)),
-		Authority:  auth,
+		authority:  auth,
 	}, nil
 }
 
@@ -98,20 +115,12 @@ func (fs *FileSystem) Scheme() string {
 
 // Client returns the underlying sftp client, creating it, if necessary
 // See Overview for authentication resolution
-func (fs *FileSystem) Client(authority utils.Authority) (Client, error) {
+func (fs *FileSystem) Client(authority authority.Authority) (Client, error) {
 	// first stop connection timer, if any
 	fs.connTimerStop()
 	if fs.sftpclient == nil {
-		if fs.options == nil {
-			fs.options = Options{}
-		}
-
-		opts, ok := fs.options.(Options)
-		if !ok {
-			return nil, fmt.Errorf("unable to create client, vfs.Options must be an sftp.Options")
-		}
 		var err error
-		fs.sftpclient, fs.sshConn, err = defaultClientGetter(authority, opts)
+		fs.sftpclient, fs.sshConn, err = defaultClientGetter(authority, fs.options)
 		if err != nil {
 			return nil, err
 		}
@@ -124,10 +133,8 @@ func (fs *FileSystem) connTimerStart() {
 	defer fs.timerMutex.Unlock()
 
 	aliveSec := defaultAutoDisconnectDuration
-	if fs.options != nil {
-		if v, ok := fs.options.(Options); ok && v.AutoDisconnect != 0 {
-			aliveSec = v.AutoDisconnect
-		}
+	if fs.options.AutoDisconnect > 0 {
+		aliveSec = fs.options.AutoDisconnect
 	}
 
 	fs.connTimer = time.AfterFunc(time.Duration(aliveSec)*time.Second, func() {
@@ -154,6 +161,15 @@ func (fs *FileSystem) connTimerStop() {
 }
 
 // WithOptions sets options for client and returns the filesystem (chainable)
+//
+// Deprecated: This method is deprecated and will be removed in a future release.
+// Use WithOptions option:
+//
+//	fs := sftp.NewFileSystem(sftp.WithOptions(opts))
+//
+// instead of:
+//
+//	fs := sftp.NewFileSystem().WithOptions(opts)
 func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 	// only set options if vfs.Options is sftp.Options
 	if opts, ok := opts.(Options); ok {
@@ -165,18 +181,22 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 }
 
 // WithClient passes in an sftp client and returns the filesystem (chainable)
+//
+// Deprecated: This method is deprecated and will be removed in a future release.
+// Use WithClient option:
+//
+//	fs := sftp.NewFileSystem(sftp.WithClient(client))
+//
+// instead of:
+//
+//	fs := sftp.NewFileSystem().WithClient(client)
 func (fs *FileSystem) WithClient(client interface{}) *FileSystem {
 	switch client.(type) {
 	case Client, *ssh.Client:
 		fs.sftpclient = client.(Client)
-		fs.options = nil
+		fs.options = Options{}
 	}
 	return fs
-}
-
-// NewFileSystem initializer for fileSystem struct.
-func NewFileSystem() *FileSystem {
-	return &FileSystem{}
 }
 
 func init() {

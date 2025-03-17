@@ -2,21 +2,21 @@ package azure
 
 import (
 	"errors"
-	"fmt"
 	"path"
 	"regexp"
 	"strings"
 
-	"github.com/c2fo/vfs/v6"
-	"github.com/c2fo/vfs/v6/options"
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/options"
+	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 const errNilLocationReceiver = "azure.Location receiver pointer must be non-nil"
 
 // Location is the azure implementation of vfs.Location
 type Location struct {
-	container  string
+	authority  authority.Authority
 	path       string
 	fileSystem *FileSystem
 }
@@ -105,8 +105,17 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 }
 
 // Volume returns the azure container.  Azure containers are equivalent to AWS Buckets
+//
+// Deprecated: Use Authority instead.
+//
+//	authStr := loc.Authority().String()
 func (l *Location) Volume() string {
-	return l.container
+	return l.Authority().String()
+}
+
+// Authority returns the authority for the Location
+func (l *Location) Authority() authority.Authority {
+	return l.authority
 }
 
 // Path returns the absolute path for the Location
@@ -121,7 +130,7 @@ func (l *Location) Exists() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	_, err = client.Properties(l.ContainerURL(), "")
+	_, err = client.Properties(l.Authority().String(), "")
 	if err != nil {
 		return false, nil
 	}
@@ -140,12 +149,16 @@ func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
 
 	return &Location{
 		fileSystem: l.fileSystem,
-		container:  l.container,
 		path:       path.Join(l.path, relLocPath),
+		authority:  l.Authority(),
 	}, nil
 }
 
 // ChangeDir changes the current location's path to the new, relative path.
+//
+// Deprecated: Use NewLocation instead:
+//
+//	loc, err := loc.NewLocation("../../")
 func (l *Location) ChangeDir(relLocPath string) error {
 	if l == nil {
 		return errors.New(errNilLocationReceiver)
@@ -156,7 +169,11 @@ func (l *Location) ChangeDir(relLocPath string) error {
 		return err
 	}
 
-	l.path = path.Join(l.path, relLocPath)
+	newLoc, err := l.NewLocation(relLocPath)
+	if err != nil {
+		return err
+	}
+	*l = *newLoc.(*Location)
 
 	return nil
 }
@@ -176,11 +193,15 @@ func (l *Location) NewFile(relFilePath string, opts ...options.NewFileOption) (v
 		return nil, err
 	}
 
+	newLocation, err := l.NewLocation(utils.EnsureTrailingSlash(path.Dir(relFilePath)))
+	if err != nil {
+		return nil, err
+	}
+
 	return &File{
-		name:       utils.EnsureLeadingSlash(path.Join(l.path, relFilePath)),
-		container:  l.container,
-		fileSystem: l.fileSystem,
-		opts:       opts,
+		location: newLocation.(*Location),
+		name:     path.Join(l.Path(), relFilePath),
+		opts:     opts,
 	}, nil
 }
 
@@ -194,14 +215,7 @@ func (l *Location) DeleteFile(relFilePath string, opts ...options.DeleteOption) 
 	return file.Delete(opts...)
 }
 
-// URI returns a URI string for the azure location.
+// URI returns the Location's URI as a string.
 func (l *Location) URI() string {
-	return fmt.Sprintf("%s://%s%s", l.fileSystem.Scheme(), utils.EnsureTrailingSlash(l.fileSystem.Host()),
-		utils.EnsureTrailingSlash(path.Join(l.container, l.path)))
-}
-
-// ContainerURL returns the URL for the Azure Blob Storage container.
-func (l *Location) ContainerURL() string {
-	return fmt.Sprintf("%s://%s%s", l.fileSystem.Scheme(), utils.EnsureTrailingSlash(l.fileSystem.Host()),
-		utils.EnsureTrailingSlash(l.container))
+	return utils.GetLocationURI(l)
 }

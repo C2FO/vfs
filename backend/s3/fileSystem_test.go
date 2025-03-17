@@ -1,13 +1,14 @@
 package s3
 
 import (
+	"context"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7/utils"
 )
 
 type fileSystemTestSuite struct {
@@ -19,18 +20,28 @@ var (
 )
 
 type mockClient struct {
-	*s3.S3
+	*s3.Client
 }
 
 func (ts *fileSystemTestSuite) SetupTest() {
-	sess := session.Must(session.NewSession())
-	client := mockClient{s3.New(sess)}
+	cfg, err := config.LoadDefaultConfig(context.Background())
+	if err != nil {
+		panic(err)
+	}
+	client := mockClient{s3.NewFromConfig(cfg)}
 	s3fs = &FileSystem{client: client}
 }
 
 func (ts *fileSystemTestSuite) TestNewFileSystem() {
-	newFS := NewFileSystem().WithClient(s3apiMock)
+	// test with options
+	newFS := NewFileSystem(WithOptions(Options{Region: "us-east-1"}))
 	ts.NotNil(newFS, "Should return a new fileSystem for s3")
+	ts.Equal("us-east-1", newFS.options.Region, "Should set region to us-east-1")
+
+	// test with client
+	newFS = NewFileSystem(WithClient(s3cliMock))
+	ts.NotNil(newFS, "Should return a new fileSystem for s3")
+	ts.Equal(s3cliMock, newFS.client, "Should set client to s3cliMock")
 }
 
 func (ts *fileSystemTestSuite) TestNewFile() {
@@ -102,13 +113,6 @@ func (ts *fileSystemTestSuite) TestClient() {
 	client, err := s3fs.Client()
 	ts.NoError(err, "no error")
 	ts.Equal(s3fs.client, client, "client was already set")
-
-	// bad options
-	badOpt := "not an s3.Options"
-	s3fs.client = nil
-	s3fs.options = badOpt
-	_, err = s3fs.Client()
-	ts.EqualError(err, "unable to create client, vfs.Options must be an s3.Options", "client was already set")
 
 	s3fs = &FileSystem{}
 	client, err = s3fs.Client()

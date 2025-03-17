@@ -7,13 +7,13 @@ import (
 	"path"
 	"testing"
 
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v6"
-	_os "github.com/c2fo/vfs/v6/backend/os"
-	"github.com/c2fo/vfs/v6/mocks"
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7"
+	_os "github.com/c2fo/vfs/v7/backend/os"
+	"github.com/c2fo/vfs/v7/mocks"
+	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 /**********************************
@@ -616,28 +616,35 @@ func (s *utilsSuite) TestPathToURI() {
 func (s *utilsSuite) TestGetURI() {
 	// set up mocks
 	mockFs1 := new(mocks.FileSystem)
-	mockFs1.On("Scheme", mock.Anything).Return("file")
+	mockFs1.EXPECT().Scheme().Return("file")
 
 	mockLoc1 := new(mocks.Location)
-	mockLoc1.On("Path").Return("/some/path/to/")
-	mockLoc1.On("Volume", mock.Anything).Return("")
-	mockLoc1.On("FileSystem", mock.Anything).Return(mockFs1)
+
+	auth, err := authority.NewAuthority("")
+	s.NoError(err)
+
+	mockLoc1.EXPECT().Path().Return("/some/path/to/")
+	mockLoc1.EXPECT().Authority().Return(auth)
+	mockLoc1.EXPECT().FileSystem().Return(mockFs1)
 
 	mockFile1 := new(mocks.File)
-	mockFile1.On("Path").Return("/some/path/to/file.txt")
-	mockFile1.On("Location").Return(mockLoc1)
+	mockFile1.EXPECT().Path().Return("/some/path/to/file.txt")
+	mockFile1.EXPECT().Location().Return(mockLoc1)
 
 	mockFs2 := new(mocks.FileSystem)
-	mockFs2.On("Scheme", mock.Anything).Return("s3")
+	mockFs2.EXPECT().Scheme().Return("s3")
+
+	auth2, err := authority.NewAuthority("mybucket")
+	s.NoError(err)
 
 	mockLoc2 := new(mocks.Location)
-	mockLoc2.On("Path").Return("/this/path/to/")
-	mockLoc2.On("Volume", mock.Anything).Return("mybucket")
-	mockLoc2.On("FileSystem", mock.Anything).Return(mockFs2)
+	mockLoc2.EXPECT().Path().Return("/this/path/to/")
+	mockLoc2.EXPECT().Authority().Return(auth2)
+	mockLoc2.EXPECT().FileSystem().Return(mockFs2)
 
 	mockFile2 := new(mocks.File)
-	mockFile2.On("Path").Return("/this/path/to/file.txt")
-	mockFile2.On("Location").Return(mockLoc2)
+	mockFile2.EXPECT().Path().Return("/this/path/to/file.txt")
+	mockFile2.EXPECT().Location().Return(mockLoc2)
 
 	// GetFileURI
 	s.Equal("file:///some/path/to/file.txt", utils.GetFileURI(mockFile1), "os file uri matches")
@@ -686,7 +693,7 @@ func (s *utilsSuite) TestTouchCopy() {
 	// now with TouchCopy
 	_, err = reader.Seek(0, 0) // reset reader
 	s.NoError(err, "unexpected error resetting vfs.File reader")
-	err = utils.TouchCopy(writer, reader)
+	err = utils.TouchCopyBuffered(writer, reader, 0)
 	s.NoError(err, "unexpected error running TouchCopy()")
 	defer func() {
 		err := writer.Delete()
@@ -709,7 +716,7 @@ func (s *utilsSuite) TestTouchCopy() {
 	_ = reader.Close()
 	_, _ = reader.Seek(0, 0)
 
-	err = utils.TouchCopy(writer, reader)
+	err = utils.TouchCopyBuffered(writer, reader, 0)
 	s.NoError(err, "unexpected error running TouchCopy()")
 	fi, err = os.Stat(writer.Path())
 	s.NoError(err, "file should exist, so no error")
@@ -721,7 +728,7 @@ func (s *utilsSuite) TestTouchCopy() {
 	nonexistentFile := path.Join(writer.Path(), "nonexistent.file")
 	noFile, err := osfs.NewFile("", nonexistentFile)
 	s.NoError(err, "unexpected error creating vfs.File reader for non-existent file")
-	err = utils.TouchCopy(writer, noFile)
+	err = utils.TouchCopyBuffered(writer, noFile, 0)
 	s.Error(err, "expected error running TouchCopy() using non-existent reader")
 }
 

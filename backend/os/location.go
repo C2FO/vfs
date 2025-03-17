@@ -9,16 +9,17 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/c2fo/vfs/v6"
-	"github.com/c2fo/vfs/v6/options"
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/options"
+	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 // Location implements the vfs.Location interface specific to OS fs.
 type Location struct {
-	volume     string
 	name       string
 	fileSystem vfs.FileSystem
+	authority  authority.Authority
 }
 
 // NewFile uses the properties of the calling location to generate a vfs.File (backed by an os.File). A string
@@ -27,16 +28,18 @@ func (l *Location) NewFile(fileName string, opts ...options.NewFileOption) (vfs.
 	if l == nil {
 		return nil, errors.New("non-nil os.Location pointer is required")
 	}
+
 	if fileName == "" {
 		return nil, errors.New("non-empty string filePath is required")
 	}
+
 	fileName = filepath.ToSlash(fileName)
 	err := utils.ValidateRelativeFilePath(fileName)
 	if err != nil {
 		return nil, err
 	}
 	fileName = utils.EnsureLeadingSlash(path.Clean(path.Join(l.name, fileName)))
-	return l.fileSystem.NewFile(l.Volume(), fileName, opts...)
+	return l.fileSystem.NewFile(l.Authority().String(), fileName, opts...)
 }
 
 // DeleteFile deletes the file of the given name at the location. This is meant to be a short cut for instantiating a
@@ -114,8 +117,17 @@ func (l *Location) fileList(testEval fileTest) ([]string, error) {
 }
 
 // Volume returns the volume, if any, of the location. Given "C:\foo\bar" it returns "C:" on Windows. On other platforms it returns "".
+//
+// Deprecated: Use Authority instead.
+//
+//	authStr := loc.Authority().String()
 func (l *Location) Volume() string {
-	return l.volume
+	return l.Authority().String()
+}
+
+// Authority returns the location's authority as a string.
+func (l *Location) Authority() authority.Authority {
+	return l.authority
 }
 
 // Path returns the location path.
@@ -155,19 +167,27 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 		return nil, errors.New("non-nil os.Location pointer is required")
 	}
 
-	// make a copy of the original location first, then ChangeDir, leaving the original location as-is
-	newLocation := &Location{}
-	*newLocation = *l
-	relativePath = filepath.ToSlash(relativePath)
-	err := newLocation.ChangeDir(relativePath)
-	if err != nil {
+	if relativePath == "" {
+		return nil, errors.New("non-empty string relativePath is required")
+	}
+
+	if err := utils.ValidateRelativeLocationPath(relativePath); err != nil {
 		return nil, err
 	}
-	return newLocation, nil
+
+	return &Location{
+		fileSystem: l.fileSystem,
+		name:       path.Join(l.name, relativePath),
+		authority:  l.Authority(),
+	}, nil
 }
 
 // ChangeDir takes a relative path, and modifies the underlying Location's path. The caller is modified by this
 // so the only return is any error. For this implementation there are no errors.
+//
+// Deprecated: Use NewLocation instead:
+//
+//	loc, err := loc.NewLocation("../../")
 func (l *Location) ChangeDir(relativePath string) error {
 	if l == nil {
 		return errors.New("non-nil os.Location pointer is required")
@@ -180,8 +200,11 @@ func (l *Location) ChangeDir(relativePath string) error {
 		return err
 	}
 
-	// update location path
-	l.name = utils.EnsureTrailingSlash(utils.EnsureLeadingSlash(path.Join(l.name, relativePath)))
+	newLoc, err := l.NewLocation(relativePath)
+	if err != nil {
+		return err
+	}
+	*l = *newLoc.(*Location)
 
 	return nil
 }
@@ -193,7 +216,7 @@ func (l *Location) FileSystem() vfs.FileSystem {
 
 func osLocationPath(l vfs.Location) string {
 	if runtime.GOOS == "windows" {
-		return l.Volume() + filepath.FromSlash(l.Path())
+		return l.Authority().String() + filepath.FromSlash(l.Path())
 	}
 	return l.Path()
 }

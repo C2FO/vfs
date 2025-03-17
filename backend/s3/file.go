@@ -11,28 +11,26 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3iface"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager/s3manageriface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 
-	"github.com/c2fo/vfs/v6"
-	"github.com/c2fo/vfs/v6/mocks"
-	"github.com/c2fo/vfs/v6/options"
-	"github.com/c2fo/vfs/v6/options/delete"
-	"github.com/c2fo/vfs/v6/options/newfile"
-	"github.com/c2fo/vfs/v6/utils"
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/mocks"
+	"github.com/c2fo/vfs/v7/options"
+	"github.com/c2fo/vfs/v7/options/delete"
+	"github.com/c2fo/vfs/v7/options/newfile"
+	"github.com/c2fo/vfs/v7/utils"
 )
 
 const defaultPartitionSize = int64(32 * 1024 * 1024)
 
 // File implements vfs.File interface for S3 fs.
 type File struct {
-	fileSystem *FileSystem
-	bucket     string
-	key        string
-	opts       []options.NewFileOption
+	location *Location
+	key      string
+	opts     []options.NewFileOption
 
 	// seek-related fields
 	cursorPos  int64
@@ -48,7 +46,7 @@ type File struct {
 	s3Writer           *io.PipeWriter
 	cancelFunc         context.CancelFunc
 	writeCalled        bool
-	s3WriterCompleteCh chan struct{}
+	s3WriterCompleteCh chan error
 }
 
 // Info Functions
@@ -98,11 +96,7 @@ func (f *File) Size() (uint64, error) {
 // Location returns a vfs.Location at the location of the object. IE: if file is at
 // s3://bucket/here/is/the/file.txt the location points to s3://bucket/here/is/the/
 func (f *File) Location() vfs.Location {
-	return vfs.Location(&Location{
-		fileSystem: f.fileSystem,
-		prefix:     path.Dir(f.key),
-		bucket:     f.bucket,
-	})
+	return f.location
 }
 
 // Move/Copy Operations
@@ -132,27 +126,20 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 
 	// if target is S3
 	if tf, ok := file.(*File); ok {
-		input, err := f.getCopyObjectInput(tf)
-		if err != nil {
-			return err
-		}
+		input := f.getCopyObjectInput(tf)
 		// if input is not nil, use it to natively copy object
 		if input != nil {
-			client, err := f.fileSystem.Client()
+			client, err := f.Location().FileSystem().(*FileSystem).Client()
 			if err != nil {
 				return err
 			}
-			_, err = client.CopyObject(input)
+			_, err = client.CopyObject(context.Background(), input)
 			return err
 		}
 	}
 
 	// Otherwise, use TouchCopyBuffered using io.CopyBuffer
-	fileBufferSize := 0
-
-	if opts, ok := f.Location().FileSystem().(*FileSystem).options.(Options); ok {
-		fileBufferSize = opts.FileBufferSize
-	}
+	fileBufferSize := f.Location().FileSystem().(*FileSystem).options.FileBufferSize
 
 	if err := utils.TouchCopyBuffered(file, f, fileBufferSize); err != nil {
 		return err
@@ -211,7 +198,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		return err
 	}
 
-	client, err := f.fileSystem.Client()
+	client, err := f.Location().FileSystem().(*FileSystem).Client()
 	if err != nil {
 		return err
 	}
@@ -225,9 +212,10 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		}
 	}
 
-	_, err = client.DeleteObject(&s3.DeleteObjectInput{
+	bucket := f.Location().Authority().String()
+	_, err = client.DeleteObject(context.Background(), &s3.DeleteObjectInput{
 		Key:    &f.key,
-		Bucket: &f.bucket,
+		Bucket: &bucket,
 	})
 	if err != nil {
 		return err
@@ -239,11 +227,11 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 			return err
 		}
 
-		for _, version := range objectVersions.Versions {
-			if _, err = client.DeleteObject(&s3.DeleteObjectInput{
+		for idx := range objectVersions.Versions {
+			if _, err = client.DeleteObject(context.Background(), &s3.DeleteObjectInput{
 				Key:       &f.key,
-				Bucket:    &f.bucket,
-				VersionId: version.VersionId,
+				Bucket:    &bucket,
+				VersionId: objectVersions.Versions[idx].VersionId,
 			}); err != nil {
 				return err
 			}
@@ -305,9 +293,12 @@ func (f *File) Close() error { //nolint:gocyclo
 		// read s3WriterCompleteCh if it exists
 		if f.writeCalled && f.s3Writer != nil && f.s3WriterCompleteCh != nil {
 			// wait for s3Writer to complete
-			<-f.s3WriterCompleteCh
+			err := <-f.s3WriterCompleteCh
 			// close s3WriterCompleteCh channel
 			close(f.s3WriterCompleteCh)
+			if err != nil {
+				return utils.WrapCloseError(err)
+			}
 		}
 		err := waitUntilFileExists(f, 5)
 		if err != nil {
@@ -333,16 +324,16 @@ func (f *File) tempToS3() error {
 	}
 
 	// write tempFileWriter to s3
-	client, err := f.fileSystem.Client()
+	client, err := f.Location().FileSystem().(*FileSystem).Client()
 	if err != nil {
 		return err
 	}
 
-	uploader := getUploader(client, withUploadPartitionSize(f.getDownloadPartitionSize()))
+	uploader := manager.NewUploader(client, withUploadPartitionSize(f.getUploadPartitionSize()))
 	uploadInput := uploadInput(f)
 	uploadInput.Body = f.tempFileWriter
 
-	_, err = uploader.UploadWithContext(context.Background(), uploadInput)
+	_, err = uploader.Upload(context.Background(), uploadInput)
 	if err != nil {
 		return err
 	}
@@ -352,6 +343,12 @@ func (f *File) tempToS3() error {
 
 // Read implements the standard for io.Reader.
 func (f *File) Read(p []byte) (n int, err error) {
+	// s3 reader returns io.EOF when reading the last byte (but not past the last byte) to save on bandwidth,
+	// but we want to return io.EOF only when reading past the last byte
+	if f.readEOFSeen {
+		return 0, io.EOF
+	}
+
 	// check/initialize for reader
 	r, err := f.getReader()
 	if err != nil {
@@ -362,18 +359,6 @@ func (f *File) Read(p []byte) (n int, err error) {
 	if err != nil {
 		if !errors.Is(err, io.EOF) {
 			return 0, utils.WrapReadError(err)
-		}
-		// s3 reader returns io.EOF when reading the last byte (but not past the last byte) to save on bandwidth,
-		// but we want to return io.EOF only when reading past the last byte
-		if f.readEOFSeen {
-			return 0, io.EOF
-		}
-		sz, err := f.Size()
-		if err != nil {
-			return 0, utils.WrapReadError(err)
-		}
-		if f.cursorPos+int64(read) > int64(sz) {
-			return read, utils.WrapReadError(err)
 		}
 		f.readEOFSeen = true
 	}
@@ -458,11 +443,8 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	}
 	f.cursorPos = pos
 
-	// Reset readEOFSeen if seeking to the beginning of the file
-	if f.cursorPos == 0 {
-		f.readEOFSeen = false
-	}
-
+	// set readEOFSeen if seeking to the end of the file
+	f.readEOFSeen = f.cursorPos >= int64(length)
 	f.seekCalled = true
 	return f.cursorPos, nil
 }
@@ -544,32 +526,52 @@ func (f *File) String() string {
 /*
 Private helper functions
 */
-func (f *File) getAllObjectVersions(client s3iface.S3API) (*s3.ListObjectVersionsOutput, error) {
+func (f *File) getAllObjectVersions(client Client) (*s3.ListObjectVersionsOutput, error) {
 	prefix := utils.RemoveLeadingSlash(f.key)
-	objVers, err := client.ListObjectVersions(&s3.ListObjectVersionsInput{
-		Bucket: &f.bucket,
+	bucket := f.Location().Authority().String()
+	objVers, err := client.ListObjectVersions(context.Background(), &s3.ListObjectVersionsInput{
+		Bucket: &bucket,
 		Prefix: &prefix,
 	})
 	return objVers, err
 }
 
 func (f *File) getHeadObject() (*s3.HeadObjectOutput, error) {
-	headObjectInput := new(s3.HeadObjectInput).SetKey(f.key).SetBucket(f.bucket)
-	client, err := f.fileSystem.Client()
+	bucket := f.Location().Authority().String()
+	headObjectInput := &s3.HeadObjectInput{
+		Key:    aws.String(f.key),
+		Bucket: aws.String(bucket),
+	}
+	client, err := f.Location().FileSystem().(*FileSystem).Client()
 	if err != nil {
 		return nil, err
 	}
 
-	head, err := client.HeadObject(headObjectInput)
+	head, err := client.HeadObject(context.Background(), headObjectInput)
 
 	return head, handleExistsError(err)
 }
 
 // For copy from S3-to-S3 when credentials are the same between source and target, return *s3.CopyObjectInput or error
-func (f *File) getCopyObjectInput(targetFile *File) (*s3.CopyObjectInput, error) { //nolint:gocyclo
-	// first we must determine if we're using the same s3 credentials for source and target before doing a native copy
-	isSameAccount := false
-	var ACL string
+func (f *File) getCopyObjectInput(targetFile *File) *s3.CopyObjectInput {
+	// If both files use the same account, copy with native library. Otherwise, copy to disk
+	// first before pushing out to the target file's location.
+	sameAuth, ACL := f.isSameAuth(targetFile)
+	if !sameAuth {
+		// return nil if credentials aren't the same
+		return nil
+	}
+	bucket := f.Location().Authority().String()
+	// PathEscape ensures we url-encode as required by the API, including double-encoding literals
+	copySourceKey := url.PathEscape(path.Join(bucket, f.key))
+
+	copyInput := &s3.CopyObjectInput{
+		ServerSideEncryption: types.ServerSideEncryptionAes256,
+		ACL:                  ACL,
+		Key:                  aws.String(targetFile.key),
+		Bucket:               aws.String(targetFile.Location().Authority().String()),
+		CopySource:           aws.String(copySourceKey),
+	}
 
 	// get content type from source
 	var contentType string
@@ -583,99 +585,75 @@ func (f *File) getCopyObjectInput(targetFile *File) (*s3.CopyObjectInput, error)
 		}
 	}
 
+	// set content type if it exists
+	if contentType != "" {
+		copyInput.ContentType = aws.String(contentType)
+	}
+
+	if f.Location().FileSystem().(*FileSystem).options.DisableServerSideEncryption {
+		copyInput.ServerSideEncryption = ""
+	}
+
+	return copyInput
+}
+
+func (f *File) isSameAuth(targetFile *File) (bool, types.ObjectCannedACL) {
 	fileOptions := f.Location().FileSystem().(*FileSystem).options
 	targetOptions := targetFile.Location().FileSystem().(*FileSystem).options
 
-	if fileOptions == nil && targetOptions == nil {
+	if (fileOptions == Options{}) && (targetOptions == Options{}) {
 		// if both opts are nil, we must be using the default credentials
-		isSameAccount = true
-	} else {
-		opts, hasOptions := fileOptions.(Options)
-		targetOpts, hasTargetOptions := targetOptions.(Options)
-		if hasOptions {
-			// use source ACL (even if empty), UNLESS target ACL is set
-			ACL = opts.ACL
-			if hasTargetOptions && targetOpts.ACL != "" {
-				ACL = targetOpts.ACL
-			}
-			if hasTargetOptions {
-				// since accesskey and session token are mutually exclusive, one will be nil
-				// if both are the same, we're using the same credentials
-				isSameAccount = (opts.AccessKeyID == targetOpts.AccessKeyID) && (opts.SessionToken == targetOpts.SessionToken)
-			}
-		}
+		return true, ""
 	}
 
-	// If both files use the same account, copy with native library. Otherwise, copy to disk
-	// first before pushing out to the target file's location.
-	if isSameAccount {
-		// PathEscape ensures we url-encode as required by the API, including double-encoding literals
-		copySourceKey := url.PathEscape(path.Join(f.bucket, f.key))
+	// use source ACL (even if empty), UNLESS target ACL is set
+	ACL := fileOptions.ACL
 
-		copyInput := new(s3.CopyObjectInput).
-			SetServerSideEncryption("AES256").
-			SetACL(ACL).
-			SetKey(targetFile.key).
-			SetBucket(targetFile.bucket).
-			SetCopySource(copySourceKey)
-
-		// set content type if it exists
-		if contentType != "" {
-			copyInput.SetContentType(contentType)
-		}
-
-		if f.fileSystem.options != nil && f.fileSystem.options.(Options).DisableServerSideEncryption {
-			copyInput.ServerSideEncryption = nil
-		}
-
-		// validate copyInput
-		if err := copyInput.Validate(); err != nil {
-			return nil, err
-		}
-
-		return copyInput, nil
+	if targetOptions.ACL != "" {
+		ACL = targetOptions.ACL
 	}
 
-	// return nil if credentials aren't the same
-	return nil, nil
+	// since accesskey and session token are mutually exclusive, one will be nil
+	// if both are the same, we're using the same credentials
+	isSameAccount := (fileOptions.AccessKeyID == targetOptions.AccessKeyID) && (fileOptions.SessionToken == targetOptions.SessionToken)
+
+	return isSameAccount, ACL
 }
 
 func (f *File) copyS3ToLocalTempReader(tmpFile *os.File) error {
-	client, err := f.fileSystem.Client()
+	client, err := f.Location().FileSystem().(*FileSystem).Client()
 	if err != nil {
 		return err
 	}
 
 	// Download file
-	input := new(s3.GetObjectInput).SetBucket(f.bucket).SetKey(f.key)
+	input := &s3.GetObjectInput{
+		Bucket: aws.String(f.Location().Authority().String()),
+		Key:    aws.String(f.key),
+	}
 	opt := withDownloadPartitionSize(f.getDownloadPartitionSize())
-	_, err = getDownloader(client, opt).
-		DownloadWithContext(context.Background(), tmpFile, input)
+	_, err = manager.NewDownloader(client, opt).
+		Download(context.Background(), tmpFile, input)
 
 	return err
 }
 
 // TODO: need to provide an implementation-agnostic container for providing config options such as SSE
-func uploadInput(f *File) *s3manager.UploadInput {
-	sseType := "AES256"
-	input := &s3manager.UploadInput{
-		Bucket:               &f.bucket,
+func uploadInput(f *File) *s3.PutObjectInput {
+	bucket := f.Location().Authority().String()
+	input := &s3.PutObjectInput{
+		Bucket:               &bucket,
 		Key:                  &f.key,
-		ServerSideEncryption: &sseType,
+		ServerSideEncryption: types.ServerSideEncryptionAes256,
 	}
 
-	if f.fileSystem.options == nil {
-		f.fileSystem.options = Options{}
+	if f.Location().FileSystem().(*FileSystem).options.DisableServerSideEncryption {
+		input.ServerSideEncryption = ""
 	}
 
-	if f.fileSystem.options.(Options).DisableServerSideEncryption {
-		input.ServerSideEncryption = nil
-	}
-
-	if opts, ok := f.fileSystem.options.(Options); ok {
-		if opts.ACL != "" {
-			input.ACL = &opts.ACL
-		}
+	opts := f.Location().FileSystem().(*FileSystem).options
+	if opts.ACL != "" {
+		input.ACL = opts.ACL
 	}
 
 	for _, o := range f.opts {
@@ -742,20 +720,22 @@ func (f *File) getReader() (io.ReadCloser, error) {
 				// can't set range on empty file, so just return an empty ReadCloser
 				f.reader = io.NopCloser(strings.NewReader(""))
 			} else {
+				bucket := f.Location().Authority().String()
 				// Create the request to get the object
-				input := new(s3.GetObjectInput).
-					SetBucket(f.bucket).
-					SetKey(f.key).
-					SetRange(fmt.Sprintf("bytes=%d-", f.cursorPos))
+				input := &s3.GetObjectInput{
+					Bucket: aws.String(bucket),
+					Key:    aws.String(f.key),
+					Range:  aws.String(fmt.Sprintf("bytes=%d-", f.cursorPos)),
+				}
 
 				// Get the client
-				client, err := f.fileSystem.Client()
+				client, err := f.Location().FileSystem().(*FileSystem).Client()
 				if err != nil {
 					return nil, err
 				}
 
 				// Request the object
-				result, err := client.GetObject(input)
+				result, err := client.GetObject(context.Background(), input)
 				if err != nil {
 					return nil, err
 				}
@@ -770,12 +750,9 @@ func (f *File) getReader() (io.ReadCloser, error) {
 
 func handleExistsError(err error) error {
 	if err != nil {
-		var awsErr awserr.Error
-		if errors.As(err, &awsErr) {
-			switch awsErr.Code() {
-			case s3.ErrCodeNoSuchKey, s3.ErrCodeNoSuchBucket, "NotFound":
-				return vfs.ErrNotExist
-			}
+		var kerr *types.NotFound
+		if errors.As(err, &kerr) {
+			return vfs.ErrNotExist
 		}
 		return err
 	}
@@ -821,26 +798,26 @@ func (f *File) initWriters() error {
 }
 
 func (f *File) getS3Writer() (*io.PipeWriter, error) {
-	f.s3WriterCompleteCh = make(chan struct{}, 1)
+	f.s3WriterCompleteCh = make(chan error, 1)
 	pr, pw := io.Pipe()
 
-	client, err := f.fileSystem.Client()
+	client, err := f.Location().FileSystem().(*FileSystem).Client()
 	if err != nil {
 		return nil, err
 	}
-	uploader := getUploader(client, withUploadPartitionSize(f.getUploadPartitionSize()))
+	uploader := manager.NewUploader(client, withUploadPartitionSize(f.getUploadPartitionSize()))
 	ctx, cancel := context.WithCancel(context.Background())
 	f.cancelFunc = cancel
 	uploadInput := uploadInput(f)
 	uploadInput.Body = pr
 
-	go func(input *s3manager.UploadInput) {
+	go func(input *s3.PutObjectInput) {
 		defer cancel()
-		_, err := uploader.UploadWithContext(ctx, input)
+		_, err := uploader.Upload(ctx, input)
 		if err != nil {
 			_ = pw.CloseWithError(err)
 		}
-		f.s3WriterCompleteCh <- struct{}{}
+		f.s3WriterCompleteCh <- err
 	}(uploadInput)
 
 	return pw, nil
@@ -848,44 +825,32 @@ func (f *File) getS3Writer() (*io.PipeWriter, error) {
 
 func (f *File) getUploadPartitionSize() int64 {
 	partSize := defaultPartitionSize
-	if f.fileSystem.options != nil {
-		if opts, ok := f.fileSystem.options.(Options); ok {
-			if opts.UploadPartitionSize != 0 {
-				partSize = opts.UploadPartitionSize
-			}
-		}
+	opts := f.Location().FileSystem().(*FileSystem).options
+	if opts.UploadPartitionSize != 0 {
+		partSize = opts.UploadPartitionSize
 	}
+
 	return partSize
 }
 
 func (f *File) getDownloadPartitionSize() int64 {
 	partSize := defaultPartitionSize
-	if f.fileSystem.options != nil {
-		if opts, ok := f.fileSystem.options.(Options); ok {
-			if opts.DownloadPartitionSize != 0 {
-				partSize = opts.DownloadPartitionSize
-			}
-		}
+	opts := f.Location().FileSystem().(*FileSystem).options
+	if opts.DownloadPartitionSize != 0 {
+		partSize = opts.DownloadPartitionSize
 	}
+
 	return partSize
 }
 
-func withDownloadPartitionSize(partSize int64) func(*s3manager.Downloader) {
-	return func(d *s3manager.Downloader) {
+func withDownloadPartitionSize(partSize int64) func(*manager.Downloader) {
+	return func(d *manager.Downloader) {
 		d.PartSize = partSize
 	}
 }
 
-func withUploadPartitionSize(partSize int64) func(*s3manager.Uploader) {
-	return func(u *s3manager.Uploader) {
+func withUploadPartitionSize(partSize int64) func(*manager.Uploader) {
+	return func(u *manager.Uploader) {
 		u.PartSize = partSize
 	}
-}
-
-var getDownloader = func(client s3iface.S3API, opts ...func(d *s3manager.Downloader)) s3manageriface.DownloaderAPI {
-	return s3manager.NewDownloaderWithClient(client, opts...)
-}
-
-var getUploader = func(client s3iface.S3API, opts ...func(d *s3manager.Uploader)) s3manageriface.UploaderAPI {
-	return s3manager.NewUploaderWithClient(client, opts...)
 }

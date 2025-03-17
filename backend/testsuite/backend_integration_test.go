@@ -1,5 +1,4 @@
 //go:build vfsintegration
-// +build vfsintegration
 
 package testsuite
 
@@ -16,12 +15,16 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v6"
-	"github.com/c2fo/vfs/v6/backend/azure"
-	"github.com/c2fo/vfs/v6/backend/gs"
-	"github.com/c2fo/vfs/v6/backend/sftp"
-	"github.com/c2fo/vfs/v6/utils"
-	"github.com/c2fo/vfs/v6/vfssimple"
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend/azure"
+	"github.com/c2fo/vfs/v7/backend/ftp"
+	"github.com/c2fo/vfs/v7/backend/gs"
+	"github.com/c2fo/vfs/v7/backend/mem"
+	_os "github.com/c2fo/vfs/v7/backend/os"
+	"github.com/c2fo/vfs/v7/backend/s3"
+	"github.com/c2fo/vfs/v7/backend/sftp"
+	"github.com/c2fo/vfs/v7/utils"
+	"github.com/c2fo/vfs/v7/vfssimple"
 )
 
 type vfsTestSuite struct {
@@ -29,12 +32,8 @@ type vfsTestSuite struct {
 	testLocations map[string]vfs.Location
 }
 
-func buildExpectedURI(fs vfs.FileSystem, volume, path string) string {
-	if fs.Name() == "azure" {
-		azFs := fs.(*azure.FileSystem)
-		return fmt.Sprintf("%s://%s/%s%s", fs.Scheme(), azFs.Host(), volume, path)
-	}
-	return fmt.Sprintf("%s://%s%s", fs.Scheme(), volume, path)
+func buildExpectedURI(fs vfs.FileSystem, authorityStr, path string) string {
+	return fmt.Sprintf("%s://%s%s", fs.Scheme(), authorityStr, path)
 }
 
 func (s *vfsTestSuite) SetupSuite() {
@@ -45,19 +44,57 @@ func (s *vfsTestSuite) SetupSuite() {
 		s.NoError(err)
 		switch l.FileSystem().Scheme() {
 		case "file":
-			s.testLocations[l.FileSystem().Scheme()] = CopyOsLocation(l)
+			ret := l.(*_os.Location)
+
+			// setup os location
+			exists, err := ret.Exists()
+			if err != nil {
+				panic(err)
+			}
+			if !exists {
+				err := os.Mkdir(ret.Path(), 0750)
+				if err != nil {
+					panic(err)
+				}
+			}
+			s.testLocations[l.FileSystem().Scheme()] = ret
 		case "s3":
-			s.testLocations[l.FileSystem().Scheme()] = CopyS3Location(l)
+			s.testLocations[l.FileSystem().Scheme()] = l.(*s3.Location)
 		case "sftp":
-			s.testLocations[l.FileSystem().Scheme()] = CopySFTPLocation(l)
+			s.testLocations[l.FileSystem().Scheme()] = l.(*sftp.Location)
 		case "gs":
-			s.testLocations[l.FileSystem().Scheme()] = CopyGSLocation(l)
+			l.FileSystem().(*gs.FileSystem).
+				WithOptions(
+					gs.Options{
+						Retry: func(wrapped func() error) error {
+							var retryErr error
+							for i := 0; i < 5; i++ {
+								if err := wrapped(); err != nil {
+									// skip retrying for exists check
+									if err.Error() == "storage: object doesn't exist" {
+										retryErr = err
+										break
+									}
+									fmt.Printf("Initial GCS request failed. Retry (%d)\n", i+1)
+									retryErr = err
+									time.Sleep(3 * time.Second)
+									continue
+								} else {
+									retryErr = nil
+									break
+								}
+							}
+							return retryErr
+						},
+					},
+				)
+			s.testLocations[l.FileSystem().Scheme()] = l.(*gs.Location)
 		case "mem":
-			s.testLocations[l.FileSystem().Scheme()] = CopyMemLocation(l)
-		case "https":
-			s.testLocations[l.FileSystem().Scheme()] = CopyAzureLocation(l)
+			s.testLocations[l.FileSystem().Scheme()] = l.(*mem.Location)
+		case "az":
+			s.testLocations[l.FileSystem().Scheme()] = l.(*azure.Location)
 		case "ftp":
-			s.testLocations[l.FileSystem().Scheme()] = CopyFTPLocation(l)
+			s.testLocations[l.FileSystem().Scheme()] = l.(*ftp.Location)
 		default:
 			panic(fmt.Sprintf("unknown scheme: %s", l.FileSystem().Scheme()))
 		}
@@ -80,15 +117,15 @@ func (s *vfsTestSuite) FileSystem(baseLoc vfs.Location) {
 
 	// setup FileSystem
 	fs := baseLoc.FileSystem()
-	// NewFile initializes a File on the specified volume at path 'absFilePath'.
+	// NewFile initializes a File on the specified Authority string at path 'absFilePath'.
 	//
-	//   * Accepts volume and an absolute file path.
+	//   * Accepts authority string and an absolute file path.
 	//   * Upon success, a vfs.File, representing the file's new path (location path + file relative path), will be returned.
 	//   * On error, nil is returned for the file.
-	//   * Note that not all file systems will have a "volume" and will therefore be "":
-	//       file:///path/to/file has a volume of "" and name /path/to/file
+	//   * Note that not all file systems will have a "authority" and will therefore be "":
+	//       file:///path/to/file has an authority of "" and name /path/to/file
 	//     whereas
-	//       s3://mybucket/path/to/file has a volume of "mybucket and name /path/to/file
+	//       s3://mybucket/path/to/file has an authority of "mybucket and name /path/to/file
 	//     results in /tmp/dir1/newerdir/file.txt for the final vfs.File path.
 	//   * The file may or may not already exist.
 	filepaths := map[string]bool{
@@ -102,23 +139,23 @@ func (s *vfsTestSuite) FileSystem(baseLoc vfs.Location) {
 		"":                     false,
 	}
 	for name, validates := range filepaths {
-		file, err := fs.NewFile(baseLoc.Volume(), name)
+		file, err := fs.NewFile(baseLoc.Authority().String(), name)
 		if validates {
 			s.NoError(err, "there should be no error")
-			expected := buildExpectedURI(fs, baseLoc.Volume(), path.Clean(name))
+			expected := buildExpectedURI(fs, baseLoc.Authority().String(), path.Clean(name))
 			s.Equal(expected, file.URI(), "uri's should match")
 		} else {
 			s.Error(err, "should have validation error for scheme[%s] and name[%s]", fs.Scheme(), name)
 		}
 	}
 
-	// NewLocation initializes a Location on the specified volume with the given path.
+	// NewLocation initializes a Location on the specified authority with the given path.
 	//
-	//   * Accepts volume and an absolute location path.
+	//   * Accepts authority and an absolute location path.
 	//   * The file may or may not already exist. Note that on key-store file systems like S3 or GCS, paths never truly exist.
 	//   * On error, nil is returned for the location.
 	//
-	// See NewFile for note on volume.
+	// See NewFile for note on authority.
 	locpaths := map[string]bool{
 		"/path/to/":         true,
 		"/path/./to/":       true,
@@ -130,10 +167,10 @@ func (s *vfsTestSuite) FileSystem(baseLoc vfs.Location) {
 		"":                  false,
 	}
 	for name, validates := range locpaths {
-		loc, err := fs.NewLocation(baseLoc.Volume(), name)
+		loc, err := fs.NewLocation(baseLoc.Authority().String(), name)
 		if validates {
 			s.NoError(err, "there should be no error")
-			expected := buildExpectedURI(fs, baseLoc.Volume(), utils.EnsureTrailingSlash(path.Clean(name)))
+			expected := buildExpectedURI(fs, baseLoc.Authority().String(), utils.EnsureTrailingSlash(path.Clean(name)))
 			s.Equal(expected, loc.URI(), "uri's should match")
 
 		} else {
@@ -183,7 +220,7 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 		loc, err := srcLoc.NewLocation(name)
 		if validates {
 			s.NoError(err, "there should be no error")
-			expected := buildExpectedURI(srcLoc.FileSystem(), baseLoc.Volume(), utils.EnsureTrailingSlash(path.Clean(path.Join(srcLoc.Path(), name))))
+			expected := buildExpectedURI(srcLoc.FileSystem(), baseLoc.Authority().String(), utils.EnsureTrailingSlash(path.Clean(path.Join(srcLoc.Path(), name))))
 			s.Equal(expected, loc.URI(), "uri's should match")
 
 		} else {
@@ -215,7 +252,7 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 		file, err := srcLoc.NewFile(name)
 		if validates {
 			s.NoError(err, "there should be no error")
-			expected := buildExpectedURI(srcLoc.FileSystem(), srcLoc.Volume(), path.Clean(path.Join(srcLoc.Path(), name)))
+			expected := buildExpectedURI(srcLoc.FileSystem(), srcLoc.Authority().String(), path.Clean(path.Join(srcLoc.Path(), name)))
 			s.Equal(expected, file.URI(), "uri's should match")
 		} else {
 			s.Error(err, "should have validation error for scheme and name: %s : +%s+", srcLoc.FileSystem().Scheme(), name)
@@ -912,7 +949,7 @@ func (s *vfsTestSuite) gsList(baseLoc vfs.Location) {
 
 func sftpRemoveAll(location *sftp.Location) error {
 	// get sftp client from FileSystem
-	client, err := location.FileSystem().(*sftp.FileSystem).Client(location.Authority)
+	client, err := location.FileSystem().(*sftp.FileSystem).Client(location.Authority())
 	if err != nil {
 		return err
 	}

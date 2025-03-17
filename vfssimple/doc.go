@@ -13,7 +13,7 @@ Just import vfssimple.
 	import (
 		"fmt"
 
-		"github.com/c2fo/vfs/v6/vfssimple"
+		"github.com/c2fo/vfs/v7/vfssimple"
 	)
 
 	func main() {
@@ -51,9 +51,9 @@ file system.
 	import(
 		"fmt"
 
-		"github.com/c2fo/vfs/v6/backend"
-		"github.com/c2fo/vfs/v6/backend/s3"
-		"github.com/c2fo/vfs/v6/vfssimple"
+		"github.com/c2fo/vfs/v7/backend"
+		"github.com/c2fo/vfs/v7/backend/s3"
+		"github.com/c2fo/vfs/v7/vfssimple"
 	)
 
 	func main() {

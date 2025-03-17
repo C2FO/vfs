@@ -6,12 +6,12 @@ Package ftp - FTP VFS implementation.
 
 ### Usage
 
-Rely on [github.com/c2fo/vfs/v6/backend](backend.md)
+Rely on [github.com/c2fo/vfs/v7/backend](backend.md)
 
 ```go
       import(
-    	  "github.com/c2fo/vfs/v6/backend"
-    	  "github.com/c2fo/vfs/v6/backend/ftp"
+    	  "github.com/c2fo/vfs/v7/backend"
+    	  "github.com/c2fo/vfs/v7/backend/ftp"
       )
 
       func UseFs() error {
@@ -23,7 +23,7 @@ Rely on [github.com/c2fo/vfs/v6/backend](backend.md)
 Or call directly:
 
 ```go
-      import "github.com/c2fo/vfs/v6/backend/ftp"
+      import "github.com/c2fo/vfs/v7/backend/ftp"
 
       func DoSomething() {
     	  fs := ftp.NewFileSystem()
@@ -125,7 +125,7 @@ The provided CopyToFile and CopyToLocation functions should be used instead in t
 ### Authentication
 
 Authentication, by default, occurs automatically when [Client()](#func-filesystem-client) is called. Since
-user is part of the URI authority section (Volume), auth is handled slightly
+user is part of the URI authority section, auth is handled slightly
 differently than other vfs [backends](backend.md) (except [SFTP](sftp.md)).
 
 A client is initialized lazily, meaning we only make a connection to the server
@@ -134,7 +134,7 @@ authenticated session is closed any time [WithOption()](#func-filesystem-withopt
 
 #### USERNAME
 
-User may only be set in the [URI authority](https://tools.ietf.org/html/rfc3986#section-3.2) section (Volume in vfs parlance).
+User may only be set in the [URI authority](https://tools.ietf.org/html/rfc3986#section-3.2) section.
 
      scheme             host
      __/             ___/____  port
@@ -143,7 +143,7 @@ User may only be set in the [URI authority](https://tools.ietf.org/html/rfc3986#
            \____________________/ \______________/
            \______/       \               \
                /     authority section    path
-         username       (Volume)
+         username
 
 ftp vfs backend defaults to "anonymous" if no username is provided in the
 authority, ie "ftp://service.com/".
@@ -542,6 +542,11 @@ URI returns the Location's URI as a string.
 func (l *Location) Volume() string
 ```
 Volume returns the Authority the location is contained in.
+
+```go
+func (l *Location) Authority() authority.Authority
+```
+Authority returns the authority of the location.
 
 ### type Options
 

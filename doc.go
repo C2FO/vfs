@@ -40,15 +40,67 @@ What we needed/wanted was the following(and more):
 
 Pre 1.17:
 
-	go get -u github.com/c2fo/vfs/v6
+	go get -u github.com/c2fo/vfs/v7
 
 Post 1.17:
 
-	go install -u github.com/c2fo/vfs/v6
+	go install -u github.com/c2fo/vfs/v7
 
 # Upgrading
 
-Upgrading from v5 to v6
+# Upgrading from v6 to v7
+
+Please review these changes and update your code accordingly to ensure compatibility with v7.
+
+# S3 Backend
+
+The project now uses the [aws-sdk-go-v2] library instead of the deprecated, EOL
+[aws-sdk-go]. This update necessitated a these to the S3 backend:
+
+  - The S3 backend's filesystem.Client() function now returns an `s3.Client` which is a subset of AWS's sdk v2 functionality.
+    This change may require updates to your code if you were relying client functionality not directly required by the s3
+    vfs backend.
+
+  - The `Option.Retry` field is now an `aws.Retryer` instead of a `request.Retry`. Ensure that your Option logic is compatible
+    with the new type.
+
+# Azure Backend
+
+  - Scheme for Azure has been updated from `https` to `az`. Update your code to use the new scheme.
+
+  - Authority for Azure has been updated from `blob.core.windows.net` to `<blob-container-name>`, such that the full URI
+    is `az://<blob-container-name>/path/to/file.txt` rather than
+    `https://<storage-account-name>.core.windows.net/<blob-container-name>/path/to/file.txt`.
+
+# GS Backend
+  - The Options.Retry field, with the now deprecated vfs.Retry type, has been moved to gs.FileSystem as the new gs.Retyer
+    type.  It is now set via the gs.NewFileSystem() using functional option gs.WithRetryer.  All previous Retry usage has
+    been replaced with gs.WithRetryer.  Update your code to use the new gs.WithRetryer functional option.
+
+# All Backends
+
+Some methods in the Location and FileSystem interfaces have been deprecated because they use terminology that doesn't
+apply to all backends. They will be removed in a future release. Update your code to use the new methods.
+See https://github.com/C2FO/vfs/issues/235.
+
+  - location.Volume() method which returns the authority as a string has been deprecated in favor of the
+    location.Authority() method which returns an authority.Authority struct. Update your code to use the
+    Authority().String() method instead of Volume().
+
+  - location.ChangeDir() method ash been deprecated in favor of the existing location.NewLocation() method. Update
+    your code to use the NewLocation() method instead of ChangeDir().
+
+  - vfs.Options struct has been deprecated in favor of using backend-specific structs.
+
+  - FileSystem.Retry() method has been deprecated in favor of using backend-specific functional options.
+
+Additionally, we have added functional option interface, `NewFileSystemOption`, to allow for more flexible configuration
+of backends. This interface allows for more complex configuration options to be passed to the via the `NewFileSystem` function.
+This will replace backend-specific chainable functions that require casting the filesystem to the backend type first.
+See https://github.com/C2FO/vfs/issues/238.
+
+# Upgrading from v5 to v6
+
 With v6.0.0, sftp.Options struct changed to accept an array of Key Exchange algorithms rather than a string.
 To update, change the syntax of the auth commands.
 
@@ -138,5 +190,15 @@ begin with a slash but may include . and .. directories.
 * URI - A Uniform Resource Identifier (URI) is a string of characters that unambiguously identifies a particular resource.
 To guarantee uniformity, all URIs follow a predefined set of syntax rules, but also maintain extensibility through
 a separately defined hierarchical naming scheme (e.g. http://).
+
+* authority - The authority section of a URI is used to specify the authentication information for the server or service
+being accessed.  It is separated from the rest of the URI by a double slash (//).  The authority section is further
+broken down into userinfo, host, and port.
+
+* userinfo - The userinfo section may contain a username and password separated by a colon.  The username and password are
+separated by a colon and followed by an @ symbol.  The password may be omitted.
+
+[aws-sdk-go-v2]: https://github.com/aws/aws-sdk-go-v2
+[aws-sdk-go]: https://github.com/aws/aws-sdk-go
 */
 package vfs
