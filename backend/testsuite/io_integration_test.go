@@ -12,10 +12,10 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/suite"
 
+	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/backend/azure"
 	"github.com/c2fo/vfs/v7/backend/ftp"
 	"github.com/c2fo/vfs/v7/backend/gs"
@@ -187,31 +187,6 @@ func (s *ioTestSuite) SetupSuite() {
 			case "sftp":
 				s.testLocations[l.FileSystem().Scheme()] = l.(*sftp.Location)
 			case "gs":
-				l.FileSystem().(*gs.FileSystem).
-					WithOptions(
-						gs.Options{
-							Retry: func(wrapped func() error) error {
-								var retryErr error
-								for i := 0; i < 5; i++ {
-									if err := wrapped(); err != nil {
-										// skip retrying for exists check
-										if err.Error() == "storage: object doesn't exist" {
-											retryErr = err
-											break
-										}
-										fmt.Printf("Initial GCS request failed. Retry (%d)\n", i+1)
-										retryErr = err
-										time.Sleep(3 * time.Second)
-										continue
-									} else {
-										retryErr = nil
-										break
-									}
-								}
-								return retryErr
-							},
-						},
-					)
 				s.testLocations[l.FileSystem().Scheme()] = l.(*gs.Location)
 			case "mem":
 				s.testLocations[l.FileSystem().Scheme()] = l.(*mem.Location)

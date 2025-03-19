@@ -3,6 +3,7 @@ package gs
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"testing"
@@ -25,7 +26,7 @@ func objectExists(bucket *storage.BucketHandle, objectName string) bool {
 	ctx := context.Background()
 	_, err := objectHandle.Attrs(ctx)
 	if err != nil {
-		if err == storage.ErrObjectNotExist {
+		if errors.Is(err, storage.ErrObjectNotExist) {
 			return false
 		}
 		panic(err)
