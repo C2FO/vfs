@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixes
+- [#243](https://github.com/C2FO/vfs/issues/243) - gs backend fails with cloud.google.com/go/storage v1.51.0 due to new wrapped errors.
+
 ## [v7.0.0] - 2025-03-17
 ### Added
 - Deprecated usage of Volume and ChangeDir.  Added Authority (to replace Volume).  Fixes #235.

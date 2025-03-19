@@ -359,15 +359,21 @@ func (f *File) String() string {
 	return f.URI()
 }
 
-// Exists returns a boolean of whether or not the object exists in GCS.
+// Exists returns a boolean of whether the object exists in GCS.
 func (f *File) Exists() (bool, error) {
 	_, err := f.getObjectAttrs()
 	if err != nil {
-		if err.Error() == doesNotExistError {
+		switch {
+		case errors.Is(err, storage.ErrObjectNotExist), errors.Is(err, storage.ErrBucketNotExist):
+			// return false if object doesn't exist
 			return false, nil
 		}
+
+		// return error if not a known error
 		return false, err
 	}
+
+	// return true if object exists
 	return true, nil
 }
 
