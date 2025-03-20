@@ -1,5 +1,4 @@
 name: Go Test Coverage
-
 on:
   pull_request:
     branches:
@@ -10,10 +9,10 @@ jobs:
     runs-on: arc-scale-set
     steps:
       - name: Checkout repository
-      - uses: actions/checkout@v4
+        uses: actions/checkout@v4
 
       - name: Set up Go
-      - uses: actions/setup-go@v5
+        uses: actions/setup-go@v5
 
       - name: Generate test coverage
         run: go test ./... -coverprofile=./cover.out -covermode=atomic -coverpkg=./...
