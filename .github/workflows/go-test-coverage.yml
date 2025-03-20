@@ -6,7 +6,7 @@ on:
       - v6
 jobs:
   check-coverage:
-    runs-on: arc-scale-set
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
