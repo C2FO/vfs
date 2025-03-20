@@ -72,7 +72,8 @@ jobs:
           go-version: '1.23' # The Go version to download (if necessary) and use.
       # Initializes the CodeQL tools for scanning.
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        # using v3.28.12 below
+        uses: github/codeql-action/init@v5f8171a638ada777af81d42b55959a643bb29017
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
@@ -100,6 +101,7 @@ jobs:
           exit 1
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        # using v3.28.12 below
+        uses: github/codeql-action/analyze@v5f8171a638ada777af81d42b55959a643bb29017
         with:
           category: "/language:${{matrix.language}}"

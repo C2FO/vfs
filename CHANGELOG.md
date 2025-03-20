@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v7.1.0] - 2025-03-19
 ### Added
 - Add GetClient functions for each backend to allow for direct access to the underlying client.  Fixes #245.
+- Added go-test-coverage action and remove codecove action since it hasn't been uploading for a while.
 
 ## [v7.0.1] - 2025-03-18
 ### Fixes
