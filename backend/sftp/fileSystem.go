@@ -200,7 +200,9 @@ func (fs *FileSystem) WithClient(client interface{}) *FileSystem {
 }
 
 func init() {
-	defaultClientGetter = getClient
+	defaultClientGetter = func(auth authority.Authority, opts Options) (Client, io.Closer, error) {
+		return GetClient(auth, opts)
+	}
 
 	// registers a default FileSystem
 	backend.Register(Scheme, NewFileSystem())

@@ -700,7 +700,9 @@ func (ts *fileTestSuite) TestMoveToFile_sameAuthority() {
 	err = sourceFile.MoveToFile(targetFile)
 	ts.Error(err, "error is expected")
 	ts.ErrorIs(err, errClientGetter, "error is the right kind of error")
-	defaultClientGetter = getClient
+	defaultClientGetter = func(ctx context.Context, auth authority.Authority, opts Options) (client types.Client, err error) {
+		return GetClient(ctx, auth, opts)
+	}
 	targetFile.Location().FileSystem().(*FileSystem).ftpclient = tgtMockFTPClient
 	dataConnGetterFunc = getFakeDataConn
 

@@ -4,7 +4,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -19,10 +18,10 @@ func (o *optionsTestSuite) SetupTest() {
 func (o *optionsTestSuite) TestGetClient() {
 	// no options
 	opts := Options{}
-	client, err := getClient(opts)
+	client, err := GetClient(opts)
 	o.NoError(err)
 	o.NotNil(client, "client is set")
-	o.Empty(client.(*s3.Client).Options().AppID, "config is empty")
+	o.Empty(client.Options().AppID, "config is empty")
 
 	// options set
 	opts = Options{
@@ -31,19 +30,19 @@ func (o *optionsTestSuite) TestGetClient() {
 		Region:          "some-region",
 		ForcePathStyle:  true,
 	}
-	client, err = getClient(opts)
+	client, err = GetClient(opts)
 	o.NoError(err)
 	o.NotNil(client, "client is set")
-	o.Equal("some-region", client.(*s3.Client).Options().Region, "region is set")
-	o.Truef(client.(*s3.Client).Options().UsePathStyle, "region is set")
+	o.Equal("some-region", client.Options().Region, "region is set")
+	o.Truef(client.Options().UsePathStyle, "region is set")
 
 	// env var
 	_ = os.Setenv("AWS_DEFAULT_REGION", "set-by-envvar")
 	opts = Options{}
-	client, err = getClient(opts)
+	client, err = GetClient(opts)
 	o.NoError(err)
 	o.NotNil(client, "client is set")
-	o.Equal("set-by-envvar", client.(*s3.Client).Options().Region, "region is set by env var")
+	o.Equal("set-by-envvar", client.Options().Region, "region is set by env var")
 
 	// role ARN set
 	opts = Options{
@@ -52,11 +51,11 @@ func (o *optionsTestSuite) TestGetClient() {
 		Region:          "some-region",
 		RoleARN:         "arn:aws:iam::123456789012:role/my-role",
 	}
-	client, err = getClient(opts)
+	client, err = GetClient(opts)
 	o.NoError(err)
 	o.NotNil(client, "client is set")
-	o.Equal("some-region", client.(*s3.Client).Options().Region, "region is set")
-	o.NotNil(client.(*s3.Client).Options().Credentials, "credentials are set")
+	o.Equal("some-region", client.Options().Region, "region is set")
+	o.NotNil(client.Options().Credentials, "credentials are set")
 }
 
 func TestOptions(t *testing.T) {

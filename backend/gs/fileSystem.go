@@ -195,3 +195,10 @@ func init() {
 	// registers a default FileSystem
 	backend.Register(Scheme, NewFileSystem())
 }
+
+// GetClient returns a new Google Cloud Storage client with the provided context and Options.
+func GetClient(ctx context.Context, opts Options) (*storage.Client, error) {
+	gsClientOpts := parseClientOptions(opts)
+	creator := &defaultClientCreator{}
+	return creator.NewClient(ctx, gsClientOpts...)
+}

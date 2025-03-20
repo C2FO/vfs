@@ -464,7 +464,7 @@ func (o *optionsSuite) TestGetClient() {
 
 	for _, t := range tests { //nolint:gocritic // rangeValCopy
 		o.Run(t.message, func() {
-			_, _, err := getClient(t.authority, t.options)
+			_, _, err := GetClient(t.authority, t.options)
 			if t.hasError {
 				if o.Error(err, "error found") {
 					if t.err != nil {

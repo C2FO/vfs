@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v7.1.0] - 2025-03-19
+### Added
+- Add GetClient functions for each backend to allow for direct access to the underlying client.  Fixes #245.
+
 ## [v7.0.1] - 2025-03-18
 ### Fixes
 - [#243](https://github.com/C2FO/vfs/issues/243) - gs backend fails with cloud.google.com/go/storage v1.51.0 due to new wrapped errors.

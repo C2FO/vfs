@@ -3,7 +3,6 @@ package sftp
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -105,7 +104,8 @@ var defaultSSHConfig = &ssh.ClientConfig{
 	},
 }
 
-func getClient(authority authority.Authority, opts Options) (Client, io.Closer, error) {
+// GetClient returns a new sftp client and underlying client(io.Closer) using the given authority and options.
+func GetClient(authority authority.Authority, opts Options) (*_sftp.Client, *ssh.Client, error) {
 	// setup Authentication
 	authMethods, err := getAuthMethods(opts)
 	if err != nil {

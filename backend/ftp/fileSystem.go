@@ -169,7 +169,9 @@ func (fs *FileSystem) WithClient(client types.Client) *FileSystem {
 }
 
 func init() {
-	defaultClientGetter = getClient
+	defaultClientGetter = func(ctx context.Context, auth authority.Authority, opts Options) (client types.Client, err error) {
+		return GetClient(ctx, auth, opts)
+	}
 	dataConnGetterFunc = getDataConn
 	// registers a default FileSystem
 	backend.Register(Scheme, NewFileSystem())
