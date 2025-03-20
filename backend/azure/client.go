@@ -284,3 +284,13 @@ func (a *DefaultClient) getBlobVersions(cli *container.Client, blobName string) 
 	}
 	return versions, nil
 }
+
+// GetClient returns a container.Client for the given container name and options
+func GetClient(container string, opts *Options) (*container.Client, error) {
+	client, err := NewClient(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return client.newContainerClient(container)
+}

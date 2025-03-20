@@ -106,7 +106,7 @@ func (fs *FileSystem) Scheme() string {
 func (fs *FileSystem) Client() (Client, error) {
 	if fs.client == nil {
 		var err error
-		fs.client, err = getClient(fs.options)
+		fs.client, err = GetClient(fs.options)
 		if err != nil {
 			return nil, err
 		}

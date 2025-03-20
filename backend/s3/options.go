@@ -30,8 +30,8 @@ type Options struct {
 	UploadPartitionSize         int64 // Partition size in bytes used to multipart upload of large files using manager.Uploader
 }
 
-// getClient setup S3 client
-func getClient(opt Options) (Client, error) {
+// GetClient setup S3 client
+func GetClient(opt Options) (*s3.Client, error) {
 	// setup default config
 	awsConfig, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {
@@ -56,6 +56,10 @@ func getClient(opt Options) (Client, error) {
 			opts.Retryer = opt.Retry
 		}
 
+		if opt.MaxRetries > 0 {
+			opts.RetryMaxAttempts = opt.MaxRetries
+		}
+
 		if opt.AccessKeyID != "" && opt.SecretAccessKey != "" {
 			opts.Credentials = credentials.NewStaticCredentialsProvider(
 				opt.AccessKeyID,
@@ -66,4 +70,27 @@ func getClient(opt Options) (Client, error) {
 			opts.Credentials = aws.NewCredentialsCache(stscreds.NewAssumeRoleProvider(sts.NewFromConfig(awsConfig), opt.RoleARN))
 		}
 	}), nil
+}
+
+// StringToACL converts a string to an ObjectCannedACL
+// see https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/s3/types#ObjectCannedACL
+func StringToACL(acl string) types.ObjectCannedACL {
+	switch acl {
+	case "private":
+		return types.ObjectCannedACLPrivate
+	case "public-read":
+		return types.ObjectCannedACLPublicRead
+	case "public-read-write":
+		return types.ObjectCannedACLPublicReadWrite
+	case "authenticated-read":
+		return types.ObjectCannedACLAuthenticatedRead
+	case "aws-exec-read":
+		return types.ObjectCannedACLAwsExecRead
+	case "bucket-owner-read":
+		return types.ObjectCannedACLBucketOwnerRead
+	case "bucket-owner-full-control":
+		return types.ObjectCannedACLBucketOwnerFullControl
+	default:
+		return types.ObjectCannedACLPrivate
+	}
 }

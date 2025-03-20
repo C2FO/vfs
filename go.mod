@@ -22,7 +22,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/crypto v0.36.0
 	golang.org/x/net v0.37.0
-	google.golang.org/api v0.226.0
+	google.golang.org/api v0.227.0
 )
 
 require (

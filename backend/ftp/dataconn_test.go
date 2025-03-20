@@ -94,7 +94,9 @@ func (s *dataConnSuite) TestGetDataConn_errorClientSetup() {
 	s.Error(err, "error is expected")
 	s.ErrorIs(err, errClientGetter, "error is right kind of error")
 	s.Nil(dc, "dataconn should be nil on error")
-	defaultClientGetter = getClient
+	defaultClientGetter = func(ctx context.Context, auth authority.Authority, opts Options) (client types.Client, err error) {
+		return GetClient(ctx, auth, opts)
+	}
 }
 
 func (s *dataConnSuite) TestGetDataConn_ReadError() {

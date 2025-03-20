@@ -11,7 +11,6 @@ import (
 
 	_ftp "github.com/jlaffaye/ftp"
 
-	"github.com/c2fo/vfs/v7/backend/ftp/types"
 	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
@@ -43,7 +42,8 @@ const (
 	envPassword    = "VFS_FTP_PASSWORD" //nolint:gosec
 )
 
-func getClient(ctx context.Context, authority authority.Authority, opts Options) (types.Client, error) {
+// GetClient returns a new FTP client with the given authority and options.
+func GetClient(ctx context.Context, authority authority.Authority, opts Options) (*_ftp.ServerConn, error) {
 	// dial connection
 	c, err := _ftp.Dial(fetchHostPortString(authority), fetchDialOptions(ctx, authority, opts)...)
 	if err != nil {
