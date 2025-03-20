@@ -4,7 +4,7 @@ on:
   pull_request:
     branches:
       - main
-      - v7.x-dev
+      - v6
 
 jobs:
   test:

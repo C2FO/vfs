@@ -1,14 +1,25 @@
-name: Go test coverage check
-runs-on: ubuntu-latest
-steps:
-  - uses: actions/checkout@v3
-  - uses: actions/setup-go@v3
+name: Go Test Coverage
 
-  - name: generate test coverage
-    run: go test ./... -coverprofile=./cover.out -covermode=atomic -coverpkg=./...
+on:
+  pull_request:
+    branches:
+      - main
+      - v6
+jobs:
+  check-coverage:
+    runs-on: arc-scale-set
+    steps:
+      - name: Checkout repository
+      - uses: actions/checkout@v4
 
-  - name: check test coverage
-    # using vladopajic/go-test-coverage@v2.13.0 below
-    uses: vladopajic/go-test-coverage@992aa9921a42c39d1fe0015d32593f0820589586
-    with:
-      config: ./.testcoverage.yml
+      - name: Set up Go
+      - uses: actions/setup-go@v5
+
+      - name: Generate test coverage
+        run: go test ./... -coverprofile=./cover.out -covermode=atomic -coverpkg=./...
+
+      - name: Check test coverage
+        # using vladopajic/go-test-coverage@v2.13.0 below
+        uses: vladopajic/go-test-coverage@992aa9921a42c39d1fe0015d32593f0820589586
+        with:
+          config: ./.testcoverage.yml
