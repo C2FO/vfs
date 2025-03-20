@@ -104,8 +104,8 @@ var defaultSSHConfig = &ssh.ClientConfig{
 	},
 }
 
-// GetClient returns a new sftp client and underlying client(io.Closer) using the given authority and options.
-func GetClient(authority authority.Authority, opts Options) (*_sftp.Client, *ssh.Client, error) {
+// GetClient returns a new sftp client and underlying ssh client(io.Closer) using the given authority and options.
+func GetClient(authority authority.Authority, opts Options) (sftpclient *_sftp.Client, sshclient *ssh.Client, err error) {
 	// setup Authentication
 	authMethods, err := getAuthMethods(opts)
 	if err != nil {
