@@ -83,7 +83,7 @@ func (o *optionsTestSuite) TestGetClient() {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:gocritic //rangeValCopy
 		o.Run(tt.name, func() {
 			for k, v := range tt.envVar {
 				_ = os.Setenv(k, v)

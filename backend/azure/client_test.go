@@ -108,7 +108,7 @@ func TestDefaultClient_Download(t *testing.T) {
 	// Test the Download method
 	reader, err := client.Download(f)
 	require.NoError(t, err)
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	content, err := io.ReadAll(reader)
 	require.NoError(t, err)

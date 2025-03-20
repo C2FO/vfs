@@ -21,10 +21,6 @@ import (
 	"github.com/c2fo/vfs/v7/utils"
 )
 
-const (
-	doesNotExistError = "storage: object doesn't exist"
-)
-
 // File implements vfs.File interface for GS fs.
 type File struct {
 	location *Location

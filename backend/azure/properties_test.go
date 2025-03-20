@@ -18,9 +18,9 @@ func TestNewBlobProperties(t *testing.T) {
 	}
 
 	azureProps := blob.GetPropertiesResponse{
-		LastModified: &lastModified,
+		LastModified:  &lastModified,
 		ContentLength: &contentLength,
-		Metadata: metadata,
+		Metadata:      metadata,
 	}
 
 	// Call the function
