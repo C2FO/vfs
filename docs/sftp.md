@@ -576,6 +576,7 @@ Authority returns the authority of the location.
 
 ```go
 type Options struct {
+	Username           string              `json:"username,omitempty"`       // env var VFS_SFTP_USERNAME
 	Password           string              `json:"password,omitempty"`       // env var VFS_SFTP_PASSWORD
 	KeyFilePath        string              `json:"keyFilePath,omitempty"`    // env var VFS_SFTP_KEYFILE
 	KeyPassphrase      string              `json:"keyPassphrase,omitempty"`  // env var VFS_SFTP_KEYFILE_PASSPHRASE

@@ -26,6 +26,7 @@ func (s *optionsSuite) TestFetchUsername() {
 		description string
 		authority   string
 		options     Options
+		envVar      *string
 		expected    string
 	}{
 		{
@@ -38,15 +39,48 @@ func (s *optionsSuite) TestFetchUsername() {
 			authority:   "bob@host.com",
 			expected:    "bob",
 		},
+		{
+			description: "env var is set",
+			authority:   "host.com",
+			envVar:      ptrString("alice"),
+			expected:    "alice",
+		},
+		{
+			description: "options username overrides authority",
+			authority:   "bob@host.com",
+			options: Options{
+				Username: "alice",
+			},
+			expected: "alice",
+		},
+		{
+			description: "options username overrides env var",
+			authority:   "host.com",
+			envVar:      ptrString("bob"),
+			options: Options{
+				Username: "alice",
+			},
+			expected: "alice",
+		},
 	}
 
 	for _, test := range tests {
 		s.Run(test.description, func() {
+			if test.envVar != nil {
+				err := os.Setenv(envUsername, *test.envVar)
+				s.NoError(err, test.description)
+			}
+
 			auth, err := authority.NewAuthority(test.authority)
 			s.NoError(err, test.description)
 
-			username := fetchUsername(auth)
+			username := fetchUsername(auth, test.options)
 			s.Equal(test.expected, username, test.description)
+
+			if test.envVar != nil {
+				err := os.Unsetenv(envUsername)
+				s.NoError(err, test.description)
+			}
 		})
 	}
 }

@@ -16,6 +16,7 @@ import (
 
 // Options  struct implements the vfs.Options interface, providing optional parameters for creating and ftp filesystem.
 type Options struct {
+	Username               string // env var VFS_FTP_USERNAME
 	Password               string // env var VFS_FTP_PASSWORD
 	Protocol               string // env var VFS_FTP_PROTOCOL
 	DisableEPSV            *bool  // env var VFS_DISABLE_EPSV
@@ -40,6 +41,7 @@ const (
 	envDisableEPSV = "VFS_FTP_DISABLE_EPSV"
 	envProtocol    = "VFS_FTP_PROTOCOL"
 	envPassword    = "VFS_FTP_PASSWORD" //nolint:gosec
+	envUsername    = "VFS_FTP_USERNAME"
 )
 
 // GetClient returns a new FTP client with the given authority and options.
@@ -51,7 +53,7 @@ func GetClient(ctx context.Context, authority authority.Authority, opts Options)
 	}
 
 	// login
-	err = c.Login(fetchUsername(authority), fetchPassword(opts))
+	err = c.Login(fetchUsername(authority, opts), fetchPassword(opts))
 	if err != nil {
 		return nil, err
 	}
@@ -59,12 +61,22 @@ func GetClient(ctx context.Context, authority authority.Authority, opts Options)
 	return c, nil
 }
 
-func fetchUsername(auth authority.Authority) string {
+func fetchUsername(auth authority.Authority, opts Options) string {
 	// set default username
 	username := defaultUsername
 
-	// override with authority, if any
-	if auth.UserInfo().Username() != "" {
+	// override with env var, if any
+	if _, ok := os.LookupEnv(envUsername); ok {
+		username = os.Getenv(envUsername)
+	}
+
+	// override with options, if any
+	if opts.Username != "" {
+		username = opts.Username
+	}
+
+	// override with authority, if any - this is the lowest priority to enable user-less authority
+	if username == defaultUsername && auth.UserInfo().Username() != "" {
 		username = auth.UserInfo().Username()
 	}
 
