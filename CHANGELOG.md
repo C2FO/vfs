@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v7.2.0] - 2025-04-11
 ### Added
 - Added Username field to SFTP and FTP Options structs with environment variable support (VFS_SFTP_USERNAME and VFS_FTP_USERNAME). Fixes #242.
 
