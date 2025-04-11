@@ -432,6 +432,19 @@ func (o *optionsSuite) TestGetClient() {
 	authNoUser, err := authority.NewAuthority("badhost")
 	o.NoError(err)
 
+	// Set environment variable for testing
+	origEnvUsername := os.Getenv("VFS_SFTP_USERNAME")
+	defer func() {
+		// Reset environment variable after test
+		if origEnvUsername != "" {
+			os.Setenv("VFS_SFTP_USERNAME", origEnvUsername)
+		} else {
+			os.Unsetenv("VFS_SFTP_USERNAME")
+		}
+	}()
+	err = os.Setenv("VFS_SFTP_USERNAME", "envuser")
+	o.NoError(err)
+
 	tests := []getClientTest{
 		{
 			authority: auth,
@@ -473,6 +486,16 @@ func (o *optionsSuite) TestGetClient() {
 			hasError: true,
 			errRegex: ".*",
 			message:  "getclient - username from options",
+		},
+		{
+			authority: authNoUser,
+			options: Options{
+				Password:           "somepassword",
+				KnownHostsCallback: ssh.FixedHostKey(o.publicKey),
+			},
+			hasError: true,
+			errRegex: ".*",
+			message:  "getclient - username from environment",
 		},
 	} // #nosec - InsecureIgnoreHostKey only used for testing
 

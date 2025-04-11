@@ -121,6 +121,10 @@ func GetClient(authority authority.Authority, opts Options) (sftpclient *_sftp.C
 
 	// Define the Client Config
 	config := getSShConfig(opts)
+	// override with env var, if any
+	if _, ok := os.LookupEnv("VFS_SFTP_USERNAME"); ok {
+		config.User = os.Getenv("VFS_SFTP_USERNAME")
+	}
 	// Use username from Options if available, otherwise from authority
 	if opts.Username != "" {
 		config.User = opts.Username
