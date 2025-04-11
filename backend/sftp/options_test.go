@@ -437,9 +437,11 @@ func (o *optionsSuite) TestGetClient() {
 	defer func() {
 		// Reset environment variable after test
 		if origEnvUsername != "" {
-			os.Setenv("VFS_SFTP_USERNAME", origEnvUsername)
+			err := os.Setenv("VFS_SFTP_USERNAME", origEnvUsername)
+			o.NoError(err, "restoring original VFS_SFTP_USERNAME env var")
 		} else {
-			os.Unsetenv("VFS_SFTP_USERNAME")
+			err := os.Unsetenv("VFS_SFTP_USERNAME")
+			o.NoError(err, "unsetting VFS_SFTP_USERNAME env var")
 		}
 	}()
 	err = os.Setenv("VFS_SFTP_USERNAME", "envuser")
