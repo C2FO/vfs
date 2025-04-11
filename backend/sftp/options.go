@@ -21,6 +21,7 @@ const systemWideKnownHosts = "/etc/ssh/ssh_known_hosts"
 
 // Options holds sftp-specific options.  Currently only client options are used.
 type Options struct {
+	Username           string              `json:"username,omitempty"`       // env var VFS_SFTP_USERNAME
 	Password           string              `json:"password,omitempty"`       // env var VFS_SFTP_PASSWORD
 	KeyFilePath        string              `json:"keyFilePath,omitempty"`    // env var VFS_SFTP_KEYFILE
 	KeyPassphrase      string              `json:"keyPassphrase,omitempty"`  // env var VFS_SFTP_KEYFILE_PASSPHRASE
@@ -120,7 +121,12 @@ func GetClient(authority authority.Authority, opts Options) (sftpclient *_sftp.C
 
 	// Define the Client Config
 	config := getSShConfig(opts)
-	config.User = authority.UserInfo().Username()
+	// Use username from Options if available, otherwise from authority
+	if opts.Username != "" {
+		config.User = opts.Username
+	} else {
+		config.User = authority.UserInfo().Username()
+	}
 	config.Auth = authMethods
 	config.HostKeyCallback = hostKeyCallback
 

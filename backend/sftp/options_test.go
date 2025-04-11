@@ -429,6 +429,9 @@ func (o *optionsSuite) TestGetClient() {
 	auth, err := authority.NewAuthority("someuser@badhost")
 	o.NoError(err)
 
+	authNoUser, err := authority.NewAuthority("badhost")
+	o.NoError(err)
+
 	tests := []getClientTest{
 		{
 			authority: auth,
@@ -459,6 +462,17 @@ func (o *optionsSuite) TestGetClient() {
 			hasError: true,
 			errRegex: "ssh: no key found",
 			message:  "getclient - bad known hosts",
+		},
+		{
+			authority: authNoUser,
+			options: Options{
+				Username:           "customuser",
+				Password:           "somepassword",
+				KnownHostsCallback: ssh.FixedHostKey(o.publicKey),
+			},
+			hasError: true,
+			errRegex: ".*",
+			message:  "getclient - username from options",
 		},
 	} // #nosec - InsecureIgnoreHostKey only used for testing
 

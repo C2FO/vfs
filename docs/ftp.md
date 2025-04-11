@@ -552,6 +552,7 @@ Authority returns the authority of the location.
 
 ```go
 type Options struct {
+	Username    string // env var VFS_FTP_USERNAME
 	Password    string // env var VFS_FTP_PASSWORD
 	Protocol    string // env var VFS_FTP_PROTOCOL
 	DisableEPSV *bool  // env var VFS_DISABLE_EPSV
