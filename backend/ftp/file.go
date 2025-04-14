@@ -118,7 +118,7 @@ func (f *File) Touch() error {
 		if err != nil {
 			return utils.WrapTouchError(err)
 		}
-		return utils.WrapTouchError(f.Close())
+		return f.Close()
 	}
 
 	// if a set time function is available use that to set last modified to now
@@ -127,7 +127,7 @@ func (f *File) Touch() error {
 		return utils.WrapTouchError(err)
 	}
 	if dc.IsSetTimeSupported() {
-		return utils.WrapTouchError(dc.SetTime(f.path, time.Now()))
+		return dc.SetTime(f.path, time.Now())
 	}
 
 	// doing move and move back to ensure last modified is updated
@@ -141,7 +141,7 @@ func (f *File) Touch() error {
 		return utils.WrapTouchError(err)
 	}
 
-	return utils.WrapTouchError(newFile.MoveToFile(f))
+	return newFile.MoveToFile(f)
 }
 
 func getTempFilename(origName string) string {
@@ -191,14 +191,14 @@ func (f *File) MoveToFile(t vfs.File) error {
 				return utils.WrapMoveToFileError(fmt.Errorf("failed to create directory: %w", err))
 			}
 		}
-		return utils.WrapMoveToFileError(dc.Rename(f.Path(), t.Path()))
+		return dc.Rename(f.Path(), t.Path())
 	}
 
 	// otherwise do copy-delete
 	if err := f.CopyToFile(t); err != nil {
 		return utils.WrapMoveToFileError(err)
 	}
-	return utils.WrapMoveToFileError(f.Delete())
+	return f.Delete()
 }
 
 // MoveToLocation works by creating a new file on the target location then calling MoveToFile() on it.
@@ -290,7 +290,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 		return nil, utils.WrapCopyToLocationError(err)
 	}
 
-	return newFile, utils.WrapCopyToLocationError(f.CopyToFile(newFile))
+	return newFile, f.CopyToFile(newFile)
 }
 
 // CRUD Operations
@@ -301,7 +301,7 @@ func (f *File) Delete(_ ...options.DeleteOption) error {
 	if err != nil {
 		return utils.WrapDeleteError(err)
 	}
-	return utils.WrapDeleteError(dc.Delete(f.Path()))
+	return dc.Delete(f.Path())
 }
 
 // Close calls the underlying ftp.Response Close, if opened, and clears the internal pointer

@@ -262,7 +262,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 		if err != nil {
 			return nil, utils.WrapCopyToLocationError(err)
 		}
-		return nil, utils.WrapCopyToLocationError(fs.ErrNotExist)
+		return nil, fs.ErrNotExist
 	}
 	testPath := path.Join(path.Clean(location.Path()), f.Name())
 	thisLoc := f.Location().(*Location)
@@ -301,7 +301,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 // after this is called, f's cursor will reset as if it had been closed.
 func (f *File) CopyToFile(target vfs.File) (err error) {
 	if f == nil || target == nil {
-		return utils.WrapCopyToFileError(nilReference())
+		return nilReference()
 	}
 	// Close file (f) reader regardless of an error
 	defer func() {
@@ -323,7 +323,7 @@ func (f *File) CopyToFile(target vfs.File) (err error) {
 		if err != nil {
 			return utils.WrapCopyToFileError(err)
 		}
-		return utils.WrapCopyToFileError(fs.ErrNotExist)
+		return fs.ErrNotExist
 	}
 
 	// validate seek is at 0,0 before doing copy
@@ -349,14 +349,14 @@ func (f *File) CopyToFile(target vfs.File) (err error) {
 // creating a copy of 'f' in "location".  'f' is subsequently  deleted
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	if f == nil || location == nil {
-		return nil, utils.WrapMoveToLocationError(nilReference())
+		return nil, nilReference()
 	}
 
 	if exists, err := f.Exists(); !exists {
 		if err != nil {
 			return nil, utils.WrapMoveToLocationError(err)
 		}
-		return nil, utils.WrapMoveToLocationError(fs.ErrNotExist)
+		return nil, fs.ErrNotExist
 	}
 
 	// if the underling FileSystem is in-memory, then this is the native way of
@@ -408,20 +408,20 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 // The receiver is always deleted (since it's being "moved")
 func (f *File) MoveToFile(file vfs.File) error {
 	if f == nil {
-		return utils.WrapMoveToFileError(nilReference())
+		return nilReference()
 	}
 
 	if exists, err := f.Exists(); !exists {
 		if err != nil {
 			return utils.WrapMoveToFileError(err)
 		}
-		return utils.WrapMoveToFileError(fs.ErrNotExist)
+		return fs.ErrNotExist
 	}
 	if err := f.CopyToFile(file); err != nil {
 		return utils.WrapMoveToFileError(err)
 	}
 
-	return utils.WrapMoveToFileError(f.Delete())
+	return f.Delete()
 }
 
 // Delete removes the file from the FileSystem. Sets it path in the fsMap to nil,
@@ -473,7 +473,7 @@ func (f *File) LastModified() (*time.Time, error) {
 		if err != nil {
 			return nil, utils.WrapLastModifiedError(err)
 		}
-		return nil, utils.WrapLastModifiedError(fs.ErrNotExist)
+		return nil, fs.ErrNotExist
 	}
 	return &f.memFile.lastModified, nil
 }
@@ -484,7 +484,7 @@ func (f *File) Size() (uint64, error) {
 		if err != nil {
 			return 0, utils.WrapSizeError(err)
 		}
-		return 0, utils.WrapSizeError(fs.ErrNotExist)
+		return 0, fs.ErrNotExist
 	}
 
 	// in case the file contents have changed

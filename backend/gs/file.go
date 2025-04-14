@@ -426,7 +426,7 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 		}
 
 		if f.isSameAuth(&f.Location().FileSystem().(*FileSystem).options) {
-			return utils.WrapCopyToFileError(f.copyWithinGCSToFile(tf))
+			return f.copyWithinGCSToFile(tf)
 		}
 	}
 
@@ -469,7 +469,7 @@ func (f *File) MoveToFile(file vfs.File) error {
 		return utils.WrapMoveToFileError(err)
 	}
 
-	return utils.WrapMoveToFileError(f.Delete())
+	return f.Delete()
 }
 
 // Delete clears any local temp file, or write buffer from read/writes to the file, then makes
@@ -524,7 +524,7 @@ func (f *File) Touch() error {
 
 	// if file doesn't already exist, create it
 	if !exists {
-		return utils.WrapTouchError(f.createEmptyFile())
+		return f.createEmptyFile()
 	}
 
 	// already exists so update it so Last-Modified is updated
@@ -542,10 +542,10 @@ func (f *File) Touch() error {
 	}
 
 	if enabled {
-		return utils.WrapTouchError(utils.UpdateLastModifiedByMoving(f))
+		return utils.UpdateLastModifiedByMoving(f)
 	}
 
-	return utils.WrapTouchError(f.updateLastModifiedByAttrUpdate())
+	return f.updateLastModifiedByAttrUpdate()
 }
 
 func (f *File) updateLastModifiedByAttrUpdate() error {

@@ -190,7 +190,7 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 			if err != nil {
 				return utils.WrapCopyToFileError(err)
 			}
-			return utils.WrapCopyToFileError(client.Copy(f, file))
+			return client.Copy(f, file)
 		}
 	}
 
@@ -219,7 +219,7 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 		return nil, utils.WrapMoveToLocationError(err)
 	}
 
-	return newFile, utils.WrapMoveToLocationError(f.Delete())
+	return newFile, f.Delete()
 }
 
 // MoveToFile copies the receiver to the specified file and deletes the original file.
@@ -228,7 +228,7 @@ func (f *File) MoveToFile(file vfs.File) error {
 		return utils.WrapMoveToFileError(err)
 	}
 
-	return utils.WrapMoveToFileError(f.Delete())
+	return f.Delete()
 }
 
 // Delete deletes the file.
@@ -259,10 +259,10 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 	}
 
 	if allVersions {
-		return utils.WrapDeleteError(client.DeleteAllVersions(f))
+		return client.DeleteAllVersions(f)
 	}
 
-	return utils.WrapDeleteError(nil)
+	return nil
 }
 
 // LastModified returns the last modified time as a time.Time
@@ -324,7 +324,7 @@ func (f *File) Touch() error {
 			}
 		}
 
-		return utils.WrapTouchError(client.Upload(f, strings.NewReader(""), contentType))
+		return client.Upload(f, strings.NewReader(""), contentType)
 	}
 
 	props, err := client.Properties(f.Location().Authority().String(), f.Path())

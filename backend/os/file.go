@@ -230,14 +230,14 @@ func (f *File) MoveToFile(file vfs.File) error {
 	}
 	// handle native os move/rename
 	if file.Location().FileSystem().Scheme() == Scheme {
-		return utils.WrapMoveToFileError(safeOsRename(osFilePath(f), osFilePath(file)))
+		return safeOsRename(osFilePath(f), osFilePath(file))
 	}
 
 	// do copy/delete move for non-native os moves
 	if _, err := f.copyWithName(file.Name(), file.Location()); err != nil {
 		return utils.WrapMoveToFileError(err)
 	}
-	return utils.WrapMoveToFileError(f.Delete())
+	return f.Delete()
 }
 
 // safeOsRename will attempt to do an os.Rename. If error is "invalid cross-device link" (where one OS file is on a
@@ -314,7 +314,10 @@ func (f *File) CopyToFile(file vfs.File) error {
 		}
 	}
 	_, err := f.copyWithName(file.Name(), file.Location())
-	return utils.WrapCopyToFileError(err)
+	if err != nil {
+		return utils.WrapCopyToFileError(err)
+	}
+	return nil
 }
 
 // CopyToLocation copies existing File to new Location with the same name.
@@ -353,7 +356,7 @@ func (f *File) Touch() error {
 			return utils.WrapTouchError(err)
 		}
 		f.file = file
-		return utils.WrapTouchError(f.Close())
+		return f.Close()
 	}
 	now := time.Now()
 	return os.Chtimes(osFilePath(f), now, now)
