@@ -333,7 +333,7 @@ func (f *File) initWriters() error {
 			if err != nil {
 				return err
 			}
-			
+
 			for _, o := range f.opts {
 				switch o := o.(type) {
 				case *newfile.ContentType:
