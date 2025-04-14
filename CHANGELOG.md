@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Update jwt/v5 to v5.2.2.
+
 ## [v7.2.0] - 2025-04-11
 ### Added
 - Added Username field to SFTP and FTP Options structs with environment variable support (VFS_SFTP_USERNAME and VFS_FTP_USERNAME). Fixes #242.
