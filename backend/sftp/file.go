@@ -196,11 +196,7 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 		return nil, utils.WrapMoveToLocationError(err)
 	}
 
-	err = f.MoveToFile(newFile)
-	if err != nil {
-		return nil, utils.WrapMoveToLocationError(err)
-	}
-	return newFile, nil
+	return newFile, utils.WrapMoveToLocationError(f.MoveToFile(newFile))
 }
 
 // CopyToFile puts the contents of File into the targetFile passed.
@@ -247,11 +243,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 		return nil, utils.WrapCopyToLocationError(err)
 	}
 
-	err = f.CopyToFile(newFile)
-	if err != nil {
-		return nil, utils.WrapCopyToLocationError(err)
-	}
-	return newFile, nil
+	return newFile, utils.WrapCopyToLocationError(f.CopyToFile(newFile))
 }
 
 // CRUD Operations

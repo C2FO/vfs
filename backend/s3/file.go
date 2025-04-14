@@ -185,8 +185,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 		return nil, utils.WrapCopyToLocationError(err)
 	}
 
-	err = f.CopyToFile(newFile)
-	return newFile, utils.WrapCopyToLocationError(err)
+	return newFile, utils.WrapCopyToLocationError(f.CopyToFile(newFile))
 }
 
 // CRUD Operations
