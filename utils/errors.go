@@ -21,3 +21,48 @@ func WrapWriteError(err error) error {
 func WrapCloseError(err error) error {
 	return fmt.Errorf("close error: %w", err)
 }
+
+// WrapTouchError returns a wrapped touch error
+func WrapTouchError(err error) error {
+	return fmt.Errorf("touch error: %w", err)
+}
+
+// WrapExistsError returns a wrapped exists error
+func WrapExistsError(err error) error {
+	return fmt.Errorf("exists error: %w", err)
+}
+
+// WrapSizeError returns a wrapped size error
+func WrapSizeError(err error) error {
+	return fmt.Errorf("size error: %w", err)
+}
+
+// WrapLastModifiedError returns a wrapped lastModified error
+func WrapLastModifiedError(err error) error {
+	return fmt.Errorf("lastModified error: %w", err)
+}
+
+// WrapDeleteError returns a wrapped delete error
+func WrapDeleteError(err error) error {
+	return fmt.Errorf("delete error: %w", err)
+}
+
+// WrapCopyToLocationError returns a wrapped copyToLocation error
+func WrapCopyToLocationError(err error) error {
+	return fmt.Errorf("copyToLocation error: %w", err)
+}
+
+// WrapCopyToFileError returns a wrapped copyToFile error
+func WrapCopyToFileError(err error) error {
+	return fmt.Errorf("copyToFile error: %w", err)
+}
+
+// WrapMoveToLocationError returns a wrapped moveToLocation error
+func WrapMoveToLocationError(err error) error {
+	return fmt.Errorf("moveToLocation error: %w", err)
+}
+
+// WrapMoveToFileError returns a wrapped moveToFile error
+func WrapMoveToFileError(err error) error {
+	return fmt.Errorf("moveToFile error: %w", err)
+}
