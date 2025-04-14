@@ -55,7 +55,7 @@ type File struct {
 func (f *File) LastModified() (*time.Time, error) {
 	head, err := f.getHeadObject()
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapLastModifiedError(err)
 	}
 	return head.LastModified, nil
 }
@@ -78,7 +78,7 @@ func (f *File) Exists() (bool, error) {
 		if errors.Is(err, vfs.ErrNotExist) {
 			return false, nil
 		}
-		return false, err
+		return false, utils.WrapExistsError(err)
 	}
 
 	return true, nil
@@ -88,7 +88,7 @@ func (f *File) Exists() (bool, error) {
 func (f *File) Size() (uint64, error) {
 	head, err := f.getHeadObject()
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapSizeError(err)
 	}
 	return uint64(*head.ContentLength), nil
 }
@@ -113,15 +113,15 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 		//
 		if err == nil {
 			if wErr != nil {
-				err = wErr
+				err = utils.WrapCopyToFileError(wErr)
 			} else if rErr != nil {
-				err = rErr
+				err = utils.WrapCopyToFileError(rErr)
 			}
 		}
 	}()
 	// validate seek is at 0,0 before doing copy
 	if f.cursorPos != 0 {
-		return vfs.CopyToNotPossible
+		return utils.WrapCopyToFileError(vfs.CopyToNotPossible)
 	}
 
 	// if target is S3
@@ -131,10 +131,10 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 		if input != nil {
 			client, err := f.Location().FileSystem().(*FileSystem).Client()
 			if err != nil {
-				return err
+				return utils.WrapCopyToFileError(err)
 			}
 			_, err = client.CopyObject(context.Background(), input)
-			return err
+			return utils.WrapCopyToFileError(err)
 		}
 	}
 
@@ -142,14 +142,14 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 	fileBufferSize := f.Location().FileSystem().(*FileSystem).options.FileBufferSize
 
 	if err := utils.TouchCopyBuffered(file, f, fileBufferSize); err != nil {
-		return err
+		return utils.WrapCopyToFileError(err)
 	}
 	// Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
 	if err := file.Close(); err != nil {
-		return err
+		return utils.WrapCopyToFileError(err)
 	}
 
-	return err
+	return nil
 }
 
 // MoveToFile puts the contents of File into the targetFile passed using File.CopyToFile.
@@ -157,10 +157,10 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 // returned.
 func (f *File) MoveToFile(file vfs.File) error {
 	if err := f.CopyToFile(file); err != nil {
-		return err
+		return utils.WrapMoveToFileError(err)
 	}
 
-	return f.Delete()
+	return utils.WrapMoveToFileError(f.Delete())
 }
 
 // MoveToLocation works by first calling File.CopyToLocation(vfs.Location) then, if that
@@ -170,10 +170,10 @@ func (f *File) MoveToFile(file vfs.File) error {
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	newFile, err := f.CopyToLocation(location)
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapMoveToLocationError(err)
 	}
 	delErr := f.Delete()
-	return newFile, delErr
+	return newFile, utils.WrapMoveToLocationError(delErr)
 }
 
 // CopyToLocation creates a copy of *File, using the file's current name as the new file's
@@ -182,10 +182,11 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 	newFile, err := location.NewFile(f.Name())
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapCopyToLocationError(err)
 	}
 
-	return newFile, f.CopyToFile(newFile)
+	err = f.CopyToFile(newFile)
+	return newFile, utils.WrapCopyToLocationError(err)
 }
 
 // CRUD Operations
@@ -195,12 +196,12 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 // DeleteObject call is made to s3 for each version of the file. Returns any error returned by the API.
 func (f *File) Delete(opts ...options.DeleteOption) error {
 	if err := f.Close(); err != nil {
-		return err
+		return utils.WrapDeleteError(err)
 	}
 
 	client, err := f.Location().FileSystem().(*FileSystem).Client()
 	if err != nil {
-		return err
+		return utils.WrapDeleteError(err)
 	}
 
 	var allVersions bool
@@ -218,13 +219,13 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		Bucket: &bucket,
 	})
 	if err != nil {
-		return err
+		return utils.WrapDeleteError(err)
 	}
 
 	if allVersions {
 		objectVersions, err := f.getAllObjectVersions(client)
 		if err != nil {
-			return err
+			return utils.WrapDeleteError(err)
 		}
 
 		for idx := range objectVersions.Versions {
@@ -233,12 +234,12 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 				Bucket:    &bucket,
 				VersionId: objectVersions.Versions[idx].VersionId,
 			}); err != nil {
-				return err
+				return utils.WrapDeleteError(err)
 			}
 		}
 	}
 
-	return err
+	return nil
 }
 
 // Close cleans up underlying mechanisms for reading from and writing to the file. Closes and removes the
@@ -492,22 +493,22 @@ func (f *File) Touch() error {
 	// check if file exists
 	exists, err := f.Exists()
 	if err != nil {
-		return err
+		return utils.WrapTouchError(err)
 	}
 
 	// file doesn't already exist so create it
 	if !exists {
 		_, err = f.Write([]byte(""))
 		if err != nil {
-			return err
+			return utils.WrapTouchError(err)
 		}
 
 		if err := f.Close(); err != nil {
-			return err
+			return utils.WrapTouchError(err)
 		}
 	} else {
 		// file already exists so update its last modified date
-		return utils.UpdateLastModifiedByMoving(f)
+		return utils.WrapTouchError(utils.UpdateLastModifiedByMoving(f))
 	}
 
 	return nil
