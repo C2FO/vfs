@@ -127,12 +127,12 @@ func (f *File) String() string {
 func (f *File) Exists() (bool, error) {
 	client, err := f.Location().FileSystem().(*FileSystem).Client()
 	if err != nil {
-		return false, err
+		return false, utils.WrapExistsError(err)
 	}
 	_, err = client.Properties(f.Location().Authority().String(), f.Path())
 	if err != nil {
 		if !bloberror.HasCode(err, bloberror.BlobNotFound) {
-			return false, err
+			return false, utils.WrapExistsError(err)
 		}
 		return false, nil
 	}
@@ -150,11 +150,11 @@ func (f *File) Location() vfs.Location {
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 	newFile, err := location.NewFile(utils.RemoveLeadingSlash(f.Name()), f.opts...)
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapCopyToLocationError(err)
 	}
 
 	if err := f.CopyToFile(newFile); err != nil {
-		return nil, err
+		return nil, utils.WrapCopyToLocationError(err)
 	}
 
 	return newFile, nil
@@ -171,16 +171,16 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 		//
 		if err == nil {
 			if wErr != nil {
-				err = wErr
+				err = utils.WrapCopyToFileError(wErr)
 			} else if rErr != nil {
-				err = rErr
+				err = utils.WrapCopyToFileError(rErr)
 			}
 		}
 	}()
 
 	// validate seek is at 0,0 before doing copy
 	if verr := backend.ValidateCopySeekPosition(f); verr != nil {
-		return verr
+		return utils.WrapCopyToFileError(verr)
 	}
 
 	azFile, ok := file.(*File)
@@ -188,9 +188,9 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 		if f.isSameAuth(azFile) {
 			client, err := f.Location().FileSystem().(*FileSystem).Client()
 			if err != nil {
-				return err
+				return utils.WrapCopyToFileError(err)
 			}
-			return client.Copy(f, file)
+			return utils.WrapCopyToFileError(client.Copy(f, file))
 		}
 	}
 
@@ -202,33 +202,33 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 	}
 
 	if terr := utils.TouchCopyBuffered(file, f, fileBufferSize); terr != nil {
-		return terr
+		return utils.WrapCopyToFileError(terr)
 	}
 
 	if cerr := file.Close(); cerr != nil {
-		return cerr
+		return utils.WrapCopyToFileError(cerr)
 	}
 
-	return err
+	return nil
 }
 
 // MoveToLocation copies the receiver to the passed location.  After the copy succeeds, the original is deleted.
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	newFile, err := f.CopyToLocation(location)
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapMoveToLocationError(err)
 	}
 
-	return newFile, f.Delete()
+	return newFile, utils.WrapMoveToLocationError(f.Delete())
 }
 
 // MoveToFile copies the receiver to the specified file and deletes the original file.
 func (f *File) MoveToFile(file vfs.File) error {
 	if err := f.CopyToFile(file); err != nil {
-		return err
+		return utils.WrapMoveToFileError(err)
 	}
 
-	return f.Delete()
+	return utils.WrapMoveToFileError(f.Delete())
 }
 
 // Delete deletes the file.
@@ -237,12 +237,12 @@ func (f *File) MoveToFile(file vfs.File) error {
 // Returns any error returned by the API.
 func (f *File) Delete(opts ...options.DeleteOption) error {
 	if err := f.Close(); err != nil {
-		return err
+		return utils.WrapDeleteError(err)
 	}
 
 	client, err := f.Location().FileSystem().(*FileSystem).Client()
 	if err != nil {
-		return err
+		return utils.WrapDeleteError(err)
 	}
 
 	var allVersions bool
@@ -255,25 +255,25 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 	}
 
 	if err := client.Delete(f); err != nil {
-		return err
+		return utils.WrapDeleteError(err)
 	}
 
 	if allVersions {
-		return client.DeleteAllVersions(f)
+		return utils.WrapDeleteError(client.DeleteAllVersions(f))
 	}
 
-	return err
+	return utils.WrapDeleteError(nil)
 }
 
 // LastModified returns the last modified time as a time.Time
 func (f *File) LastModified() (*time.Time, error) {
 	client, err := f.Location().FileSystem().(*FileSystem).Client()
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapLastModifiedError(err)
 	}
 	props, err := client.Properties(f.Location().Authority().String(), f.Path())
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapLastModifiedError(err)
 	}
 	return props.LastModified, nil
 }
@@ -282,11 +282,11 @@ func (f *File) LastModified() (*time.Time, error) {
 func (f *File) Size() (uint64, error) {
 	client, err := f.Location().FileSystem().(*FileSystem).Client()
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapSizeError(err)
 	}
 	props, err := client.Properties(f.Location().Authority().String(), f.Path())
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapSizeError(err)
 	}
 	return uint64(*props.Size), nil
 }
@@ -306,12 +306,12 @@ func (f *File) Name() string {
 func (f *File) Touch() error {
 	exists, err := f.Exists()
 	if err != nil {
-		return err
+		return utils.WrapTouchError(err)
 	}
 
 	client, err := f.Location().FileSystem().(*FileSystem).Client()
 	if err != nil {
-		return err
+		return utils.WrapTouchError(err)
 	}
 
 	if !exists {
@@ -324,22 +324,22 @@ func (f *File) Touch() error {
 			}
 		}
 
-		return client.Upload(f, strings.NewReader(""), contentType)
+		return utils.WrapTouchError(client.Upload(f, strings.NewReader(""), contentType))
 	}
 
 	props, err := client.Properties(f.Location().Authority().String(), f.Path())
 	if err != nil {
-		return err
+		return utils.WrapTouchError(err)
 	}
 
 	newMetadata := make(map[string]*string)
 	newMetadata["updated"] = to.Ptr("true")
 	if err := client.SetMetadata(f, newMetadata); err != nil {
-		return err
+		return utils.WrapTouchError(err)
 	}
 
 	if err := client.SetMetadata(f, props.Metadata); err != nil {
-		return err
+		return utils.WrapTouchError(err)
 	}
 
 	return nil
