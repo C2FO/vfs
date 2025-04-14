@@ -40,18 +40,18 @@ func (f *File) Delete(_ ...options.DeleteOption) error {
 	if err == nil {
 		f.file = nil
 	}
-	return err
+	return utils.WrapDeleteError(err)
 }
 
 // LastModified returns the timestamp of the file's mtime or error, if any.
 func (f *File) LastModified() (*time.Time, error) {
 	stats, err := os.Stat(osFilePath(f))
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapLastModifiedError(err)
 	}
 
 	statsTime := stats.ModTime()
-	return &statsTime, err
+	return &statsTime, nil
 }
 
 // Name returns the base name of the file path.
@@ -75,10 +75,10 @@ func (f *File) Path() string {
 func (f *File) Size() (uint64, error) {
 	stats, err := os.Stat(osFilePath(f))
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapSizeError(err)
 	}
 
-	return uint64(stats.Size()), err
+	return uint64(stats.Size()), nil
 }
 
 // Close implements the io.Closer interface, closing the underlying *os.File. its an error, if any.
@@ -190,7 +190,7 @@ func (f *File) Exists() (bool, error) {
 			return false, nil
 		}
 		// some other error
-		return false, err
+		return false, utils.WrapExistsError(err)
 	}
 	// file exists
 	return true, nil
@@ -225,19 +225,19 @@ func (f *File) MoveToFile(file vfs.File) error {
 	if f.file != nil {
 		// validate seek is at 0,0 before doing copy
 		if err := backend.ValidateCopySeekPosition(f); err != nil {
-			return err
+			return utils.WrapMoveToFileError(err)
 		}
 	}
 	// handle native os move/rename
 	if file.Location().FileSystem().Scheme() == Scheme {
-		return safeOsRename(osFilePath(f), osFilePath(file))
+		return utils.WrapMoveToFileError(safeOsRename(osFilePath(f), osFilePath(file)))
 	}
 
 	// do copy/delete move for non-native os moves
 	if _, err := f.copyWithName(file.Name(), file.Location()); err != nil {
-		return err
+		return utils.WrapMoveToFileError(err)
 	}
-	return f.Delete()
+	return utils.WrapMoveToFileError(f.Delete())
 }
 
 // safeOsRename will attempt to do an os.Rename. If error is "invalid cross-device link" (where one OS file is on a
@@ -287,18 +287,18 @@ func osCopy(srcName, dstName string) error {
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	if location.FileSystem().Scheme() == Scheme {
 		if err := ensureDir(location); err != nil {
-			return nil, err
+			return nil, utils.WrapMoveToLocationError(err)
 		}
 	}
 
 	// do a MoveToFile call (delegating native rename vs copy/delete logic)
 	file, err := location.NewFile(f.Name())
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapMoveToLocationError(err)
 	}
 	err = f.MoveToFile(file)
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapMoveToLocationError(err)
 	}
 
 	// return vfs.File for newly moved file
@@ -310,11 +310,11 @@ func (f *File) CopyToFile(file vfs.File) error {
 	if f.file != nil {
 		// validate seek is at 0,0 before doing copy
 		if err := backend.ValidateCopySeekPosition(f); err != nil {
-			return err
+			return utils.WrapCopyToFileError(err)
 		}
 	}
 	_, err := f.copyWithName(file.Name(), file.Location())
-	return err
+	return utils.WrapCopyToFileError(err)
 }
 
 // CopyToLocation copies existing File to new Location with the same name.
@@ -323,7 +323,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 	if f.file != nil {
 		// validate seek is at 0,0 before doing copy
 		if err := backend.ValidateCopySeekPosition(f); err != nil {
-			return nil, err
+			return nil, utils.WrapCopyToLocationError(err)
 		}
 	}
 	return f.copyWithName(f.Name(), location)
@@ -344,16 +344,16 @@ func (f *File) String() string {
 func (f *File) Touch() error {
 	exists, err := f.Exists()
 	if err != nil {
-		return err
+		return utils.WrapTouchError(err)
 	}
 
 	if !exists {
 		file, err := f.openFile()
 		if err != nil {
-			return err
+			return utils.WrapTouchError(err)
 		}
 		f.file = file
-		return f.Close()
+		return utils.WrapTouchError(f.Close())
 	}
 	now := time.Now()
 	return os.Chtimes(osFilePath(f), now, now)
