@@ -94,7 +94,7 @@ func (f *File) Touch() error {
 			return utils.WrapTouchError(err)
 		}
 		f.sftpfile = file
-		return utils.WrapTouchError(f.Close())
+		return f.Close()
 	}
 
 	client, err := f.Location().FileSystem().(*FileSystem).Client(f.Location().Authority())
@@ -110,7 +110,7 @@ func (f *File) Touch() error {
 
 	// update last accessed and last modified times
 	now := time.Now()
-	return utils.WrapTouchError(client.Chtimes(f.Path(), now, now))
+	return client.Chtimes(f.Path(), now, now)
 }
 
 // Size returns the size of the remote file.
@@ -179,14 +179,14 @@ func (f *File) MoveToFile(t vfs.File) error {
 			}
 		}
 
-		return utils.WrapMoveToFileError(f.sftpRename(t.(*File)))
+		return f.sftpRename(t.(*File))
 	}
 
 	// otherwise do copy-delete
 	if err := f.CopyToFile(t); err != nil {
 		return utils.WrapMoveToFileError(err)
 	}
-	return utils.WrapMoveToFileError(f.Delete())
+	return f.Delete()
 }
 
 // MoveToLocation works by creating a new file on the target location then calling MoveToFile() on it.
@@ -196,7 +196,7 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 		return nil, utils.WrapMoveToLocationError(err)
 	}
 
-	return newFile, utils.WrapMoveToLocationError(f.MoveToFile(newFile))
+	return newFile, f.MoveToFile(newFile)
 }
 
 // CopyToFile puts the contents of File into the targetFile passed.
@@ -243,7 +243,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 		return nil, utils.WrapCopyToLocationError(err)
 	}
 
-	return newFile, utils.WrapCopyToLocationError(f.CopyToFile(newFile))
+	return newFile, f.CopyToFile(newFile)
 }
 
 // CRUD Operations
@@ -257,7 +257,7 @@ func (f *File) Delete(_ ...options.DeleteOption) error {
 	// start timer once action is completed
 	defer f.Location().FileSystem().(*FileSystem).connTimerStart()
 
-	return utils.WrapDeleteError(client.Remove(f.Path()))
+	return client.Remove(f.Path())
 }
 
 // Close calls the underlying sftp.File Close, if opened, and clears the internal pointer

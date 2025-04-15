@@ -618,7 +618,7 @@ func (ts *fileTestSuite) TestDelete() {
 func (ts *fileTestSuite) TestDeleteError() {
 	s3cliMock.On("DeleteObject", matchContext, mock.AnythingOfType("*s3.DeleteObjectInput")).Return(nil, errors.New("something went wrong"))
 	err := testFile.Delete()
-	ts.EqualError(err, "something went wrong", "Delete should return an error if s3 api had error.")
+	ts.EqualError(err, "delete error: something went wrong", "Delete should return an error if s3 api had error.")
 	s3cliMock.AssertExpectations(ts.T())
 }
 
