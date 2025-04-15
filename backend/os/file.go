@@ -39,6 +39,7 @@ func (f *File) Delete(_ ...options.DeleteOption) error {
 	err := os.Remove(osFilePath(f))
 	if err == nil {
 		f.file = nil
+		return nil
 	}
 	return utils.WrapDeleteError(err)
 }

@@ -121,7 +121,7 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 	}()
 	// validate seek is at 0,0 before doing copy
 	if f.cursorPos != 0 {
-		return utils.WrapCopyToFileError(vfs.CopyToNotPossible)
+		return vfs.CopyToNotPossible
 	}
 
 	// if target is S3
@@ -134,7 +134,10 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 				return utils.WrapCopyToFileError(err)
 			}
 			_, err = client.CopyObject(context.Background(), input)
-			return utils.WrapCopyToFileError(err)
+			if err != nil {
+				return utils.WrapCopyToFileError(err)
+			}
+			return nil
 		}
 	}
 
@@ -160,7 +163,7 @@ func (f *File) MoveToFile(file vfs.File) error {
 		return utils.WrapMoveToFileError(err)
 	}
 
-	return utils.WrapMoveToFileError(f.Delete())
+	return f.Delete()
 }
 
 // MoveToLocation works by first calling File.CopyToLocation(vfs.Location) then, if that
@@ -172,8 +175,10 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	if err != nil {
 		return nil, utils.WrapMoveToLocationError(err)
 	}
-	delErr := f.Delete()
-	return newFile, utils.WrapMoveToLocationError(delErr)
+	if delErr := f.Delete(); delErr != nil {
+		return newFile, utils.WrapMoveToLocationError(delErr)
+	}
+	return newFile, nil
 }
 
 // CopyToLocation creates a copy of *File, using the file's current name as the new file's
@@ -185,7 +190,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 		return nil, utils.WrapCopyToLocationError(err)
 	}
 
-	return newFile, utils.WrapCopyToLocationError(f.CopyToFile(newFile))
+	return newFile, f.CopyToFile(newFile)
 }
 
 // CRUD Operations
@@ -507,7 +512,7 @@ func (f *File) Touch() error {
 		}
 	} else {
 		// file already exists so update its last modified date
-		return utils.WrapTouchError(utils.UpdateLastModifiedByMoving(f))
+		return utils.UpdateLastModifiedByMoving(f)
 	}
 
 	return nil
