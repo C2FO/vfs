@@ -260,7 +260,7 @@ func (f *File) Location() vfs.Location {
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 	if ok, err := f.Exists(); !ok {
 		if err != nil {
-			return nil, err
+			return nil, utils.WrapCopyToLocationError(err)
 		}
 		return nil, fs.ErrNotExist
 	}
@@ -279,7 +279,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 			cerr := f.CopyToFile(file)
 
 			if cerr != nil {
-				return nil, cerr
+				return nil, utils.WrapCopyToLocationError(cerr)
 			}
 			return file, nil
 		}
@@ -287,11 +287,11 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 	newFile, err := location.NewFile(f.Name())
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapCopyToLocationError(err)
 	}
 
 	if err := f.CopyToFile(newFile); err != nil {
-		return nil, err
+		return nil, utils.WrapCopyToLocationError(err)
 	}
 
 	return newFile, nil
@@ -312,23 +312,23 @@ func (f *File) CopyToFile(target vfs.File) (err error) {
 		//
 		if err == nil {
 			if wErr != nil {
-				err = wErr
+				err = utils.WrapCopyToFileError(wErr)
 			} else if rErr != nil {
-				err = rErr
+				err = utils.WrapCopyToFileError(rErr)
 			}
 		}
 	}()
 
 	if exists, err := f.Exists(); !exists {
 		if err != nil {
-			return err
+			return utils.WrapCopyToFileError(err)
 		}
 		return fs.ErrNotExist
 	}
 
 	// validate seek is at 0,0 before doing copy
 	if err := backend.ValidateCopySeekPosition(f); err != nil {
-		return err
+		return utils.WrapCopyToFileError(err)
 	}
 
 	if target.Location().FileSystem().Scheme() == "mem" {
@@ -336,13 +336,13 @@ func (f *File) CopyToFile(target vfs.File) (err error) {
 	}
 
 	if _, err := target.Write(f.memFile.contents); err != nil {
-		return err
+		return utils.WrapCopyToFileError(err)
 	}
 	cerr := target.Close()
 	if cerr != nil {
-		return cerr
+		return utils.WrapCopyToFileError(cerr)
 	}
-	return err
+	return nil
 }
 
 // MoveToLocation moves the receiver file to the passed in location. It does so by
@@ -354,7 +354,7 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 
 	if exists, err := f.Exists(); !exists {
 		if err != nil {
-			return nil, err
+			return nil, utils.WrapMoveToLocationError(err)
 		}
 		return nil, fs.ErrNotExist
 	}
@@ -378,12 +378,12 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 				file := deepCopy(memFile)
 				err := f.CopyToFile(file)
 				if err != nil {
-					return nil, err
+					return nil, utils.WrapMoveToLocationError(err)
 				}
 
 				err = f.Delete()
 				if err != nil {
-					return nil, err
+					return nil, utils.WrapMoveToLocationError(err)
 				}
 
 				return file, nil
@@ -394,12 +394,12 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	// if the file doesn't yet exist at the location, create it there
 	newFile, err := location.NewFile(f.Name())
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapMoveToLocationError(err)
 	}
 	// copying over the data
 	err = f.MoveToFile(newFile)
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapMoveToLocationError(err)
 	}
 	return newFile, nil
 }
@@ -413,12 +413,12 @@ func (f *File) MoveToFile(file vfs.File) error {
 
 	if exists, err := f.Exists(); !exists {
 		if err != nil {
-			return err
+			return utils.WrapMoveToFileError(err)
 		}
 		return fs.ErrNotExist
 	}
 	if err := f.CopyToFile(file); err != nil {
-		return err
+		return utils.WrapMoveToFileError(err)
 	}
 
 	return f.Delete()
@@ -427,8 +427,11 @@ func (f *File) MoveToFile(file vfs.File) error {
 // Delete removes the file from the FileSystem. Sets it path in the fsMap to nil,
 // and also nils the file's members
 func (f *File) Delete(_ ...options.DeleteOption) error {
-	if ex, _ := f.Exists(); !ex {
-		return fs.ErrNotExist
+	if ex, err := f.Exists(); !ex {
+		if err != nil {
+			return utils.WrapDeleteError(err)
+		}
+		return utils.WrapDeleteError(fs.ErrNotExist)
 	}
 	f.memFile.Lock()
 	defer f.memFile.Unlock()
@@ -468,7 +471,7 @@ func newMemFile(file *File, location *Location) *memFile {
 func (f *File) LastModified() (*time.Time, error) {
 	if exists, err := f.Exists(); !exists {
 		if err != nil {
-			return nil, err
+			return nil, utils.WrapLastModifiedError(err)
 		}
 		return nil, fs.ErrNotExist
 	}
@@ -479,7 +482,7 @@ func (f *File) LastModified() (*time.Time, error) {
 func (f *File) Size() (uint64, error) {
 	if exists, err := f.Exists(); !exists {
 		if err != nil {
-			return 0, err
+			return 0, utils.WrapSizeError(err)
 		}
 		return 0, fs.ErrNotExist
 	}

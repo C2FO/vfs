@@ -42,7 +42,7 @@ type File struct {
 func (f *File) LastModified() (*time.Time, error) {
 	entry, err := f.stat(context.TODO())
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapLastModifiedError(err)
 	}
 	t := entry.Time
 	return &t, nil
@@ -98,7 +98,7 @@ func (f *File) Exists() (bool, error) {
 			return false, nil
 		}
 		// error calling stat
-		return false, err
+		return false, utils.WrapExistsError(err)
 	}
 
 	// file exists
@@ -110,13 +110,13 @@ func (f *File) Exists() (bool, error) {
 func (f *File) Touch() error {
 	exists, err := f.Exists()
 	if err != nil {
-		return err
+		return utils.WrapTouchError(err)
 	}
 
 	if !exists {
 		_, err := f.Write([]byte{})
 		if err != nil {
-			return err
+			return utils.WrapTouchError(err)
 		}
 		return f.Close()
 	}
@@ -124,7 +124,7 @@ func (f *File) Touch() error {
 	// if a set time function is available use that to set last modified to now
 	dc, err := f.Location().FileSystem().(*FileSystem).DataConn(context.TODO(), f.Location().Authority(), types.SingleOp, f)
 	if err != nil {
-		return err
+		return utils.WrapTouchError(err)
 	}
 	if dc.IsSetTimeSupported() {
 		return dc.SetTime(f.path, time.Now())
@@ -133,12 +133,12 @@ func (f *File) Touch() error {
 	// doing move and move back to ensure last modified is updated
 	newFile, err := f.Location().NewFile(tempFileNameGetter(f.Name()))
 	if err != nil {
-		return err
+		return utils.WrapTouchError(err)
 	}
 
 	err = f.MoveToFile(newFile)
 	if err != nil {
-		return err
+		return utils.WrapTouchError(err)
 	}
 
 	return newFile.MoveToFile(f)
@@ -152,7 +152,7 @@ func getTempFilename(origName string) string {
 func (f *File) Size() (uint64, error) {
 	entry, err := f.stat(context.TODO())
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapSizeError(err)
 	}
 	return entry.Size, nil
 }
@@ -178,17 +178,17 @@ func (f *File) MoveToFile(t vfs.File) error {
 		// ensure destination exists before moving
 		exists, err := t.Location().Exists()
 		if err != nil {
-			return err
+			return utils.WrapMoveToFileError(err)
 		}
 		dc, err := f.Location().FileSystem().(*FileSystem).DataConn(context.TODO(), f.Location().Authority(), types.SingleOp, f)
 		if err != nil {
-			return err
+			return utils.WrapMoveToFileError(err)
 		}
 		if !exists {
 			// it doesn't matter which client we use since they are effectively the same
 			err = dc.MakeDir(t.Location().Path())
 			if err != nil {
-				return fmt.Errorf("failed to create directory: %w", err)
+				return utils.WrapMoveToFileError(fmt.Errorf("failed to create directory: %w", err))
 			}
 		}
 		return dc.Rename(f.Path(), t.Path())
@@ -196,7 +196,7 @@ func (f *File) MoveToFile(t vfs.File) error {
 
 	// otherwise do copy-delete
 	if err := f.CopyToFile(t); err != nil {
-		return err
+		return utils.WrapMoveToFileError(err)
 	}
 	return f.Delete()
 }
@@ -205,12 +205,12 @@ func (f *File) MoveToFile(t vfs.File) error {
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	newFile, err := location.NewFile(f.Name())
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapMoveToLocationError(err)
 	}
 
 	err = f.MoveToFile(newFile)
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapMoveToLocationError(err)
 	}
 	return newFile, nil
 }
@@ -226,15 +226,15 @@ func (f *File) CopyToFile(file vfs.File) (err error) { //nolint:gocyclo
 		//
 		if err == nil {
 			if wErr != nil {
-				err = wErr
+				err = utils.WrapCopyToFileError(wErr)
 			} else if rErr != nil {
-				err = rErr
+				err = utils.WrapCopyToFileError(rErr)
 			}
 		}
 	}()
 
 	if err := backend.ValidateCopySeekPosition(f); err != nil {
-		return err
+		return utils.WrapCopyToFileError(err)
 	}
 
 	if f.Location().FileSystem().Scheme() == file.Location().FileSystem().Scheme() &&
@@ -244,41 +244,41 @@ func (f *File) CopyToFile(file vfs.File) (err error) { //nolint:gocyclo
 		// file to mem and then writing it back to the ftp server
 		tempFile, err := f.createLocalTempFile()
 		if err != nil {
-			return err
+			return utils.WrapCopyToFileError(err)
 		}
 		defer func() {
 			_ = os.Remove(tempFile.Name())
 		}()
 		if err := utils.TouchCopyBuffered(tempFile, f, 0); err != nil {
-			return err
+			return utils.WrapCopyToFileError(err)
 		}
 		// validate seek is at 0,0 before doing copy
 		_, err = tempFile.Seek(0, io.SeekStart)
 		if err != nil {
-			return fmt.Errorf("failed to determine current cursor offset: %w", err)
+			return utils.WrapCopyToFileError(fmt.Errorf("failed to determine current cursor offset: %w", err))
 		}
 
 		if err := f.Close(); err != nil {
-			return err
+			return utils.WrapCopyToFileError(err)
 		}
 		if err := utils.TouchCopyBuffered(file, tempFile, 0); err != nil {
-			return err
+			return utils.WrapCopyToFileError(err)
 		}
 		if err := tempFile.Close(); err != nil {
-			return err
+			return utils.WrapCopyToFileError(err)
 		}
 
 		return nil
 	} else {
 		if err := utils.TouchCopyBuffered(file, f, 0); err != nil {
-			return err
+			return utils.WrapCopyToFileError(err)
 		}
 		// Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
 		if cerr := file.Close(); cerr != nil {
-			return cerr
+			return utils.WrapCopyToFileError(cerr)
 		}
 
-		return err
+		return nil
 	}
 }
 
@@ -287,7 +287,7 @@ func (f *File) CopyToFile(file vfs.File) (err error) { //nolint:gocyclo
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 	newFile, err := location.NewFile(f.Name())
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapCopyToLocationError(err)
 	}
 
 	return newFile, f.CopyToFile(newFile)
@@ -299,7 +299,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 func (f *File) Delete(_ ...options.DeleteOption) error {
 	dc, err := f.Location().FileSystem().(*FileSystem).DataConn(context.TODO(), f.Location().Authority(), types.SingleOp, f)
 	if err != nil {
-		return err
+		return utils.WrapDeleteError(err)
 	}
 	return dc.Delete(f.Path())
 }

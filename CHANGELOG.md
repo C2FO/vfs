@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Add more error wrapping to public functions. Fixes #176.
+
+### Fixed
 - Remove redundant err check. Fixes #252.
 
 ### Security

@@ -366,7 +366,7 @@ func (f *File) Exists() (bool, error) {
 		}
 
 		// return error if not a known error
-		return false, err
+		return false, utils.WrapExistsError(err)
 	}
 
 	// return true if object exists
@@ -384,11 +384,11 @@ func (f *File) Location() vfs.Location {
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 	dest, err := location.NewFile(f.Name())
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapCopyToLocationError(err)
 	}
 	err = f.CopyToFile(dest)
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapCopyToLocationError(err)
 	}
 	return dest, nil
 }
@@ -406,16 +406,16 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 		//
 		if err == nil {
 			if wErr != nil {
-				err = wErr
+				err = utils.WrapCopyToFileError(wErr)
 			} else if rErr != nil {
-				err = rErr
+				err = utils.WrapCopyToFileError(rErr)
 			}
 		}
 	}()
 
 	// validate seek is at 0,0 before doing copy
 	if err := backend.ValidateCopySeekPosition(f); err != nil {
-		return err
+		return utils.WrapCopyToFileError(err)
 	}
 
 	// do native copy if same location/auth
@@ -438,14 +438,14 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 	}
 
 	if err := utils.TouchCopyBuffered(file, f, fileBufferSize); err != nil {
-		return err
+		return utils.WrapCopyToFileError(err)
 	}
 	// Close target to flush and ensure that cursor isn't at the end of the file when the caller reopens for read
 	if cerr := file.Close(); cerr != nil {
-		return cerr
+		return utils.WrapCopyToFileError(cerr)
 	}
 	// Close file (f) reader
-	return err
+	return nil
 }
 
 // MoveToLocation works by first calling File.CopyToLocation(vfs.Location) then, if that
@@ -455,10 +455,10 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	newFile, err := f.CopyToLocation(location)
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapMoveToLocationError(err)
 	}
 	delErr := f.Delete()
-	return newFile, delErr
+	return newFile, utils.WrapMoveToLocationError(delErr)
 }
 
 // MoveToFile puts the contents of File into the target vfs.File passed in using File.CopyToFile.
@@ -466,7 +466,7 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 // returned.
 func (f *File) MoveToFile(file vfs.File) error {
 	if err := f.CopyToFile(file); err != nil {
-		return err
+		return utils.WrapMoveToFileError(err)
 	}
 
 	return f.Delete()
@@ -477,7 +477,7 @@ func (f *File) MoveToFile(file vfs.File) error {
 // DeleteObject call is made to GCS for each version of the file. Returns any error returned by the API.
 func (f *File) Delete(opts ...options.DeleteOption) error {
 	if err := f.Close(); err != nil {
-		return err
+		return utils.WrapDeleteError(err)
 	}
 
 	var allVersions bool
@@ -491,22 +491,22 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 
 	handle, err := f.getObjectHandle()
 	if err != nil {
-		return err
+		return utils.WrapDeleteError(err)
 	}
 	err = handle.Delete(f.Location().FileSystem().(*FileSystem).ctx)
 	if err != nil {
-		return err
+		return utils.WrapDeleteError(err)
 	}
 
 	if allVersions {
 		handles, err := f.getObjectGenerationHandles()
 		if err != nil {
-			return err
+			return utils.WrapDeleteError(err)
 		}
 		for _, handle := range handles {
 			err := handle.Delete(f.Location().FileSystem().(*FileSystem).ctx)
 			if err != nil {
-				return err
+				return utils.WrapDeleteError(err)
 			}
 		}
 	}
@@ -519,7 +519,7 @@ func (f *File) Touch() error {
 	// check if file exists
 	exists, err := f.Exists()
 	if err != nil {
-		return err
+		return utils.WrapTouchError(err)
 	}
 
 	// if file doesn't already exist, create it
@@ -538,7 +538,7 @@ func (f *File) Touch() error {
 
 	enabled, err := f.isBucketVersioningEnabled()
 	if err != nil {
-		return err
+		return utils.WrapTouchError(err)
 	}
 
 	if enabled {
@@ -649,7 +649,7 @@ func (f *File) isSameAuth(opts *Options) bool {
 func (f *File) LastModified() (*time.Time, error) {
 	attr, err := f.getObjectAttrs()
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapLastModifiedError(err)
 	}
 	return &attr.Updated, nil
 }
@@ -658,7 +658,7 @@ func (f *File) LastModified() (*time.Time, error) {
 func (f *File) Size() (uint64, error) {
 	attr, err := f.getObjectAttrs()
 	if err != nil {
-		return 0, err
+		return 0, utils.WrapSizeError(err)
 	}
 	return uint64(attr.Size), nil
 }
