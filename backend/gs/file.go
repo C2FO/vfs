@@ -330,8 +330,8 @@ func (f *File) initWriters() error {
 
 			// get gcsWriter
 			w := handle.NewWriter(ctx)
-			if err != nil {
-				return err
+			if w == nil {
+				return errors.New("failed to create GCS writer")
 			}
 
 			for _, o := range f.opts {
