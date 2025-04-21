@@ -79,7 +79,7 @@ func parseURI(uri string) (scheme, authority, path string, err error) {
 		authority = fmt.Sprintf("%s@%s", u.User, u.Host)
 	}
 	// network-based schemes require authority, but not file:// or mem://
-	if authority == "" && !(scheme == os.Scheme || scheme == mem.Scheme) {
+	if authority == "" && scheme != os.Scheme && scheme != mem.Scheme {
 		return "", "", "", ErrMissingAuthority
 	}
 

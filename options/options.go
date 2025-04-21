@@ -1,3 +1,4 @@
+// Package options provides a set of interfaces and functions to define and apply options for file systems.
 package options
 
 // Option interface contains function that should be implemented by any custom option.

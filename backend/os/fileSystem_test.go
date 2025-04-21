@@ -19,7 +19,7 @@ type osFileSystemTest struct {
 
 func (o *osFileSystemTest) TestRetry() {
 	fs := &FileSystem{}
-	o.IsType(vfs.DefaultRetryer(), fs.Retry())
+	o.IsType(vfs.DefaultRetryer(), fs.Retry()) //nolint:staticcheck // deprecated
 }
 
 func (o *osFileSystemTest) TestName() {

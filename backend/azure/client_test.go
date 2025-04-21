@@ -258,22 +258,23 @@ func TestDefaultClient_Delete(t *testing.T) {
 func TestDefaultClient_DeleteAllVersions(t *testing.T) {
 	// Create a mock server
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodDelete {
+		switch r.Method {
+		case http.MethodDelete:
 			w.WriteHeader(http.StatusAccepted)
-		} else if r.Method == http.MethodGet {
+		case http.MethodGet:
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`<?xml version="1.0" encoding="utf-8"?>
-            <EnumerationResults>
-                <Blobs>
-                    <Blob>
-                        <VersionId>1</VersionId>
-                    </Blob>
-                    <Blob>
-                        <VersionId>2</VersionId>
-                    </Blob>
-                </Blobs>
-            </EnumerationResults>`))
-		} else {
+        <EnumerationResults>
+            <Blobs>
+                <Blob>
+                    <VersionId>1</VersionId>
+                </Blob>
+                <Blob>
+                    <VersionId>2</VersionId>
+                </Blob>
+            </Blobs>
+        </EnumerationResults>`))
+		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	}))

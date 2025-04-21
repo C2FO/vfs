@@ -1,3 +1,4 @@
+// Package newfile provides options for creating new files in a virtual filesystem.
 package newfile
 
 import "github.com/c2fo/vfs/v7/options"

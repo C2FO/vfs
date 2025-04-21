@@ -112,6 +112,7 @@ func (ts *fileSystemTestSuite) TestScheme() {
 }
 
 func (ts *fileSystemTestSuite) TestRetry() {
+	//nolint:staticcheck // SA1019
 	ts.IsType(vfs.DefaultRetryer(), ts.ftpfs.Retry(), "expected scheme found")
 }
 

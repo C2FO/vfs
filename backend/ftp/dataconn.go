@@ -194,7 +194,7 @@ func openWriteConnection(client types.Client, f *File) (types.DataConn, error) {
 		err := client.MakeDir(f.Location().Path())
 		if err != nil {
 			var e *textproto.Error
-			if !(errors.As(err, &e) && e.Code == _ftp.StatusFileUnavailable) {
+			if !errors.As(err, &e) || e.Code != _ftp.StatusFileUnavailable {
 				// Return if the error is not because the directory already exists
 				return nil, err
 			}

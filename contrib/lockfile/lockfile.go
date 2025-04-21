@@ -9,7 +9,7 @@ This package implements **advisory locks**, which means:
 - All cooperating processes must **explicitly check for and honor** the lock
 - It is still possible for non-cooperative processes to ignore the lock and access the file
 
-Lock files are created using atomic file creation (CreateExclusive + MoveTo)
+Lock files are created using atomic file creation (write to <lockfile>.tmp -> MoveTo <lockfile>)
 and include metadata such as timestamp, PID, hostname, and optional TTL.
 
 This approach is portable and backend-agnostic, and it works on local filesystems,
@@ -153,7 +153,7 @@ func (l *Lock) Acquire() error {
 
 	data, err := json.MarshalIndent(l.metadata, "", "  ")
 	if err != nil {
-		return fmt.Errorf("lockfile: error marshalling metadata: %w", err)
+		return fmt.Errorf("lockfile: error marshaling metadata: %w", err)
 	}
 
 	// Use a temporary file for atomic write
@@ -249,6 +249,6 @@ func WithLock(f vfs.File, fn func(vfs.File) error, opts ...Option) error {
 	if err := lock.Acquire(); err != nil {
 		return err
 	}
-	defer lock.Release()
+	defer func() { _ = lock.Release() }()
 	return fn(f)
 }

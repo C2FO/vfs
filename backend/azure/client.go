@@ -169,7 +169,7 @@ func (a *DefaultClient) Download(file vfs.File) (io.ReadCloser, error) {
 // error.
 func (a *DefaultClient) Copy(srcFile, tgtFile vfs.File) error {
 	// Can't use url.PathEscape here since that will escape everything (even the directory separators)
-	srcURL := strings.Replace(srcFile.Path(), "%", "%25", -1)
+	srcURL := strings.ReplaceAll(srcFile.Path(), "%", "%25")
 	srcURL = a.serviceURL.JoinPath(srcFile.Location().Authority().String(), srcURL).String()
 
 	tgtURL := tgtFile.Location().Authority().String()
@@ -216,7 +216,7 @@ func (a *DefaultClient) List(l vfs.Location) ([]string, error) {
 			return []string{}, err
 		}
 
-		for i := range listBlob.ListBlobsHierarchySegmentResponse.Segment.BlobItems {
+		for i := range listBlob.Segment.BlobItems {
 			list = append(list, *listBlob.ListBlobsHierarchySegmentResponse.Segment.BlobItems[i].Name)
 		}
 	}
@@ -278,7 +278,7 @@ func (a *DefaultClient) getBlobVersions(cli *container.Client, blobName string) 
 			return []*string{}, err
 		}
 
-		for i := range listBlob.ListBlobsFlatSegmentResponse.Segment.BlobItems {
+		for i := range listBlob.Segment.BlobItems {
 			versions = append(versions, listBlob.ListBlobsFlatSegmentResponse.Segment.BlobItems[i].VersionID)
 		}
 	}

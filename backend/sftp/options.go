@@ -120,7 +120,7 @@ func GetClient(authority authority.Authority, opts Options) (sftpclient *_sftp.C
 	}
 
 	// Define the Client Config
-	config := getSShConfig(opts)
+	config := getSSHConfig(opts)
 	// override with env var, if any
 	if _, ok := os.LookupEnv("VFS_SFTP_USERNAME"); ok {
 		config.User = os.Getenv("VFS_SFTP_USERNAME")
@@ -154,8 +154,8 @@ func GetClient(authority authority.Authority, opts Options) (sftpclient *_sftp.C
 	return sftpClient, sshConn, nil
 }
 
-// getSShConfig gets ssh config from Options
-func getSShConfig(opts Options) *ssh.ClientConfig {
+// getSSHConfig gets ssh config from Options
+func getSSHConfig(opts Options) *ssh.ClientConfig {
 	// copy default config
 	config := *defaultSSHConfig
 
@@ -164,13 +164,13 @@ func getSShConfig(opts Options) *ssh.ClientConfig {
 		config.HostKeyAlgorithms = opts.HostKeyAlgorithms
 	}
 	if opts.Ciphers != nil {
-		config.Config.Ciphers = opts.Ciphers
+		config.Ciphers = opts.Ciphers
 	}
 	if opts.KeyExchanges != nil {
-		config.Config.KeyExchanges = opts.KeyExchanges
+		config.KeyExchanges = opts.KeyExchanges
 	}
 	if opts.MACs != nil {
-		config.Config.MACs = opts.MACs
+		config.MACs = opts.MACs
 	}
 
 	return &config
