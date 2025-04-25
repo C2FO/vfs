@@ -21,7 +21,7 @@ abstract backend details. This allows you to:
 By focusing on *[FileSystem](https://pkg.go.dev/github.com/c2fo/vfs/v7#FileSystem)*, 
 *[Location](https://pkg.go.dev/github.com/c2fo/vfs/v7#Location)*, and 
 *[File](https://pkg.go.dev/github.com/c2fo/vfs/v7#File)* interfaces, you can build reusable flows for file operations without
-needing to deeply understand each backend’s specific APIs. Users can add or swap backends as needed, providing flexibility
+needing to deeply understand each backend's specific APIs. Users can add or swap backends as needed, providing flexibility
 for hybrid or evolving storage requirements.
 
 ## Installation
@@ -81,6 +81,10 @@ This snippet shows the basic setup: an osFile is created from a URI and written 
     * [ftp backend](docs/ftp.md)
     * [azure backend](docs/azure.md)
 * [utils](docs/utils.md)
+
+## Additional Tools
+
+*   [lockfile](contrib/lockfile/README.md): Provides distributed locking mechanisms using vfs backends.
 
 ## FAQ
 

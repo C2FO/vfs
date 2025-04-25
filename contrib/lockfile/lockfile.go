@@ -36,6 +36,7 @@ var (
 	ErrLockNotHeld     = errors.New("lockfile: no lock held")
 )
 
+// Metadata contains information about the current lock holder.
 type Metadata struct {
 	CreatedAt time.Time     `json:"created_at"`
 	TTL       time.Duration `json:"ttl"`
@@ -44,6 +45,9 @@ type Metadata struct {
 	OwnerID   string        `json:"owner_id,omitempty"`
 }
 
+// StaleHandler is a function that is called when a lock is stale.
+// It is called with the lock metadata and should return an error if the lock should not be acquired.
+// If the error is nil, the lock will be acquired.
 type StaleHandler func(meta Metadata) error
 
 // Lock provides a portable advisory locking mechanism for files.
@@ -67,20 +71,29 @@ type Lock struct {
 	metadataRead *Metadata
 }
 
+// Option is a function that configures a Lock.
 type Option func(*Lock)
 
+// WithTTL sets the time-to-live for the lock.
+// If the lock is not acquired within this time, it will be considered stale.
+// If the TTL is 0, the lock never expires.
 func WithTTL(ttl time.Duration) Option {
 	return func(l *Lock) {
 		l.ttl = ttl
 	}
 }
 
+// WithOwnerID sets the owner ID for the lock.
+// This is an optional identifier for the lock owner.
 func WithOwnerID(owner string) Option {
 	return func(l *Lock) {
 		l.ownerID = owner
 	}
 }
 
+// OnStale sets the function to call when the lock is stale.
+// The function is called with the lock metadata and should return an error if the lock should not be acquired.
+// If the error is nil, the lock will be acquired.
 func OnStale(hook StaleHandler) Option {
 	return func(l *Lock) {
 		l.onStale = hook
@@ -118,13 +131,11 @@ func (l *Lock) Acquire() error {
 	if err != nil {
 		return fmt.Errorf("lockfile: error checking lock existence: %w", err)
 	}
-	fmt.Printf("Lock file exists: %v\n", exists)
 	if exists {
 		stale, meta, err := l.IsStale()
 		if err != nil {
 			return fmt.Errorf("lockfile: error checking staleness: %w", err)
 		}
-		fmt.Printf("Lock is stale: %v\n", stale)
 		if !stale {
 			return ErrLockAlreadyHeld
 		}

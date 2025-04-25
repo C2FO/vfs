@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [v7.4.0] - 2025-04-23
+## [v7.4.0] - 2025-04-25
 ### Added
 - contrib/lockfile which provides a portable advisory locking mechanism for VFS files that works across different backends.
 ### Security
