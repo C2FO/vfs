@@ -106,7 +106,7 @@ func (ts *fileSystemTestSuite) TestScheme() {
 }
 
 func (ts *fileSystemTestSuite) TestRetry() {
-	ts.IsType(vfs.DefaultRetryer(), ts.sftpfs.Retry(), "expected scheme found")
+	ts.IsType(vfs.DefaultRetryer(), ts.sftpfs.Retry(), "expected scheme found") //nolint:staticcheck // deprecated
 }
 
 func (ts *fileSystemTestSuite) TestWithOptions() {

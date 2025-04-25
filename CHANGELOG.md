@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v7.4.0] - 2025-04-25
+### Added
+- contrib/lockfile which provides a portable advisory locking mechanism for VFS files that works across different backends.
+### Security
+- Updated golangci-lint config (v2) and related gh action (v7).
+
 ## [v7.3.0] - 2025-04-15
 ### Added
 - Add more error wrapping to public functions. Fixes #176.

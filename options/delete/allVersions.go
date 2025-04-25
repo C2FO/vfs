@@ -1,3 +1,4 @@
+// Package delete provides options for deleting files and directories in a virtual filesystem.
 package delete
 
 import "github.com/c2fo/vfs/v7/options"

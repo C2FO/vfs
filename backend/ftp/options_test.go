@@ -116,7 +116,7 @@ func (s *optionsSuite) TestFetchPassword() {
 		},
 	}
 
-	for _, test := range tests {
+	for _, test := range tests { //nolint:gocritic //rangeValCopy but changing breaks ide integration for table-driven tests
 		s.Run(test.description, func() {
 			if test.envVar != nil {
 				err := os.Setenv(envPassword, *test.envVar)
@@ -234,7 +234,7 @@ func (s *optionsSuite) TestIsDisableEPSV() {
 		},
 	}
 
-	for _, test := range tests {
+	for _, test := range tests { //nolint:gocritic //rangeValCopy but changing breaks ide integration for table-driven tests
 		s.Run(test.description, func() {
 			if test.envVar != nil {
 				err := os.Setenv(envDisableEPSV, *test.envVar)
@@ -378,7 +378,7 @@ func (s *optionsSuite) TestFetchProtocol() {
 		},
 	}
 
-	for _, test := range tests {
+	for _, test := range tests { //nolint:gocritic //rangeValCopy but changing breaks ide integration for table-driven tests
 		s.Run(test.description, func() {
 			s.NoError(os.Unsetenv(envProtocol))
 			if test.envVar != nil {

@@ -1,3 +1,4 @@
+// Package types provides types and interfaces for FTP operations.
 package types
 
 import (

@@ -1,3 +1,4 @@
+// Package authority provides a struct for parsing and manipulating URI authority strings.
 package authority
 
 import (
@@ -56,7 +57,7 @@ func (u UserInfo) Password() string {
 	return p
 }
 
-// String() returns a string representation of authority.  It does not include password per
+// String returns a string representation of authority.  It does not include password per
 // https://tools.ietf.org/html/rfc3986#section-3.2.1
 //
 //	Applications should not render as clear text any data after the first colon (":") character found within a userinfo

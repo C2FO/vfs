@@ -1,3 +1,4 @@
+// Package utils provides utility functions for working with file paths, URIs, and other common operations.
 package utils
 
 import (

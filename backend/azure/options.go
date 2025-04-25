@@ -36,7 +36,7 @@ type Options struct {
 	// RetryFunc holds the retry function
 	//
 	// Deprecated: This field is deprecated and will be removed in a future release.
-	RetryFunc vfs.Retry
+	RetryFunc vfs.Retry //nolint:staticcheck // Deprecated: This field is deprecated and will be removed in a future release.
 
 	// Buffer Size In Bytes Used with utils.TouchCopyBuffered
 	FileBufferSize int

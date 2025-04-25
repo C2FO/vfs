@@ -570,8 +570,8 @@ func (o *optionsSuite) TestGetSSHConfig() {
 				HostKeyAlgorithms: defaultSSHConfig.HostKeyAlgorithms,
 				Config: ssh.Config{
 					Ciphers:      []string{"aes128-ctr", "aes192-ctr", "aes256-ctr"},
-					MACs:         defaultSSHConfig.Config.MACs,
-					KeyExchanges: defaultSSHConfig.Config.KeyExchanges,
+					MACs:         defaultSSHConfig.MACs,
+					KeyExchanges: defaultSSHConfig.KeyExchanges,
 				},
 			},
 		},
@@ -583,9 +583,9 @@ func (o *optionsSuite) TestGetSSHConfig() {
 			expect: &ssh.ClientConfig{
 				HostKeyAlgorithms: defaultSSHConfig.HostKeyAlgorithms,
 				Config: ssh.Config{
-					Ciphers:      defaultSSHConfig.Config.Ciphers,
+					Ciphers:      defaultSSHConfig.Ciphers,
 					MACs:         []string{""},
-					KeyExchanges: defaultSSHConfig.Config.KeyExchanges,
+					KeyExchanges: defaultSSHConfig.KeyExchanges,
 				},
 			},
 		},
@@ -597,8 +597,8 @@ func (o *optionsSuite) TestGetSSHConfig() {
 			expect: &ssh.ClientConfig{
 				HostKeyAlgorithms: defaultSSHConfig.HostKeyAlgorithms,
 				Config: ssh.Config{
-					Ciphers:      defaultSSHConfig.Config.Ciphers,
-					MACs:         defaultSSHConfig.Config.MACs,
+					Ciphers:      defaultSSHConfig.Ciphers,
+					MACs:         defaultSSHConfig.MACs,
 					KeyExchanges: []string{"diffie-hellman-group-exchange-sha256", "ecdh-sha2-nistp256"},
 				},
 			},
@@ -607,7 +607,7 @@ func (o *optionsSuite) TestGetSSHConfig() {
 
 	for _, tc := range tests { //nolint:gocritic // rangeValCopy
 		o.Run(tc.name, func() {
-			result := getSShConfig(tc.opts)
+			result := getSSHConfig(tc.opts)
 			o.Equal(tc.expect, result)
 		})
 	}
