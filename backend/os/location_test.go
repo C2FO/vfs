@@ -25,11 +25,16 @@ type osLocationTest struct {
 }
 
 func (s *osLocationTest) SetupSuite() {
-	fs := &FileSystem{}
+	// Directly instantiate the OS FileSystem for the test suite
+	s.fileSystem = &FileSystem{}
+
+	// Create the temp location using the initialized s.fileSystem
+	var err error
 	dir, err := os.MkdirTemp("", "os_location_test")
+	s.NoError(err, "Failed to create temp dir")
 	dir = utils.EnsureTrailingSlash(dir)
-	s.NoError(err)
-	s.tmploc, err = fs.NewLocation("", dir)
+
+	s.tmploc, err = s.fileSystem.NewLocation("", dir)
 	s.NoError(err)
 	setupTestFiles(s.tmploc)
 }

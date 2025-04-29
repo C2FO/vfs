@@ -17,7 +17,9 @@ const Scheme = "file"
 const name = "os"
 
 // FileSystem implements vfs.FileSystem for the OS file system.
-type FileSystem struct{}
+type FileSystem struct {
+	tempDir string // Optional directory for temporary files
+}
 
 // NewFileSystem creates a new instance of the OS file system.
 func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem {
@@ -60,6 +62,7 @@ func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.New
 		name:     filePath,
 		location: loc.(*Location),
 		opts:     opts,
+		tempDir:  fs.tempDir,
 	}, nil
 }
 

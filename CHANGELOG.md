@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v7.5.0] - 2025-05-12
+### Fixed
+- Improved the internal logic for selecting temporary file locations in the OS backend. The logic now better prioritizes directories on the same device as the target file, significantly reducing the likelihood of cross-device rename errors by default (#122).
+
+### Added
+- Introduced `backend/os.WithTempDir` option. This allows users to explicitly specify a custom directory for intermediate files used during OS write operations, providing a reliable way to resolve potential cross-device rename issues and control temporary file placement (#122).
+
 ## [v7.4.1] - 2025-05-05
 ### Security
 - Update dependencies to address a Cross-site Scripting vulnerability in golang.org/x/net. See [CVE-2025-12345](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-12345) for details.

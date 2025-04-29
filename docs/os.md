@@ -195,6 +195,47 @@ type FileSystem struct{}
 
 FileSystem implements [vfs.FileSystem](../README.md#type-filesystem) for the OS file system.
 
+#### Options
+
+The OS backend supports the following options during `NewFileSystem` initialization:
+
+- `os.WithTempDir{TempDir: "/custom/temp/path"}`: Specifies a custom directory
+  path where the backend should create temporary files needed during certain write
+  operations (like `Write` followed by `Close`). This can be useful to ensure
+  temporary files are stored on a specific volume or location.
+
+  If this option is not provided, the backend will attempt to find a suitable
+  temporary location, prioritizing:
+    1. The system's default temporary directory (`os.TempDir()`) if it's on the
+       same device as the target file.
+    2. The parent directory of the target file.
+    3. The system's default temporary directory as a final fallback.
+
+Example:
+
+```go
+import (
+    "github.com/c2fo/vfs/v7/backend/os"
+    // Other necessary imports
+)
+
+func main() {
+    // Default initialization
+    fsDefault := os.NewFileSystem()
+
+    // Initialization with a custom temp directory
+    fsWithTemp, err := os.NewFileSystem(
+        os.WithTempDir{TempDir: "/mnt/fast_ssd/vfs_temp"},
+    )
+    if err != nil {
+        // Handle error
+    }
+
+    // Use fsDefault or fsWithTemp
+    // ...
+}
+```
+
 #### func (*FileSystem) Name
 
 ```go
