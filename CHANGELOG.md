@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `backend/os.WithTempDir` option to specify a custom directory for intermediate files during OS write operations, helping avoid cross-device rename issues (#122).
+
+### Fixed
+- Improved OS backend selection of temporary file locations to prefer directories on the same device as the target file, reducing cross-device rename errors by default (#122).
+
 ## [v7.15.0] - 2026-03-06
 ### Added
 - Added AGENTS.md with comprehensive guidelines for AI agents, including development standards, testing requirements, CHANGELOG/PR process, Go version policy, GitHub Actions maintenance, and module management.
