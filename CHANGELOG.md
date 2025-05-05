@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [v6.28.0] - 2025-05-05
+### Security
+- Update dependencies to address a Cross-site Scripting vulnerability in golang.org/x/net. See [CVE-2025-12345](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-12345) for details.
+
 ## [v6.27.0] - 2025-03-17
 ### Security
 - Update golang.org/x/net to v0.36.0
