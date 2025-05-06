@@ -228,32 +228,6 @@ func (s *memLocationTest) TestNewFileSameName() {
 	s.Equal(expectedText, string(expectedSlice))
 }
 
-//nolint:staticcheck // deprecated method test
-func (s *memLocationTest) TestChangeDir() {
-	newFile, nerr := s.fileSystem.NewFile("", "/dir/to/change/change.txt")
-	s.NoError(nerr, "unexpected error creating a new file")
-
-	s.NoError(newFile.Touch(), "unexpected error touching file")
-	loc := newFile.Location()
-
-	// changing directory
-	s.NoError(loc.ChangeDir("extraDir/"), "unexpected error while changing directory")
-	exists, eerr := loc.Exists()
-	s.NoError(eerr, "unexpected error checking for Existence")
-	s.True(exists)
-	s.NotEqual(newFile.Location().Path(), loc.Path())
-}
-
-//nolint:staticcheck // deprecated method test
-func (s *memLocationTest) TestVolume() {
-	newFile, nerr := s.fileSystem.NewFile("D:", "/path/to/file/example.txt")
-	s.NoError(nerr, "unexpected error creating a file")
-	s.NoError(newFile.Touch(), "unexpected error touching file")
-	s.NoError(newFile.Close(), "unexpected error closing file")
-	// For Unix, this returns an empty string. For windows, it would be something like 'C:'
-	s.Equal("D", newFile.Location().Volume())
-}
-
 // TestPath makes sure that locations return the correct paths, along with leading and trailing slashes
 func (s *memLocationTest) TestPath() {
 	file, nerr := s.fileSystem.NewFile("", "/some/file/test.txt")
