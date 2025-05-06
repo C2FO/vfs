@@ -86,15 +86,6 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 	return list, nil
 }
 
-// Volume returns the volume of the current FileSystem.
-//
-// Deprecated: Use Authority instead.
-//
-//	authStr := loc.Authority().String()
-func (l *Location) Volume() string {
-	return l.Authority().String()
-}
-
 // Authority returns the authority of the current location
 func (l *Location) Authority() authority.Authority {
 	return l.authority
@@ -139,20 +130,6 @@ func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
 		exists:     false,
 		authority:  l.Authority(),
 	}, nil
-}
-
-// ChangeDir simply changes the directory of the location
-//
-// Deprecated: Use NewLocation instead:
-//
-//	loc, err := loc.NewLocation("../../")
-func (l *Location) ChangeDir(relLocPath string) error {
-	err := utils.ValidateRelativeLocationPath(relLocPath)
-	if err != nil {
-		return err
-	}
-	l.name = path.Join(l.name, relLocPath)
-	return nil
 }
 
 // FileSystem returns the type of file system location exists on, if it exists at all
