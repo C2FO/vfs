@@ -77,15 +77,6 @@ type Location interface {
 	//     be checked first.
 	ListByRegex(regex *regexp.Regexp) ([]string, error)
 
-	// Volume returns the volume as string. In URI parlance, volume equates to authority.
-	// For example s3://mybucket/path/to/file.txt, volume would return "mybucket".
-	//
-	// Note: Some file systems may not have a volume and will return "".
-	//
-	// Deprecated: Use Authority instead.
-	//   authStr := loc.Authority().String()
-	Volume() string
-
 	// Authority returns the Authority for the Location.
 	//
 	// For example:
@@ -113,21 +104,6 @@ type Location interface {
 	//
 	//   * Accepts a relative location path.
 	NewLocation(relLocPath string) (Location, error)
-
-	// ChangeDir updates the existing Location's path to the provided relative location path.
-	//
-	// Given location:
-	// 	   loc := fs.NewLocation("file:///some/path/to/")
-	// calling:
-	//     loc.ChangeDir("../../")
-	// would update the current location instance to
-	// file:///some/.
-	//
-	//   * ChangeDir accepts a relative location path.
-	//
-	// Deprecated: Use NewLocation instead:
-	//     loc, err := loc.NewLocation("../../")
-	ChangeDir(relLocPath string) error
 
 	// FileSystem returns the underlying vfs.FileSystem struct for Location.
 	FileSystem() FileSystem
