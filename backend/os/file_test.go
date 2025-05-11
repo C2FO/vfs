@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -755,7 +756,9 @@ func (s *osFileTest) TestStat() {
 	s.NoError(err, "error creating reference to non-existent file")
 	_, err = nonExistentFile.Stat()
 	s.Error(err, "error expected when calling Stat on non-existent file")
-	s.Contains(err.Error(), "no such file or directory", "error should indicate no such file")
+	// Use Contains with platform-independent error messages
+	errorMsg := err.Error()
+	s.True(strings.Contains(errorMsg, "no such file") || strings.Contains(errorMsg, "cannot find the file"), "error should indicate no such file")
 }
 
 func TestOSFile(t *testing.T) {
