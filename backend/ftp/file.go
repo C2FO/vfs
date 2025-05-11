@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	stdfs "io/fs"
 	"os"
 	"path"
 	"strconv"
@@ -79,6 +80,52 @@ func (f *File) stat(ctx context.Context) (*_ftp.Entry, error) {
 	}
 }
 
+// Stat returns a fs.FileInfo describing the file.
+// This implements the fs.File interface from io/fs.
+func (f *File) Stat() (stdfs.FileInfo, error) {
+	entry, err := f.stat(context.TODO())
+	if err != nil {
+		return nil, utils.WrapStatError(err)
+	}
+
+	return &ftpFileInfo{
+		name:    f.Name(),
+		size:    int64(entry.Size),
+		modTime: entry.Time,
+	}, nil
+}
+
+// ftpFileInfo implements fs.FileInfo for FTP files
+type ftpFileInfo struct {
+	name    string
+	size    int64
+	modTime time.Time
+}
+
+func (fi *ftpFileInfo) Name() string {
+	return fi.name
+}
+
+func (fi *ftpFileInfo) Size() int64 {
+	return fi.size
+}
+
+func (fi *ftpFileInfo) Mode() stdfs.FileMode {
+	return 0644 // Default permission for files
+}
+
+func (fi *ftpFileInfo) ModTime() time.Time {
+	return fi.modTime
+}
+
+func (fi *ftpFileInfo) IsDir() bool {
+	return false // FTP files represented by File struct are always files, not directories
+}
+
+func (fi *ftpFileInfo) Sys() interface{} {
+	return nil
+}
+
 // Name returns the path portion of the file's path property. IE: "file.txt" of "ftp://someuser@host.com/some/path/to/file.txt
 func (f *File) Name() string {
 	return path.Base(f.path)
@@ -109,7 +156,7 @@ func (f *File) Exists() (bool, error) {
 // Returns error if unable to touch File.
 func (f *File) Touch() error {
 	exists, err := f.Exists()
-	if err != nil {
+	if (err != nil) {
 		return utils.WrapTouchError(err)
 	}
 
