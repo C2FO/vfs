@@ -549,3 +549,61 @@ func (f *File) Name() string {
 func (f *File) URI() string {
 	return utils.GetFileURI(f)
 }
+
+// Stat returns a fs.FileInfo describing the file.
+// This implements the fs.File interface from io/fs.
+func (f *File) Stat() (fs.FileInfo, error) {
+	if exists, err := f.Exists(); !exists {
+		if err != nil {
+			return nil, utils.WrapStatError(err)
+		}
+		return nil, fs.ErrNotExist
+	}
+
+	size, err := f.Size()
+	if err != nil {
+		return nil, utils.WrapStatError(err)
+	}
+
+	lastMod, err := f.LastModified()
+	if err != nil {
+		return nil, utils.WrapStatError(err)
+	}
+
+	return &memFileInfo{
+		name:    f.Name(),
+		size:    int64(size),
+		modTime: *lastMod,
+	}, nil
+}
+
+// memFileInfo implements fs.FileInfo interface for mem file system
+type memFileInfo struct {
+	name    string
+	size    int64
+	modTime time.Time
+}
+
+func (fi *memFileInfo) Name() string {
+	return fi.name
+}
+
+func (fi *memFileInfo) Size() int64 {
+	return fi.size
+}
+
+func (fi *memFileInfo) Mode() fs.FileMode {
+	return 0644 // Default permission
+}
+
+func (fi *memFileInfo) ModTime() time.Time {
+	return fi.modTime
+}
+
+func (fi *memFileInfo) IsDir() bool {
+	return false
+}
+
+func (fi *memFileInfo) Sys() interface{} {
+	return nil
+}

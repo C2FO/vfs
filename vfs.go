@@ -3,6 +3,7 @@ package vfs
 import (
 	"fmt"
 	"io"
+	"io/fs"
 	"regexp"
 	"time"
 
@@ -155,6 +156,10 @@ type Location interface {
 	//
 	// URI's for locations must always end with a slash.
 	URI() string
+
+	// Open opens the named file at this location.
+	// This implements the fs.FS interface from io/fs.
+	Open(name string) (fs.File, error)
 }
 
 // File represents a file on a file system.  A File may or may not actually exist on the file system.
@@ -240,6 +245,10 @@ type File interface {
 
 	// URI returns the fully qualified absolute URI for the File.  IE, s3://bucket/some/path/to/file.txt
 	URI() string
+
+	// Stat returns a fs.FileInfo describing the file.
+	// This implements the fs.File interface from io/fs.
+	Stat() (fs.FileInfo, error)
 }
 
 // Options are structs that contain various options specific to the file system

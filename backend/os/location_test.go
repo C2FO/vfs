@@ -1,6 +1,7 @@
 package os
 
 import (
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -185,6 +186,64 @@ func (s *osLocationTest) TestDeleteFile() {
 	exists, err = file.Exists()
 	s.NoError(err, "Shouldn't throw error testing for exists after delete.")
 	s.False(exists, "Exists should return false after deleting the file.")
+}
+
+// TestOpen tests the Open method in the Location implementation
+func (s *osLocationTest) TestOpen() {
+	// Create a temp file with content
+	tempFileName := "open_test_file.txt"
+	testContent := "hello world test content"
+
+	// Create file for testing within test directory structure
+	file, err := s.tmploc.NewFile("test_files/" + tempFileName)
+	s.NoError(err, "No error expected creating test file")
+
+	_, err = file.Write([]byte(testContent))
+	s.NoError(err, "Write should not error")
+	s.NoError(file.Close(), "Close should not error")
+
+	// Get the file's location
+	loc := file.Location()
+
+	// Test Opening the file
+	opened, err := loc.Open(tempFileName)
+	s.NoError(err, "Opening an existing file should not return an error")
+	s.NotNil(opened, "Opened file should not be nil")
+
+	// Read the content to verify
+	data := make([]byte, len(testContent))
+	n, err := opened.Read(data)
+	s.NoError(err, "Reading from opened file should not error")
+	s.Equal(len(testContent), n, "Should read all content")
+	s.Equal(testContent, string(data), "Content should match")
+
+	// Close the opened file to avoid "file in use" errors on Windows
+	s.NoError(opened.Close(), "Closing opened file should not error")
+
+	// Test opening non-existent file
+	_, err = loc.Open("non-existent-file.txt")
+	s.Error(err, "Opening a non-existent file should return an error")
+	var pathErr *fs.PathError
+	s.ErrorAs(err, &pathErr, "Error should be a fs.PathError")
+	s.ErrorIs(pathErr.Err, fs.ErrNotExist, "Underlying error should be fs.ErrNotExist")
+
+	// Test opening with path traversal attempts (should be rejected)
+	_, err = loc.Open("../outside.txt")
+	s.Error(err, "Opening a file with path traversal should return an error")
+	s.ErrorAs(err, &pathErr, "Error should be a fs.PathError")
+	s.ErrorIs(pathErr.Err, fs.ErrInvalid, "Underlying error should be fs.ErrInvalid")
+
+	_, err = loc.Open("./file.txt")
+	s.Error(err, "Opening path with ./ should return an error")
+
+	_, err = loc.Open(".")
+	s.Error(err, "Opening . should return an error")
+
+	_, err = loc.Open("..")
+	s.Error(err, "Opening .. should return an error")
+
+	// Clean up
+	s.NoError(file.Delete(), "Delete should not error")
 }
 
 func TestOSLocation(t *testing.T) {

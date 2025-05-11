@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	stdfs "io/fs"
 	"net/url"
 	"os"
 	"path"
@@ -91,6 +92,53 @@ func (f *File) Size() (uint64, error) {
 		return 0, utils.WrapSizeError(err)
 	}
 	return uint64(*head.ContentLength), nil
+}
+
+// Stat returns a fs.FileInfo describing the file.
+// This implements the fs.File interface from io/fs.
+func (f *File) Stat() (stdfs.FileInfo, error) {
+	// Get file metadata from S3
+	headOutput, err := f.getHeadObject()
+	if err != nil {
+		return nil, utils.WrapStatError(err)
+	}
+
+	return &s3FileInfo{
+		name:    f.Name(),
+		size:    *headOutput.ContentLength,
+		modTime: *headOutput.LastModified,
+	}, nil
+}
+
+// s3FileInfo implements fs.FileInfo for S3 files
+type s3FileInfo struct {
+	name    string
+	size    int64
+	modTime time.Time
+}
+
+func (fi *s3FileInfo) Name() string {
+	return fi.name
+}
+
+func (fi *s3FileInfo) Size() int64 {
+	return fi.size
+}
+
+func (fi *s3FileInfo) Mode() stdfs.FileMode {
+	return 0644 // Default permission for files
+}
+
+func (fi *s3FileInfo) ModTime() time.Time {
+	return fi.modTime
+}
+
+func (fi *s3FileInfo) IsDir() bool {
+	return false // S3 files represented by File struct are always files, not directories
+}
+
+func (fi *s3FileInfo) Sys() interface{} {
+	return nil
 }
 
 // Location returns a vfs.Location at the location of the object. IE: if file is at

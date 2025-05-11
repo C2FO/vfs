@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"time"
@@ -127,6 +128,26 @@ func (f *File) Size() (uint64, error) {
 		return 0, utils.WrapSizeError(err)
 	}
 	return uint64(userinfo.Size()), nil
+}
+
+// Stat returns a fs.FileInfo describing the file.
+// This implements the fs.File interface from io/fs.
+func (f *File) Stat() (fs.FileInfo, error) {
+	client, err := f.Location().FileSystem().(*FileSystem).Client(f.Location().Authority())
+	if err != nil {
+		return nil, utils.WrapStatError(err)
+	}
+
+	// Start timer once action is completed
+	defer f.Location().FileSystem().(*FileSystem).connTimerStart()
+
+	fileInfo, err := client.Stat(f.Path())
+	if err != nil {
+		return nil, utils.WrapStatError(err)
+	}
+
+	// The SFTP client's FileInfo already implements fs.FileInfo, so we can just return it
+	return fileInfo, nil
 }
 
 // Location returns a vfs.Location at the location of the file. IE: if file is at

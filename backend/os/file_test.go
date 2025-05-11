@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -717,6 +718,50 @@ func (s *osFileTest) TestLocationRightAfterChangeDir() {
 	err = loc.ChangeDir(chDir)
 	s.NoError(err)
 	s.Contains(loc.Path(), "someDir/", "location now should contain 'someDir/'")
+}
+
+// TestStat tests the Stat method returns correct file information
+func (s *osFileTest) TestStat() {
+	// Create a temp file with content
+	tempFile, err := os.CreateTemp("", "os-stat-test")
+	s.NoError(err, "No error expected creating temp file")
+	defer func() {
+		_ = tempFile.Close()
+		_ = os.Remove(tempFile.Name())
+	}()
+
+	expectedContent := "test content for stat"
+	_, err = tempFile.WriteString(expectedContent)
+	s.NoError(err, "No error expected writing to temp file")
+	err = tempFile.Close() // Close it so we can open through our API
+	s.NoError(err, "No error expected when closing temp file")
+
+	// Create VFS file from the temp file
+	fs := NewFileSystem()
+	file, err := fs.NewFile("", tempFile.Name())
+	s.NoError(err, "No error expected creating VFS file")
+
+	// Test Stat method
+	fileInfo, err := file.Stat()
+	s.NoError(err, "Stat() should not return an error for existing file")
+	s.NotNil(fileInfo, "FileInfo should not be nil")
+
+	// Check file info properties
+	s.Equal(filepath.Base(tempFile.Name()), fileInfo.Name(), "FileInfo name should match file name")
+	s.Equal(int64(len(expectedContent)), fileInfo.Size(), "FileInfo size should match content length")
+	s.False(fileInfo.IsDir(), "FileInfo should indicate file is not a directory")
+	s.NotNil(fileInfo.ModTime(), "ModTime should not be nil")
+
+	// Test Stat on non-existent file
+	nonExistentFile, err := fs.NewFile("", "/non-existent-file.txt")
+	s.NoError(err, "error creating reference to non-existent file")
+	_, err = nonExistentFile.Stat()
+	s.Error(err, "error expected when calling Stat on non-existent file")
+	// Use Contains with platform-independent error messages
+	errorMsg := err.Error()
+	hasNoSuchFile := strings.Contains(errorMsg, "no such file")
+	cannotFindFile := strings.Contains(errorMsg, "cannot find the file")
+	s.True(hasNoSuchFile || cannotFindFile, "error should indicate no such file")
 }
 
 func TestOSFile(t *testing.T) {
