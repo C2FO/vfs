@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -402,6 +403,16 @@ func (f *File) openFile() (*os.File, error) {
 	f.file = file
 
 	return file, nil
+}
+
+// Stat returns a fs.FileInfo describing the file.
+// This implements the fs.File interface from io/fs.
+func (f *File) Stat() (fs.FileInfo, error) {
+	info, err := os.Stat(osFilePath(f))
+	if err != nil {
+		return nil, utils.WrapStatError(err)
+	}
+	return info, nil
 }
 
 func openOSFile(filePath string) (*os.File, error) {
