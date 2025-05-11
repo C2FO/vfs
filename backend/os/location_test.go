@@ -216,7 +216,7 @@ func (s *osLocationTest) TestOpen() {
 	s.NoError(err, "Reading from opened file should not error")
 	s.Equal(len(testContent), n, "Should read all content")
 	s.Equal(testContent, string(data), "Content should match")
-	
+
 	// Close the opened file to avoid "file in use" errors on Windows
 	s.NoError(opened.Close(), "Closing opened file should not error")
 

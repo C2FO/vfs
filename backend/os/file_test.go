@@ -726,14 +726,15 @@ func (s *osFileTest) TestStat() {
 	tempFile, err := os.CreateTemp("", "os-stat-test")
 	s.NoError(err, "No error expected creating temp file")
 	defer func() {
-		tempFile.Close()
-		os.Remove(tempFile.Name())
+		_ = tempFile.Close()
+		_ = os.Remove(tempFile.Name())
 	}()
 
 	expectedContent := "test content for stat"
-	_, err = tempFile.Write([]byte(expectedContent))
+	_, err = tempFile.WriteString(expectedContent)
 	s.NoError(err, "No error expected writing to temp file")
-	tempFile.Close() // Close it so we can open through our API
+	err = tempFile.Close() // Close it so we can open through our API
+	s.NoError(err, "No error expected when closing temp file")
 
 	// Create VFS file from the temp file
 	fs := NewFileSystem()
@@ -758,7 +759,9 @@ func (s *osFileTest) TestStat() {
 	s.Error(err, "error expected when calling Stat on non-existent file")
 	// Use Contains with platform-independent error messages
 	errorMsg := err.Error()
-	s.True(strings.Contains(errorMsg, "no such file") || strings.Contains(errorMsg, "cannot find the file"), "error should indicate no such file")
+	hasNoSuchFile := strings.Contains(errorMsg, "no such file")
+	cannotFindFile := strings.Contains(errorMsg, "cannot find the file")
+	s.True(hasNoSuchFile || cannotFindFile, "error should indicate no such file")
 }
 
 func TestOSFile(t *testing.T) {
