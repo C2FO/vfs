@@ -66,3 +66,8 @@ func WrapMoveToLocationError(err error) error {
 func WrapMoveToFileError(err error) error {
 	return fmt.Errorf("moveToFile error: %w", err)
 }
+
+// WrapStatError returns a wrapped Stat error
+func WrapStatError(err error) error {
+	return fmt.Errorf("stat error: %w", err)
+}
