@@ -1,7 +1,9 @@
 package mem
 
 import (
+	"errors"
 	"io"
+	"io/fs"
 	"path"
 	"regexp"
 	"testing"
@@ -340,6 +342,58 @@ func (s *memLocationTest) TestWriteExistingFile() {
 	data, err := io.ReadAll(file)
 	s.Require().NoError(err)
 	s.Equal("hello world", string(data))
+}
+
+// TestOpen tests the Open method in the Location implementation
+func (s *memLocationTest) TestOpen() {
+	// Setup test files
+	testContent := "hello world"
+	testFileName := "open_test_file.txt"
+	testFilePath := "/test_files/" + testFileName
+	
+	// Create a file and write content
+	file, err := s.fileSystem.NewFile("", testFilePath)
+	s.NoError(err, "error not expected when creating a new file")
+	_, err = file.Write([]byte(testContent))
+	s.NoError(err, "write error not expected")
+	s.NoError(file.Close(), "close error not expected")
+	
+	// Get the file's location
+	loc := file.Location()
+	
+	// Test Opening the file
+	opened, err := loc.Open(testFileName)
+	s.NoError(err, "error not expected when opening existing file")
+	s.NotNil(opened, "opened file should not be nil")
+	
+	// Read the content to verify
+	data := make([]byte, len(testContent))
+	n, err := opened.Read(data)
+	s.NoError(err, "read error not expected")
+	s.Equal(len(testContent), n, "should read all content")
+	s.Equal(testContent, string(data), "content should match")
+	
+	// Test opening non-existent file
+	_, err = loc.Open("non-existent-file.txt")
+	s.Error(err, "error expected when opening non-existent file")
+	var pathErr *fs.PathError
+	s.True(errors.As(err, &pathErr), "error should be a fs.PathError")
+	s.ErrorIs(pathErr.Err, fs.ErrNotExist, "underlying error should be fs.ErrNotExist")
+	
+	// Test opening with path traversal attempts (should be rejected)
+	_, err = loc.Open("../outside.txt")
+	s.Error(err, "error expected when path contains traversal")
+	s.True(errors.As(err, &pathErr), "error should be a fs.PathError")
+	s.ErrorIs(pathErr.Err, fs.ErrInvalid, "underlying error should be fs.ErrInvalid")
+	
+	_, err = loc.Open("./file.txt")
+	s.Error(err, "error expected when path contains ./")
+	
+	_, err = loc.Open(".")
+	s.Error(err, "error expected when path is .")
+	
+	_, err = loc.Open("..")
+	s.Error(err, "error expected when path is ..")
 }
 
 func TestMemLocation(t *testing.T) {

@@ -758,6 +758,34 @@ func (s *memFileTest) TestFileNewWrite() {
 	s.Equal("hello world", string(data))
 }
 
+// TestStat tests the Stat method returns correct file information
+func (s *memFileTest) TestStat() {
+	// Write some content to the file
+	expectedContent := "test content for stat"
+	_, err := s.testFile.Write([]byte(expectedContent))
+	s.NoError(err, "write error not expected")
+	s.NoError(s.testFile.Close(), "close error not expected")
+
+	// Get file info via Stat()
+	fileInfo, err := s.testFile.Stat()
+	s.NoError(err, "stat error not expected")
+	s.NotNil(fileInfo, "FileInfo should not be nil")
+	
+	// Check file info properties
+	s.Equal("test.txt", fileInfo.Name(), "FileInfo name should match file name")
+	s.Equal(int64(len(expectedContent)), fileInfo.Size(), "FileInfo size should match content length")
+	s.False(fileInfo.IsDir(), "FileInfo should indicate file is not a directory")
+	s.NotNil(fileInfo.ModTime(), "ModTime should not be nil")
+	s.Equal(0644, int(fileInfo.Mode()), "Mode should be 0644")
+	
+	// Test Stat on non-existent file
+	nonExistentFile, err := s.fileSystem.NewFile("", "/non-existent-file.txt")
+	s.NoError(err, "error creating reference to non-existent file")
+	_, err = nonExistentFile.Stat()
+	s.Error(err, "error expected when calling Stat on non-existent file")
+	s.ErrorIs(err, fs.ErrNotExist, "error should be fs.ErrNotExist")
+}
+
 func TestMemFile(t *testing.T) {
 	suite.Run(t, new(memFileTest))
 	_ = os.Remove("test_files/new.txt")
