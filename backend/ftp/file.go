@@ -156,7 +156,7 @@ func (f *File) Exists() (bool, error) {
 // Returns error if unable to touch File.
 func (f *File) Touch() error {
 	exists, err := f.Exists()
-	if (err != nil) {
+	if err != nil {
 		return utils.WrapTouchError(err)
 	}
 
