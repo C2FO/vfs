@@ -2,6 +2,7 @@ package azure
 
 import (
 	"errors"
+	"io/fs"
 	"path"
 	"regexp"
 	"strings"
@@ -203,6 +204,35 @@ func (l *Location) NewFile(relFilePath string, opts ...options.NewFileOption) (v
 		name:     path.Join(l.Path(), relFilePath),
 		opts:     opts,
 	}, nil
+}
+
+// Open opens the named file at this location.
+// This implements the fs.FS interface from io/fs.
+func (l *Location) Open(name string) (fs.File, error) {
+	// fs.FS expects paths with no leading slash
+	name = strings.TrimPrefix(name, "/")
+
+	// For io/fs compliance, we need to validate that it doesn't contain "." or ".." elements
+	if name == "." || name == ".." || strings.Contains(name, "/.") || strings.Contains(name, "./") {
+		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrInvalid}
+	}
+
+	// Create a standard vfs file using NewFile
+	vfsFile, err := l.NewFile(name)
+	if err != nil {
+		return nil, &fs.PathError{Op: "open", Path: name, Err: err}
+	}
+
+	// Check if the file exists, as fs.FS.Open requires the file to exist
+	exists, err := vfsFile.Exists()
+	if err != nil {
+		return nil, &fs.PathError{Op: "open", Path: name, Err: err}
+	}
+	if !exists {
+		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
+	}
+
+	return vfsFile, nil
 }
 
 // DeleteFile deletes the file at the given path, relative to the current location.
