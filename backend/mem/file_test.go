@@ -770,14 +770,14 @@ func (s *memFileTest) TestStat() {
 	fileInfo, err := s.testFile.Stat()
 	s.NoError(err, "stat error not expected")
 	s.NotNil(fileInfo, "FileInfo should not be nil")
-	
+
 	// Check file info properties
 	s.Equal("test.txt", fileInfo.Name(), "FileInfo name should match file name")
 	s.Equal(int64(len(expectedContent)), fileInfo.Size(), "FileInfo size should match content length")
 	s.False(fileInfo.IsDir(), "FileInfo should indicate file is not a directory")
 	s.NotNil(fileInfo.ModTime(), "ModTime should not be nil")
 	s.Equal(0644, int(fileInfo.Mode()), "Mode should be 0644")
-	
+
 	// Test Stat on non-existent file
 	nonExistentFile, err := s.fileSystem.NewFile("", "/non-existent-file.txt")
 	s.NoError(err, "error creating reference to non-existent file")

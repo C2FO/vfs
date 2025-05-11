@@ -755,7 +755,7 @@ func (s *osFileTest) TestStat() {
 	s.NoError(err, "error creating reference to non-existent file")
 	_, err = nonExistentFile.Stat()
 	s.Error(err, "error expected when calling Stat on non-existent file")
-	s.True(os.IsNotExist(err), "error should be os.IsNotExist")
+	s.Contains(err.Error(), "no such file or directory", "error should indicate no such file")
 }
 
 func TestOSFile(t *testing.T) {

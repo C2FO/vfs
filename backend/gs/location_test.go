@@ -365,12 +365,12 @@ func (lt *locationTestSuite) TestOpen() {
 	// Test opening a non-existent file
 	_, err = loc.Open("non-existent-file.txt")
 	lt.Error(err, "Opening a non-existent file should return an error")
-	lt.Contains(err.Error(), "ErrNotExist", "Error should indicate file does not exist")
+	lt.Contains(err.Error(), "file does not exist", "Error should indicate file does not exist")
 
 	// Test opening with path traversal
 	_, err = loc.Open("../outside.txt")
 	lt.Error(err, "Opening a file with path traversal should return an error")
-	lt.Contains(err.Error(), "ErrInvalid", "Error should indicate invalid path")
+	lt.Contains(err.Error(), "invalid argument", "Error should indicate invalid path")
 
 	// Test opening with dot paths
 	_, err = loc.Open(".")
