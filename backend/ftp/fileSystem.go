@@ -110,19 +110,19 @@ func (fs *FileSystem) Scheme() string {
 
 // DataConn returns the underlying ftp data connection, creating it, if necessary
 // See Overview for authentication resolution
-func (fs *FileSystem) DataConn(ctx context.Context, authority authority.Authority, t types.OpenType, f *File) (types.DataConn, error) {
+func (fs *FileSystem) DataConn(ctx context.Context, a authority.Authority, t types.OpenType, f *File) (types.DataConn, error) {
 	if t != types.SingleOp && f == nil {
 		return nil, errors.New("can not create DataConn for read or write for a nil file")
 	}
-	return dataConnGetterFunc(ctx, authority, fs, f, t)
+	return dataConnGetterFunc(ctx, a, fs, f, t)
 }
 
 // Client returns the underlying ftp client, creating it, if necessary
 // See Overview for authentication resolution
-func (fs *FileSystem) Client(ctx context.Context, authority authority.Authority) (types.Client, error) {
+func (fs *FileSystem) Client(ctx context.Context, a authority.Authority) (types.Client, error) {
 	if fs.ftpclient == nil {
 		var err error
-		fs.ftpclient, err = defaultClientGetter(ctx, authority, fs.options)
+		fs.ftpclient, err = defaultClientGetter(ctx, a, fs.options)
 		if err != nil {
 			return nil, err
 		}

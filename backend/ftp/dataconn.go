@@ -135,7 +135,7 @@ func (dc *dataConn) Close() error {
 	return nil
 }
 
-func getDataConn(ctx context.Context, authority authority.Authority, fs *FileSystem, f *File, t types.OpenType) (types.DataConn, error) {
+func getDataConn(ctx context.Context, a authority.Authority, fs *FileSystem, f *File, t types.OpenType) (types.DataConn, error) {
 	if fs == nil {
 		return nil, errors.New("can not get a dataconn for a nil fileset")
 	}
@@ -148,7 +148,7 @@ func getDataConn(ctx context.Context, authority authority.Authority, fs *FileSys
 	}
 
 	if fs.dataconn == nil || fs.resetConn {
-		client, err := fs.Client(ctx, authority)
+		client, err := fs.Client(ctx, a)
 		if err != nil {
 			return nil, err
 		}

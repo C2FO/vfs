@@ -6,7 +6,6 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 
 	"github.com/c2fo/vfs/v7"
@@ -116,7 +115,7 @@ func (l *Location) fileList(testEval fileTest) ([]string, error) {
 	return files, nil
 }
 
-// Volume returns the volume, if any, of the location. Given "C:\foo\bar" it returns "C:" on Windows. On other platforms it returns "".
+// Volume returns the URI authority, if any, of the location.
 //
 // Deprecated: Use Authority instead.
 //
@@ -132,14 +131,21 @@ func (l *Location) Authority() authority.Authority {
 
 // Path returns the location path.
 func (l *Location) Path() string {
-	return utils.EnsureLeadingSlash(utils.EnsureTrailingSlash(l.name))
+	p := utils.EnsureTrailingSlash(l.name)
+
+	// for Windows paths with drive letters, don't add leading slash
+	if utils.IsWindowsVolume(l.name) {
+		return p
+	}
+
+	return utils.EnsureLeadingSlash(p)
 }
 
 // Exists returns true if the location exists, and the calling user has the appropriate
 // permissions. Will receive false without an error if the location simply doesn't exist. Otherwise could receive
 // false and any errors passed back from the OS.
 func (l *Location) Exists() (bool, error) {
-	_, err := os.Stat(osLocationPath(l))
+	_, err := os.Stat(l.Path())
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
@@ -212,11 +218,4 @@ func (l *Location) ChangeDir(relativePath string) error {
 // FileSystem returns a vfs.FileSystem interface of the location's underlying file system.
 func (l *Location) FileSystem() vfs.FileSystem {
 	return l.fileSystem
-}
-
-func osLocationPath(l vfs.Location) string {
-	if runtime.GOOS == "windows" {
-		return l.Authority().String() + filepath.FromSlash(l.Path())
-	}
-	return l.Path()
 }

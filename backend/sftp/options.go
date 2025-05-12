@@ -106,7 +106,7 @@ var defaultSSHConfig = &ssh.ClientConfig{
 }
 
 // GetClient returns a new sftp client and underlying ssh client(io.Closer) using the given authority and options.
-func GetClient(authority authority.Authority, opts Options) (sftpclient *_sftp.Client, sshclient *ssh.Client, err error) {
+func GetClient(a authority.Authority, opts Options) (sftpclient *_sftp.Client, sshclient *ssh.Client, err error) {
 	// setup Authentication
 	authMethods, err := getAuthMethods(opts)
 	if err != nil {
@@ -129,14 +129,14 @@ func GetClient(authority authority.Authority, opts Options) (sftpclient *_sftp.C
 	if opts.Username != "" {
 		config.User = opts.Username
 	} else {
-		config.User = authority.UserInfo().Username()
+		config.User = a.UserInfo().Username()
 	}
 	config.Auth = authMethods
 	config.HostKeyCallback = hostKeyCallback
 
 	// default to port 22
-	host := fmt.Sprintf("%s:%d", authority.Host(), authority.Port())
-	if authority.Port() == 0 {
+	host := fmt.Sprintf("%s:%d", a.Host(), a.Port())
+	if a.Port() == 0 {
 		host = fmt.Sprintf("%s:%d", host, 22)
 	}
 

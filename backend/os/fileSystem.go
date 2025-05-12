@@ -3,7 +3,6 @@ package os
 import (
 	"path"
 	"path/filepath"
-	"runtime"
 
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/backend"
@@ -17,7 +16,9 @@ const Scheme = "file"
 const name = "os"
 
 // FileSystem implements vfs.FileSystem for the OS file system.
-type FileSystem struct{}
+type FileSystem struct {
+	tempDir string // Optional directory for temporary files
+}
 
 // NewFileSystem creates a new instance of the OS file system.
 func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem {
@@ -38,12 +39,6 @@ func (fs *FileSystem) Retry() vfs.Retry {
 
 // NewFile function returns the os implementation of vfs.File.
 func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.NewFileOption) (vfs.File, error) {
-	if runtime.GOOS == "windows" && filepath.IsAbs(filePath) {
-		if v := filepath.VolumeName(filePath); v != "" {
-			authorityStr = v
-			filePath = filePath[len(v):]
-		}
-	}
 
 	filePath = filepath.ToSlash(filePath)
 	err := utils.ValidateAbsoluteFilePath(filePath)
@@ -60,17 +55,12 @@ func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.New
 		name:     filePath,
 		location: loc.(*Location),
 		opts:     opts,
+		tempDir:  fs.tempDir,
 	}, nil
 }
 
 // NewLocation function returns the os implementation of vfs.Location.
 func (fs *FileSystem) NewLocation(authorityStr, locPath string) (vfs.Location, error) {
-	if runtime.GOOS == "windows" && filepath.IsAbs(locPath) {
-		if v := filepath.VolumeName(locPath); v != "" {
-			authorityStr = v
-			locPath = locPath[len(v):]
-		}
-	}
 
 	locPath = filepath.ToSlash(locPath)
 	err := utils.ValidateAbsoluteLocationPath(locPath)
