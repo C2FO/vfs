@@ -131,11 +131,14 @@ func (l *Location) Authority() authority.Authority {
 
 // Path returns the location path.
 func (l *Location) Path() string {
-	if len(l.name) >= 2 && ((l.name[0] >= 'A' && l.name[0] <= 'Z') || (l.name[0] >= 'a' && l.name[0] <= 'z')) && l.name[1] == ':' {
-		// For Windows paths with drive letters, ensure trailing slash but don't add leading slash
-		return utils.EnsureTrailingSlash(l.name)
+	p := utils.EnsureTrailingSlash(l.name)
+
+	// for Windows paths with drive letters, don't add leading slash
+	if utils.IsWindowsVolume(l.name) {
+		return p
 	}
-	return utils.EnsureLeadingSlash(utils.EnsureTrailingSlash(l.name))
+
+	return utils.EnsureLeadingSlash(p)
 }
 
 // Exists returns true if the location exists, and the calling user has the appropriate
