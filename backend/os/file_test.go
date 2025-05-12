@@ -2,6 +2,7 @@ package os
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -616,7 +617,7 @@ func (s *osFileTest) TestLastModified() {
 
 	lastModified, err := file.LastModified()
 	s.Require().NoError(err)
-	osStats, err := os.Stat(filepath.Join(osLocationPath(s.tmploc), "test_files", "test.txt"))
+	osStats, err := os.Stat(filepath.Join(s.tmploc.Path(), "test_files", "test.txt"))
 	s.Require().NoError(err)
 	s.NotNil(lastModified)
 	s.Equal(osStats.ModTime(), *lastModified)
@@ -642,7 +643,7 @@ func (s *osFileTest) TestSize() {
 	s.Require().NoError(err)
 	s.NotNil(size)
 
-	osStats, err := os.Stat(filepath.Join(osLocationPath(s.tmploc), "test_files", "test.txt"))
+	osStats, err := os.Stat(filepath.Join(s.tmploc.Path(), "test_files", "test.txt"))
 	s.Require().NoError(err)
 	s.Equal(osStats.Size(), int64(size))
 
@@ -662,14 +663,15 @@ func (s *osFileTest) TestPath() {
 func (s *osFileTest) TestURI() {
 	file, err := s.tmploc.NewFile("some/file/test.txt")
 	s.Require().NoError(err)
-	expected := "file://" + filepath.ToSlash(filepath.Join(osLocationPath(s.tmploc), "some", "file", "test.txt"))
+	expected := fmt.Sprintf("file://%s", filepath.ToSlash(filepath.Join(utils.EnsureLeadingSlash(s.tmploc.Path()), "some", "file", "test.txt")))
 	s.Equal(expected, file.URI(), "%s does not match %s", file.URI(), expected)
 }
 
 func (s *osFileTest) TestStringer() {
 	file, err := s.tmploc.NewFile("some/file/test.txt")
 	s.Require().NoError(err)
-	s.Equal("file://"+filepath.ToSlash(filepath.Join(osLocationPath(s.tmploc), "some", "file", "test.txt")), file.String())
+	expected := fmt.Sprintf("file://%s", filepath.ToSlash(filepath.Join(utils.EnsureLeadingSlash(s.tmploc.Path()), "some", "file", "test.txt")))
+	s.Equal(expected, file.String())
 }
 
 //nolint:staticcheck // deprecated method test
