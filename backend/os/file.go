@@ -427,6 +427,193 @@ func ensureDir(location vfs.Location) error {
 	return nil
 }
 
+// copyToLocalTempReader creates a temporary file for writing operations.
+// It handles finding an appropriate temp directory and copying existing file content if needed.
+func (f *File) copyToLocalTempReader() (*os.File, error) {
+	filePath := f.Path() // Get target path early for errors
+
+	// Step 1: Find appropriate temp directory
+	tempDir, err := f.findAppropriateTemporaryDirectory(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 2: Create the intermediate file in the chosen directory
+	tmpFile, err := os.CreateTemp(tempDir, fmt.Sprintf("%s.%d.*.tmp", f.Name(), time.Now().UnixNano()))
+	if err != nil {
+		return nil, fmt.Errorf("os write error: cannot create intermediate file for %s: %w", filePath, err)
+	}
+
+	// Setup cleanup of the temp file in case of errors
+	tmpFileCleanup := tmpFile // Create a copy for the defer to use
+	defer func() {
+		if tmpFileCleanup != nil {
+			if _, statErr := os.Stat(tmpFileCleanup.Name()); statErr == nil {
+				_ = os.Remove(tmpFileCleanup.Name())
+			}
+		}
+	}()
+
+	// Step 3: Copy existing content if needed
+	if err := f.copyExistingContentIfNeeded(filePath, tmpFile); err != nil {
+		return nil, err
+	}
+
+	// Success - prevent deferred cleanup from running
+	tmpFileCleanup = nil
+	return tmpFile, nil
+}
+
+// findAppropriateTemporaryDirectory determines the best location for a temporary file.
+// It tries several locations in order of preference to find one that's suitable.
+func (f *File) findAppropriateTemporaryDirectory(filePath string) (string, error) {
+	// If user specified a temp directory, use that
+	if f.tempDir != "" {
+		return f.ensureCustomTempDir(f.tempDir)
+	}
+
+	// Try to find the best system location
+	return f.findSystemTempDirectory(filePath)
+}
+
+// ensureCustomTempDir verifies a user-specified temp directory exists and is writable
+func (f *File) ensureCustomTempDir(tempDir string) (string, error) {
+	// Ensure the custom temp directory exists
+	if mkdirErr := os.MkdirAll(tempDir, 0750); mkdirErr != nil {
+		return "", fmt.Errorf("os option error: cannot create temp dir %s: %w", tempDir, mkdirErr)
+	}
+
+	// Basic check if it's writable
+	testFile, testErr := os.CreateTemp(tempDir, ".vfstestwritable.*.tmp")
+	if testErr != nil {
+		return "", fmt.Errorf("os option error: temp dir %s not writable: %w", tempDir, testErr)
+	}
+	_ = testFile.Close()
+	_ = os.Remove(testFile.Name())
+
+	return tempDir, nil
+}
+
+// findSystemTempDirectory tries to find an appropriate system temp directory
+func (f *File) findSystemTempDirectory(filePath string) (string, error) {
+	// Try system temp dir first, but only if it's on the same device as the target
+	osTempDir := os.TempDir()
+
+	// First try: system temp if on same device
+	sameAsOsTemp, checkErr := areSameVolumeOrDevice(filePath, osTempDir)
+	if checkErr == nil && sameAsOsTemp {
+		if isUsableDirectory(osTempDir) {
+			return osTempDir, nil
+		}
+	}
+
+	// Second try: parent directory of the target file
+	targetDir := filepath.Dir(filePath)
+	if isWritableDirectory(targetDir) {
+		return targetDir, nil
+	}
+
+	// Final fallback: system temp dir, even if on a different device
+	_ = os.MkdirAll(osTempDir, 0750) // Ensure it exists
+	return osTempDir, nil
+}
+
+// isUsableDirectory checks if a directory exists and is usable
+func isUsableDirectory(dir string) bool {
+	if mkdirErr := os.MkdirAll(dir, 0750); mkdirErr == nil {
+		if _, statErr := os.Stat(dir); statErr == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// isWritableDirectory checks if a directory exists and is writable
+func isWritableDirectory(dir string) bool {
+	if _, statErr := os.Stat(dir); statErr == nil {
+		// Check if dir is writable
+		testFile, testErr := os.CreateTemp(dir, ".vfstestwritable.*.tmp")
+		if testErr == nil {
+			_ = testFile.Close()
+			_ = os.Remove(testFile.Name())
+			return true
+		}
+	}
+	return false
+}
+
+// copyExistingContentIfNeeded copies content from the original file to the temp file if needed
+func (f *File) copyExistingContentIfNeeded(filePath string, tmpFile *os.File) error {
+	exists, err := f.Exists()
+	if err != nil {
+		return fmt.Errorf("os error: cannot check existence of %s: %w", filePath, err)
+	}
+
+	// Only copy if file exists AND we've called Seek or Read first
+	if !exists || (!f.seekCalled && !f.readCalled) {
+		return nil
+	}
+
+	// Open the original file
+	openFunc := openOSFile
+	if f.fileOpener != nil {
+		openFunc = f.fileOpener
+	}
+
+	actualFile, err := openFunc(filePath)
+	if err != nil {
+		return fmt.Errorf("os write error: cannot open %s for update: %w", filePath, err)
+	}
+	defer func() { _ = actualFile.Close() }()
+
+	// Copy content and set cursor position
+	if err := f.copyAndSetCursorPosition(tmpFile, actualFile); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// copyAndSetCursorPosition copies content from source to destination and sets the cursor position
+func (f *File) copyAndSetCursorPosition(dstFile, srcFile *os.File) error {
+	filePath := f.Path()
+
+	// Rewind temp file before copying
+	if _, seekErr := dstFile.Seek(0, io.SeekStart); seekErr != nil {
+		return fmt.Errorf("os write error: cannot prepare %s for update (seek failed): %w", filePath, seekErr)
+	}
+
+	// Copy content
+	if _, err := io.Copy(dstFile, srcFile); err != nil {
+		_ = dstFile.Close() // Close temp file before returning error
+		return fmt.Errorf("os write error: failed copying content for %s: %w", filePath, err)
+	}
+
+	// Set cursor position
+	return f.setCursorPosition(dstFile)
+}
+
+// setCursorPosition sets the cursor position in the file
+func (f *File) setCursorPosition(file *os.File) error {
+	filePath := f.Path()
+
+	if f.cursorPos > 0 {
+		// Match cursor position in temp file
+		if _, err := file.Seek(f.cursorPos, io.SeekStart); err != nil {
+			_ = file.Close() // Close file before returning error
+			return fmt.Errorf("os write error: failed setting write cursor for %s: %w", filePath, err)
+		}
+	} else {
+		// Ensure we are at the start if cursorPos is 0
+		if _, err := file.Seek(0, io.SeekStart); err != nil {
+			_ = file.Close() // Close file before returning error
+			return fmt.Errorf("os write error: failed setting write cursor for %s: %w", filePath, err)
+		}
+	}
+
+	return nil
+}
+
 // If cursor is not (0,0) will copy original file to a temp file,
 // opening its file descriptor to the current cursor position.
 // If cursor is (0,0), just begin writing to new temp file.
@@ -459,145 +646,6 @@ func (f *File) getInternalFile() (*os.File, error) {
 	}
 
 	return f.tempFile, nil
-}
-
-func (f *File) copyToLocalTempReader() (*os.File, error) {
-	var tempDir string
-	var err error
-	filePath := f.Path() // Get target path early for errors
-
-	// Prioritize the user-specified temp directory if provided
-	if f.tempDir != "" {
-		// User explicitly requested a temp location.
-		tempDir = f.tempDir
-		// Ensure the custom temp directory exists
-		if mkdirErr := os.MkdirAll(tempDir, 0750); mkdirErr != nil {
-			return nil, fmt.Errorf("os option error: cannot create temp dir %s: %w", tempDir, mkdirErr)
-		}
-		// Basic check if it's writable
-		testFile, testErr := os.CreateTemp(tempDir, ".vfstestwritable.*.tmp")
-		if testErr != nil {
-			return nil, fmt.Errorf("os option error: temp dir %s not writable: %w", tempDir, testErr)
-		}
-		_ = testFile.Close()
-		_ = os.Remove(testFile.Name())
-	} else {
-		// Fallback logic: Try to find the best place for a temporary file to facilitate
-		// an efficient and atomic os.Rename when the VFS File is closed.
-
-		// Try system temp dir first, but ONLY if it's on the same device as the target.
-		// This allows os.Rename to work efficiently and atomically later.
-		osTempDir := os.TempDir()
-		sameAsOsTemp, checkErr := areSameVolumeOrDevice(filePath, osTempDir)
-		if checkErr == nil && sameAsOsTemp {
-			// Ensure osTempDir exists and is usable
-			if mkdirErr := os.MkdirAll(osTempDir, 0750); mkdirErr == nil {
-				if _, statErr := os.Stat(osTempDir); statErr == nil {
-					tempDir = osTempDir
-				}
-			}
-		}
-
-		// If system temp wasn't suitable (wrong device, doesn't exist, not writable),
-		// try the parent directory of the target file. This is often on the same device.
-		if tempDir == "" {
-			targetDir := filepath.Dir(filePath)
-			if _, statErr := os.Stat(targetDir); statErr == nil {
-				// Check if parent dir is writable
-				testFile, testErr := os.CreateTemp(targetDir, ".vfstestwritable.*.tmp")
-				if testErr == nil {
-					_ = testFile.Close()
-					_ = os.Remove(testFile.Name())
-					tempDir = targetDir
-				}
-			}
-		}
-
-		// Ultimate fallback: system temp dir, even if on a different device.
-		// This might cause os.Rename to fail later with a cross-device link error,
-		// forcing a slower, non-atomic copy-delete operation in safeOsRename.
-		if tempDir == "" {
-			_ = os.MkdirAll(osTempDir, 0750) // Ensure it exists
-			tempDir = osTempDir
-		}
-	}
-
-	// Create the intermediate file in the chosen directory
-	tmpFile, err := os.CreateTemp(tempDir, fmt.Sprintf("%s.%d.*.tmp", f.Name(), time.Now().UnixNano()))
-	if err != nil {
-		return nil, fmt.Errorf("os write error: cannot create intermediate file for %s: %w", filePath, err)
-	}
-
-	// Defer cleanup of the temp file in case of errors after this point,
-	// but only if it still exists (it will be renamed on successful close).
-	defer func() {
-		if tmpFile != nil {
-			if _, statErr := os.Stat(tmpFile.Name()); statErr == nil {
-				_ = os.Remove(tmpFile.Name())
-			}
-		}
-	}()
-
-	exists, err := f.Exists()
-	if err != nil {
-		// No need to explicitly remove here due to defer
-		return nil, fmt.Errorf("os error: cannot check existence of %s: %w", filePath, err)
-	}
-
-	// If file exists AND we've called Seek or Read first, any subsequent writes should edit the file (temp),
-	// so we copy the original file to the temp file then set the cursor position on the temp file to the current position.
-	// If we're opening because Write is called first, we always overwrite the file, so no need to copy the original contents.
-	//
-	// So imagine we have a file with content "hello world" and we call Seek(6, 0) and then Write([]byte("there")), the
-	// temp file should have "hello there" and not "there". Then finally when Close is called, the temp file is renamed
-	// to the original file. This code ensures that scenario works as expected.
-	if exists && (f.seekCalled || f.readCalled) {
-		openFunc := openOSFile
-		if f.fileOpener != nil {
-			openFunc = f.fileOpener
-		}
-
-		actualFile, err := openFunc(filePath)
-		if err != nil {
-			// No need to explicitly remove here due to defer
-			return nil, fmt.Errorf("os write error: cannot open %s for update: %w", filePath, err)
-		}
-		// Ensure original file descriptor is closed eventually, even if copy fails
-		defer func() { _ = actualFile.Close() }()
-
-		// Rewind temp file before copying
-		if _, seekErr := tmpFile.Seek(0, io.SeekStart); seekErr != nil {
-			return nil, fmt.Errorf("os write error: cannot prepare %s for update (seek failed): %w", filePath, seekErr)
-		}
-
-		if _, err := io.Copy(tmpFile, actualFile); err != nil {
-			// No need to explicitly remove here due to defer
-			_ = tmpFile.Close() // Close temp file before returning error
-			return nil, fmt.Errorf("os write error: failed copying content for %s: %w", filePath, err)
-		}
-
-		// Restore cursor position if needed
-		if f.cursorPos > 0 {
-			// match cursor position in temp file
-			if _, err := tmpFile.Seek(f.cursorPos, io.SeekStart); err != nil {
-				// No need to explicitly remove here due to defer
-				_ = tmpFile.Close() // Close temp file before returning error
-				return nil, fmt.Errorf("os write error: failed setting write cursor for %s: %w", filePath, err)
-			}
-		} else {
-			// Ensure we are at the start if cursorPos is 0 after copying
-			if _, err := tmpFile.Seek(0, io.SeekStart); err != nil {
-				_ = tmpFile.Close() // Close temp file before returning error
-				return nil, fmt.Errorf("os write error: failed setting write cursor for %s: %w", filePath, err)
-			}
-		}
-	}
-
-	// Important: Nullify the deferred cleanup func variable if we are returning successfully
-	// We do this by capturing the successful return value and assigning nil to the pointer.
-	successfulTmpFile := tmpFile
-	tmpFile = nil // Prevent deferred os.Remove on successful return
-	return successfulTmpFile, nil
 }
 
 // areSameVolumeOrDevice checks if two paths reside on the same volume (Windows)

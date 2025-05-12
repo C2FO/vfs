@@ -45,15 +45,15 @@ const (
 )
 
 // GetClient returns a new FTP client with the given authority and options.
-func GetClient(ctx context.Context, authority authority.Authority, opts Options) (*_ftp.ServerConn, error) {
+func GetClient(ctx context.Context, a authority.Authority, opts Options) (*_ftp.ServerConn, error) {
 	// dial connection
-	c, err := _ftp.Dial(fetchHostPortString(authority), fetchDialOptions(ctx, authority, opts)...)
+	c, err := _ftp.Dial(fetchHostPortString(a), fetchDialOptions(ctx, a, opts)...)
 	if err != nil {
 		return nil, err
 	}
 
 	// login
-	err = c.Login(fetchUsername(authority, opts), fetchPassword(opts))
+	err = c.Login(fetchUsername(a, opts), fetchPassword(opts))
 	if err != nil {
 		return nil, err
 	}
