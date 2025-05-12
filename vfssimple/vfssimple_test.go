@@ -9,6 +9,7 @@ import (
 	"github.com/c2fo/vfs/v7/backend"
 	"github.com/c2fo/vfs/v7/backend/s3"
 	"github.com/c2fo/vfs/v7/backend/s3/mocks"
+	"github.com/c2fo/vfs/v7/utils"
 )
 
 func TestVFSSimple(t *testing.T) {
@@ -86,7 +87,7 @@ func (s *vfsSimpleSuite) TestParseURI() {
 			message:   "valid file uri with device letter, no authority",
 			scheme:    "file",
 			authority: "",
-			path:      "c:/path/to/file.txt",
+			path:      "/c:/path/to/file.txt", // note that under windows, this test removes the leading slash for this value
 		},
 		{
 			uri:       "file:///c/path/to/file.txt",
@@ -182,6 +183,9 @@ func (s *vfsSimpleSuite) TestParseURI() {
 				s.NoError(err, test.message)
 				s.Equal(test.scheme, scheme, test.message)
 				s.Equal(test.authority, authority, test.message)
+				if utils.IsWindowsVolume(utils.RemoveLeadingSlash(test.path)) {
+					s.Equal(utils.RemoveLeadingSlash(test.path), path, test.message)
+				}
 				s.Equal(test.path, path, test.message)
 			}
 		})
