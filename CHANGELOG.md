@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v7.5.0] - 2025-05-12
 ### Fixed
 - Improved the internal logic for selecting temporary file locations in the OS backend. The logic now better prioritizes directories on the same device as the target file, significantly reducing the likelihood of cross-device rename errors by default (#122).
+- Corrected handling of drive letters as uri authority when it should be part of the path instead.
 
 ### Added
 - Introduced `backend/os.WithTempDir` option. This allows users to explicitly specify a custom directory for intermediate files used during OS write operations, providing a reliable way to resolve potential cross-device rename issues and control temporary file placement (#122).

@@ -246,12 +246,11 @@ func (s *memLocationTest) TestChangeDir() {
 
 //nolint:staticcheck // deprecated method test
 func (s *memLocationTest) TestVolume() {
-	newFile, nerr := s.fileSystem.NewFile("D:", "/path/to/file/example.txt")
+	newFile, nerr := s.fileSystem.NewFile("someNamespace", "/path/to/file/example.txt")
 	s.NoError(nerr, "unexpected error creating a file")
 	s.NoError(newFile.Touch(), "unexpected error touching file")
 	s.NoError(newFile.Close(), "unexpected error closing file")
-	// For Unix, this returns an empty string. For windows, it would be something like 'C:'
-	s.Equal("D", newFile.Location().Volume())
+	s.Equal("someNamespace", newFile.Location().Volume())
 }
 
 // TestPath makes sure that locations return the correct paths, along with leading and trailing slashes

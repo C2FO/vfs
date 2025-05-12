@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"runtime"
 	"strings"
 
 	"github.com/c2fo/vfs/v7"
@@ -11,6 +12,7 @@ import (
 	_ "github.com/c2fo/vfs/v7/backend/all" // register all backends
 	"github.com/c2fo/vfs/v7/backend/mem"
 	"github.com/c2fo/vfs/v7/backend/os"
+	"github.com/c2fo/vfs/v7/utils"
 )
 
 var (
@@ -74,6 +76,13 @@ func parseURI(uri string) (scheme, authority, path string, err error) {
 	// validate authority
 	authority = u.Host
 	path = u.Path
+
+	// For Windows paths with drive letters, strip the leading slash
+	if runtime.GOOS == "windows" && scheme == os.Scheme && len(path) >= 3 &&
+		path[0] == '/' &&
+		utils.IsWindowsVolume(path[1:]) {
+		path = path[1:] // Remove the leading slash
+	}
 
 	if u.User.String() != "" {
 		authority = fmt.Sprintf("%s@%s", u.User, u.Host)

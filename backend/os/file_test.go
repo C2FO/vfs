@@ -270,7 +270,7 @@ func (s *osFileTest) TestCopyToLocationIgnoreExtraSeparator() {
 
 func (s *osFileTest) TestMoveToLocation() {
 	expectedText := "moved file"
-	dir, terr := os.MkdirTemp(filepath.Join(osLocationPath(s.tmploc), "test_files"), "example")
+	dir, terr := os.MkdirTemp(filepath.Join(s.tmploc.Path(), "test_files"), "example")
 	s.NoError(terr)
 
 	origFileName := filepath.Join(dir, "test_files", "move.txt")
@@ -337,7 +337,7 @@ func (s *osFileTest) TestMoveToLocation() {
 }
 
 func (s *osFileTest) TestSafeOsRename() {
-	dir, err := os.MkdirTemp(filepath.Join(osLocationPath(s.tmploc), "test_files"), "example")
+	dir, err := os.MkdirTemp(filepath.Join(s.tmploc.Path(), "test_files"), "example")
 	s.NoError(err)
 	defer func() {
 		err := os.RemoveAll(dir)
@@ -378,7 +378,7 @@ func (s *osFileTest) TestSafeOsRename() {
 }
 
 func (s *osFileTest) TestOsCopy() {
-	dir, err := os.MkdirTemp(filepath.Join(osLocationPath(s.tmploc), "test_files"), "example")
+	dir, err := os.MkdirTemp(filepath.Join(s.tmploc.Path(), "test_files"), "example")
 	s.NoError(err)
 	defer func() {
 		err := os.RemoveAll(dir)
@@ -410,7 +410,7 @@ func (s *osFileTest) TestOsCopy() {
 }
 
 func (s *osFileTest) TestMoveToFile() {
-	dir, terr := os.MkdirTemp(filepath.Join(osLocationPath(s.tmploc), "test_files"), "example")
+	dir, terr := os.MkdirTemp(filepath.Join(s.tmploc.Path(), "test_files"), "example")
 	s.NoError(terr)
 
 	file1, err := s.fileSystem.NewFile("", path.Join(dir, "original.txt"))
@@ -650,7 +650,7 @@ func (s *osFileTest) TestLastModified() {
 
 	lastModified, err := file.LastModified()
 	s.NoError(err)
-	osStats, err := os.Stat(filepath.Join(osLocationPath(s.tmploc), "test_files", "test.txt"))
+	osStats, err := os.Stat(filepath.Join(s.tmploc.Path(), "test_files", "test.txt"))
 	s.NoError(err)
 	s.NotNil(lastModified)
 	s.Equal(osStats.ModTime(), *lastModified)
@@ -674,8 +674,9 @@ func (s *osFileTest) TestSize() {
 
 	size, err := file.Size()
 	s.NoError(err)
+	s.NotNil(size)
 
-	osStats, err := os.Stat(filepath.Join(osLocationPath(s.tmploc), "test_files", "test.txt"))
+	osStats, err := os.Stat(filepath.Join(s.tmploc.Path(), "test_files", "test.txt"))
 	s.NoError(err)
 	s.NotNil(size)
 	s.Equal(osStats.Size(), int64(size))
@@ -696,14 +697,15 @@ func (s *osFileTest) TestPath() {
 func (s *osFileTest) TestURI() {
 	file, err := s.tmploc.NewFile("some/file/test.txt")
 	s.NoError(err)
-	expected := fmt.Sprintf("file://%s", filepath.ToSlash(filepath.Join(osLocationPath(s.tmploc), "some", "file", "test.txt")))
+	expected := fmt.Sprintf("file:///%s", filepath.ToSlash(filepath.Join(s.tmploc.Path(), "some", "file", "test.txt")))
 	s.Equal(expected, file.URI(), "%s does not match %s", file.URI(), expected)
 }
 
 func (s *osFileTest) TestStringer() {
 	file, err := s.tmploc.NewFile("some/file/test.txt")
 	s.NoError(err)
-	s.Equal(fmt.Sprintf("file://%s", filepath.ToSlash(filepath.Join(osLocationPath(s.tmploc), "some", "file", "test.txt"))), file.String())
+	expected := fmt.Sprintf("file:///%s", filepath.ToSlash(filepath.Join(s.tmploc.Path(), "some", "file", "test.txt")))
+	s.Equal(expected, file.String())
 }
 
 //nolint:staticcheck // deprecated method test

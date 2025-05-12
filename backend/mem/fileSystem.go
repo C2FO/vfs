@@ -54,21 +54,21 @@ func (fs *FileSystem) Retry() vfs.Retry {
 // If a file is written to before a touch call, Write() will take care of that call.  This is
 // true for other functions as well and existence only poses a problem in the context of deletion
 // or copying FROM a non-existent file.
-func (fs *FileSystem) NewFile(volume, absFilePath string, opts ...options.NewFileOption) (vfs.File, error) {
+func (fs *FileSystem) NewFile(namespace, absFilePath string, opts ...options.NewFileOption) (vfs.File, error) {
 	err := utils.ValidateAbsoluteFilePath(absFilePath)
 	if err != nil {
 		return nil, err
 	}
 
-	location, err := fs.NewLocation(volume, utils.EnsureTrailingSlash(path.Dir(absFilePath)))
+	location, err := fs.NewLocation(namespace, utils.EnsureTrailingSlash(path.Dir(absFilePath)))
 	if err != nil {
 		return nil, err
 	}
 
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
-	if _, ok := fs.fsMap[volume]; ok {
-		for _, obj := range fs.fsMap[volume] {
+	if _, ok := fs.fsMap[namespace]; ok {
+		for _, obj := range fs.fsMap[namespace] {
 			if obj.isFile && obj.i.(*memFile).location.Path() == location.Path() {
 				if obj.i.(*memFile).name == path.Base(absFilePath) {
 					vfsFile := &File{
