@@ -1,9 +1,7 @@
 package os
 
 import (
-	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"testing"
 
@@ -25,7 +23,7 @@ type osLocationTest struct {
 }
 
 func (s *osLocationTest) SetupSuite() {
-	s.fileSystem = &FileSystem{}
+	s.fileSystem = NewFileSystem()
 	dir := s.T().TempDir()
 	dir = utils.EnsureTrailingSlash(dir)
 	var err error
@@ -134,8 +132,7 @@ func (s *osLocationTest) TestChangeDir() {
 func (s *osLocationTest) TestVolume() {
 	volume := s.testFile.Location().Volume()
 
-	// For Unix, this returns an empty string. For windows, it would be something like 'C:'
-	s.Equal(filepath.VolumeName(os.TempDir()), volume)
+	s.Equal("", volume)
 }
 
 func (s *osLocationTest) TestPath() {

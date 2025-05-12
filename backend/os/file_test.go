@@ -640,10 +640,10 @@ func (s *osFileTest) TestSize() {
 
 	size, err := file.Size()
 	s.Require().NoError(err)
+	s.NotNil(size)
 
 	osStats, err := os.Stat(filepath.Join(osLocationPath(s.tmploc), "test_files", "test.txt"))
 	s.Require().NoError(err)
-	s.NotNil(size)
 	s.Equal(osStats.Size(), int64(size))
 
 	noFile, err := s.tmploc.NewFile("test_files/nonexistent.txt")

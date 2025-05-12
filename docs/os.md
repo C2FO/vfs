@@ -377,8 +377,7 @@ URI returns the [Location](#type-location)'s URI as a string.
 ```go
 func (l *Location) Volume() string
 ```
-Volume returns the volume, if any, of the location. Given "C:/foo/bar" it returns "C" on
-Windows. On other platforms it returns "".
+Volume returns the URI authority, if any, of the location.
 
 ```go
 func (l *Location) Authority() authority.Authority

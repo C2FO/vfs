@@ -39,6 +39,13 @@ var hasTrailingSlash = regexp.MustCompile("/$")
 // regex to test whether the first character is a '/'
 var hasLeadingSlash = regexp.MustCompile("^/")
 
+// IsWindowsVolume checks if the given string starts with a Windows drive letter pattern (e.g., "C:")
+func IsWindowsVolume(path string) bool {
+	return len(path) >= 2 && 
+		((path[0] >= 'A' && path[0] <= 'Z') || (path[0] >= 'a' && path[0] <= 'z')) && 
+		path[1] == ':'
+}
+
 // RemoveTrailingSlash removes trailing slash, if any
 func RemoveTrailingSlash(path string) string {
 	return strings.TrimRight(path, "/")
@@ -49,11 +56,19 @@ func RemoveLeadingSlash(path string) string {
 	return strings.TrimLeft(path, "/")
 }
 
-// ValidateAbsoluteFilePath ensures that a file path has a leading slash but not a trailing slash
+// ValidateAbsoluteFilePath ensures that a file path has a leading slash but not a trailing slash,
+// or for Windows paths, allows a device letter/volume (e.g. "C:") without requiring a leading slash
 func ValidateAbsoluteFilePath(name string) error {
-	if !strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") {
+	isWindowsVolume := IsWindowsVolume(name)
+
+	if !isWindowsVolume && !strings.HasPrefix(name, "/") {
 		return ErrBadAbsFilePath
 	}
+
+	if strings.HasSuffix(name, "/") {
+		return ErrBadAbsFilePath
+	}
+
 	return nil
 }
 
@@ -65,11 +80,20 @@ func ValidateRelativeFilePath(name string) error {
 	return nil
 }
 
-// ValidateAbsoluteLocationPath ensure that a file path has both leading and trailing slashes
+// ValidateAbsoluteLocationPath ensure that a file path has both leading and trailing slashes,
+// or for Windows paths, allows a device letter/volume (e.g. "C:") without requiring a leading slash
 func ValidateAbsoluteLocationPath(name string) error {
-	if !strings.HasPrefix(name, "/") || !strings.HasSuffix(name, "/") {
+	isWindowsVolume := IsWindowsVolume(name) &&
+		(len(name) == 2 || strings.HasSuffix(name, "/"))
+
+	if !isWindowsVolume && (!strings.HasPrefix(name, "/") || !strings.HasSuffix(name, "/")) {
 		return ErrBadAbsLocationPath
 	}
+
+	if IsWindowsVolume(name) && len(name) > 2 && !strings.HasSuffix(name, "/") {
+		return ErrBadAbsLocationPath
+	}
+
 	return nil
 }
 
@@ -92,7 +116,7 @@ func ValidatePrefix(prefix string) error {
 
 // GetFileURI returns a File URI
 func GetFileURI(f vfs.File) string {
-	return fmt.Sprintf("%s://%s%s", f.Location().FileSystem().Scheme(), f.Location().Authority().String(), f.Path())
+	return fmt.Sprintf("%s://%s/%s", f.Location().FileSystem().Scheme(), f.Location().Authority().String(), RemoveLeadingSlash(f.Path()))
 }
 
 // GetLocationURI returns a Location URI
@@ -109,7 +133,13 @@ func EnsureTrailingSlash(dir string) string {
 }
 
 // EnsureLeadingSlash is like EnsureTrailingSlash except that it adds the leading slash if needed.
+// For Windows paths with drive letters (e.g., "C:"), it will not add a leading slash.
 func EnsureLeadingSlash(dir string) string {
+	// Don't add leading slash for Windows paths with drive letters
+	if IsWindowsVolume(dir) {
+		return dir
+	}
+	
 	if hasLeadingSlash.MatchString(dir) {
 		return dir
 	}

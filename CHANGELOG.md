@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Improved OS backend selection of temporary file locations to prefer directories on the same device as the target file, reducing cross-device rename errors by default (#122).
+- Corrected handling of Windows drive letters in URIs so a drive letter is treated as part of the path when appropriate instead of as the URI authority.
 
 ## [v7.15.0] - 2026-03-06
 ### Added

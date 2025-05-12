@@ -91,7 +91,7 @@ type Location interface {
 	// For example:
 	// 	 sftp//bob@acme.com/path/to/file.txt, Authority.String() would return "bob@acme.com".
 	//   s3://my-bucket/path/to/file.txt,     Authority.String() would return "my-bucket".
-	//   file://C/path/to/file.txt,           Authority.String() would return "C".
+	//   file:///c:/path/to/file.txt,         Authority.String() would return "".
 	//   mem://my-namespace/path/to/file.txt, Authority.String() would return "my-namespace".
 	Authority() authority.Authority
 
