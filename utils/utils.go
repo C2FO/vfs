@@ -41,8 +41,8 @@ var hasLeadingSlash = regexp.MustCompile("^/")
 
 // IsWindowsVolume checks if the given string starts with a Windows drive letter pattern (e.g., "C:")
 func IsWindowsVolume(path string) bool {
-	return len(path) >= 2 && 
-		((path[0] >= 'A' && path[0] <= 'Z') || (path[0] >= 'a' && path[0] <= 'z')) && 
+	return len(path) >= 2 &&
+		((path[0] >= 'A' && path[0] <= 'Z') || (path[0] >= 'a' && path[0] <= 'z')) &&
 		path[1] == ':'
 }
 
@@ -139,7 +139,7 @@ func EnsureLeadingSlash(dir string) string {
 	if IsWindowsVolume(dir) {
 		return dir
 	}
-	
+
 	if hasLeadingSlash.MatchString(dir) {
 		return dir
 	}

@@ -35,9 +35,9 @@ func (ct *clientOpt) NewFileSystemOptionName() string {
 //
 // WithOptions is used to specify options for the filesystem.
 // The options are used to configure the filesystem.
-func WithOptions(o Options) options.NewFileSystemOption[FileSystem] {
+func WithOptions(opts Options) options.NewFileSystemOption[FileSystem] {
 	return &optionsOpt{
-		options: o,
+		options: opts,
 	}
 }
 

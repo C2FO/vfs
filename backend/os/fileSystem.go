@@ -1,13 +1,14 @@
 package os
 
 import (
+	"path"
+	"path/filepath"
+
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/backend"
 	"github.com/c2fo/vfs/v7/options"
 	"github.com/c2fo/vfs/v7/utils"
 	"github.com/c2fo/vfs/v7/utils/authority"
-	"path"
-	"path/filepath"
 )
 
 // Scheme defines the file system type.
