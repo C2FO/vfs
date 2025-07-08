@@ -1,4 +1,5 @@
 package s3
+
 /*
 Package s3 - AWS S3 VFS implementation using AWS SDK for Go v2.
 

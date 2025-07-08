@@ -23,7 +23,7 @@ type Options struct {
 	ACL                         types.ObjectCannedACL `json:"acl,omitempty"`
 	ForcePathStyle              bool                  `json:"forcePathStyle,omitempty"`
 	DisableServerSideEncryption bool                  `json:"disableServerSideEncryption,omitempty"`
-	// this is explicity re-enables the AWS SDK V2 log output checksum validation.  Default is false. Set to true to
+	// this is explicitly re-enables the AWS SDK V2 log output checksum validation.  Default is false. Set to true to
 	// re-enable the log output checksum validation.
 	AllowLogOutputChecksumValidationSkipped bool `json:"allowLogOutputChecksumValidationSkipped,omitempty"`
 	Retry                                   aws.Retryer
