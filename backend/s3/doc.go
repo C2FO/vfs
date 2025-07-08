@@ -1,5 +1,7 @@
+package s3
+
 /*
-Package s3 - AWS S3 VFS implementation.
+Package s3 - AWS S3 VFS implementation using AWS SDK for Go v2.
 
 # Usage
 
@@ -36,8 +38,13 @@ would have to be cast as s3.FileSystem to use the following:
 	            s3.Options{
 	                AccessKeyID:     "AKIAIOSFODNN7EXAMPLE",
 	                SecretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+	                SessionToken:    "AQoD..." // Optional for temporary credentials
 	                Region:          "us-west-2",
-	                ACL: 			   "bucket-owner-full-control",
+	                RoleARN:         "arn:aws:iam::123456789012:role/MyRole",
+	                Endpoint:        "https://s3.us-west-2.amazonaws.com",
+	                ACL:             "bucket-owner-full-control",
+	                ForcePathStyle:  false,
+	                MaxRetries:      3,
 	            },
 	        ),
 	    )
@@ -55,7 +62,7 @@ would have to be cast as s3.FileSystem to use the following:
 
 # Object ACL
 
-Canned ACL's can be passed in as an Option.  This string will be applied to all writes, moves, and copies.
+Canned ACL's can be passed in as an Option. This string will be applied to all writes, moves, and copies.
 See https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl for values.
 
 # Authentication
@@ -71,6 +78,7 @@ preferring the first location found:
 
     * Access Key ID:     AWS_ACCESS_KEY_ID or AWS_ACCESS_KEY
     * Secret Access Key: AWS_SECRET_ACCESS_KEY or AWS_SECRET_KEY
+    * Session Token:     AWS_SESSION_TOKEN (optional)
 
  3. SharedCredentialsProvider - looks for "AWS_SHARED_CREDENTIALS_FILE" env variable. If the
     env value is empty will default to current user's home directory.
@@ -82,11 +90,32 @@ preferring the first location found:
 
  5. EC2RoleProvider - credentials from the EC2 service, and keeps track if those credentials are expired
 
-See the following for more auth info: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
-and https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html
+# Configuration Options
+
+Additional configuration options available through s3.Options:
+
+- AccessKeyID: AWS access key ID
+- SecretAccessKey: AWS secret access key
+- SessionToken: AWS session token (required for temporary credentials)
+- Region: AWS region (e.g., "us-west-2")
+- RoleARN: IAM role ARN for cross-account access
+- Endpoint: Custom S3 endpoint (useful for testing with S3-compatible storage)
+- ACL: Canned ACL for objects (e.g., "private", "public-read")
+- ForcePathStyle: Use path-style addressing (required for some S3-compatible services)
+- DisableServerSideEncryption: Disable server-side encryption
+- AllowLogOutputChecksumValidationSkipped: Enable AWS SDK v2 log output checksum validation
+- Retry: Custom retry configuration
+- MaxRetries: Maximum number of retry attempts
+- FileBufferSize: Buffer size in bytes for file operations
+- DownloadPartitionSize: Partition size in bytes for multipart downloads
+- UploadPartitionSize: Partition size in bytes for multipart uploads
+
+# AWS SDK
+
+This package uses AWS SDK for Go v2. For more information, see:
+https://aws.github.io/aws-sdk-go-v2/docs/
 
 # See Also
 
 See: https://github.com/aws/aws-sdk-go-v2/tree/main/service/s3
 */
-package s3

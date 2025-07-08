@@ -23,11 +23,14 @@ type Options struct {
 	ACL                         types.ObjectCannedACL `json:"acl,omitempty"`
 	ForcePathStyle              bool                  `json:"forcePathStyle,omitempty"`
 	DisableServerSideEncryption bool                  `json:"disableServerSideEncryption,omitempty"`
-	Retry                       aws.Retryer
-	MaxRetries                  int
-	FileBufferSize              int   // Buffer size in bytes used with utils.TouchCopyBuffered
-	DownloadPartitionSize       int64 // Partition size in bytes used to multipart download of large files using manager.Downloader
-	UploadPartitionSize         int64 // Partition size in bytes used to multipart upload of large files using manager.Uploader
+	// this is explicitly re-enables the AWS SDK V2 log output checksum validation.  Default is false. Set to true to
+	// re-enable the log output checksum validation.
+	AllowLogOutputChecksumValidationSkipped bool `json:"allowLogOutputChecksumValidationSkipped,omitempty"`
+	Retry                                   aws.Retryer
+	MaxRetries                              int
+	FileBufferSize                          int   // Buffer size in bytes used with utils.TouchCopyBuffered
+	DownloadPartitionSize                   int64 // Partition size in bytes used to multipart download of large files using manager.Downloader
+	UploadPartitionSize                     int64 // Partition size in bytes used to multipart upload of large files using manager.Uploader
 }
 
 // GetClient setup S3 client
@@ -69,6 +72,13 @@ func GetClient(opt Options) (*s3.Client, error) {
 		} else if opt.RoleARN != "" {
 			opts.Credentials = aws.NewCredentialsCache(stscreds.NewAssumeRoleProvider(sts.NewFromConfig(awsConfig), opt.RoleARN))
 		}
+
+		// AWS SDK V2 log output will be disabled by default unless explicitly enabled by AllowLogOutputChecksumValidationSkipped
+		opts.DisableLogOutputChecksumValidationSkipped = true
+		if opt.AllowLogOutputChecksumValidationSkipped {
+			opts.DisableLogOutputChecksumValidationSkipped = false
+		}
+
 	}), nil
 }
 
