@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"strings"
@@ -63,6 +64,65 @@ func (f *File) Close() error {
 			}
 		}
 	}
+	return nil
+}
+
+// Stat returns a fs.FileInfo describing the file.
+// This implements the fs.File interface from io/fs.
+func (f *File) Stat() (fs.FileInfo, error) {
+	exists, err := f.Exists()
+	if err != nil {
+		return nil, utils.WrapStatError(err)
+	}
+	if !exists {
+		return nil, fs.ErrNotExist
+	}
+
+	size, err := f.Size()
+	if err != nil {
+		return nil, utils.WrapStatError(err)
+	}
+
+	lastMod, err := f.LastModified()
+	if err != nil {
+		return nil, utils.WrapStatError(err)
+	}
+
+	return &azureFileInfo{
+		name:    f.Name(),
+		size:    int64(size),
+		modTime: *lastMod,
+	}, nil
+}
+
+// azureFileInfo implements fs.FileInfo for Azure blobs
+type azureFileInfo struct {
+	name    string
+	size    int64
+	modTime time.Time
+}
+
+func (fi *azureFileInfo) Name() string {
+	return fi.name
+}
+
+func (fi *azureFileInfo) Size() int64 {
+	return fi.size
+}
+
+func (fi *azureFileInfo) Mode() fs.FileMode {
+	return 0644 // Default permission for files
+}
+
+func (fi *azureFileInfo) ModTime() time.Time {
+	return fi.modTime
+}
+
+func (fi *azureFileInfo) IsDir() bool {
+	return false // Azure blobs are always files, not directories
+}
+
+func (fi *azureFileInfo) Sys() interface{} {
 	return nil
 }
 

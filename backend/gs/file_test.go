@@ -539,6 +539,237 @@ func (ts *fileTestSuite) TestMoveAndCopyBuffered() {
 	}
 }
 
+func (ts *fileTestSuite) TestSize() {
+	contents := "hello world!"
+	bucketName := "bucki"
+	objectName := "some/path/file.txt"
+	server := fakestorage.NewServer(
+		Objects{
+			fakestorage.Object{
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName:      bucketName,
+					Name:            objectName,
+					ContentType:     "text/plain",
+					ContentEncoding: "utf8",
+				},
+				Content: []byte(contents),
+			},
+		},
+	)
+	defer server.Stop()
+	fs := NewFileSystem(WithClient(server.Client()))
+
+	file, err := fs.NewFile(bucketName, "/"+objectName)
+	ts.Require().NoError(err, "Shouldn't fail creating new file")
+
+	size, err := file.Size()
+	ts.NoError(err, "Size() should not return an error for existing file")
+	ts.Equal(uint64(len(contents)), size, "Size should match the content length")
+}
+
+func (ts *fileTestSuite) TestSizeError() {
+	bucketName := "bucki"
+	objectName := "nonexistent.txt"
+	server := fakestorage.NewServer(Objects{})
+	defer server.Stop()
+	fs := NewFileSystem(WithClient(server.Client()))
+
+	file, err := fs.NewFile(bucketName, "/"+objectName)
+	ts.Require().NoError(err, "Shouldn't fail creating new file")
+
+	_, err = file.Size()
+	ts.Error(err, "Size() should return an error for non-existent file")
+}
+
+func (ts *fileTestSuite) TestLastModified() {
+	contents := "hello world!"
+	bucketName := "bucki"
+	objectName := "some/path/file.txt"
+	server := fakestorage.NewServer(
+		Objects{
+			fakestorage.Object{
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName:      bucketName,
+					Name:            objectName,
+					ContentType:     "text/plain",
+					ContentEncoding: "utf8",
+				},
+				Content: []byte(contents),
+			},
+		},
+	)
+	defer server.Stop()
+	fs := NewFileSystem(WithClient(server.Client()))
+
+	file, err := fs.NewFile(bucketName, "/"+objectName)
+	ts.Require().NoError(err, "Shouldn't fail creating new file")
+
+	lastMod, err := file.LastModified()
+	ts.NoError(err, "LastModified() should not return an error for existing file")
+	ts.NotNil(lastMod, "LastModified should return a non-nil time")
+}
+
+func (ts *fileTestSuite) TestLastModifiedError() {
+	bucketName := "bucki"
+	objectName := "nonexistent.txt"
+	server := fakestorage.NewServer(Objects{})
+	defer server.Stop()
+	fs := NewFileSystem(WithClient(server.Client()))
+
+	file, err := fs.NewFile(bucketName, "/"+objectName)
+	ts.Require().NoError(err, "Shouldn't fail creating new file")
+
+	_, err = file.LastModified()
+	ts.Error(err, "LastModified() should return an error for non-existent file")
+}
+
+func (ts *fileTestSuite) TestStat() {
+	contents := "hello world!"
+	bucketName := "bucki"
+	objectName := "some/path/file.txt"
+	server := fakestorage.NewServer(
+		Objects{
+			fakestorage.Object{
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName:      bucketName,
+					Name:            objectName,
+					ContentType:     "text/plain",
+					ContentEncoding: "utf8",
+				},
+				Content: []byte(contents),
+			},
+		},
+	)
+	defer server.Stop()
+	fs := NewFileSystem(WithClient(server.Client()))
+
+	file, err := fs.NewFile(bucketName, "/"+objectName)
+	ts.Require().NoError(err, "Shouldn't fail creating new file")
+
+	fileInfo, err := file.Stat()
+	ts.NoError(err, "Stat() should not return an error for existing file")
+	ts.NotNil(fileInfo, "FileInfo should not be nil")
+	ts.Equal("file.txt", fileInfo.Name(), "FileInfo name should match file name")
+	ts.Equal(int64(len(contents)), fileInfo.Size(), "FileInfo size should match content length")
+	ts.False(fileInfo.IsDir(), "FileInfo should indicate file is not a directory")
+	ts.NotNil(fileInfo.ModTime(), "ModTime should not be nil")
+	ts.Equal(0644, int(fileInfo.Mode()), "Mode should be 0644")
+	ts.Nil(fileInfo.Sys(), "Sys should return nil")
+}
+
+func (ts *fileTestSuite) TestStatError() {
+	bucketName := "bucki"
+	objectName := "nonexistent.txt"
+	server := fakestorage.NewServer(Objects{})
+	defer server.Stop()
+	fs := NewFileSystem(WithClient(server.Client()))
+
+	file, err := fs.NewFile(bucketName, "/"+objectName)
+	ts.Require().NoError(err, "Shouldn't fail creating new file")
+
+	_, err = file.Stat()
+	ts.Error(err, "Stat() should return an error for non-existent file")
+}
+
+func (ts *fileTestSuite) TestTouchExistingFileWithVersioning() {
+	contents := "hello world!"
+	bucketName := "bucki"
+	objectName := "some/path/file.txt"
+	server := fakestorage.NewServer(
+		Objects{
+			fakestorage.Object{
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName:      bucketName,
+					Name:            objectName,
+					ContentType:     "text/plain",
+					ContentEncoding: "utf8",
+				},
+				Content: []byte(contents),
+			},
+		},
+	)
+	defer server.Stop()
+	client := server.Client()
+
+	// Enable versioning on the bucket manually
+	ctx := context.Background()
+	bucket := client.Bucket(bucketName)
+	_, err := bucket.Update(ctx, storage.BucketAttrsToUpdate{
+		VersioningEnabled: true,
+	})
+	ts.NoError(err, "Setting versioning should not error")
+
+	fs := NewFileSystem(WithClient(client))
+
+	file, err := fs.NewFile(bucketName, "/"+objectName)
+	ts.Require().NoError(err, "Shouldn't fail creating new file")
+
+	// This should use the updateLastModifiedByMoving path since versioning is enabled
+	err = file.Touch()
+	ts.NoError(err, "Touch() should not return an error for existing file with versioning")
+
+	// Check the file still exists and is accessible
+	exists, err := file.Exists()
+	ts.NoError(err, "Exists() should not return an error")
+	ts.True(exists, "File should still exist after Touch with versioning")
+}
+
+func (ts *fileTestSuite) TestTouchExistingFileWithoutVersioning() {
+	contents := "hello world!"
+	bucketName := "bucki"
+	objectName := "some/path/file.txt"
+	server := fakestorage.NewServer(
+		Objects{
+			fakestorage.Object{
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName:      bucketName,
+					Name:            objectName,
+					ContentType:     "text/plain",
+					ContentEncoding: "utf8",
+				},
+				Content: []byte(contents),
+			},
+		},
+	)
+	defer server.Stop()
+	client := server.Client()
+	fs := NewFileSystem(WithClient(client))
+
+	file, err := fs.NewFile(bucketName, "/"+objectName)
+	ts.Require().NoError(err, "Shouldn't fail creating new file")
+
+	// This should use the updateLastModifiedByAttrUpdate path since versioning is not enabled
+	err = file.Touch()
+	ts.NoError(err, "Touch() should not return an error for existing file without versioning")
+
+	// Check the file still exists and is accessible
+	exists, err := file.Exists()
+	ts.NoError(err, "Exists() should not return an error")
+	ts.True(exists, "File should still exist after Touch without versioning")
+}
+
+func (ts *fileTestSuite) TestNameAndPath() {
+	fs := NewFileSystem()
+	objectName := "some/path/file.txt"
+
+	file, err := fs.NewFile("bucket", "/"+objectName)
+	ts.NoError(err, "Shouldn't fail creating new file")
+
+	ts.Equal("file.txt", file.Name(), "Name should be just the filename")
+	ts.Equal("/some/path/file.txt", file.Path(), "Path should be the full path")
+}
+
+func (ts *fileTestSuite) TestURI() {
+	fs := NewFileSystem()
+	objectName := "some/path/file.txt"
+
+	file, err := fs.NewFile("bucket", "/"+objectName)
+	ts.NoError(err, "Shouldn't fail creating new file")
+
+	ts.Equal("gs://bucket/some/path/file.txt", file.URI(), "URI should be correctly formatted")
+	ts.Equal("gs://bucket/some/path/file.txt", file.String(), "String() should return URI")
+}
+
 func TestFile(t *testing.T) {
 	suite.Run(t, new(fileTestSuite))
 }

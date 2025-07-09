@@ -970,6 +970,47 @@ func (ts *fileTestSuite) TestWriteOperations() {
 	}
 }
 
+// TestStat tests the functionality of the Stat method
+func (ts *fileTestSuite) TestStat() {
+	// Setup expected values
+	contentLength := int64(42)
+	lastModified := time.Now()
+
+	// Mock the S3 HeadObject response
+	headObjectOutput := &s3.HeadObjectOutput{
+		ContentLength: aws.Int64(contentLength),
+		LastModified:  aws.Time(lastModified),
+	}
+	s3cliMock.On("HeadObject", matchContext, mock.Anything).Return(headObjectOutput, nil).Once()
+
+	// Call Stat
+	fileInfo, err := testFile.Stat()
+
+	// Verify results
+	ts.NoError(err, "Stat() should not return an error for existing file")
+	ts.NotNil(fileInfo, "FileInfo should not be nil")
+	ts.Equal("file.txt", fileInfo.Name(), "FileInfo name should match file name")
+	ts.Equal(contentLength, fileInfo.Size(), "FileInfo size should match content length")
+	ts.Equal(lastModified.Truncate(time.Second), fileInfo.ModTime().Truncate(time.Second), "FileInfo modTime should match last modified time")
+	ts.False(fileInfo.IsDir(), "FileInfo should indicate file is not a directory")
+
+	// Verify mock expectations
+	s3cliMock.AssertExpectations(ts.T())
+
+	// Test Stat with S3 error
+	s3Error := errors.New("s3 error")
+	s3cliMock.On("HeadObject", matchContext, mock.Anything).Return(nil, s3Error).Once()
+
+	// Call Stat again, expecting an error
+	_, err = testFile.Stat()
+	ts.Error(err, "Stat() should return an error when S3 HeadObject fails")
+	ts.True(errors.Is(err, s3Error) || strings.Contains(err.Error(), s3Error.Error()),
+		"error should contain the original S3 error")
+
+	// Verify mock expectations
+	s3cliMock.AssertExpectations(ts.T())
+}
+
 func TestFile(t *testing.T) {
 	suite.Run(t, new(fileTestSuite))
 }
