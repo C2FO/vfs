@@ -2,8 +2,6 @@ package os
 
 import (
 	"os"
-	"path"
-	"path/filepath"
 	"regexp"
 	"testing"
 
@@ -124,24 +122,6 @@ func (s *osLocationTest) TestNewFile() {
 		s.Equal("/newrootfile.txt", newFile.Path(), "NewFile with relative path to root should update location correctly")
 		s.Equal("/", newFile.Location().Path(), "NewFile with relative path to root should update location correctly")
 	})
-}
-
-//nolint:staticcheck // deprecated method test
-func (s *osLocationTest) TestChangeDir() {
-	otherFile, _ := s.tmploc.NewFile("foo/foo.txt")
-	fileLocation := otherFile.Location()
-	cwd := fileLocation.Path()
-	err := fileLocation.ChangeDir("other/")
-	s.NoError(err, "change dir error not expected")
-	s.Equal(fileLocation.Path(), utils.EnsureTrailingSlash(path.Join(cwd, "other")))
-}
-
-//nolint:staticcheck // deprecated method test
-func (s *osLocationTest) TestVolume() {
-	volume := s.testFile.Location().Volume()
-
-	// For Unix, this returns an empty string. For windows, it would be something like 'C:'
-	s.Equal(filepath.VolumeName(os.TempDir()), volume)
 }
 
 func (s *osLocationTest) TestPath() {

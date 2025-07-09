@@ -160,14 +160,6 @@ func (lt *locationTestSuite) TestListByRegex() {
 	lt.s3cliMock.AssertExpectations(lt.T())
 }
 
-//nolint:staticcheck // deprecated method test
-func (lt *locationTestSuite) TestVolume() {
-	bucket := "bucket"
-	loc, err := lt.fs.NewLocation(bucket, "/")
-	lt.NoError(err)
-	lt.Equal(bucket, loc.Volume(), "Volume() should return the bucket name on location.")
-}
-
 func (lt *locationTestSuite) TestPath() {
 	loc, err := lt.fs.NewLocation("bucket", "/path/")
 	lt.NoError(err)
@@ -246,37 +238,6 @@ func (lt *locationTestSuite) TestExists_false() {
 	lt.NoError(err, "No error expected from Exists")
 	lt.False(exists, "Call to Exists expected to return true.")
 	lt.s3cliMock.AssertExpectations(lt.T())
-}
-
-func (lt *locationTestSuite) TestChangeDir() {
-	// test nil Location
-	var nilLoc *Location
-	err := nilLoc.ChangeDir("path/to/")
-	lt.EqualErrorf(err, "non-nil s3.Location pointer is required", "error expected for nil location")
-
-	auth, err := authority.NewAuthority("bucket")
-	lt.NoError(err)
-	loc := &Location{fileSystem: lt.fs, prefix: "/", authority: auth}
-
-	err1 := loc.ChangeDir("../")
-	lt.NoError(err1, "no error expected")
-	lt.Equal("/", loc.Path())
-
-	err2 := loc.ChangeDir("hello/")
-	lt.NoError(err2, "no error expected")
-	lt.Equal("/hello/", loc.Path())
-
-	err3 := loc.ChangeDir("../.././../")
-	lt.NoError(err3, "no error expected")
-	lt.Equal("/", loc.Path())
-
-	err4 := loc.ChangeDir("here/is/a/path/")
-	lt.NoError(err4, "no error expected")
-	lt.Equal("/here/is/a/path/", loc.Path())
-
-	err5 := loc.ChangeDir("../")
-	lt.NoError(err5, "no error expected")
-	lt.Equal("/here/is/a/", loc.Path())
 }
 
 func (lt *locationTestSuite) TestNewLocation() {

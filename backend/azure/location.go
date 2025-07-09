@@ -104,15 +104,6 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 	return filtered, nil
 }
 
-// Volume returns the azure container.  Azure containers are equivalent to AWS Buckets
-//
-// Deprecated: Use Authority instead.
-//
-//	authStr := loc.Authority().String()
-func (l *Location) Volume() string {
-	return l.Authority().String()
-}
-
 // Authority returns the authority for the Location
 func (l *Location) Authority() authority.Authority {
 	return l.authority
@@ -152,30 +143,6 @@ func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
 		path:       path.Join(l.path, relLocPath),
 		authority:  l.Authority(),
 	}, nil
-}
-
-// ChangeDir changes the current location's path to the new, relative path.
-//
-// Deprecated: Use NewLocation instead:
-//
-//	loc, err := loc.NewLocation("../../")
-func (l *Location) ChangeDir(relLocPath string) error {
-	if l == nil {
-		return errors.New(errNilLocationReceiver)
-	}
-
-	err := utils.ValidateRelativeLocationPath(relLocPath)
-	if err != nil {
-		return err
-	}
-
-	newLoc, err := l.NewLocation(relLocPath)
-	if err != nil {
-		return err
-	}
-	*l = *newLoc.(*Location)
-
-	return nil
 }
 
 // FileSystem returns the azure FileSystem instance
