@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v7.5.1] - 2025-07-24
 ### Fixed
 - Update error wrapping functions to check for nil errors. Fixes #266.
 
