@@ -457,8 +457,10 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	if err != nil {
 		return nil, utils.WrapMoveToLocationError(err)
 	}
-	delErr := f.Delete()
-	return newFile, utils.WrapMoveToLocationError(delErr)
+	if delErr := f.Delete(); delErr != nil {
+		return newFile, utils.WrapMoveToLocationError(delErr)
+	}
+	return newFile, nil
 }
 
 // MoveToFile puts the contents of File into the target vfs.File passed in using File.CopyToFile.
