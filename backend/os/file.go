@@ -166,7 +166,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		return 0, utils.WrapSeekError(err)
 	}
 	if !exists && !f.useTempFile {
-		return 0, utils.WrapSeekError(err)
+		return 0, utils.WrapSeekError(errors.New("cannot seek on non-existent file"))
 	}
 	useFile, err := f.getInternalFile()
 	if err != nil {
