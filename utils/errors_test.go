@@ -20,76 +20,76 @@ type errorsSuite struct {
 // TestErrorWrapFunctions tests all error wrap functions with both nil and non-nil errors
 func (s *errorsSuite) TestErrorWrapFunctions() {
 	testError := fmt.Errorf("test error")
-	
+
 	testCases := []struct {
-		name         string
-		wrapFunc     func(error) error
-		expectedMsg  string
+		name        string
+		wrapFunc    func(error) error
+		expectedMsg string
 	}{
 		{
-			name:         "WrapReadError",
-			wrapFunc:     utils.WrapReadError,
-			expectedMsg:  "read error: test error",
+			name:        "WrapReadError",
+			wrapFunc:    utils.WrapReadError,
+			expectedMsg: "read error: test error",
 		},
 		{
-			name:         "WrapSeekError", 
-			wrapFunc:     utils.WrapSeekError,
-			expectedMsg:  "seek error: test error",
+			name:        "WrapSeekError",
+			wrapFunc:    utils.WrapSeekError,
+			expectedMsg: "seek error: test error",
 		},
 		{
-			name:         "WrapWriteError",
-			wrapFunc:     utils.WrapWriteError,
-			expectedMsg:  "write error: test error",
+			name:        "WrapWriteError",
+			wrapFunc:    utils.WrapWriteError,
+			expectedMsg: "write error: test error",
 		},
 		{
-			name:         "WrapCloseError",
-			wrapFunc:     utils.WrapCloseError,
-			expectedMsg:  "close error: test error",
+			name:        "WrapCloseError",
+			wrapFunc:    utils.WrapCloseError,
+			expectedMsg: "close error: test error",
 		},
 		{
-			name:         "WrapTouchError",
-			wrapFunc:     utils.WrapTouchError,
-			expectedMsg:  "touch error: test error",
+			name:        "WrapTouchError",
+			wrapFunc:    utils.WrapTouchError,
+			expectedMsg: "touch error: test error",
 		},
 		{
-			name:         "WrapExistsError",
-			wrapFunc:     utils.WrapExistsError,
-			expectedMsg:  "exists error: test error",
+			name:        "WrapExistsError",
+			wrapFunc:    utils.WrapExistsError,
+			expectedMsg: "exists error: test error",
 		},
 		{
-			name:         "WrapSizeError",
-			wrapFunc:     utils.WrapSizeError,
-			expectedMsg:  "size error: test error",
+			name:        "WrapSizeError",
+			wrapFunc:    utils.WrapSizeError,
+			expectedMsg: "size error: test error",
 		},
 		{
-			name:         "WrapLastModifiedError",
-			wrapFunc:     utils.WrapLastModifiedError,
-			expectedMsg:  "lastModified error: test error",
+			name:        "WrapLastModifiedError",
+			wrapFunc:    utils.WrapLastModifiedError,
+			expectedMsg: "lastModified error: test error",
 		},
 		{
-			name:         "WrapDeleteError",
-			wrapFunc:     utils.WrapDeleteError,
-			expectedMsg:  "delete error: test error",
+			name:        "WrapDeleteError",
+			wrapFunc:    utils.WrapDeleteError,
+			expectedMsg: "delete error: test error",
 		},
 		{
-			name:         "WrapCopyToLocationError",
-			wrapFunc:     utils.WrapCopyToLocationError,
-			expectedMsg:  "copyToLocation error: test error",
+			name:        "WrapCopyToLocationError",
+			wrapFunc:    utils.WrapCopyToLocationError,
+			expectedMsg: "copyToLocation error: test error",
 		},
 		{
-			name:         "WrapCopyToFileError",
-			wrapFunc:     utils.WrapCopyToFileError,
-			expectedMsg:  "copyToFile error: test error",
+			name:        "WrapCopyToFileError",
+			wrapFunc:    utils.WrapCopyToFileError,
+			expectedMsg: "copyToFile error: test error",
 		},
 		{
-			name:         "WrapMoveToLocationError",
-			wrapFunc:     utils.WrapMoveToLocationError,
-			expectedMsg:  "moveToLocation error: test error",
+			name:        "WrapMoveToLocationError",
+			wrapFunc:    utils.WrapMoveToLocationError,
+			expectedMsg: "moveToLocation error: test error",
 		},
 		{
-			name:         "WrapMoveToFileError",
-			wrapFunc:     utils.WrapMoveToFileError,
-			expectedMsg:  "moveToFile error: test error",
+			name:        "WrapMoveToFileError",
+			wrapFunc:    utils.WrapMoveToFileError,
+			expectedMsg: "moveToFile error: test error",
 		},
 	}
 
@@ -110,7 +110,7 @@ func (s *errorsSuite) TestErrorWrapFunctions() {
 // TestErrorWrapFunctionsWithUnwrap tests that wrapped errors can be unwrapped
 func (s *errorsSuite) TestErrorWrapFunctionsWithUnwrap() {
 	originalError := fmt.Errorf("original error")
-	
+
 	testCases := []struct {
 		name     string
 		wrapFunc func(error) error
@@ -134,7 +134,7 @@ func (s *errorsSuite) TestErrorWrapFunctionsWithUnwrap() {
 		s.Run(tc.name+"_Unwrap", func() {
 			wrappedError := tc.wrapFunc(originalError)
 			s.Error(wrappedError, "wrapped error should not be nil")
-			
+
 			// Test that the original error can be unwrapped
 			s.ErrorIs(wrappedError, originalError, "should be able to unwrap to original error")
 		})
