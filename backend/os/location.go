@@ -116,15 +116,6 @@ func (l *Location) fileList(testEval fileTest) ([]string, error) {
 	return files, nil
 }
 
-// Volume returns the volume, if any, of the location. Given "C:\foo\bar" it returns "C:" on Windows. On other platforms it returns "".
-//
-// Deprecated: Use Authority instead.
-//
-//	authStr := loc.Authority().String()
-func (l *Location) Volume() string {
-	return l.Authority().String()
-}
-
 // Authority returns the location's authority as a string.
 func (l *Location) Authority() authority.Authority {
 	return l.authority
@@ -180,33 +171,6 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 		name:       path.Join(l.name, relativePath),
 		authority:  l.Authority(),
 	}, nil
-}
-
-// ChangeDir takes a relative path, and modifies the underlying Location's path. The caller is modified by this
-// so the only return is any error. For this implementation there are no errors.
-//
-// Deprecated: Use NewLocation instead:
-//
-//	loc, err := loc.NewLocation("../../")
-func (l *Location) ChangeDir(relativePath string) error {
-	if l == nil {
-		return errors.New("non-nil os.Location pointer is required")
-	}
-	if relativePath == "" {
-		return errors.New("non-empty string relativePath is required")
-	}
-	err := utils.ValidateRelativeLocationPath(relativePath)
-	if err != nil {
-		return err
-	}
-
-	newLoc, err := l.NewLocation(relativePath)
-	if err != nil {
-		return err
-	}
-	*l = *newLoc.(*Location)
-
-	return nil
 }
 
 // FileSystem returns a vfs.FileSystem interface of the location's underlying file system.

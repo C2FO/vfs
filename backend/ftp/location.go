@@ -129,15 +129,6 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 	return filteredFilenames, nil
 }
 
-// Volume returns the Authority the location is contained in.
-//
-// Deprecated: Use Authority instead.
-//
-//	authStr := loc.Authority().String()
-func (l *Location) Volume() string {
-	return l.Authority().String()
-}
-
 // Authority returns the Authority the location is contained in.
 func (l *Location) Authority() authority.Authority {
 	return l.authority
@@ -194,28 +185,6 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 		path:       path.Join(l.path, relativePath),
 		authority:  l.Authority(),
 	}, nil
-}
-
-// ChangeDir takes a relative path, and modifies the underlying Location's path. The caller is modified by this
-// so the only return is any error. For this implementation there are no errors.
-//
-// Deprecated: Use NewLocation instead:
-//
-//	loc, err := loc.NewLocation("../../")
-func (l *Location) ChangeDir(relativePath string) error {
-
-	err := utils.ValidateRelativeLocationPath(relativePath)
-	if err != nil {
-		return err
-	}
-
-	newLoc, err := l.NewLocation(relativePath)
-	if err != nil {
-		return err
-	}
-	*l = *newLoc.(*Location)
-
-	return nil
 }
 
 // NewFile uses the properties of the calling location to generate a vfs.File (backed by an ftp.File). The filePath
