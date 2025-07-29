@@ -410,6 +410,43 @@ func (s *FileTestSuite) TestIsSameAuth_DifferentAcctKey() {
 	s.False(sourceFile.isSameAuth(targetFile), "Files were created with different account keys so same auth should be false")
 }
 
+func (s *FileTestSuite) TestStat() {
+	// Setup test values
+	fileContent := "Hello, this is a test file content."
+	modTime := time.Now().UTC()
+
+	// Mock properties response
+	client := MockAzureClient{
+		PropertiesResult: &BlobProperties{
+			Size:         to.Ptr(int64(len(fileContent))),
+			LastModified: to.Ptr(modTime),
+		},
+	}
+	fs := NewFileSystem(WithClient(&client))
+
+	// Create a test file
+	f, err := fs.NewFile("test-container", "/foo/bar.txt")
+	s.NoError(err, "Creating file shouldn't return an error")
+
+	// Test successful stat
+	fileInfo, err := f.Stat()
+	s.NoError(err, "Stat() should not return an error for existing file")
+	s.NotNil(fileInfo, "FileInfo should not be nil")
+	s.Equal("bar.txt", fileInfo.Name(), "FileInfo name should match file name")
+	s.Equal(int64(len(fileContent)), fileInfo.Size(), "FileInfo size should match content length")
+	s.False(fileInfo.IsDir(), "FileInfo should indicate file is not a directory")
+	s.Equal(modTime, fileInfo.ModTime(), "ModTime should match")
+
+	// Test error case
+	client = MockAzureClient{PropertiesError: errors.New("blob not found")}
+	fs = NewFileSystem(WithClient(&client))
+	f, _ = fs.NewFile("test-container", "/foo/non-existent.txt")
+
+	_, err = f.Stat()
+	s.Error(err, "Stat() should return an error for non-existent file")
+	s.Contains(err.Error(), "blob not found", "Error should indicate file does not exist")
+}
+
 func TestAzureFile(t *testing.T) {
 	suite.Run(t, new(FileTestSuite))
 }

@@ -4,6 +4,7 @@ import (
 	"path"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -340,6 +341,61 @@ func (lt *locationTestSuite) TestDeleteFileWithAllVersionsOption() {
 	lt.NoError(err, "Successful delete should not return an error.")
 	lt.s3cliMock.AssertExpectations(lt.T())
 	lt.s3cliMock.AssertNumberOfCalls(lt.T(), "DeleteObject", 3)
+}
+
+// TestOpen tests the Open method for the S3 location
+func (lt *locationTestSuite) TestOpen() {
+	// Setup test values
+	bucket := "test-bucket"
+	locPath := "/test-dir/"
+	filename := "test-file.txt"
+
+	// Create location
+	loc, err := lt.fs.NewLocation(bucket, locPath)
+	lt.NoError(err, "Creating location shouldn't return an error")
+
+	// Mock the HeadObject response for checking existence
+	lt.s3cliMock.On("HeadObject", matchContext, mock.Anything).Return(&s3.HeadObjectOutput{
+		ContentLength: aws.Int64(42),
+		LastModified:  aws.Time(time.Now()),
+	}, nil).Once()
+
+	// Test opening an existing file
+	file, err := loc.Open(filename)
+	lt.NoError(err, "Opening an existing file should not return an error")
+	lt.NotNil(file, "Returned file should not be nil")
+
+	// Verify mock expectations
+	lt.s3cliMock.AssertExpectations(lt.T())
+
+	// Test opening a non-existent file
+	// Setup mock to indicate file doesn't exist
+	lt.s3cliMock.On("HeadObject", matchContext, mock.Anything).Return(nil, &types.NotFound{
+		Message: aws.String("Not Found"),
+	}).Once()
+
+	// Attempt to open a non-existent file
+	_, err = loc.Open("non-existent.txt")
+	lt.Error(err, "Opening a non-existent file should return an error")
+	lt.Contains(err.Error(), "file does not exist", "Error should indicate file does not exist")
+
+	// Test opening with path traversal
+	_, err = loc.Open("../outside.txt")
+	lt.Error(err, "Opening a file with path traversal should return an error")
+	lt.Contains(err.Error(), "invalid argument", "Error should indicate invalid path")
+
+	// Test opening with dot paths
+	_, err = loc.Open(".")
+	lt.Error(err, "Opening '.' should return an error")
+
+	_, err = loc.Open("..")
+	lt.Error(err, "Opening '..' should return an error")
+
+	_, err = loc.Open("./file.txt")
+	lt.Error(err, "Opening path with './' should return an error")
+
+	// Verify all mock expectations
+	lt.s3cliMock.AssertExpectations(lt.T())
 }
 
 func TestLocation(t *testing.T) {

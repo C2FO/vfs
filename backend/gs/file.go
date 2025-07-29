@@ -13,6 +13,8 @@ import (
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
 
+	"io/fs"
+
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/backend"
 	"github.com/c2fo/vfs/v7/options"
@@ -663,6 +665,53 @@ func (f *File) Size() (uint64, error) {
 		return 0, utils.WrapSizeError(err)
 	}
 	return uint64(attr.Size), nil
+}
+
+// Stat returns a fs.FileInfo describing the file.
+// This implements the fs.File interface from io/fs.
+func (f *File) Stat() (fs.FileInfo, error) {
+	// Get file attributes from Google Cloud Storage
+	attrs, err := f.getObjectAttrs()
+	if err != nil {
+		return nil, utils.WrapStatError(err)
+	}
+
+	return &gsFileInfo{
+		name:    f.Name(),
+		size:    attrs.Size,
+		modTime: attrs.Updated,
+	}, nil
+}
+
+// gsFileInfo implements fs.FileInfo for Google Cloud Storage files
+type gsFileInfo struct {
+	name    string
+	size    int64
+	modTime time.Time
+}
+
+func (fi *gsFileInfo) Name() string {
+	return fi.name
+}
+
+func (fi *gsFileInfo) Size() int64 {
+	return fi.size
+}
+
+func (fi *gsFileInfo) Mode() fs.FileMode {
+	return 0644 // Default permission for files
+}
+
+func (fi *gsFileInfo) ModTime() time.Time {
+	return fi.modTime
+}
+
+func (fi *gsFileInfo) IsDir() bool {
+	return false // GS files represented by File struct are always files, not directories
+}
+
+func (fi *gsFileInfo) Sys() interface{} {
+	return nil
 }
 
 // Path returns full path with leading slash of the GCS file key.

@@ -323,6 +323,66 @@ func (lt *locationTestSuite) TestDeleteFile() {
 	})
 }
 
+func (lt *locationTestSuite) TestOpen() {
+	// Setup test values
+	bucket := "test-open-bucket"
+	locPath := "/test-dir/"
+	fileName := "test-file.txt"
+	fileContent := "Hello, this is a test file content."
+
+	// Create test server with fake objects
+	server := fakestorage.NewServer(
+		Objects{
+			fakestorage.Object{
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName: bucket,
+					Name:       "test-dir/test-file.txt",
+				},
+				Content: []byte(fileContent),
+			},
+		},
+	)
+	defer server.Stop()
+
+	fs := NewFileSystem(WithClient(server.Client()))
+
+	// Create location
+	loc, err := fs.NewLocation(bucket, locPath)
+	lt.NoError(err, "Creating location shouldn't return an error")
+
+	// Test opening an existing file
+	file, err := loc.Open(fileName)
+	lt.NoError(err, "Opening an existing file should not return an error")
+	lt.NotNil(file, "Opened file should not be nil")
+
+	// Read content to verify
+	data := make([]byte, len(fileContent))
+	n, err := file.Read(data)
+	lt.NoError(err, "Reading from opened file should not error")
+	lt.Equal(len(fileContent), n, "Should read all content")
+	lt.Equal(fileContent, string(data), "File content should match")
+
+	// Test opening a non-existent file
+	_, err = loc.Open("non-existent-file.txt")
+	lt.Error(err, "Opening a non-existent file should return an error")
+	lt.Contains(err.Error(), "file does not exist", "Error should indicate file does not exist")
+
+	// Test opening with path traversal
+	_, err = loc.Open("../outside.txt")
+	lt.Error(err, "Opening a file with path traversal should return an error")
+	lt.Contains(err.Error(), "invalid argument", "Error should indicate invalid path")
+
+	// Test opening with dot paths
+	_, err = loc.Open(".")
+	lt.Error(err, "Opening '.' should return an error")
+
+	_, err = loc.Open("..")
+	lt.Error(err, "Opening '..' should return an error")
+
+	_, err = loc.Open("./file.txt")
+	lt.Error(err, "Opening path with './' should return an error")
+}
+
 func TestLocation(t *testing.T) {
 	suite.Run(t, new(locationTestSuite))
 }
