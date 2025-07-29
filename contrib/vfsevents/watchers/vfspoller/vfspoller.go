@@ -50,8 +50,8 @@ func WithInterval(interval time.Duration) Option {
 	}
 }
 
-// WithMinAge minimum age of files to consider. This is useful for ignoring files that are still being written on some
-// filesystems like OS, SFTP, and FTP.
+// WithMinAge sets the minimum age of files to consider. This is useful for ignoring files that are still being written on some
+// filesystems, such as OS, SFTP, and FTP.
 func WithMinAge(age time.Duration) Option {
 	return func(p *Poller) {
 		p.minAge = age
