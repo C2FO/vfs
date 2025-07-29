@@ -1,28 +1,25 @@
-dir: "{{.InterfaceDir}}/mocks"
-filename: "{{.InterfaceName}}.go"
-mockname: "{{.InterfaceName}}"
-outpkg: mocks
-with-expecter: true
-resolve-type-alias: false
-disable-version-string: true
-issue-845-fix: true
+dir: '{{.InterfaceDir}}/mocks'
+structname: '{{.InterfaceName}}'
+filename: '{{.InterfaceName}}.go'
+pkgname: mocks
+template: testify
 packages:
   github.com/c2fo/vfs/v7:
     config:
       all: true
+  github.com/c2fo/vfs/v7/backend/ftp/types:
+    config:
+      all: true
+      dir: backend/ftp/mocks
   github.com/c2fo/vfs/v7/backend/s3:
     config:
       all: true
   github.com/c2fo/vfs/v7/backend/sftp:
     interfaces:
-      Client:
-      ReadWriteSeekCloser:
+      Client: {}
+      ReadWriteSeekCloser: {}
   io/fs:
     config:
-      dir: "backend/sftp/mocks"
+      dir: backend/sftp/mocks
     interfaces:
-      FileInfo:
-  github.com/c2fo/vfs/v7/backend/ftp/types:
-    config:
-      all: true
-      dir: "backend/ftp/mocks"
+      FileInfo: {}
