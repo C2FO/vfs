@@ -271,7 +271,7 @@ func (w *GCSWatcher) receive(
 				Type:      mappedEventType,
 				Timestamp: time.Time(gcsEvent.TimeCreated).Unix(),
 				Metadata: map[string]string{
-					"bucket":     gcsEvent.Bucket,
+					"bucketName": gcsEvent.Bucket,
 					"object":     gcsEvent.Name,
 					"eventType":  eventType,
 					"generation": fmt.Sprintf("%d", gcsEvent.Generation),
