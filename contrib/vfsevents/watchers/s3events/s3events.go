@@ -284,7 +284,7 @@ func (w *S3Watcher) processMessage(
 				Type:      eventType,
 				Timestamp: time.Now().Unix(),
 				Metadata: map[string]string{
-					"bucket":    s3Event.Records[i].S3.Bucket.Name,
+					"bucketName": s3Event.Records[i].S3.Bucket.Name,
 					"key":       s3Event.Records[i].S3.Object.Key,
 					"eventName": s3Event.Records[i].EventName,
 					"region":    s3Event.Records[i].AwsRegion,
