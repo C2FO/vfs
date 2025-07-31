@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixes #268. Allow memory filesystem file.Seek to seek to larger than size position.
+
 ## [v7.5.1] - 2025-07-24
 ### Fixed
 - Update error wrapping functions to check for nil errors. Fixes #266.

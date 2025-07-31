@@ -183,12 +183,12 @@ func (s *memFileTest) TestSeek2() {
 	s.NoError(err, "unexpected write error")
 
 	// without closing, the cursor should be at the end of the file.
-	// calling Seek with a whence of '1' and asking to move to cursor forward should throw an error
+	// calling Seek with a whence of '1' and asking to move cursor forward should now succeed (seeking beyond EOF is allowed)
 	_, err = newFile.Seek(1, 1)
-	s.Error(err, "expected seek to throw an error")
-	// trying to read should also be an error:
+	s.NoError(err, "seeking beyond EOF should be allowed")
+	// trying to read should return EOF since we're beyond the data
 	_, err = newFile.Read(make([]byte, 1))
-	s.Error(err, "expected read error")
+	s.ErrorIs(err, io.EOF, "expected EOF when reading beyond data")
 	s.NoError(newFile.Close(), "unexpected close error")
 
 	_, err = newFile.Seek(0, 0)
@@ -429,6 +429,7 @@ func (s *memFileTest) TestCopyToFileOS() {
 	dir, err := os.MkdirTemp("", "osDir")
 	s.Require().NoError(err)
 	osFileName := filepath.Join(dir, "osFile.txt")
+
 	osFile, err = backend.Backend(_os.Scheme).NewFile("", osFileName)
 	s.NoError(err, "unexpected error creating osFile")
 	_, err = osFile.Write(make([]byte, 0))
@@ -756,6 +757,56 @@ func (s *memFileTest) TestFileNewWrite() {
 	data, err = io.ReadAll(file)
 	s.Require().NoError(err)
 	s.Equal("hello world", string(data))
+}
+
+// TestSeekBeyondEOF tests that seeking beyond the end of file is allowed and creates zero-filled gaps
+func (s *memFileTest) TestSeekBeyondEOF() {
+	file, err := s.fileSystem.NewFile("", "/test_files/seek_beyond_eof.txt")
+	s.NoError(err, "unexpected error creating file")
+
+	// Write initial data
+	initialData := "hello world"
+	_, err = file.Write([]byte(initialData))
+	s.NoError(err, "unexpected write error")
+	s.NoError(file.Close(), "unexpected close error")
+
+	// Seek beyond the end of file
+	pos, err := file.Seek(100, 0) // io.SeekStart
+	s.NoError(err, "seeking beyond EOF should be allowed")
+	s.Equal(int64(100), pos, "seek position should be 100")
+
+	// Write at the new position
+	additionalData := "hello world 2"
+	_, err = file.Write([]byte(additionalData))
+	s.NoError(err, "writing after seeking beyond EOF should work")
+	s.NoError(file.Close(), "unexpected close error")
+
+	// Verify file size
+	size, err := file.Size()
+	s.NoError(err, "unexpected size error")
+	expectedSize := uint64(100 + len(additionalData))
+	s.Equal(expectedSize, size, "file size should include gap and new data")
+
+	// Read entire file and verify content
+	_, err = file.Seek(0, 0)
+	s.NoError(err, "unexpected seek error")
+
+	content := make([]byte, size)
+	n, err := file.Read(content)
+	s.NoError(err, "unexpected read error")
+	s.Equal(int(size), n, "should read entire file")
+
+	// Verify initial data is intact
+	s.Equal(initialData, string(content[:len(initialData)]), "initial data should be preserved")
+
+	// Verify gap is filled with zeros
+	gap := content[len(initialData):100]
+	for i, b := range gap {
+		s.Equal(byte(0), b, "gap should be filled with zeros at position %d", i)
+	}
+
+	// Verify additional data is at the correct position
+	s.Equal(additionalData, string(content[100:]), "additional data should be at position 100")
 }
 
 func TestMemFile(t *testing.T) {

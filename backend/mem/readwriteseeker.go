@@ -34,6 +34,13 @@ func (rws *ReadWriteSeeker) Write(p []byte) (n int, err error) {
 	if position <= len(rws.data) {
 		copy(rws.data[rws.cursor:position], p)
 	} else {
+		// If cursor is beyond current data length, we need to fill the gap with zeros
+		if rws.cursor > len(rws.data) {
+			// Extend data with zeros to reach cursor position
+			gap := make([]byte, rws.cursor-len(rws.data))
+			rws.data = append(rws.data, gap...)
+		}
+		// Now append the new data
 		rws.data = append(rws.data[:rws.cursor], p...)
 	}
 	rws.cursor = position
@@ -65,7 +72,7 @@ func (rws *ReadWriteSeeker) Seek(offset int64, whence int) (int64, error) {
 		return 0, vfs.ErrSeekInvalidWhence
 	}
 
-	if position < 0 || position > int64(len(rws.data)) {
+	if position < 0 {
 		return 0, vfs.ErrSeekInvalidOffset
 	}
 
