@@ -267,19 +267,37 @@ func (w *GCSWatcher) receive(
 			}
 		}
 
-		// Map GCS event type to vfsevents.EventType
-		mappedEventType := w.mapGCSEventType(eventType)
+		// Map GCS event type to vfsevents.EventType with semantic accuracy
+		mappedEventType := w.mapGCSEventType(eventType, msg.Attributes)
 		if mappedEventType != vfsevents.EventUnknown {
+			// Capture additional GCS-specific attributes for better context
+			metadata := map[string]string{
+				"bucketName": gcsEvent.Bucket,
+				"object":     gcsEvent.Name,
+				"eventType":  eventType,
+				"generation": fmt.Sprintf("%d", gcsEvent.Generation),
+			}
+
+			// Add overwroteGeneration if present (indicates this was an overwrite)
+			if overwroteGen, ok := msg.Attributes["overwroteGeneration"]; ok {
+				metadata["overwroteGeneration"] = overwroteGen
+			}
+
+			// Add overwrittenByGeneration if present (for DELETE/ARCHIVE events)
+			if overwrittenBy, ok := msg.Attributes["overwrittenByGeneration"]; ok {
+				metadata["overwrittenByGeneration"] = overwrittenBy
+			}
+
+			// Add eventTime from attributes if available (more accurate than timeCreated)
+			if eventTime, ok := msg.Attributes["eventTime"]; ok {
+				metadata["eventTime"] = eventTime
+			}
+
 			event := vfsevents.Event{
 				URI:       fmt.Sprintf("gs://%s/%s", gcsEvent.Bucket, gcsEvent.Name),
 				Type:      mappedEventType,
 				Timestamp: time.Time(gcsEvent.TimeCreated).Unix(),
-				Metadata: map[string]string{
-					"bucketName": gcsEvent.Bucket,
-					"object":     gcsEvent.Name,
-					"eventType":  eventType,
-					"generation": fmt.Sprintf("%d", gcsEvent.Generation),
-				},
+				Metadata:  metadata,
 			}
 
 			status.EventsProcessed++
@@ -295,12 +313,28 @@ func (w *GCSWatcher) receive(
 	return err
 }
 
-// mapGCSEventType maps a GCS event type to a vfsevents.EventType
-func (w *GCSWatcher) mapGCSEventType(eventType string) vfsevents.EventType {
+// mapGCSEventType maps a GCS event type to a vfsevents.EventType with semantic accuracy
+func (w *GCSWatcher) mapGCSEventType(eventType string, attributes map[string]string) vfsevents.EventType {
 	switch eventType {
 	case EventObjectFinalize:
+		// Check if this was an overwrite using the overwroteGeneration attribute
+		if overwroteGen, ok := attributes["overwroteGeneration"]; ok && overwroteGen != "" {
+			// This OBJECT_FINALIZE replaced an existing object, so it's a modification
+			return vfsevents.EventModified
+		}
+		// No overwroteGeneration means this is a truly new object
 		return vfsevents.EventCreated
-	case EventObjectDelete:
+	case EventObjectMetadataUpdate:
+		// Metadata updates are clearly modifications
+		return vfsevents.EventModified
+	case EventObjectDelete, EventObjectArchive:
+		// Check if this delete/archive is part of an overwrite operation
+		if overwrittenBy, ok := attributes["overwrittenByGeneration"]; ok && overwrittenBy != "" {
+			// This delete/archive is part of an overwrite - suppress it
+			// The corresponding OBJECT_FINALIZE event already captured the logical operation as EventModified
+			return vfsevents.EventUnknown
+		}
+		// This is a true standalone deletion/archival
 		return vfsevents.EventDeleted
 	default:
 		return vfsevents.EventUnknown

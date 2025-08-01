@@ -10,6 +10,51 @@ To install the package, use the following command:
 go get github.com/c2fo/vfs/contrib/vfsevents/watchers/gcsevents
 ```
 
+## Event Mapping
+
+The GCS watcher provides **semantic accuracy** in event mapping by using GCS-specific attributes to distinguish between different types of operations:
+
+| GCS Event Type | VFS Event Type | Condition | Description |
+|---|---|---|---|
+| `OBJECT_FINALIZE` | `EventCreated` | No `overwroteGeneration` | New file creation |
+| `OBJECT_FINALIZE` | `EventModified` | Has `overwroteGeneration` | File overwrite, copy, or restore |
+| `OBJECT_METADATA_UPDATE` | `EventModified` | Always | Metadata changes |
+| `OBJECT_DELETE` | `EventDeleted` | No `overwrittenByGeneration` | True file deletion |
+| `OBJECT_DELETE` | *Suppressed* | Has `overwrittenByGeneration` | Part of overwrite (redundant) |
+| `OBJECT_ARCHIVE` | `EventDeleted` | No `overwrittenByGeneration` | File archival |
+| `OBJECT_ARCHIVE` | *Suppressed* | Has `overwrittenByGeneration` | Part of overwrite (redundant) |
+
+### Overwrite Event Suppression
+
+When a file is overwritten in GCS (e.g., `gsutil cp new.txt gs://bucket/existing.txt`), GCS publishes **two events**:
+
+1. `OBJECT_FINALIZE` (with `overwroteGeneration`) → Maps to `EventModified` 
+2. `OBJECT_DELETE` (with `overwrittenByGeneration`) → **Suppressed** 
+
+**Why suppress the second event?**
+- **Cleaner semantics**: One logical operation = one event
+- **Reduced noise**: No confusing "deleted" events for overwrites  
+- **Better UX**: Applications get the expected `EventModified` for overwrites
+- **Maintains accuracy**: True deletions still generate `EventDeleted`
+
+This ensures that overwrite operations are represented as single `EventModified` events rather than confusing `EventModified` + `EventDeleted` pairs.
+
+### Event Metadata
+
+Each event includes comprehensive metadata:
+
+```go
+event.Metadata = map[string]string{
+    "bucketName":              "my-bucket",
+    "object":                  "path/to/file.txt",
+    "eventType":               "OBJECT_FINALIZE",
+    "generation":              "1234567890",
+    "overwroteGeneration":     "9876543210",  // Present for overwrites
+    "overwrittenByGeneration": "1111111111",  // Present for deletes/archives
+    "eventTime":               "2023-01-01T12:00:00Z",
+}
+```
+
 ## Usage
 ### Example
 The following example demonstrates how to create a `GCSWatcher` that listens for changes in a GCS bucket and handles the events:
