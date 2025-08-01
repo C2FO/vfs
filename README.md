@@ -85,6 +85,7 @@ This snippet shows the basic setup: an osFile is created from a URI and written 
 ## Additional Tools
 
 *   [lockfile](contrib/lockfile/README.md): Provides distributed locking mechanisms using vfs backends.
+*   [vfsevents](contrib/vfsevents/README.md): Production-ready file event monitoring with support for real-time notifications, retry logic, and multiple watcher types (VFS polling, S3 events, GCS events).
 
 ## FAQ
 
@@ -96,7 +97,7 @@ This snippet shows the basic setup: an osFile is created from a URI and written 
 will be added to v7.
 
 **Q**: How long will v6 be supported?
-**A**: We will support v6 until the next major release, v8, is releaseed. Then v7 will be supported until v9 is released.
+**A**: We will support v6 until the next major release, v8, is released. Then v7 will be supported until v9 is released.
 
 ## Upgrading
 
