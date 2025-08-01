@@ -76,8 +76,16 @@ func WithCleanupAge(age time.Duration) Option {
 
 // NewPoller initializes an Poller with a vfs.Location.
 func NewPoller(location vfs.Location, opts ...Option) (*Poller, error) {
+	// validate location
 	if location == nil {
 		return nil, fmt.Errorf("location cannot be nil")
+	}
+	exists, err := location.Exists()
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if location exists: %w", err)
+	}
+	if !exists {
+		return nil, fmt.Errorf("location does not exist: %s", location.URI())
 	}
 
 	p := &Poller{
@@ -185,6 +193,7 @@ func (p *Poller) poll(handler vfsevents.HandlerFunc, config *vfsevents.StartConf
 
 	// Retry List() operation if retry is enabled
 	if config.RetryConfig.Enabled {
+		var lastErr error
 		for attempt := 0; attempt <= config.RetryConfig.MaxRetries; attempt++ {
 			filenames, err = p.location.List()
 			if err == nil {
@@ -198,6 +207,8 @@ func (p *Poller) poll(handler vfsevents.HandlerFunc, config *vfsevents.StartConf
 				return fmt.Errorf("non-retryable error listing files: %w", err)
 			}
 
+			lastErr = err
+
 			// Update status with retry information
 			status.RetryAttempts++
 			status.ConsecutiveErrors++
@@ -206,7 +217,7 @@ func (p *Poller) poll(handler vfsevents.HandlerFunc, config *vfsevents.StartConf
 
 			// Last attempt - don't retry
 			if attempt == config.RetryConfig.MaxRetries {
-				return fmt.Errorf("max retries (%d) exceeded listing files: %w", config.RetryConfig.MaxRetries, err)
+				break
 			}
 
 			// Calculate backoff delay
@@ -219,6 +230,11 @@ func (p *Poller) poll(handler vfsevents.HandlerFunc, config *vfsevents.StartConf
 
 			// Wait before retry
 			time.Sleep(backoff)
+		}
+
+		// If we still have an error after all retries, return it
+		if err != nil {
+			return fmt.Errorf("max retries (%d) exceeded listing files: %w", config.RetryConfig.MaxRetries, lastErr)
 		}
 	} else {
 		// No retry - single attempt

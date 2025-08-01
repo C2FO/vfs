@@ -193,6 +193,7 @@ func (w *GCSWatcher) receiveWithRetry(
 		return w.receive(ctx, handler, errHandler, status, c)
 	}
 
+	var lastErr error
 	for attempt := 0; attempt <= c.RetryConfig.MaxRetries; attempt++ {
 		err := w.receive(ctx, handler, errHandler, status, c)
 
@@ -207,6 +208,8 @@ func (w *GCSWatcher) receiveWithRetry(
 			return err // Non-retryable error
 		}
 
+		lastErr = err
+
 		// Update status with retry information
 		status.RetryAttempts++
 		status.ConsecutiveErrors++
@@ -215,7 +218,7 @@ func (w *GCSWatcher) receiveWithRetry(
 
 		// Last attempt - don't retry
 		if attempt == c.RetryConfig.MaxRetries {
-			return fmt.Errorf("max retries (%d) exceeded: %w", c.RetryConfig.MaxRetries, err)
+			break
 		}
 
 		// Calculate backoff delay
@@ -235,7 +238,8 @@ func (w *GCSWatcher) receiveWithRetry(
 		}
 	}
 
-	return nil // Should never reach here
+	// All retries exhausted
+	return fmt.Errorf("max retries (%d) exceeded: %w", c.RetryConfig.MaxRetries, lastErr)
 }
 
 // receive handles the actual Pub/Sub message receiving

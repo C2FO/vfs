@@ -44,9 +44,17 @@ func NewFSNotifyWatcher(location vfs.Location, opts ...Option) (*FSNotifyWatcher
 		return nil, fmt.Errorf("location cannot be nil")
 	}
 
-	// Verify this is a local filesystem location
+	// Verify this is a local filesystem location FIRST
 	if !strings.HasPrefix(location.URI(), "file://") {
 		return nil, fmt.Errorf("fsnotify watcher only supports local filesystem locations (file:// scheme), got: %s", location.URI())
+	}
+
+	exists, err := location.Exists()
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if location exists: %w", err)
+	}
+	if !exists {
+		return nil, fmt.Errorf("location does not exist: %s", location.URI())
 	}
 
 	watcher, err := fsnotify.NewWatcher()
@@ -246,8 +254,13 @@ func (w *FSNotifyWatcher) watchLoop(
 				handler(*vfsEvent)
 
 				// If recursive and a new directory was created, start watching it
-				if w.recursive && event.Op&fsnotify.Create == fsnotify.Create {
+				if w.recursive && event.Has(fsnotify.Create) {
 					w.handleNewDirectory(event.Name)
+				}
+
+				// If a watched directory was deleted, clean up our tracking
+				if event.Has(fsnotify.Remove) {
+					w.handleDeletedDirectory(event.Name)
 				}
 			}
 
@@ -270,16 +283,16 @@ func (w *FSNotifyWatcher) convertEvent(event fsnotify.Event) *vfsevents.Event {
 	var eventType vfsevents.EventType
 
 	switch {
-	case event.Op&fsnotify.Create == fsnotify.Create:
+	case event.Has(fsnotify.Create):
 		eventType = vfsevents.EventCreated
-	case event.Op&fsnotify.Write == fsnotify.Write:
+	case event.Has(fsnotify.Write):
 		eventType = vfsevents.EventModified
-	case event.Op&fsnotify.Remove == fsnotify.Remove:
+	case event.Has(fsnotify.Remove):
 		eventType = vfsevents.EventDeleted
-	case event.Op&fsnotify.Rename == fsnotify.Rename:
+	case event.Has(fsnotify.Rename):
 		// Treat rename as delete (the old name is gone)
 		eventType = vfsevents.EventDeleted
-	case event.Op&fsnotify.Chmod == fsnotify.Chmod:
+	case event.Has(fsnotify.Chmod):
 		// Treat chmod as modify
 		eventType = vfsevents.EventModified
 	default:
@@ -311,5 +324,30 @@ func (w *FSNotifyWatcher) handleNewDirectory(path string) {
 	if err := w.addWatchPath(path); err != nil {
 		// Silently ignore errors - the path might not be a directory or might not exist anymore
 		return
+	}
+}
+
+// handleDeletedDirectory removes a deleted directory from the watch list.
+func (w *FSNotifyWatcher) handleDeletedDirectory(path string) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	// Remove the deleted directory from the watch list
+	delete(w.watchPaths, path)
+
+	// If recursive, remove all subdirectories
+	if w.recursive {
+		w.removeRecursiveWatchPaths(path)
+	}
+}
+
+// removeRecursiveWatchPaths removes all subdirectories from the watch list.
+func (w *FSNotifyWatcher) removeRecursiveWatchPaths(rootPath string) {
+	// Since the directory is already deleted, we can't walk it.
+	// Instead, iterate through our watchPaths and remove any that are subdirectories.
+	for watchedPath := range w.watchPaths {
+		if strings.HasPrefix(watchedPath, rootPath+string(filepath.Separator)) {
+			delete(w.watchPaths, watchedPath)
+		}
 	}
 }

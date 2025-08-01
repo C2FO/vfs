@@ -9,11 +9,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/c2fo/vfs/contrib/vfsevents"
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/mocks"
 	"github.com/c2fo/vfs/v7/vfssimple"
-	"github.com/stretchr/testify/suite"
 )
 
 type PollerTestSuite struct {
@@ -21,6 +22,12 @@ type PollerTestSuite struct {
 }
 
 func (s *PollerTestSuite) TestNewPoller() {
+	location := mocks.NewLocation(s.T())
+	location.EXPECT().Exists().Return(true, nil)
+	location2 := mocks.NewLocation(s.T())
+	location2.EXPECT().Exists().Return(false, nil)
+	location2.EXPECT().URI().Return("scheme:///location2")
+
 	tests := []struct {
 		name     string
 		location vfs.Location
@@ -28,12 +35,17 @@ func (s *PollerTestSuite) TestNewPoller() {
 	}{
 		{
 			name:     "Valid location",
-			location: &mocks.Location{},
+			location: location,
 			wantErr:  false,
 		},
 		{
 			name:     "Nil location",
 			location: nil,
+			wantErr:  true,
+		},
+		{
+			name:     "location does not exist",
+			location: location2,
 			wantErr:  true,
 		},
 	}
@@ -51,7 +63,8 @@ func (s *PollerTestSuite) TestNewPoller() {
 }
 
 func (s *PollerTestSuite) TestWithOptions() {
-	location := &mocks.Location{}
+	location := mocks.NewLocation(s.T())
+	location.EXPECT().Exists().Return(true, nil)
 
 	// Test WithInterval
 	poller, err := NewPoller(location, WithInterval(30*time.Second))
@@ -101,7 +114,9 @@ func (s *PollerTestSuite) TestStart() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			poller, _ := NewPoller(&mocks.Location{})
+			location := mocks.NewLocation(s.T())
+			location.EXPECT().Exists().Return(true, nil)
+			poller, _ := NewPoller(location)
 			ctx := context.Background()
 			errFunc := func(err error) {
 				s.NoError(err)
@@ -120,7 +135,9 @@ func (s *PollerTestSuite) TestStart() {
 func (s *PollerTestSuite) TestStop() {
 	ctx := context.Background()
 	handler := func(event vfsevents.Event) {}
-	poller, _ := NewPoller(&mocks.Location{})
+	location := mocks.NewLocation(s.T())
+	location.EXPECT().Exists().Return(true, nil)
+	poller, _ := NewPoller(location)
 	errFunc := func(err error) {
 		s.NoError(err)
 	}
@@ -146,12 +163,12 @@ func (s *PollerTestSuite) TestPoll() {
 			name: "Valid poll",
 			setupMocks: func(loc *mocks.Location) {
 				loc.EXPECT().List().Return([]string{"file1", "file2"}, nil)
-				file := &mocks.File{}
+				file := mocks.NewFile(s.T())
 				file.EXPECT().URI().Return("scheme:///file1")
 				file.EXPECT().LastModified().Return(&hourAgo, nil)
 				file.EXPECT().Size().Return(uint64(100), nil)
 				loc.EXPECT().NewFile("file1").Return(file, nil)
-				file2 := &mocks.File{}
+				file2 := mocks.NewFile(s.T())
 				file2.EXPECT().URI().Return("scheme:///file2")
 				file2.EXPECT().LastModified().Return(&hourAgo, nil)
 				file2.EXPECT().Size().Return(uint64(200), nil)
@@ -178,7 +195,7 @@ func (s *PollerTestSuite) TestPoll() {
 			name: "File too new (minAge > 0)",
 			setupMocks: func(loc *mocks.Location) {
 				loc.EXPECT().List().Return([]string{"file1"}, nil)
-				file := &mocks.File{}
+				file := mocks.NewFile(s.T())
 				file.EXPECT().URI().Return("scheme:///file1")
 				timeNow := time.Now().UTC()
 				file.EXPECT().LastModified().Return(&timeNow, nil)
@@ -192,7 +209,7 @@ func (s *PollerTestSuite) TestPoll() {
 			name: "Detect deleted files",
 			setupMocks: func(loc *mocks.Location) {
 				loc.EXPECT().List().Return([]string{"file1"}, nil)
-				file := &mocks.File{}
+				file := mocks.NewFile(s.T())
 				file.EXPECT().URI().Return("scheme:///file1")
 				file.EXPECT().LastModified().Return(&hourAgo, nil)
 				file.EXPECT().Size().Return(uint64(100), nil)
@@ -212,7 +229,8 @@ func (s *PollerTestSuite) TestPoll() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			loc := &mocks.Location{}
+			loc := mocks.NewLocation(s.T())
+			loc.EXPECT().Exists().Return(true, nil)
 			poller, _ := NewPoller(loc, tt.opts...)
 			if tt.fileCache != nil {
 				poller.fileCache = tt.fileCache
@@ -369,6 +387,10 @@ func (s *PollerTestSuite) TestPollWithRetry() {
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			loc := &mocks.Location{}
+			// Setup Exists() mock before creating poller
+			loc.EXPECT().Exists().Return(true, nil)
+			loc.EXPECT().URI().Return("file:///test/path")
+
 			poller, _ := NewPoller(loc)
 			tt.setupMocks(loc)
 
@@ -456,7 +478,8 @@ func (s *PollerTestSuite) TestPerformCleanup() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			loc := &mocks.Location{}
+			loc := mocks.NewLocation(s.T())
+			loc.EXPECT().Exists().Return(true, nil)
 			poller, _ := NewPoller(loc, WithCleanupAge(tt.cleanupAge))
 
 			// Set up initial cache
@@ -555,7 +578,8 @@ func (s *PollerTestSuite) TestEnforceMaxFiles() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			loc := &mocks.Location{}
+			loc := mocks.NewLocation(s.T())
+			loc.EXPECT().Exists().Return(true, nil)
 			poller, _ := NewPoller(loc, WithMaxFiles(tt.maxFiles))
 
 			// Set up initial cache
@@ -694,7 +718,8 @@ func (s *PollerTestSuite) TestHandleExistingFile() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			loc := &mocks.Location{}
+			loc := mocks.NewLocation(s.T())
+			loc.EXPECT().Exists().Return(true, nil)
 			poller, _ := NewPoller(loc)
 
 			var receivedEvent *vfsevents.Event
@@ -822,7 +847,8 @@ func (s *PollerTestSuite) TestIsFileModified() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			loc := &mocks.Location{}
+			loc := mocks.NewLocation(s.T())
+			loc.EXPECT().Exists().Return(true, nil)
 			poller, _ := NewPoller(loc)
 
 			result := poller.isFileModified(tt.metadata, tt.cachedInfo)
@@ -896,7 +922,7 @@ func ExampleNewPoller_withRetryLogic() {
 	// Create poller with retry logic for transient failures
 	watcher, err := NewPoller(location,
 		WithInterval(30*time.Second),
-		WithMaxFiles(1000), // Limit memory usage
+		WithMaxFiles(1000),           // Limit memory usage
 		WithCleanupAge(24*time.Hour), // Clean up old entries
 	)
 	if err != nil {
