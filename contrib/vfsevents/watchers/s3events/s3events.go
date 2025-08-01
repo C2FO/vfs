@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -278,17 +279,41 @@ func (w *S3Watcher) processMessage(
 	// Process each record in the S3 event
 	for i := range s3Event.Records {
 		eventType := w.mapS3EventType(s3Event.Records[i].EventName)
-		if eventType == vfsevents.EventCreated || eventType == vfsevents.EventDeleted {
+		if eventType != vfsevents.EventUnknown {
+			// Create enhanced metadata with S3-specific attributes
+			metadata := map[string]string{
+				"bucketName": s3Event.Records[i].S3.Bucket.Name,
+				"key":        s3Event.Records[i].S3.Object.Key,
+				"eventName":  s3Event.Records[i].EventName,
+				"region":     s3Event.Records[i].AwsRegion,
+				"eventTime":  s3Event.Records[i].EventTime,
+				"operation":  w.getOperationType(s3Event.Records[i].EventName),
+			}
+
+			// Add version information if available
+			if s3Event.Records[i].S3.Object.VersionID != "" {
+				metadata["versionId"] = s3Event.Records[i].S3.Object.VersionID
+				metadata["isVersioned"] = "true"
+			} else {
+				metadata["isVersioned"] = "false"
+			}
+
+			// Add additional S3-specific attributes
+			if s3Event.Records[i].S3.Object.ETag != "" {
+				metadata["eTag"] = s3Event.Records[i].S3.Object.ETag
+			}
+			if s3Event.Records[i].S3.Object.Sequencer != "" {
+				metadata["sequencer"] = s3Event.Records[i].S3.Object.Sequencer
+			}
+			if s3Event.Records[i].S3.Object.Size > 0 {
+				metadata["size"] = fmt.Sprintf("%d", s3Event.Records[i].S3.Object.Size)
+			}
+
 			event := vfsevents.Event{
 				URI:       fmt.Sprintf("s3://%s/%s", s3Event.Records[i].S3.Bucket.Name, s3Event.Records[i].S3.Object.Key),
 				Type:      eventType,
 				Timestamp: time.Now().Unix(),
-				Metadata: map[string]string{
-					"bucketName": s3Event.Records[i].S3.Bucket.Name,
-					"key":       s3Event.Records[i].S3.Object.Key,
-					"eventName": s3Event.Records[i].EventName,
-					"region":    s3Event.Records[i].AwsRegion,
-				},
+				Metadata:  metadata,
 			}
 
 			status.EventsProcessed++
@@ -304,16 +329,54 @@ func (w *S3Watcher) processMessage(
 	return nil
 }
 
-// mapS3EventType maps an S3 event name to a vfsevents.EventType
+// mapS3EventType maps an S3 event name to a vfsevents.EventType with semantic accuracy
 func (w *S3Watcher) mapS3EventType(eventName string) vfsevents.EventType {
 	switch eventName {
-	case "s3:ObjectCreated:*", "s3:ObjectCreated:Put", "s3:ObjectCreated:Post",
-		"s3:ObjectCreated:CompleteMultipartUpload", "s3:ObjectCreated:Copy":
+	case "s3:ObjectCreated:Put", "s3:ObjectCreated:Post":
+		// Direct uploads are typically new file creations
 		return vfsevents.EventCreated
+	case "s3:ObjectCreated:Copy":
+		// Copy operations are more likely to be overwrites or modifications
+		return vfsevents.EventModified
+	case "s3:ObjectCreated:CompleteMultipartUpload":
+		// Large uploads could be either, but often represent significant changes
+		return vfsevents.EventModified
+	case "s3:ObjectCreated:*":
+		// Wildcard - default to created for broad compatibility
+		return vfsevents.EventCreated
+	case "s3:ObjectRestore:Post":
+		// Restore initiation - modification-like operation
+		return vfsevents.EventModified
+	case "s3:ObjectRestore:Completed":
+		// Restore completion - object is now available (modification)
+		return vfsevents.EventModified
+	case "s3:ObjectRestore:Delete":
+		// Temporary restored copy expires - deletion
+		return vfsevents.EventDeleted
 	case "s3:ObjectRemoved:*", "s3:ObjectRemoved:Delete", "s3:ObjectRemoved:DeleteMarkerCreated":
 		return vfsevents.EventDeleted
 	default:
 		return vfsevents.EventUnknown
+	}
+}
+
+// getOperationType extracts the operation type from an S3 event name
+func (w *S3Watcher) getOperationType(eventName string) string {
+	switch {
+	case strings.Contains(eventName, "ObjectCreated:Put"):
+		return "put"
+	case strings.Contains(eventName, "ObjectCreated:Post"):
+		return "post"
+	case strings.Contains(eventName, "ObjectCreated:Copy"):
+		return "copy"
+	case strings.Contains(eventName, "CompleteMultipartUpload"):
+		return "multipart"
+	case strings.Contains(eventName, "ObjectRestore"):
+		return "restore"
+	case strings.Contains(eventName, "ObjectRemoved") || strings.Contains(eventName, "ObjectCreated:Delete"):
+		return "delete"
+	default:
+		return "unknown"
 	}
 }
 

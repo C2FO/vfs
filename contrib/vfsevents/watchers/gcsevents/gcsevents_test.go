@@ -510,7 +510,7 @@ func (s *GCSWatcherTestSuite) TestRetryBackoffTiming() {
 	s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
 			handler := args.Get(1).(func(context.Context, *pubsub.Message))
-			
+
 			// Send OBJECT_FINALIZE event (should generate EventModified)
 			handler(context.TODO(), &pubsub.Message{
 				Data:       body,
@@ -692,7 +692,7 @@ func (s *GCSWatcherTestSuite) TestEnhancedMetadata() {
 func (s *GCSWatcherTestSuite) TestOverwriteEventSuppression() {
 	// Test that overwrite operations only generate one logical event (EventModified)
 	// and suppress the redundant DELETE/ARCHIVE event
-	
+
 	var receivedEvents []vfsevents.Event
 	handler := func(event vfsevents.Event) {
 		receivedEvents = append(receivedEvents, event)
@@ -727,13 +727,13 @@ func (s *GCSWatcherTestSuite) TestOverwriteEventSuppression() {
 	s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
 			handler := args.Get(1).(func(context.Context, *pubsub.Message))
-			
+
 			// Send OBJECT_FINALIZE event (should generate EventModified)
 			handler(context.TODO(), &pubsub.Message{
 				Data:       body,
 				Attributes: finalizeAttributes,
 			})
-			
+
 			// Send OBJECT_DELETE event (should be suppressed)
 			handler(context.TODO(), &pubsub.Message{
 				Data:       body,
@@ -757,7 +757,7 @@ func (s *GCSWatcherTestSuite) TestOverwriteEventSuppression() {
 
 	// Verify only one event was generated (the OBJECT_FINALIZE -> EventModified)
 	s.Require().Len(receivedEvents, 1, "Should only receive one event for overwrite operation")
-	
+
 	event := receivedEvents[0]
 	s.Equal(vfsevents.EventModified, event.Type, "Overwrite should be mapped to EventModified")
 	s.Equal("gs://test-bucket/overwritten-file.txt", event.URI)
