@@ -1,0 +1,15 @@
+dir: '{{.InterfaceDir}}/mocks'
+structname: '{{.InterfaceName}}'
+filename: '{{.InterfaceName}}.go'
+pkgname: mocks
+template: testify
+packages:
+  github.com/c2fo/vfs/contrib/vfsevents:
+    config:
+      all: true
+  github.com/c2fo/vfs/contrib/vfsevents/watchers/gcsevents:
+    config:
+      all: true
+  github.com/c2fo/vfs/contrib/vfsevents/watchers/s3events:
+    config:
+      all: true
