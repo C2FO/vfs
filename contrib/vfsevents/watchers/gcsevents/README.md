@@ -1,18 +1,17 @@
-# gcsevents
+# GCS Events Watcher
 
-`gcsevents` provides a `GCSWatcher` that implements the `vfsevents.Watcher` interface by using Pub/Sub events from a GCS bucket.
+This package provides a watcher for Google Cloud Storage (GCS) events using Pub/Sub notifications.
 
-## Installation
+## Features
 
-To install the package, use the following command:
-
-```bash
-go get github.com/c2fo/vfs/contrib/vfsevents/watchers/gcsevents
-```
+- **Semantic Event Mapping**: Distinguishes between true file creations and modifications using GCS event attributes
+- **Overwrite Suppression**: Eliminates redundant events for file overwrites to provide clean, atomic operation semantics
+- **Enhanced Metadata**: Rich context including generation numbers, event times, and GCS-specific attributes
+- **Retry Logic**: Configurable retry behavior for handling transient errors
 
 ## Event Mapping
 
-The GCS watcher provides **semantic accuracy** in event mapping by using GCS-specific attributes to distinguish between different types of operations:
+The watcher maps GCS Pub/Sub events to VFS events with semantic accuracy:
 
 | GCS Event Type | VFS Event Type | Condition | Description |
 |---|---|---|---|
@@ -20,117 +19,64 @@ The GCS watcher provides **semantic accuracy** in event mapping by using GCS-spe
 | `OBJECT_FINALIZE` | `EventModified` | Has `overwroteGeneration` | File overwrite, copy, or restore |
 | `OBJECT_METADATA_UPDATE` | `EventModified` | Always | Metadata changes |
 | `OBJECT_DELETE` | `EventDeleted` | No `overwrittenByGeneration` | True file deletion |
-| `OBJECT_DELETE` | *Suppressed* | Has `overwrittenByGeneration` | Part of overwrite (redundant) |
+| `OBJECT_DELETE` | *Suppressed* | Has `overwrittenByGeneration` | Part of overwrite (not emitted) |
 | `OBJECT_ARCHIVE` | `EventDeleted` | No `overwrittenByGeneration` | File archival |
-| `OBJECT_ARCHIVE` | *Suppressed* | Has `overwrittenByGeneration` | Part of overwrite (redundant) |
+| `OBJECT_ARCHIVE` | *Suppressed* | Has `overwrittenByGeneration` | Part of overwrite (not emitted) |
 
 ### Overwrite Event Suppression
 
-When a file is overwritten in GCS (e.g., `gsutil cp new.txt gs://bucket/existing.txt`), GCS publishes **two events**:
+When you overwrite a file in GCS (e.g., `gsutil cp new.txt gs://bucket/existing.txt`), the watcher presents this as a single logical `EventModified` event, even though GCS internally publishes multiple events.
 
-1. `OBJECT_FINALIZE` (with `overwroteGeneration`) → Maps to `EventModified` 
-2. `OBJECT_DELETE` (with `overwrittenByGeneration`) → **Suppressed** 
+**What GCS publishes:**
+1. `OBJECT_FINALIZE` (with `overwroteGeneration`) → Maps to `EventModified` ✅
+2. `OBJECT_DELETE` (with `overwrittenByGeneration`) → **Suppressed** (not emitted) ❌
 
 **Why suppress the second event?**
-- **Cleaner semantics**: One logical operation = one event
-- **Reduced noise**: No confusing "deleted" events for overwrites  
-- **Better UX**: Applications get the expected `EventModified` for overwrites
-- **Maintains accuracy**: True deletions still generate `EventDeleted`
+- **User-centric semantics**: You performed one action (overwrite), so you get one event
+- **Atomic operations**: One logical file operation = one event  
+- **Intuitive behavior**: Overwrites appear as modifications (as expected)
+- **Reduced complexity**: Applications don't need to correlate multiple events for single operations
+- **Clean abstraction**: Hide cloud storage implementation details from file system users
 
-This ensures that overwrite operations are represented as single `EventModified` events rather than confusing `EventModified` + `EventDeleted` pairs.
+**Technical Implementation:**
+Events with `overwrittenByGeneration` are detected and suppressed before processing - they are never mapped or emitted. This ensures that overwrite operations are represented as single `EventModified` events rather than confusing `EventModified` + `EventDeleted` pairs.
 
 ### Event Metadata
 
 Each event includes comprehensive metadata:
 
-```go
-event.Metadata = map[string]string{
-    "bucketName":              "my-bucket",
-    "object":                  "path/to/file.txt",
-    "eventType":               "OBJECT_FINALIZE",
-    "generation":              "1234567890",
-    "overwroteGeneration":     "9876543210",  // Present for overwrites
-    "overwrittenByGeneration": "1111111111",  // Present for deletes/archives
-    "eventTime":               "2023-01-01T12:00:00Z",
-}
-```
+- **bucketName**: GCS bucket name
+- **object**: Object name/path
+- **eventType**: Original GCS event type
+- **generation**: Object generation number
+- **overwroteGeneration**: Present for overwrites (indicates which generation was replaced)
+- **overwrittenByGeneration**: Present for suppressed delete/archive events
+- **eventTime**: When the event occurred
 
 ## Usage
-### Example
-The following example demonstrates how to create a `GCSWatcher` that listens for changes in a GCS bucket and handles the events:
 
 ```go
-package main
+import "github.com/c2fo/vfs/contrib/vfsevents/watchers/gcsevents"
 
-import (
-    "context"
-    "log"
-
-    "github.com/c2fo/vfs/contrib/vfsevents"
-    "github.com/c2fo/vfs/contrib/vfsevents/watchers/gcsevents"
-)
-
-func main() {
-    // Initialize the GCSWatcher
-    watcher, err := gcsevents.NewGCSWatcher("c2fo-application", "buyer-incoming-events-subscription")
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Define the event handler
-    handler := func(event vfsevents.Event) {
-        log.Println("Event:", event)
-    }
-
-    // Define the error handler
-    errHandler := func(err error) {
-        log.Println("Error:", err)
-    }
-
-    // Start the watcher
-    ctx := context.Background()
-    err = watcher.Start(ctx, handler, errHandler)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Run the watcher for 2 minutes
-    select {
-    case <-time.After(2 * time.Minute):
-        watcher.Stop()
-    }
+// Create watcher
+watcher, err := gcsevents.NewGCSWatcher("my-project", "my-subscription")
+if err != nil {
+    log.Fatal(err)
 }
+
+// Start watching
+err = watcher.Start(ctx, func(event vfsevents.Event) error {
+    fmt.Printf("Event: %s on %s\n", event.Type, event.Path)
+    return nil
+})
 ```
 
-## API
+## Configuration
 
-### GCSWatcher
+The watcher supports various configuration options through functional options:
 
-#### NewGCSWatcher
-```go
-func NewGCSWatcher(projectID, subscriptionID string, opts ...Option) (*GCSWatcher, error) {
-```
+- Retry configuration for handling transient errors
+- Custom Pub/Sub client settings
+- Event filtering and processing options
 
-`NewGCSWatcher` initializes a GCSWatcher with the given Pub/Sub projectID and subscriptionID. It accepts functional options to customize the watcher.
-
-#### Start
-```go
-func (w *GCSWatcher) Start(ctx context.Context, handler vfsevents.EventHandler, errHandler vfsevents.ErrorHandler) error
-```
-
-`Start` begins watching the Pub/Sub subscription for GCS events and triggers the handler on events. It also takes an error handler to handle any errors that occur during polling. The polling process can be stopped by calling `Stop`.
-
-#### Stop
-```go
-func (w *GCSWatcher) Stop() error
-```
-`Stop` stops the GCSWatcher from polling for events. It gracefully shuts down the watcher and cleans up any resources.
-
-### Options
-
-#### WithPubSubClient
-```go
-func WithPubSubClient(client *pubsub.Client) func(*GCSWatcher)
-```
-
-`WithPubSubClient` allows you to provide a custom Pub/Sub client to the `GCSWatcher`. This is useful if you want to use a pre-configured client or mock it for testing purposes.
+See the package documentation for detailed configuration options.

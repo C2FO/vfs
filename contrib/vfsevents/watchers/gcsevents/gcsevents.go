@@ -267,6 +267,13 @@ func (w *GCSWatcher) receive(
 			}
 		}
 
+		// Check if this event should be suppressed to maintain clean semantic abstraction
+		if w.shouldSuppressEvent(eventType, msg.Attributes) {
+			// Skip processing - this event is part of a larger logical operation
+			// that's already represented by another event (e.g., OBJECT_FINALIZE for overwrites)
+			return
+		}
+
 		// Map GCS event type to vfsevents.EventType with semantic accuracy
 		mappedEventType := w.mapGCSEventType(eventType, msg.Attributes)
 		if mappedEventType != vfsevents.EventUnknown {
@@ -313,6 +320,20 @@ func (w *GCSWatcher) receive(
 	return err
 }
 
+// shouldSuppressEvent determines if an event should be suppressed based on GCS event type and attributes.
+// Returns true for events that are part of overwrite operations and should not be emitted to maintain
+// clean semantic abstraction (one logical operation = one event).
+func (w *GCSWatcher) shouldSuppressEvent(eventType string, attributes map[string]string) bool {
+	switch eventType {
+	case EventObjectDelete, EventObjectArchive:
+		// Suppress delete/archive events that are part of an overwrite operation
+		if overwrittenBy, ok := attributes["overwrittenByGeneration"]; ok && overwrittenBy != "" {
+			return true // This delete/archive is part of an overwrite - suppress it
+		}
+	}
+	return false
+}
+
 // mapGCSEventType maps a GCS event type to a vfsevents.EventType with semantic accuracy
 func (w *GCSWatcher) mapGCSEventType(eventType string, attributes map[string]string) vfsevents.EventType {
 	switch eventType {
@@ -328,13 +349,8 @@ func (w *GCSWatcher) mapGCSEventType(eventType string, attributes map[string]str
 		// Metadata updates are clearly modifications
 		return vfsevents.EventModified
 	case EventObjectDelete, EventObjectArchive:
-		// Check if this delete/archive is part of an overwrite operation
-		if overwrittenBy, ok := attributes["overwrittenByGeneration"]; ok && overwrittenBy != "" {
-			// This delete/archive is part of an overwrite - suppress it
-			// The corresponding OBJECT_FINALIZE event already captured the logical operation as EventModified
-			return vfsevents.EventUnknown
-		}
-		// This is a true standalone deletion/archival
+		// These are true standalone deletions/archival (not part of overwrites)
+		// Overwrite-related delete/archive events are suppressed before reaching this point
 		return vfsevents.EventDeleted
 	default:
 		return vfsevents.EventUnknown

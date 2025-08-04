@@ -586,30 +586,12 @@ func (s *GCSWatcherTestSuite) TestMapGCSEventType() {
 			expected: vfsevents.EventDeleted,
 		},
 		{
-			name:      "OBJECT_DELETE with overwrittenByGeneration - suppressed overwrite",
-			eventType: EventObjectDelete,
-			attributes: map[string]string{
-				"overwrittenByGeneration": "9876543210",
-				"eventTime":               "2023-01-01T12:00:00Z",
-			},
-			expected: vfsevents.EventUnknown, // Suppressed because it's part of an overwrite
-		},
-		{
 			name:      "OBJECT_ARCHIVE - file archival",
 			eventType: EventObjectArchive,
 			attributes: map[string]string{
 				"eventTime": "2023-01-01T12:00:00Z",
 			},
 			expected: vfsevents.EventDeleted,
-		},
-		{
-			name:      "OBJECT_ARCHIVE with overwrittenByGeneration - suppressed overwrite",
-			eventType: EventObjectArchive,
-			attributes: map[string]string{
-				"overwrittenByGeneration": "9876543210",
-				"eventTime":               "2023-01-01T12:00:00Z",
-			},
-			expected: vfsevents.EventUnknown, // Suppressed because it's part of an overwrite
 		},
 		{
 			name:       "Unknown event type",
@@ -622,6 +604,57 @@ func (s *GCSWatcherTestSuite) TestMapGCSEventType() {
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			result := s.watcher.mapGCSEventType(tt.eventType, tt.attributes)
+			s.Equal(tt.expected, result)
+		})
+	}
+}
+
+func (s *GCSWatcherTestSuite) TestShouldSuppressEvent() {
+	tests := []struct {
+		name       string
+		eventType  string
+		attributes map[string]string
+		expected   bool
+	}{
+		{
+			name:      "OBJECT_DELETE with overwrittenByGeneration - suppressed overwrite",
+			eventType: EventObjectDelete,
+			attributes: map[string]string{
+				"overwrittenByGeneration": "9876543210",
+				"eventTime":               "2023-01-01T12:00:00Z",
+			},
+			expected: true,
+		},
+		{
+			name:      "OBJECT_ARCHIVE with overwrittenByGeneration - suppressed overwrite",
+			eventType: EventObjectArchive,
+			attributes: map[string]string{
+				"overwrittenByGeneration": "9876543210",
+				"eventTime":               "2023-01-01T12:00:00Z",
+			},
+			expected: true,
+		},
+		{
+			name:      "OBJECT_DELETE without overwrittenByGeneration - not suppressed",
+			eventType: EventObjectDelete,
+			attributes: map[string]string{
+				"eventTime": "2023-01-01T12:00:00Z",
+			},
+			expected: false,
+		},
+		{
+			name:      "OBJECT_ARCHIVE without overwrittenByGeneration - not suppressed",
+			eventType: EventObjectArchive,
+			attributes: map[string]string{
+				"eventTime": "2023-01-01T12:00:00Z",
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			result := s.watcher.shouldSuppressEvent(tt.eventType, tt.attributes)
 			s.Equal(tt.expected, result)
 		})
 	}
