@@ -2,9 +2,33 @@ name: golangci-lint
 on:
   pull_request:
 jobs:
+  detect-modules:
+    runs-on: arc-scale-set
+    outputs:
+      modules: ${{ steps.set-modules.outputs.modules }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: set-modules
+        run: |
+          source ./.github/workflows/scripts/module-ci.sh
+          all_modules=$(find . -name go.mod -exec sh -c 'dirname {}' \; | jq --raw-input --slurp --compact-output 'split("\n")[:-1]')
+          echo 'Modules Identified: '
+          echo $all_modules | jq -r "."
+          echo "Diff with target branch:"
+          git diff --stat ${{ github.event.pull_request.base.ref || 'origin/main' }} --name-only | cat | awk -F"|" '{print "\""$1"\""}' | jq -s '.'
+          updated_modules=$(get_changed_modules $all_modules ${{ github.event.pull_request.base.sha || 'origin/main' }})
+          echo "module tests to run=$updated_modules"
+          echo "modules=$updated_modules" >> ${GITHUB_OUTPUT}
   golangci:
     name: lint
+    needs: detect-modules
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        modules: ${{ fromJSON(needs.detect-modules.outputs.modules) }}
     steps:
       - uses: actions/setup-go@v5
         with:
@@ -22,13 +46,14 @@ jobs:
           # working-directory: somedir
 
           # Optional: golangci-lint command line arguments.
-          args: --config=.golangci.yml
+          args: --config=${{ github.workspace }}/.golangci.yml --timeout=10m
 
           # Optional: show only new issues if it's a pull request. The default value is `false`.
           only-new-issues: true
 
           # Optional: if set to true then the action will use pre-installed Go.
           # skip-go-installation: true
+          working-directory: ${{ matrix.modules }}
 
           # Optional: if set to true then the action don't cache or restore ~/go/pkg.
           # skip-pkg-cache: true

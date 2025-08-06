@@ -6,14 +6,40 @@ on:
       - main
       - v6
 
+# Concurrency Setting
+concurrency:
+  # Cancel any previous runs of this workflow as long as its not main
+  # to free up runners
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
+  get_modules:
+    name: Get Modules
+    runs-on: ubuntu-latest
+    outputs:
+      modules: ${{ steps.modules.outputs.modules }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Find all modules
+        id: modules
+        run: |
+          modules=$(find . -name go.mod -exec dirname {} \; | jq --raw-input --slurp --compact-output 'split("\n")[:-1]')
+          echo "Modules found:"
+          echo $modules | jq -r ".[]"
+          echo "modules=$modules" >> $GITHUB_OUTPUT
+
   test:
+    needs: get_modules
     strategy:
       fail-fast: false
       matrix:
         go-version: [1.23, 1.24]
         os: [ubuntu-latest, macos-latest, windows-latest]
+        module: ${{ fromJson(needs.get_modules.outputs.modules) }}
     runs-on: ${{ matrix.os }}
+    name: Test ${{ matrix.module }} (Go ${{ matrix.go-version }}, ${{ matrix.os }})
     steps:
       - name: Install Go
         uses: actions/setup-go@v5
@@ -33,6 +59,8 @@ jobs:
         env:
           TEMP: ${{ env.TEMP || '' }}
           TMP: ${{ env.TMP || '' }}
+        working-directory: ${{ matrix.module }}
         run: |
+          echo "Testing module: ${{ matrix.module }}"
           echo "Temporary directory: $TMPDIR"
           go test ./...
