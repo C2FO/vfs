@@ -1,3 +1,5 @@
+// Package fsnotify provides an implementation of the vfsevents.Watcher interface using fsnotify for real-time filesystem monitoring.
+// It offers cross-platform filesystem event watching with support for recursive directory monitoring and event filtering.
 package fsnotify
 
 import (
@@ -171,7 +173,9 @@ func (w *FSNotifyWatcher) Stop(opts ...vfsevents.StopOption) error {
 	// Handle graceful shutdown with timeout
 	if config.Force {
 		// Force immediate shutdown
-		w.watcher.Close()
+		if err := w.watcher.Close(); err != nil {
+			return fmt.Errorf("error closing fsnotify watcher: %w", err)
+		}
 		return nil
 	}
 
@@ -184,10 +188,14 @@ func (w *FSNotifyWatcher) Stop(opts ...vfsevents.StopOption) error {
 
 	select {
 	case <-done:
-		w.watcher.Close()
+		if err := w.watcher.Close(); err != nil {
+			return fmt.Errorf("error closing fsnotify watcher: %w", err)
+		}
 		return nil
 	case <-time.After(config.Timeout):
-		w.watcher.Close()
+		if err := w.watcher.Close(); err != nil {
+			return fmt.Errorf("timeout waiting for fsnotify watcher to stop after %v, and error closing watcher: %w", config.Timeout, err)
+		}
 		return fmt.Errorf("timeout waiting for fsnotify watcher to stop after %v", config.Timeout)
 	}
 }

@@ -32,13 +32,14 @@ func (s *FSNotifyWatcherTestSuite) SetupTest() {
 func (s *FSNotifyWatcherTestSuite) TearDownTest() {
 	// Stop watcher if running
 	if s.watcher != nil {
-		s.watcher.Stop()
+		_ = s.watcher.Stop() // Ignore error in test teardown
 		s.watcher = nil
 	}
 
 	// Clean up temporary directory
 	if s.tempDir != "" {
-		os.RemoveAll(s.tempDir)
+		err := os.RemoveAll(s.tempDir)
+		s.Require().NoError(err)
 		s.tempDir = ""
 	}
 }
@@ -113,7 +114,7 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 
 		// Create a test file
 		testFile := filepath.Join(s.tempDir, "test.txt")
-		err = os.WriteFile(testFile, []byte("test content"), 0644)
+		err = os.WriteFile(testFile, []byte("test content"), 0600)
 		s.Require().NoError(err)
 
 		// Wait for event
@@ -156,7 +157,7 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 		s.Assert().Contains(err.Error(), "already running")
 
 		// Clean up
-		s.watcher.Stop()
+		_ = s.watcher.Stop() // Ignore error in test cleanup
 	})
 }
 
@@ -183,14 +184,14 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 
 	err = s.watcher.Start(ctx, eventHandler, errorHandler)
 	s.Require().NoError(err)
-	defer s.watcher.Stop()
+	defer func() { _ = s.watcher.Stop() }() // Ignore error in test cleanup
 
 	// Give the watcher time to start
 	time.Sleep(100 * time.Millisecond)
 
 	s.Run("Create file", func() {
 		testFile := filepath.Join(s.tempDir, "create_test.txt")
-		err := os.WriteFile(testFile, []byte("test content"), 0644)
+		err := os.WriteFile(testFile, []byte("test content"), 0600)
 		s.Require().NoError(err)
 
 		select {
@@ -207,7 +208,7 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 		testFile := filepath.Join(s.tempDir, "modify_test.txt")
 
 		// Create file first
-		err := os.WriteFile(testFile, []byte("initial content"), 0644)
+		err := os.WriteFile(testFile, []byte("initial content"), 0600)
 		s.Require().NoError(err)
 
 		// Wait for create event
@@ -218,7 +219,7 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 		}
 
 		// Modify the file
-		err = os.WriteFile(testFile, []byte("modified content"), 0644)
+		err = os.WriteFile(testFile, []byte("modified content"), 0600)
 		s.Require().NoError(err)
 
 		select {
@@ -234,7 +235,7 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 		testFile := filepath.Join(s.tempDir, "delete_test.txt")
 
 		// Create file first
-		err := os.WriteFile(testFile, []byte("content to delete"), 0644)
+		err := os.WriteFile(testFile, []byte("content to delete"), 0600)
 		s.Require().NoError(err)
 
 		// Wait for create event
@@ -296,7 +297,7 @@ func (s *FSNotifyWatcherTestSuite) TestRecursiveWatching() {
 
 	err = s.watcher.Start(ctx, eventHandler, errorHandler)
 	s.Require().NoError(err)
-	defer s.watcher.Stop()
+	defer func() { _ = s.watcher.Stop() }() // Ignore error in test cleanup
 
 	// Give the watcher time to start
 	time.Sleep(100 * time.Millisecond)
@@ -304,7 +305,7 @@ func (s *FSNotifyWatcherTestSuite) TestRecursiveWatching() {
 	s.Run("Create subdirectory and file", func() {
 		// Create subdirectory
 		subDir := filepath.Join(s.tempDir, "subdir")
-		err := os.Mkdir(subDir, 0755)
+		err := os.Mkdir(subDir, 0750)
 		s.Require().NoError(err)
 
 		// Wait for directory create event
@@ -321,7 +322,7 @@ func (s *FSNotifyWatcherTestSuite) TestRecursiveWatching() {
 
 		// Create file in subdirectory
 		testFile := filepath.Join(subDir, "nested_file.txt")
-		err = os.WriteFile(testFile, []byte("nested content"), 0644)
+		err = os.WriteFile(testFile, []byte("nested content"), 0600)
 		s.Require().NoError(err)
 
 		// Wait for file create event
@@ -363,7 +364,7 @@ func (s *FSNotifyWatcherTestSuite) TestEventFiltering() {
 		}),
 	)
 	s.Require().NoError(err)
-	defer s.watcher.Stop()
+	defer func() { _ = s.watcher.Stop() }() // Ignore error in test cleanup
 
 	// Give the watcher time to start
 	time.Sleep(100 * time.Millisecond)
@@ -371,12 +372,12 @@ func (s *FSNotifyWatcherTestSuite) TestEventFiltering() {
 	s.Run("Filtered events", func() {
 		// Create a .txt file (should be processed)
 		txtFile := filepath.Join(s.tempDir, "test.txt")
-		err := os.WriteFile(txtFile, []byte("txt content"), 0644)
+		err := os.WriteFile(txtFile, []byte("txt content"), 0600)
 		s.Require().NoError(err)
 
 		// Create a .log file (should be filtered out)
 		logFile := filepath.Join(s.tempDir, "test.log")
-		err = os.WriteFile(logFile, []byte("log content"), 0644)
+		err = os.WriteFile(logFile, []byte("log content"), 0600)
 		s.Require().NoError(err)
 
 		// Should only receive the .txt file event
@@ -428,7 +429,7 @@ func (s *FSNotifyWatcherTestSuite) TestStatusCallback() {
 		vfsevents.WithStatusCallback(statusHandler),
 	)
 	s.Require().NoError(err)
-	defer s.watcher.Stop()
+	defer func() { _ = s.watcher.Stop() }() // Ignore error in test cleanup
 
 	// Should receive initial status
 	select {
@@ -441,7 +442,7 @@ func (s *FSNotifyWatcherTestSuite) TestStatusCallback() {
 
 	// Create a file to trigger an event
 	testFile := filepath.Join(s.tempDir, "status_test.txt")
-	err = os.WriteFile(testFile, []byte("status test"), 0644)
+	err = os.WriteFile(testFile, []byte("status test"), 0600)
 	s.Require().NoError(err)
 
 	// Should receive event
@@ -466,56 +467,60 @@ func TestFSNotifyWatcherTestSuite(t *testing.T) {
 	suite.Run(t, new(FSNotifyWatcherTestSuite))
 }
 
-// Example demonstrates basic usage of FSNotify watcher for monitoring local filesystem
+// Example demonstrates basic usage of FSNotify watcher for monitoring local filesystem events
 func Example() {
 	// Create a temporary directory for demonstration
 	tempDir, err := os.MkdirTemp("", "fsnotify_example_*")
 	if err != nil {
-		log.Fatalf("Failed to create temp dir: %v", err)
+		log.Printf("Failed to create temp dir: %v", err)
+		return
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		err := os.RemoveAll(tempDir)
+		if err != nil {
+			log.Printf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	// Create VFS location for local filesystem
 	location, err := vfssimple.NewLocation(fmt.Sprintf("file://%s/", tempDir))
 	if err != nil {
-		log.Fatalf("Failed to create VFS location: %v", err)
+		log.Printf("Failed to create VFS location: %v", err)
+		return
 	}
 
 	// Create FSNotify watcher
 	watcher, err := NewFSNotifyWatcher(location)
 	if err != nil {
-		log.Fatalf("Failed to create FSNotify watcher: %v", err)
+		log.Printf("Failed to create FSNotify watcher: %v", err)
+		return
 	}
 
-	// Define event handler
+	// Set up event and error handlers
 	eventHandler := func(event vfsevents.Event) {
-		fmt.Printf("FSNotify Event: %s | %s\n", event.Type.String(), event.URI)
-
-		// Access metadata
-		if path, exists := event.Metadata["path"]; exists {
-			fmt.Printf("Local path: %s\n", path)
-		}
-		if op, exists := event.Metadata["fsnotify_op"]; exists {
-			fmt.Printf("FSNotify operation: %s\n", op)
-		}
+		fmt.Printf("FSNotify Event: %s - %s\n", event.Type, event.URI)
 	}
 
-	// Define error handler
 	errorHandler := func(err error) {
-		fmt.Printf("FSNotify watcher error: %v\n", err)
+		fmt.Printf("FSNotify Error: %v\n", err)
 	}
 
-	// Start watching
+	// Start watching with a timeout context
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	err = watcher.Start(ctx, eventHandler, errorHandler)
 	if err != nil {
-		log.Fatalf("Failed to start FSNotify watcher: %v", err)
+		log.Printf("Failed to start FSNotify watcher: %v", err)
+		return
 	}
 
 	// Stop watching
-	watcher.Stop()
+	err = watcher.Stop(vfsevents.WithTimeout(10 * time.Second))
+	if err != nil {
+		log.Printf("Failed to stop FSNotify watcher: %v", err)
+		return
+	}
 }
 
 // ExampleNewFSNotifyWatcher_withRecursive demonstrates recursive filesystem watching
@@ -523,43 +528,47 @@ func ExampleNewFSNotifyWatcher_withRecursive() {
 	// Create a temporary directory for demonstration
 	tempDir, err := os.MkdirTemp("", "fsnotify_recursive_*")
 	if err != nil {
-		log.Fatalf("Failed to create temp dir: %v", err)
+		log.Printf("Failed to create temp dir: %v", err)
+		return
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		err := os.RemoveAll(tempDir)
+		if err != nil {
+			log.Printf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	// Create VFS location
 	location, err := vfssimple.NewLocation(fmt.Sprintf("file://%s/", tempDir))
 	if err != nil {
-		log.Fatalf("Failed to create VFS location: %v", err)
+		log.Printf("Failed to create VFS location: %v", err)
+		return
 	}
 
-	// Create FSNotify watcher with recursive watching
+	// Create FSNotify watcher with recursive monitoring
 	watcher, err := NewFSNotifyWatcher(location, WithRecursive(true))
 	if err != nil {
-		log.Fatalf("Failed to create FSNotify watcher: %v", err)
+		log.Printf("Failed to create FSNotify watcher: %v", err)
+		return
 	}
 
+	// Set up event and error handlers
 	eventHandler := func(event vfsevents.Event) {
-		fmt.Printf("Recursive FSNotify Event: %s on %s\n", event.Type.String(), event.URI)
-
-		// Show the local filesystem path
-		if path, exists := event.Metadata["path"]; exists {
-			fmt.Printf("Full path: %s\n", path)
-		}
+		fmt.Printf("Recursive FSNotify Event: %s - %s\n", event.Type, event.URI)
 	}
 
 	errorHandler := func(err error) {
-		fmt.Printf("Error: %v\n", err)
+		fmt.Printf("Recursive FSNotify Error: %v\n", err)
 	}
 
-	ctx := context.Background()
+	// Start watching with advanced options
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	// Start with advanced configuration
 	err = watcher.Start(ctx, eventHandler, errorHandler,
+		// Only process .txt files and deletions
 		vfsevents.WithEventFilter(func(e vfsevents.Event) bool {
-			// Only process certain file types
-			return strings.HasSuffix(e.URI, ".txt") ||
-				strings.HasSuffix(e.URI, ".log") ||
+			return strings.HasSuffix(e.URI, ".txt") || // Only .txt files
 				e.Type == vfsevents.EventDeleted // Always process deletions
 		}),
 		vfsevents.WithStatusCallback(func(status vfsevents.WatcherStatus) {
@@ -569,9 +578,14 @@ func ExampleNewFSNotifyWatcher_withRecursive() {
 		}),
 	)
 	if err != nil {
-		log.Fatalf("Failed to start FSNotify watcher: %v", err)
+		log.Printf("Failed to start FSNotify watcher: %v", err)
+		return
 	}
 
 	// Graceful shutdown
-	watcher.Stop(vfsevents.WithTimeout(10 * time.Second))
+	err = watcher.Stop(vfsevents.WithTimeout(10 * time.Second))
+	if err != nil {
+		log.Printf("Failed to stop FSNotify watcher: %v", err)
+		return
+	}
 }

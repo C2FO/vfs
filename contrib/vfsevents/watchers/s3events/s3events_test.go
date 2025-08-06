@@ -1048,13 +1048,15 @@ func Example() {
 	// Create S3 watcher with SQS queue URL
 	watcher, err := NewS3Watcher("https://sqs.us-east-1.amazonaws.com/123456789012/my-queue")
 	if err != nil {
-		log.Fatalf("Failed to create S3 watcher: %v", err)
+		log.Printf("Failed to create S3 watcher: %v", err)
+		return
 	}
 
 	// Create VFS location for S3 bucket operations
 	s3Location, err := vfssimple.NewLocation("s3://my-bucket/")
 	if err != nil {
-		log.Fatalf("Failed to create S3 VFS location: %v", err)
+		log.Printf("Failed to create S3 VFS location: %v", err)
+		return
 	}
 
 	// Define event handler with VFS integration
@@ -1074,7 +1076,7 @@ func Example() {
 				if err == nil {
 					fmt.Printf("File content preview: %.100s...\n", string(content))
 				}
-				file.Close()
+				_ = file.Close() // Ignore error in example
 			}
 		}
 	}
@@ -1090,11 +1092,12 @@ func Example() {
 
 	err = watcher.Start(ctx, eventHandler, errorHandler)
 	if err != nil {
-		log.Fatalf("Failed to start S3 watcher: %v", err)
+		log.Printf("Failed to start S3 watcher: %v", err)
+		return
 	}
 
 	// Stop watching
-	watcher.Stop()
+	_ = watcher.Stop() // Ignore error in example
 }
 
 // ExampleNewS3Watcher_withConfiguration demonstrates S3Events watcher with advanced configuration
@@ -1104,7 +1107,8 @@ func ExampleNewS3Watcher_withConfiguration() {
 		WithReceivedCount(3), // Delete messages after 3 failed processing attempts
 	)
 	if err != nil {
-		log.Fatalf("Failed to create S3 watcher: %v", err)
+		log.Printf("Failed to create S3 watcher: %v", err)
+		return
 	}
 
 	eventHandler := func(event vfsevents.Event) {
@@ -1140,9 +1144,10 @@ func ExampleNewS3Watcher_withConfiguration() {
 		}),
 	)
 	if err != nil {
-		log.Fatalf("Failed to start S3 watcher: %v", err)
+		log.Printf("Failed to start S3 watcher: %v", err)
+		return
 	}
 
 	// Graceful shutdown with timeout
-	watcher.Stop(vfsevents.WithTimeout(30 * time.Second))
+	_ = watcher.Stop(vfsevents.WithTimeout(30 * time.Second)) // Ignore error in example
 }
