@@ -115,12 +115,12 @@ func (fs *FileSystem) Scheme() string {
 
 // Client returns the underlying sftp client, creating it, if necessary
 // See Overview for authentication resolution
-func (fs *FileSystem) Client(authority authority.Authority) (Client, error) {
+func (fs *FileSystem) Client(a authority.Authority) (Client, error) {
 	// first stop connection timer, if any
 	fs.connTimerStop()
 	if fs.sftpclient == nil {
 		var err error
-		fs.sftpclient, fs.sshConn, err = defaultClientGetter(authority, fs.options)
+		fs.sftpclient, fs.sshConn, err = defaultClientGetter(a, fs.options)
 		if err != nil {
 			return nil, err
 		}
