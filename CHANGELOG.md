@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v7.6.1]
+### Added
+- Updated changelog.sh to include checks for mono go repo
+- Added .prenup.yml
+- fix golangci-lint issues (for v3)
+
 ## [v7.6.0] - 2025-08-04
 ### Added
 - Updated mockery config to be v3 compatible.

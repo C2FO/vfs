@@ -1,0 +1,22 @@
+exclude:
+  - ".github"
+  - "*.yaml"
+  - "*.yml"
+
+tasks:
+  - name: "Run tests"
+    default_selected: true
+    command: "go test ./..."
+    per_module: true
+    working_dir: "{{.module_root}}"
+
+  - name: "Run golangci-lint"
+    default_selected: true
+    command: "golangci-lint run --max-same-issues 0 ./..."
+    per_module: true
+    working_dir: "{{.module_root}}"
+
+  - name: "Check for changes in CHANGELOG.md"
+    default_selected: true
+    command: "/bin/bash {{.repo_root}}/.github/workflows/scripts/changelog.sh"
+    per_module: false
