@@ -120,16 +120,6 @@ func (w *FSNotifyWatcher) Start(
 	ctx, cancel := context.WithCancel(ctx)
 	w.cancel = cancel
 
-	// Create a wrapped handler that applies filtering if configured
-	wrappedHandler := handler
-	if config.EventFilter != nil {
-		wrappedHandler = func(event vfsevents.Event) {
-			if config.EventFilter(event) {
-				handler(event)
-			}
-		}
-	}
-
 	// Status tracking
 	var status vfsevents.WatcherStatus
 	status.Running = true
@@ -143,7 +133,7 @@ func (w *FSNotifyWatcher) Start(
 	w.wg.Add(1)
 	go func() {
 		defer w.wg.Done()
-		w.watchLoop(ctx, wrappedHandler, errHandler, &status, config)
+		w.watchLoop(ctx, handler, errHandler, &status, config)
 	}()
 
 	return nil
@@ -231,6 +221,8 @@ func (w *FSNotifyWatcher) addRecursiveWatchPaths(rootPath string) error {
 }
 
 // watchLoop is the main event processing loop.
+//
+//nolint:gocyclo
 func (w *FSNotifyWatcher) watchLoop(
 	ctx context.Context,
 	handler vfsevents.HandlerFunc,
@@ -254,12 +246,23 @@ func (w *FSNotifyWatcher) watchLoop(
 
 			vfsEvent := w.convertEvent(event)
 			if vfsEvent != nil {
-				status.EventsProcessed++
-				status.LastEventTime = time.Now()
-				if config.StatusCallback != nil {
-					config.StatusCallback(*status)
+				// Apply event filter if configured before calling handler
+				shouldProcess := true
+				if config.EventFilter != nil {
+					shouldProcess = config.EventFilter(*vfsEvent)
 				}
-				handler(*vfsEvent)
+
+				if shouldProcess {
+					// Apply the handler
+					handler(*vfsEvent)
+
+					// Update status after successful event processing
+					status.EventsProcessed++
+					status.LastEventTime = time.Now()
+					if config.StatusCallback != nil {
+						config.StatusCallback(*status)
+					}
+				}
 
 				// If recursive and a new directory was created, start watching it
 				if w.recursive && event.Has(fsnotify.Create) {

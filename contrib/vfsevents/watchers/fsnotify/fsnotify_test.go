@@ -157,7 +157,7 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 		select {
 		case event := <-events:
 			s.Assert().Equal(vfsevents.EventCreated, event.Type)
-			s.Assert().Contains(event.URI, "test.txt")
+			s.Assert().Equal("file://"+testFile, event.URI)
 		case err := <-errors:
 			s.Fail("Unexpected error: %v", err)
 		case <-time.After(getEventTimeout()):
@@ -235,8 +235,8 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 		select {
 		case event := <-events:
 			s.Assert().Equal(vfsevents.EventCreated, event.Type)
-			s.Assert().Contains(event.URI, "create_test.txt")
-			s.Assert().Contains(event.Metadata["path"], "create_test.txt")
+			s.Assert().Equal("file://"+testFile, event.URI)
+			s.Assert().Equal(testFile, event.Metadata["path"])
 		case <-time.After(getEventTimeout()):
 			s.Fail("Timeout waiting for create event")
 		}
@@ -294,8 +294,8 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 			case event := <-events:
 				if event.Type == vfsevents.EventModified {
 					modifyReceived = true
-					s.Assert().Contains(event.URI, "modify_test.txt")
-					s.Assert().Contains(event.Metadata["path"], "modify_test.txt")
+					s.Assert().Equal("file://"+testFile, event.URI)
+					s.Assert().Equal(testFile, event.Metadata["path"])
 					break modifyLoop
 				}
 				// Continue waiting for modify event, ignore other events
@@ -338,7 +338,7 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 			case event := <-events:
 				// Accept both delete and rename events as valid for file removal
 				if event.Type == vfsevents.EventDeleted {
-					s.Assert().Contains(event.URI, "delete_test.txt")
+					s.Assert().Equal("file://"+testFile, event.URI)
 					eventReceived = true
 				}
 				// Continue waiting if it's not a delete event (might be a modify event from the delete operation)
@@ -388,7 +388,7 @@ func (s *FSNotifyWatcherTestSuite) TestRecursiveWatching() {
 		select {
 		case event := <-events:
 			s.Assert().Equal(vfsevents.EventCreated, event.Type)
-			s.Assert().Contains(event.URI, "subdir")
+			s.Assert().Equal("file://"+subDir, event.URI)
 		case <-time.After(getEventTimeout()):
 			s.Fail("Timeout waiting for directory create event")
 		}
@@ -405,7 +405,7 @@ func (s *FSNotifyWatcherTestSuite) TestRecursiveWatching() {
 		select {
 		case event := <-events:
 			s.Assert().Equal(vfsevents.EventCreated, event.Type)
-			s.Assert().Contains(event.URI, "nested_file.txt")
+			s.Assert().Equal("file://"+testFile, event.URI)
 		case <-time.After(getEventTimeout()):
 			s.Fail("Timeout waiting for nested file create event")
 		}
@@ -465,10 +465,10 @@ func (s *FSNotifyWatcherTestSuite) TestEventFiltering() {
 		for {
 			select {
 			case event := <-events:
-				if strings.Contains(event.URI, "test.txt") {
+				if strings.HasSuffix(event.URI, "/test.txt") {
 					txtEventReceived = true
 					s.Assert().Equal(vfsevents.EventCreated, event.Type)
-				} else if strings.Contains(event.URI, "test.log") {
+				} else if strings.HasSuffix(event.URI, "/test.log") {
 					logEventReceived = true
 					s.Fail("Received unexpected event: %+v", event)
 				}
