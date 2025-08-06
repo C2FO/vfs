@@ -132,10 +132,12 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 		errors := make(chan error, 10)
 
 		eventHandler := func(event vfsevents.Event) {
+			fmt.Printf("TEST DEBUG: Handler received event - URI: %q, Type: %s\n", event.URI, event.Type)
 			events <- event
 		}
 
 		errorHandler := func(err error) {
+			fmt.Printf("TEST DEBUG: Error handler called: %v\n", err)
 			errors <- err
 		}
 
@@ -174,10 +176,12 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 		errors := make(chan error, 10)
 
 		eventHandler := func(event vfsevents.Event) {
+			fmt.Printf("TEST DEBUG: Handler received event - URI: %q, Type: %s\n", event.URI, event.Type)
 			events <- event
 		}
 
 		errorHandler := func(err error) {
+			fmt.Printf("TEST DEBUG: Error handler called: %v\n", err)
 			errors <- err
 		}
 
@@ -209,10 +213,12 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 	errors := make(chan error, 10)
 
 	eventHandler := func(event vfsevents.Event) {
+		fmt.Printf("TEST DEBUG: Handler received event - URI: %q, Type: %s\n", event.URI, event.Type)
 		events <- event
 	}
 
 	errorHandler := func(err error) {
+		fmt.Printf("TEST DEBUG: Error handler called: %v\n", err)
 		errors <- err
 	}
 
@@ -361,10 +367,12 @@ func (s *FSNotifyWatcherTestSuite) TestRecursiveWatching() {
 	errors := make(chan error, 10)
 
 	eventHandler := func(event vfsevents.Event) {
+		fmt.Printf("TEST DEBUG: Handler received event - URI: %q, Type: %s\n", event.URI, event.Type)
 		events <- event
 	}
 
 	errorHandler := func(err error) {
+		fmt.Printf("TEST DEBUG: Error handler called: %v\n", err)
 		errors <- err
 	}
 
@@ -423,10 +431,12 @@ func (s *FSNotifyWatcherTestSuite) TestEventFiltering() {
 	errors := make(chan error, 10)
 
 	eventHandler := func(event vfsevents.Event) {
+		fmt.Printf("TEST DEBUG: Handler received event - URI: %q, Type: %s\n", event.URI, event.Type)
 		events <- event
 	}
 
 	errorHandler := func(err error) {
+		fmt.Printf("TEST DEBUG: Error handler called: %v\n", err)
 		errors <- err
 	}
 
@@ -436,7 +446,9 @@ func (s *FSNotifyWatcherTestSuite) TestEventFiltering() {
 	// Start with event filter - only .txt files
 	err = s.watcher.Start(ctx, eventHandler, errorHandler,
 		vfsevents.WithEventFilter(func(e vfsevents.Event) bool {
-			return strings.HasSuffix(e.URI, ".txt")
+			result := strings.HasSuffix(e.URI, ".txt")
+			fmt.Printf("TEST DEBUG: Filter called for URI %q, result: %t\n", e.URI, result)
+			return result
 		}),
 	)
 	s.Require().NoError(err)
@@ -448,40 +460,54 @@ func (s *FSNotifyWatcherTestSuite) TestEventFiltering() {
 	s.Run("Filtered events", func() {
 		// Create a .txt file (should be processed)
 		txtFile := filepath.Join(s.tempDir, "test.txt")
+		fmt.Printf("TEST DEBUG: Creating .txt file at: %q\n", txtFile)
 		err := os.WriteFile(txtFile, []byte("txt content"), 0600)
 		s.Require().NoError(err)
+		fmt.Printf("TEST DEBUG: .txt file created successfully\n")
 
 		// Create a .log file (should be filtered out)
 		logFile := filepath.Join(s.tempDir, "test.log")
+		fmt.Printf("TEST DEBUG: Creating .log file at: %q\n", logFile)
 		err = os.WriteFile(logFile, []byte("log content"), 0600)
 		s.Require().NoError(err)
+		fmt.Printf("TEST DEBUG: .log file created successfully\n")
 
 		// Wait for events and verify filtering
 		txtEventReceived := false
 		logEventReceived := false
 		timeout := time.After(getEventTimeout())
 
+		fmt.Printf("TEST DEBUG: Starting event collection loop, timeout: %v\n", getEventTimeout())
+
 	eventLoop:
 		for {
 			select {
 			case event := <-events:
+				fmt.Printf("TEST DEBUG: Event loop received event - URI: %q, Type: %s\n", event.URI, event.Type)
 				if strings.HasSuffix(event.URI, "/test.txt") {
 					txtEventReceived = true
+					fmt.Printf("TEST DEBUG: Marking txtEventReceived = true\n")
 					s.Assert().Equal(vfsevents.EventCreated, event.Type)
 				} else if strings.HasSuffix(event.URI, "/test.log") {
 					logEventReceived = true
+					fmt.Printf("TEST DEBUG: Marking logEventReceived = true - THIS SHOULD NOT HAPPEN!\n")
 					s.Fail("Received unexpected event: %+v", event)
+				} else {
+					fmt.Printf("TEST DEBUG: Received unexpected event (not test.txt or test.log): %+v\n", event)
 				}
 				// Continue collecting events for a bit longer
 				time.Sleep(50 * time.Millisecond)
 			case <-time.After(200 * time.Millisecond):
 				// No more events for 200ms, likely done
+				fmt.Printf("TEST DEBUG: No more events for 200ms, breaking loop\n")
 				break eventLoop
 			case <-timeout:
+				fmt.Printf("TEST DEBUG: Timeout reached, breaking loop\n")
 				break eventLoop
 			}
 		}
 
+		fmt.Printf("TEST DEBUG: Final state - txtEventReceived: %t, logEventReceived: %t\n", txtEventReceived, logEventReceived)
 		s.Assert().True(txtEventReceived, "Should have received .txt file event")
 		s.Assert().False(logEventReceived, "Should not have received .log file event")
 	})
@@ -499,10 +525,12 @@ func (s *FSNotifyWatcherTestSuite) TestStatusCallback() {
 	statuses := make(chan vfsevents.WatcherStatus, 10)
 
 	eventHandler := func(event vfsevents.Event) {
+		fmt.Printf("TEST DEBUG: Handler received event - URI: %q, Type: %s\n", event.URI, event.Type)
 		events <- event
 	}
 
 	errorHandler := func(err error) {
+		fmt.Printf("TEST DEBUG: Error handler called: %v\n", err)
 		errors <- err
 	}
 

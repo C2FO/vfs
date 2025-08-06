@@ -244,15 +244,23 @@ func (w *FSNotifyWatcher) watchLoop(
 				return
 			}
 
+			fmt.Printf("DEBUG: Raw fsnotify event - Name: %q, Op: %s\n", event.Name, event.Op.String())
+
 			vfsEvent := w.convertEvent(event)
 			if vfsEvent != nil {
+				fmt.Printf("DEBUG: Converted VFS event - URI: %q, Type: %s\n", vfsEvent.URI, vfsEvent.Type)
+
 				// Apply event filter if configured before calling handler
 				shouldProcess := true
 				if config.EventFilter != nil {
 					shouldProcess = config.EventFilter(*vfsEvent)
+					fmt.Printf("DEBUG: Filter result for URI %q: %t\n", vfsEvent.URI, shouldProcess)
+				} else {
+					fmt.Printf("DEBUG: No event filter configured\n")
 				}
 
 				if shouldProcess {
+					fmt.Printf("DEBUG: Calling handler for URI: %q\n", vfsEvent.URI)
 					// Apply the handler
 					handler(*vfsEvent)
 
@@ -262,6 +270,8 @@ func (w *FSNotifyWatcher) watchLoop(
 					if config.StatusCallback != nil {
 						config.StatusCallback(*status)
 					}
+				} else {
+					fmt.Printf("DEBUG: Event filtered out, not calling handler for URI: %q\n", vfsEvent.URI)
 				}
 
 				// If recursive and a new directory was created, start watching it
@@ -273,6 +283,8 @@ func (w *FSNotifyWatcher) watchLoop(
 				if event.Has(fsnotify.Remove) {
 					w.handleDeletedDirectory(event.Name)
 				}
+			} else {
+				fmt.Printf("DEBUG: convertEvent returned nil for fsnotify event: %q %s\n", event.Name, event.Op.String())
 			}
 
 		case err, ok := <-w.watcher.Errors:
