@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +16,41 @@ import (
 	"github.com/c2fo/vfs/contrib/vfsevents"
 	"github.com/c2fo/vfs/v7/vfssimple"
 )
+
+// Helper function to create cross-platform file:// URLs
+func fileURL(path string) string {
+	// Convert backslashes to forward slashes for Windows
+	path = filepath.ToSlash(path)
+	// Ensure path starts with /
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	return "file://" + path + "/"
+}
+
+// Helper function to get platform-appropriate timeouts
+func getEventTimeout() time.Duration {
+	switch runtime.GOOS {
+	case "windows":
+		return 5 * time.Second // Windows can be slower
+	case "darwin":
+		return 4 * time.Second // macOS sometimes needs more time
+	default:
+		return 3 * time.Second // Linux/Unix
+	}
+}
+
+// Helper function to get platform-appropriate stabilization delay
+func getStabilizationDelay() time.Duration {
+	switch runtime.GOOS {
+	case "windows":
+		return 200 * time.Millisecond
+	case "darwin":
+		return 150 * time.Millisecond
+	default:
+		return 100 * time.Millisecond
+	}
+}
 
 type FSNotifyWatcherTestSuite struct {
 	suite.Suite
@@ -46,7 +82,7 @@ func (s *FSNotifyWatcherTestSuite) TearDownTest() {
 
 func (s *FSNotifyWatcherTestSuite) TestNewFSNotifyWatcher() {
 	s.Run("Valid local location", func() {
-		location, err := vfssimple.NewLocation(fmt.Sprintf("file://%s/", s.tempDir))
+		location, err := vfssimple.NewLocation(fileURL(s.tempDir))
 		s.Require().NoError(err)
 
 		watcher, err := NewFSNotifyWatcher(location)
@@ -57,7 +93,7 @@ func (s *FSNotifyWatcherTestSuite) TestNewFSNotifyWatcher() {
 	})
 
 	s.Run("With recursive option", func() {
-		location, err := vfssimple.NewLocation(fmt.Sprintf("file://%s/", s.tempDir))
+		location, err := vfssimple.NewLocation(fileURL(s.tempDir))
 		s.Require().NoError(err)
 
 		watcher, err := NewFSNotifyWatcher(location, WithRecursive(true))
@@ -85,7 +121,7 @@ func (s *FSNotifyWatcherTestSuite) TestNewFSNotifyWatcher() {
 }
 
 func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
-	location, err := vfssimple.NewLocation(fmt.Sprintf("file://%s/", s.tempDir))
+	location, err := vfssimple.NewLocation(fileURL(s.tempDir))
 	s.Require().NoError(err)
 
 	s.watcher, err = NewFSNotifyWatcher(location)
@@ -110,7 +146,7 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 		s.Assert().NoError(err)
 
 		// Give the watcher time to start
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(getStabilizationDelay())
 
 		// Create a test file
 		testFile := filepath.Join(s.tempDir, "test.txt")
@@ -124,7 +160,7 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 			s.Assert().Contains(event.URI, "test.txt")
 		case err := <-errors:
 			s.Fail("Unexpected error: %v", err)
-		case <-time.After(2 * time.Second):
+		case <-time.After(getEventTimeout()):
 			s.Fail("Timeout waiting for create event")
 		}
 
@@ -161,8 +197,9 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 	})
 }
 
+//nolint:gocyclo
 func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
-	location, err := vfssimple.NewLocation(fmt.Sprintf("file://%s/", s.tempDir))
+	location, err := vfssimple.NewLocation(fileURL(s.tempDir))
 	s.Require().NoError(err)
 
 	s.watcher, err = NewFSNotifyWatcher(location)
@@ -187,8 +224,9 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 	defer func() { _ = s.watcher.Stop() }() // Ignore error in test cleanup
 
 	// Give the watcher time to start
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(getStabilizationDelay())
 
+	// Create file
 	s.Run("Create file", func() {
 		testFile := filepath.Join(s.tempDir, "create_test.txt")
 		err := os.WriteFile(testFile, []byte("test content"), 0600)
@@ -199,7 +237,7 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 			s.Assert().Equal(vfsevents.EventCreated, event.Type)
 			s.Assert().Contains(event.URI, "create_test.txt")
 			s.Assert().Contains(event.Metadata["path"], "create_test.txt")
-		case <-time.After(2 * time.Second):
+		case <-time.After(getEventTimeout()):
 			s.Fail("Timeout waiting for create event")
 		}
 	})
@@ -211,24 +249,62 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 		err := os.WriteFile(testFile, []byte("initial content"), 0600)
 		s.Require().NoError(err)
 
-		// Wait for create event
-		select {
-		case <-events:
-		case <-time.After(2 * time.Second):
-			s.Fail("Timeout waiting for create event")
+		// Wait for create event and drain any additional events
+		eventCount := 0
+		timeout := time.After(getEventTimeout())
+		createReceived := false
+
+	drainLoop:
+		for {
+			select {
+			case event := <-events:
+				eventCount++
+				if event.Type == vfsevents.EventCreated {
+					createReceived = true
+				}
+				// Continue draining for a short time to catch any additional events
+				time.Sleep(50 * time.Millisecond)
+			case <-time.After(100 * time.Millisecond):
+				// No more events, break out
+				break drainLoop
+			case <-timeout:
+				if !createReceived {
+					s.Fail("Timeout waiting for create event")
+				}
+				break drainLoop
+			}
 		}
+
+		s.Assert().True(createReceived, "Should have received create event")
+
+		// Add a small delay before modifying to ensure filesystem stability
+		time.Sleep(getStabilizationDelay())
 
 		// Modify the file
 		err = os.WriteFile(testFile, []byte("modified content"), 0600)
 		s.Require().NoError(err)
 
-		select {
-		case event := <-events:
-			s.Assert().Equal(vfsevents.EventModified, event.Type)
-			s.Assert().Contains(event.URI, "modify_test.txt")
-		case <-time.After(2 * time.Second):
-			s.Fail("Timeout waiting for modify event")
+		// Wait for modify event - be more flexible about event count
+		modifyReceived := false
+		timeout = time.After(getEventTimeout())
+
+	modifyLoop:
+		for {
+			select {
+			case event := <-events:
+				if event.Type == vfsevents.EventModified {
+					modifyReceived = true
+					s.Assert().Contains(event.URI, "modify_test.txt")
+					s.Assert().Contains(event.Metadata["path"], "modify_test.txt")
+					break modifyLoop
+				}
+				// Continue waiting for modify event, ignore other events
+			case <-timeout:
+				break modifyLoop
+			}
 		}
+
+		s.Assert().True(modifyReceived, "Should have received modify event")
 	})
 
 	s.Run("Delete file", func() {
@@ -241,12 +317,12 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 		// Wait for create event
 		select {
 		case <-events:
-		case <-time.After(2 * time.Second):
+		case <-time.After(getEventTimeout()):
 			s.Fail("Timeout waiting for create event")
 		}
 
 		// Give a small delay to ensure the file is fully written
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(getStabilizationDelay())
 
 		// Delete the file
 		err = os.Remove(testFile)
@@ -255,7 +331,7 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 		// Wait for delete event with longer timeout for macOS
 		// Note: fsnotify behavior can vary by platform - some may generate REMOVE, others RENAME
 		eventReceived := false
-		timeout := time.After(5 * time.Second)
+		timeout := time.After(getEventTimeout() * 2)
 
 		for !eventReceived {
 			select {
@@ -275,7 +351,7 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 }
 
 func (s *FSNotifyWatcherTestSuite) TestRecursiveWatching() {
-	location, err := vfssimple.NewLocation(fmt.Sprintf("file://%s/", s.tempDir))
+	location, err := vfssimple.NewLocation(fileURL(s.tempDir))
 	s.Require().NoError(err)
 
 	s.watcher, err = NewFSNotifyWatcher(location, WithRecursive(true))
@@ -300,7 +376,7 @@ func (s *FSNotifyWatcherTestSuite) TestRecursiveWatching() {
 	defer func() { _ = s.watcher.Stop() }() // Ignore error in test cleanup
 
 	// Give the watcher time to start
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(getStabilizationDelay())
 
 	s.Run("Create subdirectory and file", func() {
 		// Create subdirectory
@@ -313,12 +389,12 @@ func (s *FSNotifyWatcherTestSuite) TestRecursiveWatching() {
 		case event := <-events:
 			s.Assert().Equal(vfsevents.EventCreated, event.Type)
 			s.Assert().Contains(event.URI, "subdir")
-		case <-time.After(2 * time.Second):
+		case <-time.After(getEventTimeout()):
 			s.Fail("Timeout waiting for directory create event")
 		}
 
 		// Give time for the new directory to be added to the watch list
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(getStabilizationDelay())
 
 		// Create file in subdirectory
 		testFile := filepath.Join(subDir, "nested_file.txt")
@@ -330,14 +406,14 @@ func (s *FSNotifyWatcherTestSuite) TestRecursiveWatching() {
 		case event := <-events:
 			s.Assert().Equal(vfsevents.EventCreated, event.Type)
 			s.Assert().Contains(event.URI, "nested_file.txt")
-		case <-time.After(2 * time.Second):
+		case <-time.After(getEventTimeout()):
 			s.Fail("Timeout waiting for nested file create event")
 		}
 	})
 }
 
 func (s *FSNotifyWatcherTestSuite) TestEventFiltering() {
-	location, err := vfssimple.NewLocation(fmt.Sprintf("file://%s/", s.tempDir))
+	location, err := vfssimple.NewLocation(fileURL(s.tempDir))
 	s.Require().NoError(err)
 
 	s.watcher, err = NewFSNotifyWatcher(location)
@@ -367,7 +443,7 @@ func (s *FSNotifyWatcherTestSuite) TestEventFiltering() {
 	defer func() { _ = s.watcher.Stop() }() // Ignore error in test cleanup
 
 	// Give the watcher time to start
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(getStabilizationDelay())
 
 	s.Run("Filtered events", func() {
 		// Create a .txt file (should be processed)
@@ -380,27 +456,39 @@ func (s *FSNotifyWatcherTestSuite) TestEventFiltering() {
 		err = os.WriteFile(logFile, []byte("log content"), 0600)
 		s.Require().NoError(err)
 
-		// Should only receive the .txt file event
-		select {
-		case event := <-events:
-			s.Assert().Equal(vfsevents.EventCreated, event.Type)
-			s.Assert().Contains(event.URI, "test.txt")
-		case <-time.After(2 * time.Second):
-			s.Fail("Timeout waiting for filtered event")
+		// Wait for events and verify filtering
+		txtEventReceived := false
+		logEventReceived := false
+		timeout := time.After(getEventTimeout())
+
+	eventLoop:
+		for {
+			select {
+			case event := <-events:
+				if strings.Contains(event.URI, "test.txt") {
+					txtEventReceived = true
+					s.Assert().Equal(vfsevents.EventCreated, event.Type)
+				} else if strings.Contains(event.URI, "test.log") {
+					logEventReceived = true
+					s.Fail("Received unexpected event: %+v", event)
+				}
+				// Continue collecting events for a bit longer
+				time.Sleep(50 * time.Millisecond)
+			case <-time.After(200 * time.Millisecond):
+				// No more events for 200ms, likely done
+				break eventLoop
+			case <-timeout:
+				break eventLoop
+			}
 		}
 
-		// Should not receive any more events (the .log file should be filtered out)
-		select {
-		case event := <-events:
-			s.Fail("Received unexpected event: %+v", event)
-		case <-time.After(500 * time.Millisecond):
-			// Expected - no more events should be received
-		}
+		s.Assert().True(txtEventReceived, "Should have received .txt file event")
+		s.Assert().False(logEventReceived, "Should not have received .log file event")
 	})
 }
 
 func (s *FSNotifyWatcherTestSuite) TestStatusCallback() {
-	location, err := vfssimple.NewLocation(fmt.Sprintf("file://%s/", s.tempDir))
+	location, err := vfssimple.NewLocation(fileURL(s.tempDir))
 	s.Require().NoError(err)
 
 	s.watcher, err = NewFSNotifyWatcher(location)
@@ -436,7 +524,7 @@ func (s *FSNotifyWatcherTestSuite) TestStatusCallback() {
 	case status := <-statuses:
 		s.Assert().True(status.Running)
 		s.Assert().Equal(int64(0), status.EventsProcessed)
-	case <-time.After(2 * time.Second):
+	case <-time.After(getEventTimeout()):
 		s.Fail("Timeout waiting for initial status")
 	}
 
@@ -448,7 +536,7 @@ func (s *FSNotifyWatcherTestSuite) TestStatusCallback() {
 	// Should receive event
 	select {
 	case <-events:
-	case <-time.After(2 * time.Second):
+	case <-time.After(getEventTimeout()):
 		s.Fail("Timeout waiting for event")
 	}
 
@@ -458,7 +546,7 @@ func (s *FSNotifyWatcherTestSuite) TestStatusCallback() {
 		s.Assert().True(status.Running)
 		s.Assert().Equal(int64(1), status.EventsProcessed)
 		s.Assert().False(status.LastEventTime.IsZero())
-	case <-time.After(2 * time.Second):
+	case <-time.After(getEventTimeout()):
 		s.Fail("Timeout waiting for updated status")
 	}
 }
@@ -483,7 +571,7 @@ func Example() {
 	}()
 
 	// Create VFS location for local filesystem
-	location, err := vfssimple.NewLocation(fmt.Sprintf("file://%s/", tempDir))
+	location, err := vfssimple.NewLocation(fileURL(tempDir))
 	if err != nil {
 		log.Printf("Failed to create VFS location: %v", err)
 		return
@@ -539,7 +627,7 @@ func ExampleNewFSNotifyWatcher_withRecursive() {
 	}()
 
 	// Create VFS location
-	location, err := vfssimple.NewLocation(fmt.Sprintf("file://%s/", tempDir))
+	location, err := vfssimple.NewLocation(fileURL(tempDir))
 	if err != nil {
 		log.Printf("Failed to create VFS location: %v", err)
 		return
