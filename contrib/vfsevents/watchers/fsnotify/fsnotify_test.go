@@ -487,7 +487,9 @@ func (s *FSNotifyWatcherTestSuite) TestEventFiltering() {
 				if strings.HasSuffix(event.URI, "/test.txt") {
 					txtEventReceived = true
 					fmt.Printf("TEST DEBUG: Marking txtEventReceived = true\n")
-					s.Assert().Equal(vfsevents.EventCreated, event.Type)
+					// Accept both Created and Modified events for .txt files (WriteFile generates both CREATE and WRITE fsnotify events)
+					s.Assert().True(event.Type == vfsevents.EventCreated || event.Type == vfsevents.EventModified,
+						"Expected Created or Modified event for .txt file, got: %s", event.Type)
 				} else if strings.HasSuffix(event.URI, "/test.log") {
 					logEventReceived = true
 					fmt.Printf("TEST DEBUG: Marking logEventReceived = true - THIS SHOULD NOT HAPPEN!\n")

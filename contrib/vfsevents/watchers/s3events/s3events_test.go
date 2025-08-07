@@ -896,10 +896,11 @@ func (s *S3WatcherTestSuite) TestGetOperationType() {
 func (s *S3WatcherTestSuite) TestEnhancedMetadata() {
 	// Test that enhanced metadata is properly captured and included in events
 	var receivedEvent vfsevents.Event
+	eventReceived := make(chan bool, 1)
 	handler := func(event vfsevents.Event) {
 		receivedEvent = event
+		eventReceived <- true
 	}
-
 	// Create a comprehensive S3 event with all metadata fields
 	s3Event := S3Event{
 		Records: []S3Record{
@@ -938,17 +939,26 @@ func (s *S3WatcherTestSuite) TestEnhancedMetadata() {
 		Return(&sqs.DeleteMessageOutput{}, nil).
 		Once()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	// Use longer timeout for Windows compatibility
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	config := &vfsevents.StartConfig{}
 	status := &vfsevents.WatcherStatus{}
 
+	// Start pollOnce in goroutine
 	go func() {
 		_ = s.watcher.pollOnce(ctx, handler, status, config)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
+	// Wait for event to be received with timeout
+	select {
+	case <-eventReceived:
+		// Event received successfully
+	case <-time.After(2 * time.Second):
+		s.Fail("Timeout waiting for S3 event to be processed")
+		return
+	}
 
 	// Verify the event was processed and contains enhanced metadata
 	s.Equal(vfsevents.EventModified, receivedEvent.Type, "Copy operation should be mapped to EventModified")
