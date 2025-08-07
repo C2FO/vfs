@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"reflect"
 	"sync"
 	"time"
 
@@ -118,7 +119,7 @@ func (fs *FileSystem) Scheme() string {
 func (fs *FileSystem) Client(a authority.Authority) (Client, error) {
 	// first stop connection timer, if any
 	fs.connTimerStop()
-	if fs.sftpclient == nil {
+	if fs.sftpclient == nil || reflect.ValueOf(fs.sftpclient).IsNil() {
 		var err error
 		fs.sftpclient, fs.sshConn, err = defaultClientGetter(a, fs.options)
 		if err != nil {

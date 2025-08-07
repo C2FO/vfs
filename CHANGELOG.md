@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v7.8.2] - 2025-08-07
+### Fixed
+- Fixed typed nil pointer bug in sftp backend.  Fixes #274.
+
 ## [v7.8.0] - 2025-08-06
 ### Added
 - updated github actions workflows to support multi-modules.
