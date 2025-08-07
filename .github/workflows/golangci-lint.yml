@@ -11,33 +11,15 @@ permissions:
   checks: write
 
 jobs:
-  detect-modules:
-    runs-on: arc-scale-set
-    outputs:
-      modules: ${{ steps.set-modules.outputs.modules }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - id: set-modules
-        run: |
-          source ./.github/workflows/scripts/module-ci.sh
-          all_modules=$(find . -name go.mod -exec sh -c 'dirname {}' \; | jq --raw-input --slurp --compact-output 'split("\n")[:-1]')
-          echo 'Modules Identified: '
-          echo $all_modules | jq -r "."
-          echo "Diff with target branch:"
-          git diff --stat ${{ github.event.pull_request.base.ref || 'origin/main' }} --name-only | cat | awk -F"|" '{print "\""$1"\""}' | jq -s '.'
-          updated_modules=$(get_changed_modules $all_modules ${{ github.event.pull_request.base.sha || 'origin/main' }})
-          echo "module tests to run=$updated_modules"
-          echo "modules=$updated_modules" >> ${GITHUB_OUTPUT}
   golangci:
     name: golangci-lint
-    needs: detect-modules
     runs-on: arc-scale-set
     strategy:
       matrix:
-        modules: ${{ fromJSON(needs.detect-modules.outputs.modules) }}
+        module:
+          - "."
+          - "contrib/lockfile"
+          - "contrib/vfsevents"
     env:
       GOPROXY: proxy.golang.org,direct
       GOPRIVATE: github.com/c2fo,github.com/C2FO
@@ -54,4 +36,4 @@ jobs:
           version: latest
           args: --config=${{ github.workspace }}/.golangci.yml --timeout=10m
           only-new-issues: true
-          working-directory: ${{ matrix.modules }}
+          working-directory: ${{ matrix.module }}
