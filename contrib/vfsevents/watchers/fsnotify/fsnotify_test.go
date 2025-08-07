@@ -458,61 +458,111 @@ func (s *FSNotifyWatcherTestSuite) TestEventFiltering() {
 	time.Sleep(getStabilizationDelay())
 
 	s.Run("Filtered events", func() {
-		// Create a .txt file (should be processed)
-		txtFile := filepath.Join(s.tempDir, "test.txt")
-		fmt.Printf("TEST DEBUG: Creating .txt file at: %q\n", txtFile)
-		err := os.WriteFile(txtFile, []byte("txt content"), 0600)
-		s.Require().NoError(err)
-		fmt.Printf("TEST DEBUG: .txt file created successfully\n")
+		s.runEventFilteringTest(events)
+	})
+}
 
-		// Create a .log file (should be filtered out)
-		logFile := filepath.Join(s.tempDir, "test.log")
-		fmt.Printf("TEST DEBUG: Creating .log file at: %q\n", logFile)
-		err = os.WriteFile(logFile, []byte("log content"), 0600)
-		s.Require().NoError(err)
-		fmt.Printf("TEST DEBUG: .log file created successfully\n")
+func (s *FSNotifyWatcherTestSuite) runEventFilteringTest(events chan vfsevents.Event) {
+	// Create a .txt file (should be processed)
+	txtFile := filepath.Join(s.tempDir, "test.txt")
+	fmt.Printf("TEST DEBUG: Creating .txt file at: %q\n", txtFile)
+	err := os.WriteFile(txtFile, []byte("txt content"), 0600)
+	s.Require().NoError(err)
+	fmt.Printf("TEST DEBUG: .txt file created successfully\n")
 
-		// Wait for events and verify filtering
-		txtEventReceived := false
-		logEventReceived := false
-		timeout := time.After(getEventTimeout())
+	// Give more time for the event to be processed on Windows
+	time.Sleep(getStabilizationDelay())
 
-		fmt.Printf("TEST DEBUG: Starting event collection loop, timeout: %v\n", getEventTimeout())
+	// Create a .log file (should be filtered out)
+	logFile := filepath.Join(s.tempDir, "test.log")
+	fmt.Printf("TEST DEBUG: Creating .log file at: %q\n", logFile)
+	err = os.WriteFile(logFile, []byte("log content"), 0600)
+	s.Require().NoError(err)
+	fmt.Printf("TEST DEBUG: .log file created successfully\n")
 
-	eventLoop:
-		for {
-			select {
-			case event := <-events:
-				fmt.Printf("TEST DEBUG: Event loop received event - URI: %q, Type: %s\n", event.URI, event.Type)
-				if strings.HasSuffix(event.URI, "/test.txt") {
-					txtEventReceived = true
-					fmt.Printf("TEST DEBUG: Marking txtEventReceived = true\n")
-					// Accept both Created and Modified events for .txt files (WriteFile generates both CREATE and WRITE fsnotify events)
-					s.Assert().True(event.Type == vfsevents.EventCreated || event.Type == vfsevents.EventModified,
-						"Expected Created or Modified event for .txt file, got: %s", event.Type)
-				} else if strings.HasSuffix(event.URI, "/test.log") {
-					logEventReceived = true
-					fmt.Printf("TEST DEBUG: Marking logEventReceived = true - THIS SHOULD NOT HAPPEN!\n")
-					s.Fail("Received unexpected event: %+v", event)
-				} else {
-					fmt.Printf("TEST DEBUG: Received unexpected event (not test.txt or test.log): %+v\n", event)
-				}
-				// Continue collecting events for a bit longer
-				time.Sleep(50 * time.Millisecond)
-			case <-time.After(200 * time.Millisecond):
-				// No more events for 200ms, likely done
-				fmt.Printf("TEST DEBUG: No more events for 200ms, breaking loop\n")
-				break eventLoop
-			case <-timeout:
-				fmt.Printf("TEST DEBUG: Timeout reached, breaking loop\n")
+	// Wait for events and verify filtering
+	txtEventReceived, logEventReceived, eventCount := s.collectAndVerifyEvents(events)
+
+	fmt.Printf("TEST DEBUG: Final state - txtEventReceived: %t, logEventReceived: %t, eventCount: %d\n",
+		txtEventReceived, logEventReceived, eventCount)
+	s.Assert().True(txtEventReceived, "Should have received .txt file event")
+	s.Assert().False(logEventReceived, "Should not have received .log file event")
+}
+
+func (s *FSNotifyWatcherTestSuite) collectAndVerifyEvents(events chan vfsevents.Event) (bool, bool, int) {
+	txtEventReceived := false
+	logEventReceived := false
+	timeout := time.After(getEventTimeout())
+	eventCount := 0
+	maxEvents := 10 // Prevent infinite loop
+
+	fmt.Printf("TEST DEBUG: Starting event collection loop, timeout: %v\n", getEventTimeout())
+
+eventLoop:
+	for eventCount < maxEvents {
+		select {
+		case event := <-events:
+			eventCount++
+			fmt.Printf("TEST DEBUG: Event loop received event #%d - URI: %q, Type: %s\n", eventCount, event.URI, event.Type)
+
+			if s.isTextFileEvent(event.URI) {
+				txtEventReceived = true
+				fmt.Printf("TEST DEBUG: Marking txtEventReceived = true\n")
+				// Accept both Created and Modified events for .txt files
+				s.Assert().True(event.Type == vfsevents.EventCreated || event.Type == vfsevents.EventModified,
+					"Expected Created or Modified event for .txt file, got: %s", event.Type)
+			} else if s.isLogFileEvent(event.URI) {
+				logEventReceived = true
+				fmt.Printf("TEST DEBUG: Marking logEventReceived = true - THIS SHOULD NOT HAPPEN!\n")
+				s.Fail("Received unexpected event: %+v", event)
+			} else {
+				fmt.Printf("TEST DEBUG: Received unexpected event (not test.txt or test.log): %+v\n", event)
+			}
+
+			// If we got the txt event, check for additional events
+			if txtEventReceived && s.checkForAdditionalEvents(events, &logEventReceived, &eventCount) {
 				break eventLoop
 			}
+		case <-time.After(100 * time.Millisecond):
+			// Short timeout between events
+			if txtEventReceived {
+				fmt.Printf("TEST DEBUG: Short timeout reached, but txt event received\n")
+				break eventLoop
+			}
+			fmt.Printf("TEST DEBUG: Short timeout, continuing to wait for events\n")
+		case <-timeout:
+			fmt.Printf("TEST DEBUG: Main timeout reached, breaking loop\n")
+			break eventLoop
 		}
+	}
 
-		fmt.Printf("TEST DEBUG: Final state - txtEventReceived: %t, logEventReceived: %t\n", txtEventReceived, logEventReceived)
-		s.Assert().True(txtEventReceived, "Should have received .txt file event")
-		s.Assert().False(logEventReceived, "Should not have received .log file event")
-	})
+	return txtEventReceived, logEventReceived, eventCount
+}
+
+func (s *FSNotifyWatcherTestSuite) isTextFileEvent(uri string) bool {
+	return strings.HasSuffix(uri, "/test.txt") || strings.HasSuffix(uri, "\\test.txt")
+}
+
+func (s *FSNotifyWatcherTestSuite) isLogFileEvent(uri string) bool {
+	return strings.HasSuffix(uri, "/test.log") || strings.HasSuffix(uri, "\\test.log")
+}
+
+func (s *FSNotifyWatcherTestSuite) checkForAdditionalEvents(events chan vfsevents.Event, logEventReceived *bool, eventCount *int) bool {
+	// Continue for a bit longer to catch any potential log events
+	select {
+	case event2 := <-events:
+		*eventCount++
+		fmt.Printf("TEST DEBUG: Additional event #%d - URI: %q, Type: %s\n", *eventCount, event2.URI, event2.Type)
+		if s.isLogFileEvent(event2.URI) {
+			*logEventReceived = true
+			fmt.Printf("TEST DEBUG: Marking logEventReceived = true - THIS SHOULD NOT HAPPEN!\n")
+			s.Fail("Received unexpected event: %+v", event2)
+		}
+	case <-time.After(200 * time.Millisecond):
+		// No additional events, good
+		fmt.Printf("TEST DEBUG: No additional events after 200ms\n")
+	}
+	return true
 }
 
 func (s *FSNotifyWatcherTestSuite) TestStatusCallback() {
