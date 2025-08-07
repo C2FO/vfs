@@ -26,13 +26,13 @@ jobs:
           # Find all directories containing go.mod files
           modules=$(find . -name "go.mod" -type f | sed 's|/go.mod$||' | sort)
           
-          # Convert to JSON array using printf and jq
-          printf '%s\n' $modules | jq -R . | jq -s . > modules.json
+          # Convert to JSON array - ensure proper JSON format
+          echo "$modules" | jq -R . | jq -s -c . > modules.json
           
           echo "Found modules:"
           cat modules.json | jq -r '.[]'
           
-          # Set output
+          # Set output with compact JSON
           echo "modules=$(cat modules.json)" >> $GITHUB_OUTPUT
 
   golangci:
