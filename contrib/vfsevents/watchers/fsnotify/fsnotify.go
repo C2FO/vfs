@@ -1,3 +1,10 @@
+// Package fsnotify provides an implementation of the vfsevents.Watcher interface using fsnotify for real-time filesystem monitoring.
+// It offers cross-platform filesystem event watching with support for recursive directory monitoring,
+// event filtering, and configurable debouncing.
+//
+// Event debouncing consolidates multiple related filesystem events into single logical events,
+// reducing noise and improving performance.
+// This is particularly useful for build tools, network filesystems, and applications that need to handle rapid file changes efficiently.
 package fsnotify
 
 import (
@@ -25,6 +32,20 @@ type FSNotifyWatcher struct {
 	mu         sync.Mutex
 	wg         sync.WaitGroup
 	watchPaths map[string]bool // Track watched directories
+
+	// Debouncing configuration
+	debounceEnabled  bool
+	debounceDuration time.Duration
+	pendingEvents    map[string]*pendingEvent // Track pending events by file path
+}
+
+// pendingEvent tracks events waiting to be debounced
+type pendingEvent struct {
+	latestEvent vfsevents.Event
+	eventTypes  map[vfsevents.EventType]bool // Track all event types seen
+	firstSeen   time.Time
+	lastSeen    time.Time
+	timer       *time.Timer // Individual timer per file
 }
 
 // Option represents a functional option for configuring the FSNotifyWatcher.
@@ -34,6 +55,38 @@ type Option func(*FSNotifyWatcher)
 func WithRecursive(recursive bool) Option {
 	return func(w *FSNotifyWatcher) {
 		w.recursive = recursive
+	}
+}
+
+// WithDebounce enables event debouncing with the specified duration.
+//
+// Event debouncing consolidates multiple related filesystem events into single logical events,
+// reducing noise and improving performance. This is particularly useful for:
+//
+//   - Build tools: Prevent excessive rebuilds during rapid file changes
+//   - Network filesystems: Handle delayed writes on SFTP/NFS mounts
+//   - Hot reload systems: Reduce handler spam during bulk operations
+//   - Text editors: Consolidate multiple save operations
+//
+// When debouncing is enabled:
+//   - Events for the same file within the debounce duration are consolidated
+//   - Delete events take priority over Create/Modified events
+//   - Create events take priority over Modified events
+//   - Consolidated events have fsnotify_op="multiple" in metadata
+//   - Memory is automatically cleaned up to prevent leaks
+//
+// Recommended durations:
+//   - Local development: 100-500ms for responsive feedback
+//   - Network filesystems: 1-5s for delayed write scenarios
+//   - Build systems: 100-200ms to balance responsiveness and efficiency
+//
+// Example:
+//
+//	watcher, err := NewFSNotifyWatcher(location, WithDebounce(200*time.Millisecond))
+func WithDebounce(duration time.Duration) Option {
+	return func(w *FSNotifyWatcher) {
+		w.debounceEnabled = true
+		w.debounceDuration = duration
 	}
 }
 
@@ -63,10 +116,11 @@ func NewFSNotifyWatcher(location vfs.Location, opts ...Option) (*FSNotifyWatcher
 	}
 
 	w := &FSNotifyWatcher{
-		location:   location,
-		watcher:    watcher,
-		recursive:  false,
-		watchPaths: make(map[string]bool),
+		location:      location,
+		watcher:       watcher,
+		recursive:     false,
+		watchPaths:    make(map[string]bool),
+		pendingEvents: make(map[string]*pendingEvent),
 	}
 
 	for _, opt := range opts {
@@ -118,16 +172,6 @@ func (w *FSNotifyWatcher) Start(
 	ctx, cancel := context.WithCancel(ctx)
 	w.cancel = cancel
 
-	// Create a wrapped handler that applies filtering if configured
-	wrappedHandler := handler
-	if config.EventFilter != nil {
-		wrappedHandler = func(event vfsevents.Event) {
-			if config.EventFilter(event) {
-				handler(event)
-			}
-		}
-	}
-
 	// Status tracking
 	var status vfsevents.WatcherStatus
 	status.Running = true
@@ -141,7 +185,7 @@ func (w *FSNotifyWatcher) Start(
 	w.wg.Add(1)
 	go func() {
 		defer w.wg.Done()
-		w.watchLoop(ctx, wrappedHandler, errHandler, &status, config)
+		w.watchLoop(ctx, handler, errHandler, &status, config)
 	}()
 
 	return nil
@@ -168,10 +212,20 @@ func (w *FSNotifyWatcher) Stop(opts ...vfsevents.StopOption) error {
 	w.cancel()
 	w.cancel = nil
 
+	// Clean up pending events and timers to prevent memory leaks
+	for uri, pending := range w.pendingEvents {
+		if pending.timer != nil {
+			pending.timer.Stop()
+		}
+		delete(w.pendingEvents, uri)
+	}
+
 	// Handle graceful shutdown with timeout
 	if config.Force {
 		// Force immediate shutdown
-		w.watcher.Close()
+		if err := w.watcher.Close(); err != nil {
+			return fmt.Errorf("error closing fsnotify watcher: %w", err)
+		}
 		return nil
 	}
 
@@ -184,10 +238,14 @@ func (w *FSNotifyWatcher) Stop(opts ...vfsevents.StopOption) error {
 
 	select {
 	case <-done:
-		w.watcher.Close()
+		if err := w.watcher.Close(); err != nil {
+			return fmt.Errorf("error closing fsnotify watcher: %w", err)
+		}
 		return nil
 	case <-time.After(config.Timeout):
-		w.watcher.Close()
+		if err := w.watcher.Close(); err != nil {
+			return fmt.Errorf("timeout waiting for fsnotify watcher to stop after %v, and error closing watcher: %w", config.Timeout, err)
+		}
 		return fmt.Errorf("timeout waiting for fsnotify watcher to stop after %v", config.Timeout)
 	}
 }
@@ -223,6 +281,8 @@ func (w *FSNotifyWatcher) addRecursiveWatchPaths(rootPath string) error {
 }
 
 // watchLoop is the main event processing loop.
+//
+//nolint:gocyclo
 func (w *FSNotifyWatcher) watchLoop(
 	ctx context.Context,
 	handler vfsevents.HandlerFunc,
@@ -246,21 +306,35 @@ func (w *FSNotifyWatcher) watchLoop(
 
 			vfsEvent := w.convertEvent(event)
 			if vfsEvent != nil {
-				status.EventsProcessed++
-				status.LastEventTime = time.Now()
-				if config.StatusCallback != nil {
-					config.StatusCallback(*status)
-				}
-				handler(*vfsEvent)
-
-				// If recursive and a new directory was created, start watching it
-				if w.recursive && event.Has(fsnotify.Create) {
-					w.handleNewDirectory(event.Name)
+				// Apply event filter if configured before calling handler
+				shouldProcess := true
+				if config.EventFilter != nil {
+					shouldProcess = config.EventFilter(*vfsEvent)
 				}
 
-				// If a watched directory was deleted, clean up our tracking
-				if event.Has(fsnotify.Remove) {
-					w.handleDeletedDirectory(event.Name)
+				if shouldProcess {
+					if w.debounceEnabled {
+						w.handleDebouncedEvent(vfsEvent, handler, status, config)
+					} else {
+						handler(*vfsEvent)
+
+						// Update status after successful event processing
+						status.EventsProcessed++
+						status.LastEventTime = time.Now()
+						if config.StatusCallback != nil {
+							config.StatusCallback(*status)
+						}
+					}
+
+					// If recursive and a new directory was created, start watching it
+					if w.recursive && event.Has(fsnotify.Create) {
+						w.handleNewDirectory(event.Name)
+					}
+
+					// If a watched directory was deleted, clean up our tracking
+					if event.Has(fsnotify.Remove) {
+						w.handleDeletedDirectory(event.Name)
+					}
 				}
 			}
 
@@ -275,6 +349,121 @@ func (w *FSNotifyWatcher) watchLoop(
 			}
 			errHandler(fmt.Errorf("fsnotify error: %w", err))
 		}
+	}
+}
+
+// handleDebouncedEvent handles an event with debouncing.
+func (w *FSNotifyWatcher) handleDebouncedEvent(
+	event *vfsevents.Event,
+	handler vfsevents.HandlerFunc,
+	status *vfsevents.WatcherStatus,
+	config *vfsevents.StartConfig,
+) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	// Check if we already have a pending event for this path
+	pending, ok := w.pendingEvents[event.URI]
+	if !ok {
+		// Create a new pending event
+		pending = &pendingEvent{
+			latestEvent: *event,
+			eventTypes:  make(map[vfsevents.EventType]bool),
+			firstSeen:   time.Now(),
+			lastSeen:    time.Now(),
+		}
+		pending.eventTypes[event.Type] = true
+		w.pendingEvents[event.URI] = pending
+
+		// Start the timer for this pending event
+		pending.timer = time.AfterFunc(w.debounceDuration, func() {
+			w.mu.Lock()
+			defer w.mu.Unlock()
+
+			// Process the pending event
+			uri := pending.latestEvent.URI
+			delete(w.pendingEvents, uri)
+
+			// Determine the final event type
+			var eventType vfsevents.EventType
+			if pending.eventTypes[vfsevents.EventDeleted] {
+				eventType = vfsevents.EventDeleted
+			} else if pending.eventTypes[vfsevents.EventCreated] {
+				eventType = vfsevents.EventCreated
+			} else if pending.eventTypes[vfsevents.EventModified] {
+				eventType = vfsevents.EventModified
+			}
+
+			// Create the final event
+			finalEvent := vfsevents.Event{
+				URI:       uri,
+				Type:      eventType,
+				Timestamp: pending.firstSeen.Unix(),
+				Metadata: map[string]string{
+					"fsnotify_op": "multiple",
+					"path":        uri,
+				},
+			}
+
+			// Call the handler with the final event
+			handler(finalEvent)
+
+			// Update status after successful event processing
+			status.EventsProcessed++
+			status.LastEventTime = time.Now()
+			if config.StatusCallback != nil {
+				config.StatusCallback(*status)
+			}
+		})
+	} else {
+		// Update the existing pending event
+		pending.latestEvent = *event
+		pending.eventTypes[event.Type] = true
+		pending.lastSeen = time.Now()
+
+		// Reset the timer for this pending event
+		if pending.timer != nil {
+			pending.timer.Stop()
+		}
+		pending.timer = time.AfterFunc(w.debounceDuration, func() {
+			w.mu.Lock()
+			defer w.mu.Unlock()
+
+			// Process the pending event
+			uri := pending.latestEvent.URI
+			delete(w.pendingEvents, uri)
+
+			// Determine the final event type
+			var eventType vfsevents.EventType
+			if pending.eventTypes[vfsevents.EventDeleted] {
+				eventType = vfsevents.EventDeleted
+			} else if pending.eventTypes[vfsevents.EventCreated] {
+				eventType = vfsevents.EventCreated
+			} else if pending.eventTypes[vfsevents.EventModified] {
+				eventType = vfsevents.EventModified
+			}
+
+			// Create the final event
+			finalEvent := vfsevents.Event{
+				URI:       uri,
+				Type:      eventType,
+				Timestamp: pending.firstSeen.Unix(),
+				Metadata: map[string]string{
+					"fsnotify_op": "multiple",
+					"path":        uri,
+				},
+			}
+
+			// Call the handler with the final event
+			handler(finalEvent)
+
+			// Update status after successful event processing
+			status.EventsProcessed++
+			status.LastEventTime = time.Now()
+			if config.StatusCallback != nil {
+				config.StatusCallback(*status)
+			}
+		})
 	}
 }
 

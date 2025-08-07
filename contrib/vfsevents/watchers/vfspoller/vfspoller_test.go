@@ -866,7 +866,8 @@ func Example() {
 	// Create a VFS location - works with any VFS backend
 	location, err := vfssimple.NewLocation("file:///tmp/watch/")
 	if err != nil {
-		log.Fatalf("Failed to create VFS location: %v", err)
+		log.Printf("Failed to create VFS location: %v", err)
+		return
 	}
 
 	// Create a poller watcher with custom configuration
@@ -875,7 +876,8 @@ func Example() {
 		WithMinAge(2*time.Second),    // Ignore files newer than 2 seconds
 	)
 	if err != nil {
-		log.Fatalf("Failed to create poller: %v", err)
+		log.Printf("Failed to create poller: %v", err)
+		return
 	}
 
 	// Define event handler
@@ -905,18 +907,24 @@ func Example() {
 
 	err = watcher.Start(ctx, eventHandler, errorHandler)
 	if err != nil {
-		log.Fatalf("Failed to start watcher: %v", err)
+		log.Printf("Failed to start watcher: %v", err)
+		return
 	}
 
 	// Stop watching
-	watcher.Stop()
+	err = watcher.Stop(vfsevents.WithTimeout(10 * time.Second))
+	if err != nil {
+		log.Printf("Failed to stop watcher: %v", err)
+		return
+	}
 }
 
 // ExampleNewPoller_withRetryLogic demonstrates VFS Poller with retry configuration
 func ExampleNewPoller_withRetryLogic() {
 	location, err := vfssimple.NewLocation("s3://my-bucket/path/")
 	if err != nil {
-		log.Fatalf("Failed to create VFS location: %v", err)
+		log.Printf("Failed to create VFS location: %v", err)
+		return
 	}
 
 	// Create poller with retry logic for transient failures
@@ -926,7 +934,8 @@ func ExampleNewPoller_withRetryLogic() {
 		WithCleanupAge(24*time.Hour), // Clean up old entries
 	)
 	if err != nil {
-		log.Fatalf("Failed to create poller: %v", err)
+		log.Printf("Failed to create poller: %v", err)
+		return
 	}
 
 	eventHandler := func(event vfsevents.Event) {
@@ -954,9 +963,14 @@ func ExampleNewPoller_withRetryLogic() {
 		}),
 	)
 	if err != nil {
-		log.Fatalf("Failed to start watcher: %v", err)
+		log.Printf("Failed to start watcher: %v", err)
+		return
 	}
 
 	// Stop with timeout
-	watcher.Stop(vfsevents.WithTimeout(10 * time.Second))
+	err = watcher.Stop(vfsevents.WithTimeout(10 * time.Second))
+	if err != nil {
+		log.Printf("Failed to stop watcher: %v", err)
+		return
+	}
 }

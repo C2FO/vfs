@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v7.8.0] - 2025-08-06
+### Added
+- updated github actions workflows to support multi-modules.
+
 ## [v7.7.0] - 2025-08-05
 ### Added
 - Updated changelog.sh to include checks for mono go repo

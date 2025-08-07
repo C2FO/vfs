@@ -59,7 +59,8 @@ func (s *GCSWatcherTestSuite) TestNewGCSWatcher() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			_, err := NewGCSWatcher(tt.projectID, tt.subscriptionID)
+			// Use mock client to avoid authentication issues in CI
+			_, err := NewGCSWatcher(tt.projectID, tt.subscriptionID, WithPubSubClient(s.pubsubClient))
 			if tt.wantErr {
 				s.Error(err)
 			} else {
@@ -495,16 +496,16 @@ func (s *GCSWatcherTestSuite) TestRetryBackoffTiming() {
 	gcsEvent := GCSEvent{
 		Name:        "test-object",
 		Bucket:      "test-bucket",
-		Generation:  9876543210, // New generation
+		Generation:  1234567890,
 		TimeCreated: JSONTime(time.Now()),
 	}
 	body, _ := json.Marshal(gcsEvent)
 
-	// First event: OBJECT_FINALIZE with overwroteGeneration (should be EventModified)
-	finalizeAttributes := map[string]string{
-		"eventType":           EventObjectFinalize,
-		"overwroteGeneration": "1234567890", // Previous generation that was overwritten
-		"eventTime":           "2023-01-01T12:00:00Z",
+	attributes := map[string]string{
+		"eventType":               EventObjectFinalize,
+		"overwroteGeneration":     "9876543210",
+		"eventTime":               "2023-01-01T12:00:00Z",
+		"overwrittenByGeneration": "1111111111",
 	}
 
 	s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
@@ -514,7 +515,7 @@ func (s *GCSWatcherTestSuite) TestRetryBackoffTiming() {
 			// Send OBJECT_FINALIZE event (should generate EventModified)
 			handler(context.TODO(), &pubsub.Message{
 				Data:       body,
-				Attributes: finalizeAttributes,
+				Attributes: attributes,
 			})
 		}).
 		Return(nil).
@@ -806,13 +807,15 @@ func Example() {
 	// Create GCS watcher with Pub/Sub subscription
 	watcher, err := NewGCSWatcher("my-project", "my-subscription")
 	if err != nil {
-		log.Fatalf("Failed to create GCS watcher: %v", err)
+		log.Printf("Failed to create GCS watcher: %v", err)
+		return
 	}
 
 	// Create VFS location for GCS bucket operations
 	gcsLocation, err := vfssimple.NewLocation("gs://my-bucket/")
 	if err != nil {
-		log.Fatalf("Failed to create GCS VFS location: %v", err)
+		log.Printf("Failed to create GCS VFS location: %v", err)
+		return
 	}
 
 	// Define event handler with VFS integration
@@ -832,7 +835,7 @@ func Example() {
 				if err == nil {
 					fmt.Printf("File content preview: %.100s...\n", string(content))
 				}
-				file.Close()
+				_ = file.Close() // Ignore error in example
 			}
 		}
 	}
@@ -848,11 +851,12 @@ func Example() {
 
 	err = watcher.Start(ctx, eventHandler, errorHandler)
 	if err != nil {
-		log.Fatalf("Failed to start GCS watcher: %v", err)
+		log.Printf("Failed to start GCS watcher: %v", err)
+		return
 	}
 
 	// Stop watching
-	watcher.Stop()
+	_ = watcher.Stop() // Ignore error in example
 }
 
 // ExampleNewGCSWatcher_withRetryLogic demonstrates GCS watcher with retry configuration
@@ -860,7 +864,8 @@ func ExampleNewGCSWatcher_withRetryLogic() {
 	// Create GCS watcher
 	watcher, err := NewGCSWatcher("my-project", "my-subscription")
 	if err != nil {
-		log.Fatalf("Failed to create GCS watcher: %v", err)
+		log.Printf("Failed to create GCS watcher: %v", err)
+		return
 	}
 
 	eventHandler := func(event vfsevents.Event) {
@@ -912,9 +917,10 @@ func ExampleNewGCSWatcher_withRetryLogic() {
 		}),
 	)
 	if err != nil {
-		log.Fatalf("Failed to start GCS watcher: %v", err)
+		log.Printf("Failed to start GCS watcher: %v", err)
+		return
 	}
 
 	// Graceful shutdown with timeout
-	watcher.Stop(vfsevents.WithTimeout(30 * time.Second))
+	_ = watcher.Stop(vfsevents.WithTimeout(30 * time.Second)) // Ignore error in example
 }
