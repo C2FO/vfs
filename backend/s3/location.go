@@ -61,15 +61,6 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 	return filteredKeys, nil
 }
 
-// Volume returns the bucket the location is contained in.
-//
-// Deprecated: Use Authority instead.
-//
-//	authStr := loc.Authority().String()
-func (l *Location) Volume() string {
-	return l.Authority().String()
-}
-
 // Authority returns the bucket the location is contained in.
 func (l *Location) Authority() authority.Authority {
 	return l.authority
@@ -122,35 +113,6 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 		prefix:     path.Join(l.prefix, relativePath),
 		authority:  l.Authority(),
 	}, nil
-}
-
-// ChangeDir takes a relative path, and modifies the underlying Location's path. The caller is modified by this
-// so the only return is any error. For this implementation there are no errors.
-//
-// Deprecated: Use NewLocation instead:
-//
-//	loc, err := loc.NewLocation("../../")
-func (l *Location) ChangeDir(relativePath string) error {
-	if l == nil {
-		return errors.New("non-nil s3.Location pointer is required")
-	}
-
-	if relativePath == "" {
-		return errors.New("non-empty string relativePath is required")
-	}
-
-	err := utils.ValidateRelativeLocationPath(relativePath)
-	if err != nil {
-		return err
-	}
-
-	newLoc, err := l.NewLocation(relativePath)
-	if err != nil {
-		return err
-	}
-	*l = *newLoc.(*Location)
-
-	return nil
 }
 
 // NewFile uses the properties of the calling location to generate a vfs.File (backed by an s3.File). The filePath

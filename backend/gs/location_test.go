@@ -112,18 +112,6 @@ func (lt *locationTestSuite) TestList() {
 	}
 }
 
-//nolint:staticcheck // deprecated method test
-func (lt *locationTestSuite) TestVolume() {
-	server := fakestorage.NewServer(Objects{})
-	defer server.Stop()
-	fs := NewFileSystem(WithClient(server.Client()))
-
-	bucket := "c2fo-vfs-a"
-	loc, err := fs.NewLocation(bucket, "/")
-	lt.NoError(err)
-	lt.Equal(bucket, loc.Volume(), "Volume() should return the bucket name on location.")
-}
-
 func (lt *locationTestSuite) TestPath() {
 	server := fakestorage.NewServer(Objects{})
 	defer server.Stop()
@@ -217,41 +205,6 @@ func (lt *locationTestSuite) TestExists_false() {
 	exists, err := loc.Exists()
 	lt.NoError(err, "No error expected from Exists")
 	lt.False(exists, "Call to Exists expected to return true.")
-}
-
-func (lt *locationTestSuite) TestChangeDir() {
-	server := fakestorage.NewServer(Objects{})
-	defer server.Stop()
-	fs := NewFileSystem().WithClient(server.Client())
-
-	// test nil Location
-	var nilLoc *Location
-	err := nilLoc.ChangeDir("path/to/")
-	lt.EqualErrorf(err, "non-nil gs.Location pointer is required", "error expected for nil location")
-
-	auth, err := authority.NewAuthority("bucket")
-	lt.NoError(err)
-	loc := &Location{fileSystem: fs, prefix: "/", authority: auth}
-
-	err1 := loc.ChangeDir("../")
-	lt.NoError(err1, "no error expected")
-	lt.Equal("/", loc.Path())
-
-	err2 := loc.ChangeDir("hello/")
-	lt.NoError(err2, "no error expected")
-	lt.Equal("/hello/", loc.Path())
-
-	err3 := loc.ChangeDir("../.././../")
-	lt.NoError(err3, "no error expected")
-	lt.Equal("/", loc.Path())
-
-	err4 := loc.ChangeDir("here/is/a/path/")
-	lt.NoError(err4, "no error expected")
-	lt.Equal("/here/is/a/path/", loc.Path())
-
-	err5 := loc.ChangeDir("../")
-	lt.NoError(err5, "no error expected")
-	lt.Equal("/here/is/a/", loc.Path())
 }
 
 func (lt *locationTestSuite) TestNewLocation() {

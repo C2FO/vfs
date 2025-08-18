@@ -10,7 +10,6 @@ import (
 
 	"github.com/c2fo/vfs/v7/backend/sftp/mocks"
 	"github.com/c2fo/vfs/v7/utils"
-	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
 type locationTestSuite struct {
@@ -179,19 +178,6 @@ func (lt *locationTestSuite) TestString() {
 	lt.Equal("sftp://user@host.com/blah/file.txt", file.String(), "file string with user, pass, host")
 }
 
-//nolint:staticcheck // deprecated method test
-func (lt *locationTestSuite) TestVolume() {
-	authorityStr := "user@host.com:22"
-	loc, err := lt.sftpfs.NewLocation(authorityStr, "/blah/")
-	lt.NoError(err)
-	lt.Equal("user@host.com:22", loc.Volume(), "Volume() should return the authority string on location.")
-
-	authorityStr = "user:password@host.com"
-	loc, err = lt.sftpfs.NewLocation(authorityStr, "/blah/")
-	lt.NoError(err)
-	lt.Equal("user@host.com", loc.Volume(), "Volume() should return the authority string on location.")
-}
-
 func (lt *locationTestSuite) TestPath() {
 	loc, err := lt.sftpfs.NewLocation("host.com", "/path/")
 	lt.NoError(err)
@@ -293,35 +279,6 @@ func (lt *locationTestSuite) TestExists() {
 	lt.True(!exists, "Call to Exists expected to return false.")
 
 	lt.client.AssertExpectations(lt.T())
-}
-
-func (lt *locationTestSuite) TestChangeDir() {
-	// test nil Location
-	var nilLoc *Location
-	err := nilLoc.ChangeDir("path/to/")
-	lt.EqualErrorf(err, "non-nil sftp.Location pointer receiver is required", "error expected for nil location")
-
-	loc := &Location{fileSystem: lt.sftpfs, path: "/", authority: authority.Authority{}}
-
-	err1 := loc.ChangeDir("../")
-	lt.NoError(err1, "no error expected")
-	lt.Equal("/", loc.Path())
-
-	err2 := loc.ChangeDir("hello/")
-	lt.NoError(err2, "no error expected")
-	lt.Equal("/hello/", loc.Path())
-
-	err3 := loc.ChangeDir("../.././../")
-	lt.NoError(err3, "no error expected")
-	lt.Equal("/", loc.Path())
-
-	err4 := loc.ChangeDir("here/is/a/path/")
-	lt.NoError(err4, "no error expected")
-	lt.Equal("/here/is/a/path/", loc.Path())
-
-	err5 := loc.ChangeDir("../")
-	lt.NoError(err5, "no error expected")
-	lt.Equal("/here/is/a/", loc.Path())
 }
 
 func (lt *locationTestSuite) TestNewLocation() {

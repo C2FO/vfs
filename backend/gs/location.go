@@ -98,15 +98,6 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error) {
 	return filteredKeys, nil
 }
 
-// Volume returns the GCS bucket name.
-//
-// Deprecated: Use Authority instead.
-//
-//	authStr := loc.Authority().String()
-func (l *Location) Volume() string {
-	return l.Authority().String()
-}
-
 // Authority returns the Authority for the Location.
 func (l *Location) Authority() authority.Authority {
 	return l.authority
@@ -148,34 +139,6 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 		prefix:     path.Join(l.prefix, relativePath),
 		authority:  l.Authority(),
 	}, nil
-}
-
-// ChangeDir changes the current location's path to the new, relative path.
-//
-// Deprecated: Use NewLocation instead:
-//
-//	loc, err := loc.NewLocation("../../")
-func (l *Location) ChangeDir(relativePath string) error {
-	if l == nil {
-		return errors.New("non-nil gs.Location pointer is required")
-	}
-
-	if relativePath == "" {
-		return errors.New("non-empty string relativePath is required")
-	}
-
-	err := utils.ValidateRelativeLocationPath(relativePath)
-	if err != nil {
-		return err
-	}
-
-	newLoc, err := l.NewLocation(relativePath)
-	if err != nil {
-		return err
-	}
-	*l = *newLoc.(*Location)
-
-	return nil
 }
 
 // FileSystem returns the GCS file system instance.
