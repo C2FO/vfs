@@ -131,7 +131,6 @@ func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
 				return mapRef[l.Authority().String()][potentialPath].i.(*Location), nil
 			}
 		}
-
 	}
 	return &Location{
 		fileSystem: l.fileSystem,

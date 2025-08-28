@@ -78,7 +78,6 @@ func GetClient(opt Options) (*s3.Client, error) {
 		if opt.AllowLogOutputChecksumValidationSkipped {
 			opts.DisableLogOutputChecksumValidationSkipped = false
 		}
-
 	}), nil
 }
 

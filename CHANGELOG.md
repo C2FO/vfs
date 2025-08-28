@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- Minor whitespace cleanup. 
 
 ## [v7.8.1] - 2025-08-07
 ### Fixed
@@ -152,7 +154,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [6.22.0] - 2024-11-06
 ### Fixed
 - [#214](https://github.com/C2FO/vfs/issues/214) Fix issue where s3 backend didn't reset `readEOFSeen` flag when resetting the file cursor during Seek operations.
- 
+
 ## [6.21.0] - 2024-11-04
 ### Fixed
 - Unit Test improvements: report underlying unit tests errors, always run test cases in a sub-test, always use test suite functions, use more specific assert functions where possible.

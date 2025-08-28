@@ -87,7 +87,6 @@ These methods are chainable:
 
     	  err := file.Close()
     	  // handle error
-
       }
 ```
 
