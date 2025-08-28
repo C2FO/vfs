@@ -472,7 +472,7 @@ func (s *S3WatcherTestSuite) TestPollWithRetry() {
 
 			// For error cases, verify that error handler was called
 			if tt.name == "Retry disabled - continues polling with errors" {
-				s.Greater(errorCount, 0, "Error handler should be called for polling errors")
+				s.Positive(errorCount, "Error handler should be called for polling errors")
 			}
 		})
 	}

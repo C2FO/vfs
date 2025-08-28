@@ -31,7 +31,7 @@ func (s *testSuite) TestBackend() {
 
 	// get backend
 	b := Backend("new mock")
-	s.IsType(&mocks.FileSystem{}, b, "type is mocks.FileSystem")
+	s.IsType((*mocks.FileSystem)(nil), b, "type is mocks.FileSystem")
 
 	// check all RegisteredBackends names
 	s.Len(RegisteredBackends(), 3, "found 3 backends")
@@ -42,7 +42,7 @@ func (s *testSuite) TestBackend() {
 
 	// Unregister all backends
 	UnregisterAll()
-	s.Len(RegisteredBackends(), 0, "found 0 backends")
+	s.Empty(RegisteredBackends(), "found 0 backends")
 }
 
 func TestBackend(t *testing.T) {

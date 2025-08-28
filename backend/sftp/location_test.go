@@ -59,13 +59,13 @@ func (lt *locationTestSuite) TestList() {
 	lt.client.On("ReadDir", locPath).Return(make([]os.FileInfo, 0), errors.New("some error")).Once()
 	fileList, err = loc.List()
 	lt.Error(err, "should return error")
-	lt.Len(fileList, 0, "Should return no files on error")
+	lt.Empty(fileList, "Should return no files on error")
 
 	// file not found (location doesn't exist)
 	lt.client.On("ReadDir", locPath).Return(make([]os.FileInfo, 0), os.ErrNotExist).Once()
 	fileList, err = loc.List()
 	lt.NoError(err, "Shouldn't return an error on file not found.")
-	lt.Len(fileList, 0, "Should return no files on file not found")
+	lt.Empty(fileList, "Should return no files on file not found")
 
 	lt.client.AssertExpectations(lt.T())
 }
@@ -270,7 +270,7 @@ func (lt *locationTestSuite) TestExists() {
 	lt.NoError(err)
 	exists, err = loc.Exists()
 	lt.NoError(err, "No error expected from Exists")
-	lt.True(!exists, "Call to Exists expected to return false.")
+	lt.False(exists, "Call to Exists expected to return false.")
 
 	// some error calling stat
 	lt.client.On("Stat", locPath).Return(dir1, errors.New("some error")).Once()
@@ -278,7 +278,7 @@ func (lt *locationTestSuite) TestExists() {
 	lt.NoError(err)
 	exists, err = loc.Exists()
 	lt.Error(err, "from Exists")
-	lt.True(!exists, "Call to Exists expected to return false.")
+	lt.False(exists, "Call to Exists expected to return false.")
 
 	// check for not dir -- this shouldn't be possible since NewLocation won't accept non-absolute directories
 	dir1 = &mocks.FileInfo{}
@@ -290,7 +290,7 @@ func (lt *locationTestSuite) TestExists() {
 	lt.NoError(err)
 	exists, err = loc.Exists()
 	lt.NoError(err, "No error expected from Exists")
-	lt.True(!exists, "Call to Exists expected to return false.")
+	lt.False(exists, "Call to Exists expected to return false.")
 
 	lt.client.AssertExpectations(lt.T())
 }

@@ -127,7 +127,7 @@ func (ts *fileTestSuite) TestClose() {
 
 	// values set pre-test
 	ts.NotNil(ftpfile.Location().FileSystem().(*FileSystem).dataconn, "dataconn is not nil")
-	ts.EqualValues(1234, ftpfile.offset, "non-zero offset")
+	ts.Equal(int64(1234), ftpfile.offset, "non-zero offset")
 
 	// error closing ftpfile
 	myCloseErr := errors.New("some close error")
@@ -143,7 +143,7 @@ func (ts *fileTestSuite) TestClose() {
 
 	// values zeroed after successful Close()
 	ts.True(ftpfile.Location().FileSystem().(*FileSystem).resetConn, "resetConn should be true")
-	ts.EqualValues(0, ftpfile.offset, "offset should be zero")
+	ts.Zero(ftpfile.offset, "offset should be zero")
 	ts.Equal(2, dc.GetCloseCalledCount(), "dataconn.Close() called a second time")
 }
 
@@ -235,10 +235,10 @@ func (ts *fileTestSuite) TestSeek() {
 	// whence = 1 (seek relative position), seek 2
 	pos, err := ftpfile.Seek(6, 0) // seek to some mid point
 	ts.NoError(err, "no error expected")
-	ts.EqualValues(6, pos, "position check")
+	ts.Equal(int64(6), pos, "position check")
 	pos, err = ftpfile.Seek(2, 1) // now seek to relative position
 	ts.NoError(err, "no error expected")
-	ts.EqualValues(8, pos, "position check")
+	ts.Equal(int64(8), pos, "position check")
 	localFile.Reset()
 	_, err = io.Copy(localFile, ftpfile)
 	ts.NoError(err, "no error expected")
@@ -248,13 +248,13 @@ func (ts *fileTestSuite) TestSeek() {
 	ftpfile.offset = -2 // this SHOULD not be possible
 	pos, err = ftpfile.Seek(5, 1)
 	ts.NoError(err, "no error expected")
-	ts.EqualValues(5, pos, "new offset should be 5")
+	ts.Equal(int64(5), pos, "new offset should be 5")
 
 	// whence = 2 (seek from end)
 	ftpfile.Location().FileSystem().(*FileSystem).dataconn.(*FakeDataConn).AssertSize(uint64(len(contents)))
 	pos, err = ftpfile.Seek(8, 2) // seek to some mid point
 	ts.NoError(err, "no error expected")
-	ts.EqualValues(4, pos, "position check")
+	ts.Equal(int64(4), pos, "position check")
 	localFile.Reset()
 	_, err = io.Copy(localFile, ftpfile)
 	ts.NoError(err, "no error expected")
@@ -265,14 +265,14 @@ func (ts *fileTestSuite) TestSeek() {
 	ftpfile.Location().FileSystem().(*FileSystem).resetConn = true // make dataconn nil
 	offset, err := ftpfile.Seek(6, 0)
 	ts.NoError(err, "error not expected")
-	ts.EqualValues(6, offset, "returned offset should be 6")
-	ts.EqualValues(6, ftpfile.offset, "ftp File offset should be 6")
+	ts.Equal(int64(6), offset, "returned offset should be 6")
+	ts.Equal(int64(6), ftpfile.offset, "ftp File offset should be 6")
 	ts.NotNil(ftpfile.Location().FileSystem().(*FileSystem).dataconn, "dataconn should no longer be nil")
 
 	// whence = 2, correction of offset to 0 when whence 2 and seek offset > len(contents)
 	pos, err = ftpfile.Seek(15, 2)
 	ts.NoError(err, "no error expected")
-	ts.EqualValues(0, pos, "new offset should be 5")
+	ts.Zero(pos, "new offset should be 5")
 
 	// whence = 2, file doesn't exist yet
 	ftpfile.Location().FileSystem().(*FileSystem).dataconn.(*FakeDataConn).AssertExists(false)
@@ -328,7 +328,7 @@ func (ts *fileTestSuite) TestSeekError() {
 	pos, err := ftpfile.Seek(3, 1)
 	ts.Error(err, "should return an error")
 	ts.ErrorIs(err, closeErr, "should be right kind of error")
-	ts.EqualValues(0, pos, "position should be 0 on error")
+	ts.Zero(pos, "position should be 0 on error")
 	fakedconn.AssertCloseErr(nil)
 
 	// whence = 2, f.Size() error (client.GetEntry error)
@@ -347,7 +347,7 @@ func (ts *fileTestSuite) TestSeekError() {
 	pos, err = ftpfile.Seek(3, 2)
 	ts.Error(err, "should return an error")
 	ts.ErrorIs(err, sizeErr, "should be right kind of error")
-	ts.EqualValues(0, pos, "position should be 0 on error")
+	ts.Zero(pos, "position should be 0 on error")
 
 	// whence = 2, f.dataconn.Close() error
 	ftpfile.Location().FileSystem().(*FileSystem).dataconn = fakedconn
@@ -355,7 +355,7 @@ func (ts *fileTestSuite) TestSeekError() {
 	pos, err = ftpfile.Seek(3, 2)
 	ts.Error(err, "should return an error")
 	ts.ErrorIs(err, closeErr, "should be right kind of error")
-	ts.EqualValues(0, pos, "position should be 0 on error")
+	ts.Zero(pos, "position should be 0 on error")
 	client.AssertExpectations(ts.T())
 }
 
@@ -553,7 +553,7 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 	// copy to location success
 	newFile, err := sourceFile.CopyToLocation(targetLocation)
 	ts.NoError(err, "Error shouldn't be returned from successful call to CopyToFile")
-	ts.Equal(newFile.URI(), "ftp://user@host.com:22/targ/hello.txt", "new file uri check")
+	ts.Equal("ftp://user@host.com:22/targ/hello.txt", newFile.URI(), "new file uri check")
 	ts.Equal(contents, newFile.(*File).Location().FileSystem().(*FileSystem).dataconn.(*FakeDataConn).GetWriteContents(), "contents match")
 
 	// copy to location newfile failure
@@ -766,7 +766,7 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	// successful MoveToLocation
 	newFile, err := sourceFile.MoveToLocation(targetLocation)
 	ts.NoError(err, "error shouldn't be returned from successful call to MoveToFile")
-	ts.Equal(newFile.URI(), "ftp://user@host.com:22/targ/hello.txt", "new file uri check")
+	ts.Equal("ftp://user@host.com:22/targ/hello.txt", newFile.URI(), "new file uri check")
 
 	// failed to MoveToLocation (read error while copying)
 	sourceFile.path = ""
@@ -1185,7 +1185,7 @@ func (ts *fileTestSuite) TestNewFile() {
 	key := "/path/to/file"
 	ftpFile, err := ftpFS.NewFile(authorityStr, key)
 	ts.NoError(err, "newFile should succeed")
-	ts.IsType(&File{}, ftpFile, "newFile returned a File struct")
+	ts.IsType((*File)(nil), ftpFile, "newFile returned a File struct")
 	ts.Equal(authorityStr, ftpFile.Location().Authority().String())
 	ts.Equal(key, ftpFile.Path())
 }

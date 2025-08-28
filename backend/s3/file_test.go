@@ -760,7 +760,7 @@ func (ts *fileTestSuite) TestNewFile() {
 	key := "/path/to/key"
 	file, err := fs.NewFile(bucket, key)
 	ts.NoError(err, "newFile should succeed")
-	ts.IsType(&File{}, file, "newFile returned a File struct")
+	ts.IsType((*File)(nil), file, "newFile returned a File struct")
 	ts.Equal(bucket, file.Location().Authority().String())
 	ts.Equal(key, file.Path())
 }
@@ -953,16 +953,16 @@ func (ts *fileTestSuite) TestWriteOperations() {
 			}
 
 			if tc.wantErr {
-				ts.Assert().Error(err)
+				ts.Error(err)
 			} else {
-				ts.Assert().NoError(err)
+				ts.NoError(err)
 				ts.Equal(tc.expectedContents, *contents, "Contents of file should match expected contents")
 			}
 
 			// TODO: is this even needed?
 			if tc.validate != nil {
 				validationErr := tc.validate(file)
-				ts.Assert().NoError(validationErr)
+				ts.NoError(validationErr)
 			}
 
 			s3Mock.AssertExpectations(ts.T())
