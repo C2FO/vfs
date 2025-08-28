@@ -53,7 +53,7 @@ func (f *File) stat(ctx context.Context) (*_ftp.Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	// check if MLSD command is available - if so we'll want to grab file info
+	// check if MLST command is available - if so we'll want to grab file info
 	// via MLST. otherwise we'll need to use LIST.
 	if dc.IsTimePreciseInList() {
 		entry, err := dc.GetEntry(f.Path())
