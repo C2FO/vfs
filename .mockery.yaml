@@ -5,8 +5,10 @@ pkgname: mocks
 template: testify
 packages:
   github.com/c2fo/vfs/v7:
-    config:
-      all: true
+    interfaces:
+      FileSystem: {}
+      Location: {}
+      File: {}
   github.com/c2fo/vfs/v7/backend/ftp/types:
     config:
       all: true

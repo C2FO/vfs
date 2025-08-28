@@ -61,15 +61,26 @@ type PubSubClient_Receive_Call struct {
 }
 
 // Receive is a helper method to define mock.On call
-//   - ctx
-//   - f
+//   - ctx context.Context
+//   - f func(context.Context, *pubsub.Message)
 func (_e *PubSubClient_Expecter) Receive(ctx interface{}, f interface{}) *PubSubClient_Receive_Call {
 	return &PubSubClient_Receive_Call{Call: _e.mock.On("Receive", ctx, f)}
 }
 
 func (_c *PubSubClient_Receive_Call) Run(run func(ctx context.Context, f func(context.Context, *pubsub.Message))) *PubSubClient_Receive_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(func(context.Context, *pubsub.Message)))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 func(context.Context, *pubsub.Message)
+		if args[1] != nil {
+			arg1 = args[1].(func(context.Context, *pubsub.Message))
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
