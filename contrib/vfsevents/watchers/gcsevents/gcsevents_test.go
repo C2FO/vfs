@@ -62,9 +62,9 @@ func (s *GCSWatcherTestSuite) TestNewGCSWatcher() {
 			// Use mock client to avoid authentication issues in CI
 			_, err := NewGCSWatcher(tt.projectID, tt.subscriptionID, WithPubSubClient(s.pubsubClient))
 			if tt.wantErr {
-				s.Error(err)
+				s.Require().Error(err)
 			} else {
-				s.NoError(err)
+				s.Require().NoError(err)
 			}
 		})
 	}
@@ -99,14 +99,14 @@ func (s *GCSWatcherTestSuite) TestStart() {
 			handler := func(event vfsevents.Event) {}
 			errHandler := func(err error) {
 				if tt.wantErr {
-					s.Error(err)
+					s.Require().Error(err)
 				} else {
-					s.NoError(err)
+					s.Require().NoError(err)
 				}
 			}
 			err := s.watcher.Start(ctx, handler, errHandler)
-			s.NoError(err)
-			s.NoError(s.watcher.Stop())
+			s.Require().NoError(err)
+			s.Require().NoError(s.watcher.Stop())
 		})
 	}
 }
@@ -204,12 +204,12 @@ func (s *GCSWatcherTestSuite) TestPoll() {
 
 			_ = s.watcher.Start(context.TODO(), func(event vfsevents.Event) {}, func(err error) {
 				if tt.wantErr {
-					s.Error(err)
+					s.Require().Error(err)
 				} else {
-					s.NoError(err)
+					s.Require().NoError(err)
 				}
 			})
-			s.NoError(s.watcher.Stop())
+			s.Require().NoError(s.watcher.Stop())
 		})
 	}
 }
@@ -422,7 +422,7 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 
 			// Create watcher with retry configuration
 			watcher, err := NewGCSWatcher("test-project", "test-subscription", WithPubSubClient(s.pubsubClient))
-			s.NoError(err)
+			s.Require().NoError(err)
 
 			// Create start config with retry settings
 			config := &vfsevents.StartConfig{
@@ -459,9 +459,9 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 
 			// Verify error expectation
 			if tt.wantErr {
-				s.Error(err)
+				s.Require().Error(err)
 			} else {
-				s.NoError(err)
+				s.Require().NoError(err)
 			}
 
 			// Verify retry count in status

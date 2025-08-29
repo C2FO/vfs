@@ -285,7 +285,7 @@ func (a *authoritySuite) TestAuthority() {
 			if t.hasError {
 				a.ErrorContains(err, t.errMessage, t.message)
 			} else {
-				a.NoError(err, t.message)
+				a.Require().NoError(err, t.message)
 				a.Equal(t.host, actual.Host(), t.message)
 				a.Equal(int(t.port), int(actual.Port()), t.message)
 				a.Equal(t.user, actual.UserInfo().Username(), t.message)

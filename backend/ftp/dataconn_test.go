@@ -59,7 +59,7 @@ func (s *dataConnSuite) TestGetDataConn_alreadyExists() {
 		s.ftpFile,
 		types.OpenRead,
 	)
-	s.NoError(err, "no error expected")
+	s.Require().NoError(err, "no error expected")
 	s.IsTypef((*dataConn)(nil), dc, "dataconn returned")
 }
 
@@ -76,7 +76,7 @@ func (s *dataConnSuite) TestGetDataConn_openForRead() {
 		s.ftpFile,
 		types.OpenRead,
 	)
-	s.NoError(err, "no error expected")
+	s.Require().NoError(err, "no error expected")
 	s.IsTypef((*dataConn)(nil), dc, "dataconn returned")
 }
 
@@ -91,8 +91,8 @@ func (s *dataConnSuite) TestGetDataConn_errorClientSetup() {
 		s.ftpFile,
 		types.OpenRead,
 	)
-	s.Error(err, "error is expected")
-	s.ErrorIs(err, errClientGetter, "error is right kind of error")
+	s.Require().Error(err, "error is expected")
+	s.Require().ErrorIs(err, errClientGetter, "error is right kind of error")
 	s.Nil(dc, "dataconn should be nil on error")
 	defaultClientGetter = func(ctx context.Context, auth authority.Authority, opts Options) (client types.Client, err error) {
 		return GetClient(ctx, auth, opts)
@@ -114,8 +114,8 @@ func (s *dataConnSuite) TestGetDataConn_ReadError() {
 		s.ftpFile,
 		types.OpenRead,
 	)
-	s.Error(err, "error is expected")
-	s.ErrorIs(err, someErr, "error is right kind of error")
+	s.Require().Error(err, "error is expected")
+	s.Require().ErrorIs(err, someErr, "error is right kind of error")
 	s.Nil(dc, "dataconn should be nil on error")
 }
 
@@ -140,7 +140,7 @@ func (s *dataConnSuite) TestGetDataConn_WriteLocationNotExists() {
 		s.ftpFile,
 		types.OpenWrite,
 	)
-	s.NoError(err, "no error expected")
+	s.Require().NoError(err, "no error expected")
 
 	// brief sleep to ensure goroutines running StorFrom can all complete
 	time.Sleep(50 * time.Millisecond)
@@ -164,7 +164,7 @@ func (s *dataConnSuite) TestGetDataConn_WriteLocationNotExistsFails() {
 		s.ftpFile,
 		types.OpenWrite,
 	)
-	s.ErrorIs(err, someerr, "error expected")
+	s.Require().ErrorIs(err, someerr, "error expected")
 
 	// brief sleep to ensure goroutines running StorFrom can all complete
 	time.Sleep(50 * time.Millisecond)
@@ -193,10 +193,10 @@ func (s *dataConnSuite) TestGetDataConn_errorWriting() {
 		s.ftpFile,
 		types.OpenWrite,
 	)
-	s.NoError(err, "no error expected")
+	s.Require().NoError(err, "no error expected")
 	// error in getDataConn should close the PipeReader meaning Write errors
 	_, err = dc.Write([]byte{})
-	s.Error(err, "error is expected")
+	s.Require().Error(err, "error is expected")
 }
 
 func (s *dataConnSuite) TestGetDataConn_writeSuccess() {
@@ -221,7 +221,7 @@ func (s *dataConnSuite) TestGetDataConn_writeSuccess() {
 		s.ftpFile,
 		types.OpenWrite,
 	)
-	s.NoError(err, "no error expected")
+	s.Require().NoError(err, "no error expected")
 	s.IsTypef((*dataConn)(nil), dc, "dataconn returned")
 
 	// brief sleep to ensure goroutines running StorFrom can all complete
@@ -241,8 +241,8 @@ func (s *dataConnSuite) TestGetDataConn_readAfterWriteError() {
 		s.ftpFile,
 		types.OpenRead,
 	)
-	s.Error(err, "error is expected")
-	s.ErrorIs(err, closeErr, "error is right kind of error")
+	s.Require().Error(err, "error is expected")
+	s.Require().ErrorIs(err, closeErr, "error is right kind of error")
 	s.Nil(dc, "dataconn should be nil on error")
 }
 
@@ -271,7 +271,7 @@ func (s *dataConnSuite) TestGetDataConn_writeAfterReadSuccess() {
 		s.ftpFile,
 		types.OpenWrite,
 	)
-	s.NoError(err, "no error expected")
+	s.Require().NoError(err, "no error expected")
 	s.IsTypef((*dataConn)(nil), dc, "dataconn returned")
 
 	// brief sleep to ensure goroutines running StorFrom can all complete
@@ -293,7 +293,7 @@ func (s *dataConnSuite) TestRead() {
 	}
 	w := &strings.Builder{}
 	written, err := io.Copy(w, dc)
-	s.NoError(err, "error not expected")
+	s.Require().NoError(err, "error not expected")
 	s.Len(contents, int(written), "byte count should equal contents of reader")
 	s.Equal(contents, w.String(), "read contents equals original contents")
 }

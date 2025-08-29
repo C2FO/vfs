@@ -55,9 +55,9 @@ func TestDefaultTokenCredentialFactory(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.NoError(t, os.Setenv("AZURE_TENANT_ID", tt.envTenantID))
-			assert.NoError(t, os.Setenv("AZURE_CLIENT_ID", tt.envClientID))
-			assert.NoError(t, os.Setenv("AZURE_CLIENT_SECRET", tt.envClientSecret))
+			require.NoError(t, os.Setenv("AZURE_TENANT_ID", tt.envTenantID))
+			require.NoError(t, os.Setenv("AZURE_CLIENT_ID", tt.envClientID))
+			require.NoError(t, os.Setenv("AZURE_CLIENT_SECRET", tt.envClientSecret))
 			cred, err := DefaultTokenCredentialFactory(tt.tenantID, tt.clientID, tt.clientSecret)
 			if tt.expectError {
 				require.Error(t, err)

@@ -131,7 +131,7 @@ func (s *VfseventsTestSuite) TestWatcherError() {
 
 		for _, tt := range tests {
 			s.Run(tt.name, func() {
-				s.EqualError(tt.err, tt.expected)
+				s.Require().EqualError(tt.err, tt.expected)
 			})
 		}
 	})
@@ -587,7 +587,7 @@ func (s *VfseventsTestSuite) TestWatcherStatus() {
 
 		s.True(status.Running)
 		s.Equal(int64(100), status.EventsProcessed)
-		s.EqualError(status.LastError, "test error")
+		s.Require().EqualError(status.LastError, "test error")
 		s.Equal(int64(5), status.RetryAttempts)
 		s.Equal(int64(2), status.ConsecutiveErrors)
 	})

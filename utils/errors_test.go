@@ -96,13 +96,13 @@ func (s *errorsSuite) TestErrorWrapFunctions() {
 	for _, tc := range testCases {
 		s.Run(tc.name+"_WithError", func() {
 			err := tc.wrapFunc(testError)
-			s.Error(err, "should return an error when given a non-nil error")
-			s.EqualError(err, tc.expectedMsg, "error message should be properly wrapped")
+			s.Require().Error(err, "should return an error when given a non-nil error")
+			s.Require().EqualError(err, tc.expectedMsg, "error message should be properly wrapped")
 		})
 
 		s.Run(tc.name+"_WithNil", func() {
 			result := tc.wrapFunc(nil)
-			s.NoError(result, "should return nil when given a nil error")
+			s.Require().NoError(result, "should return nil when given a nil error")
 		})
 	}
 }
@@ -133,10 +133,10 @@ func (s *errorsSuite) TestErrorWrapFunctionsWithUnwrap() {
 	for _, tc := range testCases {
 		s.Run(tc.name+"_Unwrap", func() {
 			wrappedError := tc.wrapFunc(originalError)
-			s.Error(wrappedError, "wrapped error should not be nil")
+			s.Require().Error(wrappedError, "wrapped error should not be nil")
 
 			// Test that the original error can be unwrapped
-			s.ErrorIs(wrappedError, originalError, "should be able to unwrap to original error")
+			s.Require().ErrorIs(wrappedError, originalError, "should be able to unwrap to original error")
 		})
 	}
 }

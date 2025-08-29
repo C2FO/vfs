@@ -29,7 +29,7 @@ func (o *optionsTestSuite) TestGetClient() {
 			name: "no options",
 			opts: Options{},
 			expected: func(o *optionsTestSuite, client *s3.Client, err error) {
-				o.NoError(err)
+				o.Require().NoError(err)
 				o.NotNil(client, "client is set")
 				o.Empty(client.Options().AppID, "config is empty")
 			},
@@ -46,7 +46,7 @@ func (o *optionsTestSuite) TestGetClient() {
 				MaxRetries:      5,
 			},
 			expected: func(o *optionsTestSuite, client *s3.Client, err error) {
-				o.NoError(err)
+				o.Require().NoError(err)
 				o.NotNil(client, "client is set")
 				o.Equal("some-region", client.Options().Region, "region is set")
 				o.Truef(client.Options().UsePathStyle, "path style is set")
@@ -61,7 +61,7 @@ func (o *optionsTestSuite) TestGetClient() {
 			},
 			opts: Options{},
 			expected: func(o *optionsTestSuite, client *s3.Client, err error) {
-				o.NoError(err)
+				o.Require().NoError(err)
 				o.NotNil(client, "client is set")
 				o.Equal("set-by-envvar", client.Options().Region, "region is set by env var")
 			},
@@ -75,7 +75,7 @@ func (o *optionsTestSuite) TestGetClient() {
 				RoleARN:         "arn:aws:iam::123456789012:role/my-role",
 			},
 			expected: func(o *optionsTestSuite, client *s3.Client, err error) {
-				o.NoError(err)
+				o.Require().NoError(err)
 				o.NotNil(client, "client is set")
 				o.Equal("some-region", client.Options().Region, "region is set")
 				o.NotNil(client.Options().Credentials, "credentials are set")

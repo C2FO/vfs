@@ -1,3 +1,4 @@
+// Package types provides types and interfaces for Azure operations.
 package types
 
 import (

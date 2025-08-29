@@ -79,7 +79,7 @@ func TestDefaultClient_Upload(t *testing.T) {
 
 	// Test the Upload method
 	err = client.Upload(f, strings.NewReader("Hello world!"), "text/plain")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestDefaultClient_Download(t *testing.T) {
@@ -148,7 +148,7 @@ func TestDefaultClient_SetMetadata(t *testing.T) {
 	// Test the SetMetadata method
 	metadata := map[string]*string{"key": toPtr("value")}
 	err = client.SetMetadata(f, metadata)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestDefaultClient_Copy(t *testing.T) {
@@ -179,7 +179,7 @@ func TestDefaultClient_Copy(t *testing.T) {
 
 	// Test the Copy method
 	err = client.Copy(srcFile, tgtFile)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestDefaultClient_List(t *testing.T) {
@@ -224,7 +224,7 @@ func TestDefaultClient_List(t *testing.T) {
 
 	// Test the List method
 	list, err := client.List(l)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []string{"file1.txt", "file2.txt"}, list)
 }
 
@@ -252,7 +252,7 @@ func TestDefaultClient_Delete(t *testing.T) {
 
 	// Test the Delete method
 	err = client.Delete(f)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestDefaultClient_DeleteAllVersions(t *testing.T) {
@@ -293,5 +293,5 @@ func TestDefaultClient_DeleteAllVersions(t *testing.T) {
 
 	// Test the DeleteAllVersions method
 	err = client.DeleteAllVersions(f)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }

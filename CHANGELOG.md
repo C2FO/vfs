@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - More reliable mock expectation assertions in unit tests.
 - Minor whitespace cleanup. 
 - General spelling and grammar corrections.
+- Enable testifylint in golangci-lint and fix associated issues.
 
 ## [v7.8.1] - 2025-08-07
 ### Fixed
