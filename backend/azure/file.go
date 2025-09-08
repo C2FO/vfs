@@ -1,6 +1,7 @@
 package azure
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -25,6 +26,7 @@ type File struct {
 	location *Location
 	name     string
 	opts     []options.NewFileOption
+	ctx      context.Context
 	tempFile *os.File
 	isDirty  bool
 }
@@ -58,7 +60,7 @@ func (f *File) Close() error {
 				}
 			}
 
-			if err := client.Upload(f, f.tempFile, contentType); err != nil {
+			if err := client.Upload(f.ctx, f, f.tempFile, contentType); err != nil {
 				return utils.WrapCloseError(err)
 			}
 		}
@@ -129,7 +131,7 @@ func (f *File) Exists() (bool, error) {
 	if err != nil {
 		return false, utils.WrapExistsError(err)
 	}
-	_, err = client.Properties(f.Location().Authority().String(), f.Path())
+	_, err = client.Properties(f.ctx, f.Location().Authority().String(), f.Path())
 	if err != nil {
 		if !bloberror.HasCode(err, bloberror.BlobNotFound) {
 			return false, utils.WrapExistsError(err)
@@ -190,7 +192,7 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 			if err != nil {
 				return utils.WrapCopyToFileError(err)
 			}
-			return client.Copy(f, file)
+			return client.Copy(f.ctx, f, file)
 		}
 	}
 
@@ -254,12 +256,12 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		}
 	}
 
-	if err := client.Delete(f); err != nil {
+	if err := client.Delete(f.ctx, f); err != nil {
 		return utils.WrapDeleteError(err)
 	}
 
 	if allVersions {
-		return client.DeleteAllVersions(f)
+		return client.DeleteAllVersions(f.ctx, f)
 	}
 
 	return nil
@@ -271,7 +273,7 @@ func (f *File) LastModified() (*time.Time, error) {
 	if err != nil {
 		return nil, utils.WrapLastModifiedError(err)
 	}
-	props, err := client.Properties(f.Location().Authority().String(), f.Path())
+	props, err := client.Properties(f.ctx, f.Location().Authority().String(), f.Path())
 	if err != nil {
 		return nil, utils.WrapLastModifiedError(err)
 	}
@@ -284,7 +286,7 @@ func (f *File) Size() (uint64, error) {
 	if err != nil {
 		return 0, utils.WrapSizeError(err)
 	}
-	props, err := client.Properties(f.Location().Authority().String(), f.Path())
+	props, err := client.Properties(f.ctx, f.Location().Authority().String(), f.Path())
 	if err != nil {
 		return 0, utils.WrapSizeError(err)
 	}
@@ -324,21 +326,21 @@ func (f *File) Touch() error {
 			}
 		}
 
-		return client.Upload(f, strings.NewReader(""), contentType)
+		return client.Upload(f.ctx, f, strings.NewReader(""), contentType)
 	}
 
-	props, err := client.Properties(f.Location().Authority().String(), f.Path())
+	props, err := client.Properties(f.ctx, f.Location().Authority().String(), f.Path())
 	if err != nil {
 		return utils.WrapTouchError(err)
 	}
 
 	newMetadata := make(map[string]*string)
 	newMetadata["updated"] = to.Ptr("true")
-	if err := client.SetMetadata(f, newMetadata); err != nil {
+	if err := client.SetMetadata(f.ctx, f, newMetadata); err != nil {
 		return utils.WrapTouchError(err)
 	}
 
-	if err := client.SetMetadata(f, props.Metadata); err != nil {
+	if err := client.SetMetadata(f.ctx, f, props.Metadata); err != nil {
 		return utils.WrapTouchError(err)
 	}
 
@@ -368,7 +370,7 @@ func (f *File) checkTempFile() error {
 			}
 			f.tempFile = tf
 		} else {
-			reader, dlErr := client.Download(f)
+			reader, dlErr := client.Download(f.ctx, f)
 			if dlErr != nil {
 				return dlErr
 			}

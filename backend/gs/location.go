@@ -1,6 +1,7 @@
 package gs
 
 import (
+	"context"
 	"errors"
 	"path"
 	"regexp"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/options"
+	"github.com/c2fo/vfs/v7/options/newfile"
+	"github.com/c2fo/vfs/v7/options/newlocation"
 	"github.com/c2fo/vfs/v7/utils"
 	"github.com/c2fo/vfs/v7/utils/authority"
 )
@@ -21,6 +24,7 @@ type Location struct {
 	prefix       string
 	bucketHandle BucketHandleWrapper
 	authority    authority.Authority
+	ctx          context.Context
 }
 
 // String returns the full URI of the location.
@@ -63,7 +67,7 @@ func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error) {
 	}
 	var fileNames []string
 
-	it := handle.WrappedObjects(l.fileSystem.ctx, q)
+	it := handle.WrappedObjects(l.ctx, q)
 	for {
 		objAttrs, err := it.Next()
 		if err != nil {
@@ -130,7 +134,7 @@ func (l *Location) Exists() (bool, error) {
 }
 
 // NewLocation creates a new location instance relative to the current location's path.
-func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
+func (l *Location) NewLocation(relativePath string, opts ...options.NewLocationOption) (vfs.Location, error) {
 	if l == nil {
 		return nil, errors.New("non-nil gs.Location pointer is required")
 	}
@@ -143,10 +147,20 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 		return nil, err
 	}
 
+	ctx := l.ctx
+	for _, o := range opts {
+		switch o := o.(type) {
+		case *newlocation.Context:
+			ctx = context.Context(o)
+		default:
+		}
+	}
+
 	return &Location{
 		fileSystem: l.fileSystem,
 		prefix:     path.Join(l.prefix, relativePath),
 		authority:  l.Authority(),
+		ctx:        ctx,
 	}, nil
 }
 
@@ -203,10 +217,20 @@ func (l *Location) NewFile(relFilePath string, opts ...options.NewFileOption) (v
 		return nil, err
 	}
 
+	ctx := l.ctx
+	for _, o := range opts {
+		switch o := o.(type) {
+		case *newfile.Context:
+			ctx = context.Context(o)
+		default:
+		}
+	}
+
 	return &File{
 		location: newLocation.(*Location),
 		key:      utils.EnsureLeadingSlash(path.Join(l.prefix, relFilePath)),
 		opts:     opts,
+		ctx:      ctx,
 	}, nil
 }
 
@@ -247,5 +271,5 @@ func (l *Location) getBucketAttrs() (*storage.BucketAttrs, error) {
 		return nil, err
 	}
 
-	return handle.Attrs(l.fileSystem.ctx)
+	return handle.Attrs(l.ctx)
 }
