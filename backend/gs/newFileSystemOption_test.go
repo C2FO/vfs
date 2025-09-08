@@ -1,7 +1,6 @@
 package gs
 
 import (
-	"context"
 	"reflect"
 	"testing"
 
@@ -30,7 +29,7 @@ func TestWithOptions(t *testing.T) {
 }
 
 func TestWithContext(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	fs := &FileSystem{}
 
 	opt := WithContext(ctx)

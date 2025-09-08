@@ -115,7 +115,7 @@ func (l *Location) Exists() (bool, error) {
 
 // NewLocation creates a new location at the
 // given relative path, which is tagged onto the current locations absolute path
-func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
+func (l *Location) NewLocation(relLocPath string, _ ...options.NewLocationOption) (vfs.Location, error) {
 	err := utils.ValidateRelativeLocationPath(relLocPath)
 	if err != nil {
 		return nil, err

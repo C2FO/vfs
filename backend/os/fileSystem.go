@@ -64,7 +64,7 @@ func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.New
 }
 
 // NewLocation function returns the os implementation of vfs.Location.
-func (fs *FileSystem) NewLocation(authorityStr, locPath string) (vfs.Location, error) {
+func (fs *FileSystem) NewLocation(authorityStr, locPath string, _ ...options.NewLocationOption) (vfs.Location, error) {
 	if runtime.GOOS == "windows" && filepath.IsAbs(locPath) {
 		if v := filepath.VolumeName(locPath); v != "" {
 			authorityStr = v

@@ -1,7 +1,6 @@
 package s3
 
 import (
-	"context"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -24,7 +23,7 @@ type mockClient struct {
 }
 
 func (ts *fileSystemTestSuite) SetupTest() {
-	cfg, err := config.LoadDefaultConfig(context.Background())
+	cfg, err := config.LoadDefaultConfig(ts.T().Context())
 	if err != nil {
 		panic(err)
 	}
@@ -114,7 +113,7 @@ func (ts *fileSystemTestSuite) TestClient() {
 	ts.Require().NoError(err, "no error")
 	ts.Equal(s3fs.client, client, "client was already set")
 
-	s3fs = &FileSystem{}
+	s3fs = &FileSystem{ctx: ts.T().Context()}
 	client, err = s3fs.Client()
 	ts.Require().NoError(err, "no error")
 	ts.NotNil(client, "client was set")
