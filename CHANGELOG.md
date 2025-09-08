@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Avoid type assert and type convert where possible. (https://github.com/C2FO/vfs/pull/303)
 - Remove unnecessary S3 `mockClient` type. (https://github.com/C2FO/vfs/pull/305)
+### Added
+- Ability to optionally specify context when creating file and location objects.
 
 ## [v7.12.0] - 2025-01-24
 ### Security

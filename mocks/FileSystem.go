@@ -165,8 +165,14 @@ func (_c *FileSystem_NewFile_Call) RunAndReturn(run func(authority string, absFi
 }
 
 // NewLocation provides a mock function for the type FileSystem
-func (_mock *FileSystem) NewLocation(authority string, absLocPath string) (vfs.Location, error) {
-	ret := _mock.Called(authority, absLocPath)
+func (_mock *FileSystem) NewLocation(authority string, absLocPath string, opts ...options.NewLocationOption) (vfs.Location, error) {
+	var tmpRet mock.Arguments
+	if len(opts) > 0 {
+		tmpRet = _mock.Called(authority, absLocPath, opts)
+	} else {
+		tmpRet = _mock.Called(authority, absLocPath)
+	}
+	ret := tmpRet
 
 	if len(ret) == 0 {
 		panic("no return value specified for NewLocation")
@@ -174,18 +180,18 @@ func (_mock *FileSystem) NewLocation(authority string, absLocPath string) (vfs.L
 
 	var r0 vfs.Location
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(string, string) (vfs.Location, error)); ok {
-		return returnFunc(authority, absLocPath)
+	if returnFunc, ok := ret.Get(0).(func(string, string, ...options.NewLocationOption) (vfs.Location, error)); ok {
+		return returnFunc(authority, absLocPath, opts...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(string, string) vfs.Location); ok {
-		r0 = returnFunc(authority, absLocPath)
+	if returnFunc, ok := ret.Get(0).(func(string, string, ...options.NewLocationOption) vfs.Location); ok {
+		r0 = returnFunc(authority, absLocPath, opts...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(vfs.Location)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(string, string) error); ok {
-		r1 = returnFunc(authority, absLocPath)
+	if returnFunc, ok := ret.Get(1).(func(string, string, ...options.NewLocationOption) error); ok {
+		r1 = returnFunc(authority, absLocPath, opts...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -200,11 +206,13 @@ type FileSystem_NewLocation_Call struct {
 // NewLocation is a helper method to define mock.On call
 //   - authority string
 //   - absLocPath string
-func (_e *FileSystem_Expecter) NewLocation(authority interface{}, absLocPath interface{}) *FileSystem_NewLocation_Call {
-	return &FileSystem_NewLocation_Call{Call: _e.mock.On("NewLocation", authority, absLocPath)}
+//   - opts ...options.NewLocationOption
+func (_e *FileSystem_Expecter) NewLocation(authority interface{}, absLocPath interface{}, opts ...interface{}) *FileSystem_NewLocation_Call {
+	return &FileSystem_NewLocation_Call{Call: _e.mock.On("NewLocation",
+		append([]interface{}{authority, absLocPath}, opts...)...)}
 }
 
-func (_c *FileSystem_NewLocation_Call) Run(run func(authority string, absLocPath string)) *FileSystem_NewLocation_Call {
+func (_c *FileSystem_NewLocation_Call) Run(run func(authority string, absLocPath string, opts ...options.NewLocationOption)) *FileSystem_NewLocation_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 string
 		if args[0] != nil {
@@ -214,9 +222,16 @@ func (_c *FileSystem_NewLocation_Call) Run(run func(authority string, absLocPath
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
+		var arg2 []options.NewLocationOption
+		var variadicArgs []options.NewLocationOption
+		if len(args) > 2 {
+			variadicArgs = args[2].([]options.NewLocationOption)
+		}
+		arg2 = variadicArgs
 		run(
 			arg0,
 			arg1,
+			arg2...,
 		)
 	})
 	return _c
@@ -227,7 +242,7 @@ func (_c *FileSystem_NewLocation_Call) Return(location vfs.Location, err error) 
 	return _c
 }
 
-func (_c *FileSystem_NewLocation_Call) RunAndReturn(run func(authority string, absLocPath string) (vfs.Location, error)) *FileSystem_NewLocation_Call {
+func (_c *FileSystem_NewLocation_Call) RunAndReturn(run func(authority string, absLocPath string, opts ...options.NewLocationOption) (vfs.Location, error)) *FileSystem_NewLocation_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -557,8 +557,14 @@ func (_c *Location_NewFile_Call) RunAndReturn(run func(relFilePath string, opts 
 }
 
 // NewLocation provides a mock function for the type Location
-func (_mock *Location) NewLocation(relLocPath string) (vfs.Location, error) {
-	ret := _mock.Called(relLocPath)
+func (_mock *Location) NewLocation(relLocPath string, opts ...options.NewLocationOption) (vfs.Location, error) {
+	var tmpRet mock.Arguments
+	if len(opts) > 0 {
+		tmpRet = _mock.Called(relLocPath, opts)
+	} else {
+		tmpRet = _mock.Called(relLocPath)
+	}
+	ret := tmpRet
 
 	if len(ret) == 0 {
 		panic("no return value specified for NewLocation")
@@ -566,18 +572,18 @@ func (_mock *Location) NewLocation(relLocPath string) (vfs.Location, error) {
 
 	var r0 vfs.Location
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(string) (vfs.Location, error)); ok {
-		return returnFunc(relLocPath)
+	if returnFunc, ok := ret.Get(0).(func(string, ...options.NewLocationOption) (vfs.Location, error)); ok {
+		return returnFunc(relLocPath, opts...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(string) vfs.Location); ok {
-		r0 = returnFunc(relLocPath)
+	if returnFunc, ok := ret.Get(0).(func(string, ...options.NewLocationOption) vfs.Location); ok {
+		r0 = returnFunc(relLocPath, opts...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(vfs.Location)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
-		r1 = returnFunc(relLocPath)
+	if returnFunc, ok := ret.Get(1).(func(string, ...options.NewLocationOption) error); ok {
+		r1 = returnFunc(relLocPath, opts...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -591,18 +597,27 @@ type Location_NewLocation_Call struct {
 
 // NewLocation is a helper method to define mock.On call
 //   - relLocPath string
-func (_e *Location_Expecter) NewLocation(relLocPath interface{}) *Location_NewLocation_Call {
-	return &Location_NewLocation_Call{Call: _e.mock.On("NewLocation", relLocPath)}
+//   - opts ...options.NewLocationOption
+func (_e *Location_Expecter) NewLocation(relLocPath interface{}, opts ...interface{}) *Location_NewLocation_Call {
+	return &Location_NewLocation_Call{Call: _e.mock.On("NewLocation",
+		append([]interface{}{relLocPath}, opts...)...)}
 }
 
-func (_c *Location_NewLocation_Call) Run(run func(relLocPath string)) *Location_NewLocation_Call {
+func (_c *Location_NewLocation_Call) Run(run func(relLocPath string, opts ...options.NewLocationOption)) *Location_NewLocation_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 string
 		if args[0] != nil {
 			arg0 = args[0].(string)
 		}
+		var arg1 []options.NewLocationOption
+		var variadicArgs []options.NewLocationOption
+		if len(args) > 1 {
+			variadicArgs = args[1].([]options.NewLocationOption)
+		}
+		arg1 = variadicArgs
 		run(
 			arg0,
+			arg1...,
 		)
 	})
 	return _c
@@ -613,7 +628,7 @@ func (_c *Location_NewLocation_Call) Return(location vfs.Location, err error) *L
 	return _c
 }
 
-func (_c *Location_NewLocation_Call) RunAndReturn(run func(relLocPath string) (vfs.Location, error)) *Location_NewLocation_Call {
+func (_c *Location_NewLocation_Call) RunAndReturn(run func(relLocPath string, opts ...options.NewLocationOption) (vfs.Location, error)) *Location_NewLocation_Call {
 	_c.Call.Return(run)
 	return _c
 }

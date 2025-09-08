@@ -49,7 +49,7 @@ func TestDefaultClient_Properties(t *testing.T) {
 	}
 
 	// Test the Properties method
-	props, err := client.Properties(mockServer.URL, "test.txt")
+	props, err := client.Properties(t.Context(), mockServer.URL, "test.txt")
 	require.NoError(t, err)
 	require.NotNil(t, props)
 	require.NotNil(t, props.Size)
@@ -80,7 +80,7 @@ func TestDefaultClient_Upload(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test the Upload method
-	err = client.Upload(f, strings.NewReader("Hello world!"), "text/plain")
+	err = client.Upload(t.Context(), f, strings.NewReader("Hello world!"), "text/plain")
 	require.NoError(t, err)
 }
 
@@ -108,7 +108,7 @@ func TestDefaultClient_Download(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test the Download method
-	reader, err := client.Download(f)
+	reader, err := client.Download(t.Context(), f)
 	require.NoError(t, err)
 	defer func() { _ = reader.Close() }()
 
@@ -149,7 +149,7 @@ func TestDefaultClient_SetMetadata(t *testing.T) {
 
 	// Test the SetMetadata method
 	metadata := map[string]*string{"key": utils.Ptr("value")}
-	err = client.SetMetadata(f, metadata)
+	err = client.SetMetadata(t.Context(), f, metadata)
 	require.NoError(t, err)
 }
 
@@ -180,7 +180,7 @@ func TestDefaultClient_Copy(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test the Copy method
-	err = client.Copy(srcFile, tgtFile)
+	err = client.Copy(t.Context(), srcFile, tgtFile)
 	require.NoError(t, err)
 }
 
@@ -225,7 +225,7 @@ func TestDefaultClient_List(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test the List method
-	list, err := client.List(l)
+	list, err := client.List(t.Context(), l)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"file1.txt", "file2.txt"}, list)
 }
@@ -253,7 +253,7 @@ func TestDefaultClient_Delete(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test the Delete method
-	err = client.Delete(f)
+	err = client.Delete(t.Context(), f)
 	require.NoError(t, err)
 }
 
@@ -294,6 +294,6 @@ func TestDefaultClient_DeleteAllVersions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test the DeleteAllVersions method
-	err = client.DeleteAllVersions(f)
+	err = client.DeleteAllVersions(t.Context(), f)
 	require.NoError(t, err)
 }

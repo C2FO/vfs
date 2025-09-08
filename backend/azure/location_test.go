@@ -37,7 +37,7 @@ func (s *LocationTestSuite) TestString() {
 
 func (s *LocationTestSuite) TestList() {
 	client := mocks.NewClient(s.T())
-	client.EXPECT().List(mock.Anything).Return([]string{"file1.txt", "file2.txt"}, nil)
+	client.EXPECT().List(mock.Anything, mock.Anything).Return([]string{"file1.txt", "file2.txt"}, nil)
 	fs := NewFileSystem(WithClient(client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	listing, err := l.List()
@@ -47,7 +47,7 @@ func (s *LocationTestSuite) TestList() {
 
 func (s *LocationTestSuite) TestListByPrefix() {
 	client := mocks.NewClient(s.T())
-	client.EXPECT().List(mock.Anything).Return([]string{"file1.txt", "file2.txt", "foo.txt"}, nil)
+	client.EXPECT().List(mock.Anything, mock.Anything).Return([]string{"file1.txt", "file2.txt", "foo.txt"}, nil)
 	fs := NewFileSystem(WithClient(client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	listing, err := l.ListByPrefix("file")
@@ -59,7 +59,7 @@ func (s *LocationTestSuite) TestListByPrefix() {
 
 func (s *LocationTestSuite) TestListByRegex() {
 	client := mocks.NewClient(s.T())
-	client.EXPECT().List(mock.Anything).Return([]string{"file1.txt", "file2.txt", "foo.txt"}, nil)
+	client.EXPECT().List(mock.Anything, mock.Anything).Return([]string{"file1.txt", "file2.txt", "foo.txt"}, nil)
 	fs := NewFileSystem(WithClient(client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	regex := regexp.MustCompile("file")
@@ -104,7 +104,7 @@ func (s *LocationTestSuite) TestPath() {
 
 func (s *LocationTestSuite) TestExists() {
 	client := mocks.NewClient(s.T())
-	client.EXPECT().Properties("test-container", "").Return(&BlobProperties{}, nil)
+	client.EXPECT().Properties(mock.Anything, "test-container", "").Return(&BlobProperties{}, nil)
 	fs := NewFileSystem(WithClient(client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	exists, err := l.Exists()
@@ -114,7 +114,7 @@ func (s *LocationTestSuite) TestExists() {
 
 func (s *LocationTestSuite) TestExists_NonExistentFile() {
 	client := mocks.NewClient(s.T())
-	client.EXPECT().Properties("test-container", "").Return(nil, errors.New("no such file"))
+	client.EXPECT().Properties(mock.Anything, "test-container", "").Return(nil, errors.New("no such file"))
 	fs := NewFileSystem(WithClient(client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	exists, err := l.Exists()
@@ -257,7 +257,7 @@ func (s *LocationTestSuite) TestNewFile_NilReceiver() {
 
 func (s *LocationTestSuite) TestDeleteFile() {
 	client := mocks.NewClient(s.T())
-	client.EXPECT().Delete(mock.Anything).Return(nil)
+	client.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 	fs := NewFileSystem(WithClient(client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	s.Require().NoError(l.DeleteFile("clever_file.txt"), "the file exists so we do not expect an error")
@@ -265,7 +265,7 @@ func (s *LocationTestSuite) TestDeleteFile() {
 
 func (s *LocationTestSuite) TestDeleteFile_DoesNotExist() {
 	client := mocks.NewClient(s.T())
-	client.EXPECT().Delete(mock.Anything).Return(errors.New("no such file"))
+	client.EXPECT().Delete(mock.Anything, mock.Anything).Return(errors.New("no such file"))
 	fs := NewFileSystem(WithClient(client))
 	l, _ := fs.NewLocation("test-container", "/some/folder/")
 	s.Require().Error(l.DeleteFile("nosuchfile.txt"), "the file does not exist so we expect an error")

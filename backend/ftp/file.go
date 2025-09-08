@@ -33,6 +33,7 @@ type File struct {
 	location *Location
 	path     string
 	opts     []options.NewFileOption
+	ctx      context.Context
 	offset   int64
 }
 
@@ -40,7 +41,7 @@ type File struct {
 
 // LastModified returns the LastModified property of ftp file.
 func (f *File) LastModified() (*time.Time, error) {
-	entry, err := f.stat(context.TODO())
+	entry, err := f.stat(f.ctx)
 	if err != nil {
 		return nil, utils.WrapLastModifiedError(err)
 	}
@@ -90,7 +91,7 @@ func (f *File) Path() string {
 
 // Exists returns a boolean of whether or not the file exists on the ftp server
 func (f *File) Exists() (bool, error) {
-	_, err := f.stat(context.TODO())
+	_, err := f.stat(f.ctx)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			// file does not exist
@@ -121,7 +122,7 @@ func (f *File) Touch() error {
 	}
 
 	// if a set time function is available use that to set last modified to now
-	dc, err := f.location.fileSystem.DataConn(context.TODO(), f.Location().Authority(), types.SingleOp, f)
+	dc, err := f.location.fileSystem.DataConn(f.ctx, f.Location().Authority(), types.SingleOp, f)
 	if err != nil {
 		return utils.WrapTouchError(err)
 	}
@@ -149,7 +150,7 @@ func getTempFilename(origName string) string {
 
 // Size returns the size of the remote file.
 func (f *File) Size() (uint64, error) {
-	entry, err := f.stat(context.TODO())
+	entry, err := f.stat(f.ctx)
 	if err != nil {
 		return 0, utils.WrapSizeError(err)
 	}
@@ -179,7 +180,7 @@ func (f *File) MoveToFile(t vfs.File) error {
 		if err != nil {
 			return utils.WrapMoveToFileError(err)
 		}
-		dc, err := f.location.fileSystem.DataConn(context.TODO(), f.Location().Authority(), types.SingleOp, f)
+		dc, err := f.location.fileSystem.DataConn(f.ctx, f.Location().Authority(), types.SingleOp, f)
 		if err != nil {
 			return utils.WrapMoveToFileError(err)
 		}
@@ -296,7 +297,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 // Delete removes the remote file.  Error is returned, if any.
 func (f *File) Delete(_ ...options.DeleteOption) error {
-	dc, err := f.location.fileSystem.DataConn(context.TODO(), f.Location().Authority(), types.SingleOp, f)
+	dc, err := f.location.fileSystem.DataConn(f.ctx, f.Location().Authority(), types.SingleOp, f)
 	if err != nil {
 		return utils.WrapDeleteError(err)
 	}
@@ -319,7 +320,7 @@ func (f *File) Close() error {
 
 // Read calls the underlying ftp.File Read.
 func (f *File) Read(p []byte) (n int, err error) {
-	dc, err := f.location.fileSystem.DataConn(context.TODO(), f.Location().Authority(), types.OpenRead, f)
+	dc, err := f.location.fileSystem.DataConn(f.ctx, f.Location().Authority(), types.OpenRead, f)
 	if err != nil {
 		return 0, utils.WrapReadError(err)
 	}
@@ -398,7 +399,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	// now that f.offset has been adjusted and mode was captured, reinitialize file
-	_, err = f.location.fileSystem.DataConn(context.TODO(), f.Location().Authority(), mode, f)
+	_, err = f.location.fileSystem.DataConn(f.ctx, f.Location().Authority(), mode, f)
 	if err != nil {
 		return 0, utils.WrapSeekError(err)
 	}
@@ -409,7 +410,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 
 // Write calls the underlying ftp.File Write.
 func (f *File) Write(data []byte) (res int, err error) {
-	dc, err := f.location.fileSystem.DataConn(context.TODO(), f.Location().Authority(), types.OpenWrite, f)
+	dc, err := f.location.fileSystem.DataConn(f.ctx, f.Location().Authority(), types.OpenWrite, f)
 	if err != nil {
 		return 0, utils.WrapWriteError(err)
 	}

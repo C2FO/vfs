@@ -13,6 +13,8 @@ import (
 
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/options"
+	"github.com/c2fo/vfs/v7/options/newfile"
+	"github.com/c2fo/vfs/v7/options/newlocation"
 	"github.com/c2fo/vfs/v7/utils"
 	"github.com/c2fo/vfs/v7/utils/authority"
 )
@@ -27,6 +29,7 @@ type Location struct {
 	fileSystem *FileSystem
 	prefix     string
 	authority  authority.Authority
+	ctx        context.Context
 }
 
 // List calls the s3 API to list all objects in the location's bucket, with a prefix automatically
@@ -94,7 +97,7 @@ func (l *Location) Exists() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	_, err = client.HeadBucket(context.Background(), headBucketInput)
+	_, err = client.HeadBucket(l.ctx, headBucketInput)
 	if err != nil {
 		var terr *types.NotFound
 		if errors.As(err, &terr) {
@@ -109,7 +112,7 @@ func (l *Location) Exists() (bool, error) {
 // NewLocation makes a copy of the underlying Location, then modifies its path by calling ChangeDir with the
 // relativePath argument, returning the resulting location. The only possible errors come from the call to
 // ChangeDir, which, for the s3 implementation doesn't ever result in an error.
-func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
+func (l *Location) NewLocation(relativePath string, opts ...options.NewLocationOption) (vfs.Location, error) {
 	if l == nil {
 		return nil, errLocationRequired
 	}
@@ -122,10 +125,20 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 		return nil, err
 	}
 
+	ctx := l.ctx
+	for _, o := range opts {
+		switch o := o.(type) {
+		case *newlocation.Context:
+			ctx = context.Context(o)
+		default:
+		}
+	}
+
 	return &Location{
 		fileSystem: l.fileSystem,
 		prefix:     path.Join(l.prefix, relativePath),
 		authority:  l.Authority(),
+		ctx:        ctx,
 	}, nil
 }
 
@@ -179,10 +192,20 @@ func (l *Location) NewFile(relFilePath string, opts ...options.NewFileOption) (v
 		return nil, err
 	}
 
+	ctx := l.ctx
+	for _, o := range opts {
+		switch o := o.(type) {
+		case *newfile.Context:
+			ctx = context.Context(o)
+		default:
+		}
+	}
+
 	newFile := &File{
 		location: newLocation.(*Location),
 		key:      utils.RemoveLeadingSlash(path.Join(l.prefix, relFilePath)),
 		opts:     opts,
+		ctx:      ctx,
 	}
 	return newFile, nil
 }
@@ -223,7 +246,7 @@ func (l *Location) fullLocationList(input *s3.ListObjectsInput, prefix string) (
 		return keys, err
 	}
 	for {
-		listObjectsOutput, err := client.ListObjects(context.Background(), input)
+		listObjectsOutput, err := client.ListObjects(l.ctx, input)
 		if err != nil {
 			return []string{}, err
 		}
