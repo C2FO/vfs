@@ -7,6 +7,10 @@ packages:
   github.com/c2fo/vfs/v7:
     config:
       all: true
+  github.com/c2fo/vfs/v7/backend/azure/types:
+    config:
+      all: true
+      dir: backend/azure/mocks
   github.com/c2fo/vfs/v7/backend/ftp/types:
     config:
       all: true
