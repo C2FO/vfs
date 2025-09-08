@@ -1,6 +1,7 @@
 package ftp
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -127,7 +128,7 @@ func (ts *fileSystemTestSuite) TestWithOptions() {
 
 func (ts *fileSystemTestSuite) TestClient() {
 	// client already set
-	client, err := ts.ftpfs.Client(ts.T().Context(), authority.Authority{})
+	client, err := ts.ftpfs.Client(context.Background(), authority.Authority{})
 	ts.Require().NoError(err, "no error")
 	ts.Equal(ts.ftpfs.ftpclient, client, "client was already set")
 }

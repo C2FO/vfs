@@ -2,6 +2,7 @@ package gs
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -22,7 +23,7 @@ type fileTestSuite struct {
 
 func (ts *fileTestSuite) objectExists(bucket *storage.BucketHandle, objectName string) bool {
 	objectHandle := bucket.Object(objectName)
-	_, err := objectHandle.Attrs(ts.T().Context())
+	_, err := objectHandle.Attrs(context.Background())
 	if err != nil {
 		if errors.Is(err, storage.ErrObjectNotExist) {
 			return false
@@ -34,7 +35,7 @@ func (ts *fileTestSuite) objectExists(bucket *storage.BucketHandle, objectName s
 
 func (ts *fileTestSuite) mustReadObject(bucket *storage.BucketHandle, objectName string) []byte {
 	objectHandle := bucket.Object(objectName)
-	reader, err := objectHandle.NewReader(ts.T().Context())
+	reader, err := objectHandle.NewReader(context.Background())
 	if err != nil {
 		panic(err)
 	}
@@ -232,7 +233,7 @@ func (ts *fileTestSuite) TestWriteWithContentType() {
 	defer server.Stop()
 	client := server.Client()
 	bucket := client.Bucket(bucketName)
-	ctx := ts.T().Context()
+	ctx := context.Background()
 	err := bucket.Create(ctx, "", nil)
 	ts.Require().NoError(err)
 	fs := NewFileSystem(WithClient(client))
@@ -258,7 +259,7 @@ func (ts *fileTestSuite) TestTouchWithContentType() {
 	defer server.Stop()
 	client := server.Client()
 	bucket := client.Bucket(bucketName)
-	ctx := ts.T().Context()
+	ctx := context.Background()
 	err := bucket.Create(ctx, "", nil)
 	ts.Require().NoError(err)
 	fs := NewFileSystem(WithClient(client))

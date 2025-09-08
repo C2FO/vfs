@@ -2,6 +2,7 @@ package ftp
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"os"
 	"testing"
@@ -477,7 +478,7 @@ func (s *optionsSuite) TestFetchDialOptions() {
 			auth, err := authority.NewAuthority(test.authority)
 			s.Require().NoError(err, test.description)
 
-			dialOpts := fetchDialOptions(s.T().Context(), auth, test.options)
+			dialOpts := fetchDialOptions(context.Background(), auth, test.options)
 			s.Len(dialOpts, test.expected, test.description)
 		})
 	}
