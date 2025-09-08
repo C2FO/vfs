@@ -12,7 +12,8 @@ import (
 func TestWithContext(t *testing.T) {
 	is := require.New(t)
 
-	ctx := context.WithValue(t.Context(), "", "")
+	type key struct{}
+	ctx := context.WithValue(context.Background(), key{}, "")
 	opt := newfile.WithContext(ctx)
 
 	nfc, ok := opt.(*newfile.Context)

@@ -4,6 +4,7 @@
 package azure
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -27,7 +28,7 @@ type ClientIntegrationTestSuite struct {
 
 func (s *ClientIntegrationTestSuite) SetupSuite() {
 	s.accountName, s.accountKey = os.Getenv("VFS_AZURE_STORAGE_ACCOUNT"), os.Getenv("VFS_AZURE_STORAGE_ACCESS_KEY")
-	ctx := s.T().Context()
+	ctx := context.Background()
 
 	credential, err := azblob.NewSharedKeyCredential(s.accountName, s.accountKey)
 	if err != nil {
@@ -54,12 +55,12 @@ func (s *ClientIntegrationTestSuite) SetupSuite() {
 }
 
 func (s *ClientIntegrationTestSuite) TearDownSuite() {
-	_, err := s.containerClient.Delete(s.T().Context(), nil)
+	_, err := s.containerClient.Delete(context.Background(), nil)
 	s.Require().NoError(err)
 }
 
 func (s *ClientIntegrationTestSuite) TestAllTheThings_FileWithNoPath() {
-	ctx := s.T().Context()
+	ctx := context.Background()
 
 	fs := NewFileSystem()
 	f, err := fs.NewFile("test-container", "/test.txt")
@@ -109,7 +110,7 @@ func (s *ClientIntegrationTestSuite) TestAllTheThings_FileWithNoPath() {
 }
 
 func (s *ClientIntegrationTestSuite) TestAllTheThings_FileWithPath() {
-	ctx := s.T().Context()
+	ctx := context.Background()
 
 	fs := NewFileSystem()
 	f, err := fs.NewFile("test-container", "/foo/bar/test.txt")
@@ -143,7 +144,7 @@ func (s *ClientIntegrationTestSuite) TestAllTheThings_FileWithPath() {
 }
 
 func (s *ClientIntegrationTestSuite) TestDeleteAllVersions() {
-	ctx := s.T().Context()
+	ctx := context.Background()
 
 	fs := NewFileSystem()
 	f, err := fs.NewFile("test-container", "/test.txt")
@@ -174,7 +175,7 @@ func (s *ClientIntegrationTestSuite) TestDeleteAllVersions() {
 }
 
 func (s *ClientIntegrationTestSuite) TestProperties() {
-	ctx := s.T().Context()
+	ctx := context.Background()
 
 	fs := NewFileSystem()
 	f, err := fs.NewFile("test-container", "/foo/bar/test.txt")
@@ -192,7 +193,7 @@ func (s *ClientIntegrationTestSuite) TestProperties() {
 }
 
 func (s *ClientIntegrationTestSuite) TestProperties_Location() {
-	ctx := s.T().Context()
+	ctx := context.Background()
 
 	fs := NewFileSystem()
 	f, err := fs.NewFile("test-container", "/foo/bar/test.txt")
@@ -209,7 +210,7 @@ func (s *ClientIntegrationTestSuite) TestProperties_Location() {
 }
 
 func (s *ClientIntegrationTestSuite) TestProperties_NonExistentFile() {
-	ctx := s.T().Context()
+	ctx := context.Background()
 
 	fs := NewFileSystem()
 	f, err := fs.NewFile("test-container", "/nosuchfile.txt")
@@ -224,7 +225,7 @@ func (s *ClientIntegrationTestSuite) TestProperties_NonExistentFile() {
 }
 
 func (s *ClientIntegrationTestSuite) TestDelete_NonExistentFile() {
-	ctx := s.T().Context()
+	ctx := context.Background()
 
 	fs := NewFileSystem()
 	f, err := fs.NewFile("test-container", "/nosuchfile.txt")
@@ -237,7 +238,7 @@ func (s *ClientIntegrationTestSuite) TestDelete_NonExistentFile() {
 }
 
 func (s *ClientIntegrationTestSuite) TestTouch_NonExistentContainer() {
-	ctx := s.T().Context()
+	ctx := context.Background()
 
 	fs := NewFileSystem()
 	f, err := fs.NewFile("nosuchcontainer", "/file.txt")
@@ -250,7 +251,7 @@ func (s *ClientIntegrationTestSuite) TestTouch_NonExistentContainer() {
 }
 
 func (s *ClientIntegrationTestSuite) TestTouch_FileAlreadyExists() {
-	ctx := s.T().Context()
+	ctx := context.Background()
 
 	fs := NewFileSystem()
 	f, err := fs.NewFile("test-container", "/touch-test.txt")

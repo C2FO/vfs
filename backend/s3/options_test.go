@@ -1,6 +1,7 @@
 package s3
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -88,7 +89,7 @@ func (o *optionsTestSuite) TestGetClient() {
 			for k, v := range tt.envVar {
 				_ = os.Setenv(k, v)
 			}
-			client, err := GetClient(o.T().Context(), tt.opts)
+			client, err := GetClient(context.Background(), tt.opts)
 			tt.expected(o, client, err)
 			for k := range tt.envVar {
 				_ = os.Unsetenv(k)
