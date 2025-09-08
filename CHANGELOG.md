@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Define more sentinel errors for more ergonomic error checking.
+- Ability to optionally specify context when creating file and location objects.
 
 ### Tests
 - Use typed expectations consistently for added type safety.

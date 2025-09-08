@@ -44,7 +44,7 @@ func (ts *fileTestSuite) SetupTest() {
 	var err error
 	s3cliMock = mocks.NewClient(ts.T())
 	defaultOptions = Options{AccessKeyID: "abc"}
-	fs = FileSystem{client: s3cliMock, options: defaultOptions}
+	fs = FileSystem{client: s3cliMock, options: defaultOptions, ctx: ts.T().Context()}
 	testFileName = "/some/path/to/file.txt"
 	bucket = "bucket"
 	testFile, err = fs.NewFile(bucket, testFileName)
@@ -477,6 +477,7 @@ func (ts *fileTestSuite) TestTouch() {
 			authority: auth,
 		},
 		key: "/new/file/path/hello.txt",
+		ctx: ts.T().Context(),
 	}
 
 	terr := file.Touch()
@@ -497,6 +498,7 @@ func (ts *fileTestSuite) TestTouch() {
 			authority: auth,
 		},
 		key: "/new/file/path/hello.txt",
+		ctx: ts.T().Context(),
 	}
 
 	s3Mock2.EXPECT().PutObject(matchContext, mock.IsType((*s3.PutObjectInput)(nil)), mock.Anything, mock.Anything).
@@ -751,6 +753,7 @@ func (ts *fileTestSuite) TestCloseWithWrite() {
 			authority: auth,
 		},
 		key: "/new/file/path/hello.txt",
+		ctx: ts.T().Context(),
 	}
 	contents := []byte("Hello world!")
 	_, err = file.Write(contents)
@@ -802,6 +805,7 @@ func (ts *fileTestSuite) TestWriteOperations() {
 						authority: auth,
 					},
 					key: "/new/file/path/hello.txt",
+					ctx: ts.T().Context(),
 				}
 			},
 			actions: []func(*File) error{
@@ -831,6 +835,7 @@ func (ts *fileTestSuite) TestWriteOperations() {
 						authority: auth,
 					},
 					key: "/new/file/path/hello.txt",
+					ctx: ts.T().Context(),
 				}
 			},
 			actions: []func(*File) error{
@@ -864,6 +869,7 @@ func (ts *fileTestSuite) TestWriteOperations() {
 						authority: auth,
 					},
 					key: "/new/file/path/hello.txt",
+					ctx: ts.T().Context(),
 				}
 			},
 			actions: []func(*File) error{

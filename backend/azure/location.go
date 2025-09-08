@@ -1,6 +1,7 @@
 package azure
 
 import (
+	"context"
 	"errors"
 	"path"
 	"regexp"
@@ -8,6 +9,8 @@ import (
 
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/options"
+	"github.com/c2fo/vfs/v7/options/newfile"
+	"github.com/c2fo/vfs/v7/options/newlocation"
 	"github.com/c2fo/vfs/v7/utils"
 	"github.com/c2fo/vfs/v7/utils/authority"
 )
@@ -19,6 +22,7 @@ type Location struct {
 	authority  authority.Authority
 	path       string
 	fileSystem *FileSystem
+	ctx        context.Context
 }
 
 // String returns the URI
@@ -32,7 +36,7 @@ func (l *Location) List() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	list, err := client.List(l)
+	list, err := client.List(l.ctx, l)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +134,7 @@ func (l *Location) Exists() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	_, err = client.Properties(l.Authority().String(), "")
+	_, err = client.Properties(l.ctx, l.Authority().String(), "")
 	if err != nil {
 		return false, nil
 	}
@@ -138,7 +142,7 @@ func (l *Location) Exists() (bool, error) {
 }
 
 // NewLocation creates a new location instance relative to the current location's path.
-func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
+func (l *Location) NewLocation(relLocPath string, opts ...options.NewLocationOption) (vfs.Location, error) {
 	if l == nil {
 		return nil, errLocationRequired
 	}
@@ -147,10 +151,20 @@ func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
 		return nil, err
 	}
 
+	ctx := l.ctx
+	for _, o := range opts {
+		switch o := o.(type) {
+		case *newlocation.Context:
+			ctx = context.Context(o)
+		default:
+		}
+	}
+
 	return &Location{
 		fileSystem: l.fileSystem,
 		path:       path.Join(l.path, relLocPath),
 		authority:  l.Authority(),
+		ctx:        ctx,
 	}, nil
 }
 
@@ -198,10 +212,20 @@ func (l *Location) NewFile(relFilePath string, opts ...options.NewFileOption) (v
 		return nil, err
 	}
 
+	ctx := l.ctx
+	for _, o := range opts {
+		switch o := o.(type) {
+		case *newfile.Context:
+			ctx = context.Context(o)
+		default:
+		}
+	}
+
 	return &File{
 		location: newLocation.(*Location),
 		name:     path.Join(l.Path(), relFilePath),
 		opts:     opts,
+		ctx:      ctx,
 	}, nil
 }
 

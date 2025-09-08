@@ -84,7 +84,7 @@ func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.New
 }
 
 // NewLocation function returns the SFTP implementation of vfs.Location.
-func (fs *FileSystem) NewLocation(authorityStr, locPath string) (vfs.Location, error) {
+func (fs *FileSystem) NewLocation(authorityStr, locPath string, _ ...options.NewLocationOption) (vfs.Location, error) {
 	if fs == nil {
 		return nil, errFileSystemRequired
 	}

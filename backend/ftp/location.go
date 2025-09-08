@@ -13,6 +13,8 @@ import (
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/backend/ftp/types"
 	"github.com/c2fo/vfs/v7/options"
+	"github.com/c2fo/vfs/v7/options/newfile"
+	"github.com/c2fo/vfs/v7/options/newlocation"
 	"github.com/c2fo/vfs/v7/utils"
 	"github.com/c2fo/vfs/v7/utils/authority"
 )
@@ -24,13 +26,14 @@ type Location struct {
 	fileSystem *FileSystem
 	path       string
 	authority  authority.Authority
+	ctx        context.Context
 }
 
 // List calls FTP ReadDir to list all files in the location's path.
 // If you have many thousands of files at the given location, this could become quite expensive.
 func (l *Location) List() ([]string, error) {
 	var filenames []string
-	dc, err := l.fileSystem.DataConn(context.TODO(), l.Authority(), types.SingleOp, nil)
+	dc, err := l.fileSystem.DataConn(l.ctx, l.Authority(), types.SingleOp, nil)
 	if err != nil {
 		return filenames, err
 	}
@@ -88,7 +91,7 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 	}
 
 	// get dataconn
-	dc, err := l.fileSystem.DataConn(context.TODO(), l.Authority(), types.SingleOp, nil)
+	dc, err := l.fileSystem.DataConn(l.ctx, l.Authority(), types.SingleOp, nil)
 	if err != nil {
 		return filenames, err
 	}
@@ -152,7 +155,7 @@ func (l *Location) Path() string {
 
 // Exists returns true if the remote FTP directory exists.
 func (l *Location) Exists() (bool, error) {
-	dc, err := l.fileSystem.DataConn(context.TODO(), l.Authority(), types.SingleOp, nil)
+	dc, err := l.fileSystem.DataConn(l.ctx, l.Authority(), types.SingleOp, nil)
 	if err != nil {
 		return false, err
 	}
@@ -182,7 +185,7 @@ func (l *Location) Exists() (bool, error) {
 // NewLocation makes a copy of the underlying Location, then modifies its path by calling ChangeDir with the
 // relativePath argument, returning the resulting location. The only possible errors come from the call to
 // ChangeDir, which, for the FTP implementation doesn't ever result in an error.
-func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
+func (l *Location) NewLocation(relativePath string, opts ...options.NewLocationOption) (vfs.Location, error) {
 	if l == nil {
 		return nil, errLocationRequired
 	}
@@ -191,10 +194,20 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 		return nil, err
 	}
 
+	ctx := l.ctx
+	for _, o := range opts {
+		switch o := o.(type) {
+		case *newlocation.Context:
+			ctx = context.Context(o)
+		default:
+		}
+	}
+
 	return &Location{
 		fileSystem: l.fileSystem,
 		path:       path.Join(l.path, relativePath),
 		authority:  l.Authority(),
+		ctx:        ctx,
 	}, nil
 }
 
@@ -235,10 +248,20 @@ func (l *Location) NewFile(relFilePath string, opts ...options.NewFileOption) (v
 		return nil, err
 	}
 
+	ctx := l.ctx
+	for _, o := range opts {
+		switch o := o.(type) {
+		case *newfile.Context:
+			ctx = context.Context(o)
+		default:
+		}
+	}
+
 	return &File{
 		location: newLocation.(*Location),
 		path:     path.Join(l.Path(), relFilePath),
 		opts:     opts,
+		ctx:      ctx,
 	}, nil
 }
 
