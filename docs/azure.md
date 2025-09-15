@@ -52,7 +52,7 @@ azure.FileSystem to use the following:
         )
 
         // to pass specific client, for instance mock client
-        client, _ := azure.NewClient(MockAzureClient{...})
+        client := &mocks.Client{}
         fs = fs.WithClient(client)
     }
 ```
@@ -560,70 +560,6 @@ func (l *Location) Volume() string
 ```
 Volume returns the azure container. Azure containers are equivalent to AWS
 Buckets
-
-### type MockAzureClient
-
-```go
-type MockAzureClient struct {
-	PropertiesError  error
-	PropertiesResult *BlobProperties
-	ExpectedError    error
-	ExpectedResult   interface{}
-}
-```
-
-MockAzureClient is a mock implementation of azure.Client.
-
-#### func (*MockAzureClient) Copy
-
-```go
-func (a *MockAzureClient) Copy(srcFile, tgtFile vfs.File) error
-```
-Copy returns the value of ExpectedError
-
-#### func (*MockAzureClient) Delete
-
-```go
-func (a *MockAzureClient) Delete(file vfs.File) error
-```
-Delete returns the value of ExpectedError
-
-#### func (*MockAzureClient) Download
-
-```go
-func (a *MockAzureClient) Download(file vfs.File) (io.ReadCloser, error)
-```
-Download returns ExpectedResult if it exists, otherwise it returns ExpectedError
-
-#### func (*MockAzureClient) List
-
-```go
-func (a *MockAzureClient) List(l vfs.Location) ([]string, error)
-```
-List returns the value of ExpectedResult if it exists, otherwise it returns
-ExpectedError.
-
-#### func (*MockAzureClient) Properties
-
-```go
-func (a *MockAzureClient) Properties(locationURI, filePath string) (*BlobProperties, error)
-```
-Properties returns a PropertiesResult if it exists, otherwise it will return the
-value of PropertiesError
-
-#### func (*MockAzureClient) SetMetadata
-
-```go
-func (a *MockAzureClient) SetMetadata(file vfs.File, metadata map[string]string) error
-```
-SetMetadata returns the value of ExpectedError
-
-#### func (*MockAzureClient) Upload
-
-```go
-func (a *MockAzureClient) Upload(file vfs.File, content io.ReadSeeker) error
-```
-Upload returns the value of ExpectedError
 
 ### func MockTokenCredentialFactory
 
