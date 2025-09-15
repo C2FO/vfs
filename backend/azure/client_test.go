@@ -12,6 +12,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/c2fo/vfs/v7/utils"
 )
 
 func TestNewClient(t *testing.T) {
@@ -146,7 +148,7 @@ func TestDefaultClient_SetMetadata(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test the SetMetadata method
-	metadata := map[string]*string{"key": toPtr("value")}
+	metadata := map[string]*string{"key": utils.Ptr("value")}
 	err = client.SetMetadata(f, metadata)
 	assert.NoError(t, err)
 }

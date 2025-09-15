@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	"github.com/c2fo/vfs/v7/utils"
 	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
@@ -42,7 +43,7 @@ func (s *optionsSuite) TestFetchUsername() {
 		{
 			description: "env var is set",
 			authority:   "host.com",
-			envVar:      ptrString("alice"),
+			envVar:      utils.Ptr("alice"),
 			expected:    "alice",
 		},
 		{
@@ -56,7 +57,7 @@ func (s *optionsSuite) TestFetchUsername() {
 		{
 			description: "options username overrides env var",
 			authority:   "host.com",
-			envVar:      ptrString("bob"),
+			envVar:      utils.Ptr("bob"),
 			options: Options{
 				Username: "alice",
 			},
@@ -99,17 +100,17 @@ func (s *optionsSuite) TestFetchPassword() {
 		{
 			description: "env var is set but with empty value",
 			expected:    "",
-			envVar:      ptrString(""),
+			envVar:      utils.Ptr(""),
 		},
 		{
 			description: "env var is set, value should override",
 			expected:    "12abc3",
-			envVar:      ptrString("12abc3"),
+			envVar:      utils.Ptr("12abc3"),
 		},
 		{
 			description: "option should override",
 			expected:    "xyz123",
-			envVar:      ptrString("12abc3"),
+			envVar:      utils.Ptr("12abc3"),
 			options: Options{
 				Password: "xyz123",
 			},
@@ -179,27 +180,27 @@ func (s *optionsSuite) TestIsDisableEPSV() {
 		},
 		{
 			description: "env var is set but empty",
-			envVar:      ptrString(""),
+			envVar:      utils.Ptr(""),
 			expected:    false,
 		},
 		{
 			description: "env var is set and is a non-true value",
-			envVar:      ptrString("not expected"),
+			envVar:      utils.Ptr("not expected"),
 			expected:    false,
 		},
 		{
 			description: "env var is set and is a `false` value",
-			envVar:      ptrString("false"),
+			envVar:      utils.Ptr("false"),
 			expected:    false,
 		},
 		{
 			description: "env var is set and is '1' value",
-			envVar:      ptrString("1"),
+			envVar:      utils.Ptr("1"),
 			expected:    true,
 		},
 		{
 			description: "env var is set and is 'true'",
-			envVar:      ptrString("true"),
+			envVar:      utils.Ptr("true"),
 			expected:    true,
 		},
 		{
@@ -218,7 +219,7 @@ func (s *optionsSuite) TestIsDisableEPSV() {
 		},
 		{
 			description: "env var is set true but Options is set to false'",
-			envVar:      ptrString("true"),
+			envVar:      utils.Ptr("true"),
 			options: Options{
 				DisableEPSV: &falseVal,
 			},
@@ -226,7 +227,7 @@ func (s *optionsSuite) TestIsDisableEPSV() {
 		},
 		{
 			description: "env var is set true but Options is set to false'",
-			envVar:      ptrString("false"),
+			envVar:      utils.Ptr("false"),
 			options: Options{
 				DisableEPSV: &trueVal,
 			},
@@ -343,22 +344,22 @@ func (s *optionsSuite) TestFetchProtocol() {
 		},
 		{
 			description: "env var is set but empty",
-			envVar:      ptrString(""),
+			envVar:      utils.Ptr(""),
 			expected:    "",
 		},
 		{
 			description: "env var is set to ftps",
-			envVar:      ptrString("FTPS"),
+			envVar:      utils.Ptr("FTPS"),
 			expected:    ProtocolFTPS,
 		},
 		{
 			description: "env var is set to ftpes",
-			envVar:      ptrString("FTPES"),
+			envVar:      utils.Ptr("FTPES"),
 			expected:    ProtocolFTPES,
 		},
 		{
 			description: "env var is set to garbage",
-			envVar:      ptrString("blah"),
+			envVar:      utils.Ptr("blah"),
 			expected:    "blah",
 		},
 		{
@@ -370,7 +371,7 @@ func (s *optionsSuite) TestFetchProtocol() {
 		},
 		{
 			description: "options set to FTPES - overriding FTPS",
-			envVar:      ptrString("FTPS"),
+			envVar:      utils.Ptr("FTPS"),
 			options: Options{
 				Protocol: ProtocolFTPES,
 			},
@@ -408,19 +409,19 @@ func (s *optionsSuite) TestFetchDialOptions() {
 		{
 			description: "protocol env var is set to FTPS",
 			authority:   "user@host.com",
-			envVar:      ptrString(ProtocolFTPS),
+			envVar:      utils.Ptr(ProtocolFTPS),
 			expected:    3,
 		},
 		{
 			description: "protocol env var is set to FTPES",
 			authority:   "user@host.com",
-			envVar:      ptrString(ProtocolFTPES),
+			envVar:      utils.Ptr(ProtocolFTPES),
 			expected:    3,
 		},
 		{
 			description: "protocol is set to empty",
 			authority:   "user@host.com",
-			envVar:      ptrString(""),
+			envVar:      utils.Ptr(""),
 			expected:    2,
 		},
 		{
@@ -481,8 +482,4 @@ func (s *optionsSuite) TestFetchDialOptions() {
 			s.Len(dialOpts, test.expected, test.description)
 		})
 	}
-}
-
-func ptrString(str string) *string {
-	return &str
 }

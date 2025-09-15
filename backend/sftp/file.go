@@ -43,8 +43,7 @@ func (f *File) LastModified() (*time.Time, error) {
 	if err != nil {
 		return nil, utils.WrapLastModifiedError(err)
 	}
-	t := userinfo.ModTime()
-	return &t, nil
+	return utils.Ptr(userinfo.ModTime()), nil
 }
 
 // Name returns the path portion of the file's path property. IE: "file.txt" of "sftp://someuser@host.com/some/path/to/file.txt

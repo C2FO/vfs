@@ -48,8 +48,7 @@ func (o *Options) GetFileMode() (*os.FileMode, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid file mode: %v", err)
 	}
-	mode := os.FileMode(parsed)
-	return &mode, nil
+	return utils.Ptr(os.FileMode(parsed)), nil
 }
 
 var defaultSSHConfig = &ssh.ClientConfig{
