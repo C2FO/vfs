@@ -37,12 +37,12 @@ func (o *osFileSystemTest) TestNewFile() {
 
 	// failure on validation
 	file, err := fs.NewFile("", "invalid/file")
-	o.EqualError(err, utils.ErrBadAbsFilePath, "error expected for invalid file")
+	o.Require().EqualError(err, utils.ErrBadAbsFilePath, "error expected for invalid file")
 	o.Nil(file, "file should be nil on err")
 
 	// success
 	file, err = fs.NewFile("", "/valid/file")
-	o.NoError(err, "no error expected for valid file")
+	o.Require().NoError(err, "no error expected for valid file")
 	o.IsType((*File)(nil), file)
 }
 
@@ -51,16 +51,16 @@ func (o *osFileSystemTest) TestNewLocation() {
 
 	// failure on validation
 	loc, err := fs.NewLocation("", "/invalid/location")
-	o.EqualError(err, utils.ErrBadAbsLocationPath, "error expected for invalid file")
+	o.Require().EqualError(err, utils.ErrBadAbsLocationPath, "error expected for invalid file")
 	o.Nil(loc, "file should be nil on err")
 
 	loc, err = fs.NewLocation("", "invalid/location/")
-	o.EqualError(err, utils.ErrBadAbsLocationPath, "error expected for invalid file")
+	o.Require().EqualError(err, utils.ErrBadAbsLocationPath, "error expected for invalid file")
 	o.Nil(loc, "file should be nil on err")
 
 	// success
 	loc, err = fs.NewLocation("", "/valid/location/")
-	o.NoError(err, "no error expected for valid file")
+	o.Require().NoError(err, "no error expected for valid file")
 	o.IsType((*Location)(nil), loc)
 }
 

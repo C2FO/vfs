@@ -29,6 +29,7 @@ linters:
     - unconvert
     - unparam
     - unused
+    - testifylint
   settings:
     errcheck:
       check-type-assertions: false

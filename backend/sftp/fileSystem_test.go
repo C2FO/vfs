@@ -42,7 +42,7 @@ func (ts *fileSystemTestSuite) TestNewFileSystem() {
 func (ts *fileSystemTestSuite) TestNewFile() {
 	filePath := "/path/to/file.txt"
 	file, err := ts.sftpfs.NewFile("host.com", filePath)
-	ts.NoError(err, "No errors returned by NewFile(%s)", filePath)
+	ts.Require().NoError(err, "No errors returned by NewFile(%s)", filePath)
 	ts.NotNil(file, "sftpfs.NewFile(%s) should assign all but first name component to key", filePath)
 }
 
@@ -50,28 +50,28 @@ func (ts *fileSystemTestSuite) TestNewFile_Error() {
 	// test nil pointer
 	var nilsftpfs *FileSystem
 	_, err := nilsftpfs.NewFile("host.com", "/path/to/file.txt")
-	ts.EqualError(err, "non-nil sftp.FileSystem pointer is required", "errors returned by NewFile")
+	ts.Require().EqualError(err, "non-nil sftp.FileSystem pointer is required", "errors returned by NewFile")
 
 	// test validation error
 	file, err := ts.sftpfs.NewFile("host.com", "relative/path/to/file.txt")
-	ts.EqualError(err, utils.ErrBadAbsFilePath, "errors returned by NewFile")
+	ts.Require().EqualError(err, utils.ErrBadAbsFilePath, "errors returned by NewFile")
 	ts.Nil(file, "NewFile shouldn't return a file")
 
 	filePath := ""
 	file, err = ts.sftpfs.NewFile("", filePath)
-	ts.Error(err, "NewFile(%s)", filePath)
+	ts.Require().Error(err, "NewFile(%s)", filePath)
 	ts.Nil(file, "NewFile(%s) shouldn't return a file", filePath)
 
 	filePath = "/some/file.txt"
 	file, err = ts.sftpfs.NewFile("", filePath)
-	ts.EqualError(err, "non-empty string for authority and path are required", "bad authority")
+	ts.Require().EqualError(err, "non-empty string for authority and path are required", "bad authority")
 	ts.Nil(file, "NewFile(%s) shouldn't return a file", filePath)
 }
 
 func (ts *fileSystemTestSuite) TestNewLocation() {
 	locPath := "/path/to/"
 	loc, err := ts.sftpfs.NewLocation("host.com", locPath)
-	ts.NoError(err, "No errors returned by NewLocation(%s)", locPath)
+	ts.Require().NoError(err, "No errors returned by NewLocation(%s)", locPath)
 	ts.NotNil(loc, "sftpfs.NewLocation(%s) should assign all but first name component to key", locPath)
 }
 
@@ -79,21 +79,21 @@ func (ts *fileSystemTestSuite) TestNewLocation_Error() {
 	// test nil pointer
 	var nilsftpfs *FileSystem
 	_, err := nilsftpfs.NewLocation("somehost.com", "/path/to/")
-	ts.EqualError(err, "non-nil sftp.FileSystem pointer is required", "errors returned by NewLocation")
+	ts.Require().EqualError(err, "non-nil sftp.FileSystem pointer is required", "errors returned by NewLocation")
 
 	// test validation error
 	file, err := ts.sftpfs.NewLocation("host.com", "relative/path/to/")
-	ts.EqualError(err, utils.ErrBadAbsLocationPath, "errors returned by NewLocation")
+	ts.Require().EqualError(err, utils.ErrBadAbsLocationPath, "errors returned by NewLocation")
 	ts.Nil(file, "NewFile shouldn't return a file")
 
 	locPath := ""
 	file, err = ts.sftpfs.NewLocation("host.com", locPath)
-	ts.EqualError(err, "absolute location path is invalid - must include leading and trailing slashes", "NewLocation(%s)", locPath)
+	ts.Require().EqualError(err, "absolute location path is invalid - must include leading and trailing slashes", "NewLocation(%s)", locPath)
 	ts.Nil(file, "NewLocation(%s) shouldn't return a file", locPath)
 
 	locPath = "/path/"
 	file, err = ts.sftpfs.NewLocation("", locPath)
-	ts.EqualError(err, "non-empty string for authority is required", "NewLocation(%s)", locPath)
+	ts.Require().EqualError(err, "non-empty string for authority is required", "NewLocation(%s)", locPath)
 	ts.Nil(file, "NewLocation(%s) shouldn't return a file", locPath)
 }
 
@@ -122,7 +122,7 @@ func (ts *fileSystemTestSuite) TestWithOptions() {
 func (ts *fileSystemTestSuite) TestClient() {
 	// client already set
 	client, err := ts.sftpfs.Client(authority.Authority{})
-	ts.NoError(err, "no error")
+	ts.Require().NoError(err, "no error")
 	ts.Equal(ts.sftpfs.sftpclient, client, "client was already set")
 }
 
@@ -139,19 +139,19 @@ func (ts *fileSystemTestSuite) TestClientWithAutoDisconnect() {
 	// setup location with auto-disconnect of one second
 	fs := NewFileSystem(WithOptions(Options{AutoDisconnect: 1}))
 	loc, err := fs.NewLocation("user@host.com:1234", "/")
-	ts.NoError(err)
+	ts.Require().NoError(err)
 
 	// when List is first called, client should be nil, so we ask for a new client
 	_, err = loc.List()
-	ts.NoError(err)
+	ts.Require().NoError(err)
 	// when List is immediately called a second time, client should be cached so no need for new client
 	_, err = loc.List()
-	ts.NoError(err)
+	ts.Require().NoError(err)
 	// sleep for 2 seconds, client should disconnect and become nil
 	time.Sleep(2 * time.Second)
 	// when List is called a third time, client should be nil so we ask for a new client
 	_, err = loc.List()
-	ts.NoError(err)
+	ts.Require().NoError(err)
 	fs.connTimerStop()
 	fs.connTimer = nil
 	// list should've been called 3 times

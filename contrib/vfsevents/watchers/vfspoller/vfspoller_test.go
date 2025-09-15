@@ -54,9 +54,9 @@ func (s *PollerTestSuite) TestNewPoller() {
 		s.Run(tt.name, func() {
 			_, err := NewPoller(tt.location)
 			if tt.wantErr {
-				s.Error(err)
+				s.Require().Error(err)
 			} else {
-				s.NoError(err)
+				s.Require().NoError(err)
 			}
 		})
 	}
@@ -68,22 +68,22 @@ func (s *PollerTestSuite) TestWithOptions() {
 
 	// Test WithInterval
 	poller, err := NewPoller(location, WithInterval(30*time.Second))
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Equal(30*time.Second, poller.interval)
 
 	// Test WithMinAge
 	poller, err = NewPoller(location, WithMinAge(5*time.Minute))
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Equal(5*time.Minute, poller.minAge)
 
 	// Test WithMaxFiles
 	poller, err = NewPoller(location, WithMaxFiles(5000))
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Equal(5000, poller.maxFiles)
 
 	// Test WithCleanupAge
 	poller, err = NewPoller(location, WithCleanupAge(12*time.Hour))
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Equal(12*time.Hour, poller.cleanupAge)
 
 	// Test multiple options
@@ -92,7 +92,7 @@ func (s *PollerTestSuite) TestWithOptions() {
 		WithMinAge(2*time.Minute),
 		WithMaxFiles(1000),
 		WithCleanupAge(6*time.Hour))
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Equal(45*time.Second, poller.interval)
 	s.Equal(2*time.Minute, poller.minAge)
 	s.Equal(1000, poller.maxFiles)
@@ -119,15 +119,15 @@ func (s *PollerTestSuite) TestStart() {
 			poller, _ := NewPoller(location)
 			ctx := context.Background()
 			errFunc := func(err error) {
-				s.NoError(err)
+				s.Require().NoError(err)
 			}
 			err := poller.Start(ctx, tt.handler, errFunc)
 			if tt.wantErr {
-				s.Error(err)
+				s.Require().Error(err)
 			} else {
-				s.NoError(err)
+				s.Require().NoError(err)
 			}
-			s.NoError(poller.Stop())
+			s.Require().NoError(poller.Stop())
 		})
 	}
 }
@@ -139,11 +139,11 @@ func (s *PollerTestSuite) TestStop() {
 	location.EXPECT().Exists().Return(true, nil)
 	poller, _ := NewPoller(location)
 	errFunc := func(err error) {
-		s.NoError(err)
+		s.Require().NoError(err)
 	}
 	err := poller.Start(ctx, handler, errFunc)
-	s.NoError(err)
-	s.NoError(poller.Stop())
+	s.Require().NoError(err)
+	s.Require().NoError(poller.Stop())
 	// Ensure that the polling process stops correctly
 	poller.mu.Lock()
 	s.Nil(poller.cancel)
@@ -247,9 +247,9 @@ func (s *PollerTestSuite) TestPoll() {
 
 			err := poller.poll(func(event vfsevents.Event) {}, config, status)
 			if tt.wantErr {
-				s.Error(err)
+				s.Require().Error(err)
 			} else {
-				s.NoError(err)
+				s.Require().NoError(err)
 			}
 		})
 	}
@@ -403,9 +403,9 @@ func (s *PollerTestSuite) TestPollWithRetry() {
 			elapsed := time.Since(start)
 
 			if tt.wantErr {
-				s.Error(err)
+				s.Require().Error(err)
 			} else {
-				s.NoError(err)
+				s.Require().NoError(err)
 			}
 
 			if tt.expectedStatus != nil {
@@ -731,7 +731,7 @@ func (s *PollerTestSuite) TestHandleExistingFile() {
 			originalSize := tt.cachedInfo.Size
 
 			err := poller.handleExistingFile(tt.metadata, tt.cachedInfo, handler)
-			s.NoError(err)
+			s.Require().NoError(err)
 
 			if tt.expectEvent {
 				s.NotNil(receivedEvent, "Expected event to be generated")

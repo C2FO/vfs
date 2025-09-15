@@ -28,9 +28,9 @@ func (s *osLocationTest) SetupSuite() {
 	fs := &FileSystem{}
 	dir, err := os.MkdirTemp("", "os_location_test")
 	dir = utils.EnsureTrailingSlash(dir)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.tmploc, err = fs.NewLocation("", dir)
-	s.NoError(err)
+	s.Require().NoError(err)
 	setupTestFiles(s.tmploc)
 }
 
@@ -54,23 +54,23 @@ func (s *osLocationTest) TestList() {
 
 func (s *osLocationTest) TestList_NonExistentDirectory() {
 	location, err := s.testFile.Location().NewLocation("not/a/directory/")
-	s.NoError(err, "error isn't expected")
+	s.Require().NoError(err, "error isn't expected")
 
 	exists, err := location.Exists()
-	s.NoError(err, "error isn't expected")
+	s.Require().NoError(err, "error isn't expected")
 	s.False(exists, "location should return false for Exists")
 
 	contents, err := location.List()
-	s.NoError(err, "error isn't expected")
+	s.Require().NoError(err, "error isn't expected")
 	s.Empty(contents, "List should return empty slice for non-existent directory")
 
 	prefixContents, err := location.ListByPrefix("anything")
-	s.NoError(err, "error isn't expected")
+	s.Require().NoError(err, "error isn't expected")
 	s.Empty(prefixContents, "ListByPrefix should return empty slice for non-existent directory")
 
 	regex := regexp.MustCompile("-+")
 	regexContents, err := location.ListByRegex(regex)
-	s.NoError(err, "error isn't expected")
+	s.Require().NoError(err, "error isn't expected")
 	s.Empty(regexContents, "ListByRegex should return empty slice for non-existent directory")
 }
 
@@ -105,7 +105,7 @@ func (s *osLocationTest) TestNewLocation() {
 
 func (s *osLocationTest) TestNewFile() {
 	loc, err := s.fileSystem.NewLocation("", "/foo/bar/baz/")
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	newfile, _ := loc.NewFile("../../bam/this.txt")
 	s.Equal("/foo/bam/this.txt", newfile.Path(), "relative dot path works")
@@ -113,14 +113,14 @@ func (s *osLocationTest) TestNewFile() {
 	// new tests for location update
 	s.Run("new file with relative path updates location", func() {
 		newFile, err := loc.NewFile("../newfile.txt")
-		s.NoError(err)
+		s.Require().NoError(err)
 		s.Equal("/foo/bar/newfile.txt", newFile.Path(), "NewFile with relative path should update location correctly")
 		s.Equal("/foo/bar/", newFile.Location().Path(), "NewFile with relative path should update location correctly")
 	})
 
 	s.Run("new file with relative path to root", func() {
 		newFile, err := loc.NewFile("../../../../newrootfile.txt")
-		s.NoError(err)
+		s.Require().NoError(err)
 		s.Equal("/newrootfile.txt", newFile.Path(), "NewFile with relative path to root should update location correctly")
 		s.Equal("/", newFile.Location().Path(), "NewFile with relative path to root should update location correctly")
 	})
@@ -132,7 +132,7 @@ func (s *osLocationTest) TestChangeDir() {
 	fileLocation := otherFile.Location()
 	cwd := fileLocation.Path()
 	err := fileLocation.ChangeDir("other/")
-	s.NoError(err, "change dir error not expected")
+	s.Require().NoError(err, "change dir error not expected")
 	s.Equal(fileLocation.Path(), utils.EnsureTrailingSlash(path.Join(cwd, "other")))
 }
 
@@ -170,20 +170,20 @@ func (s *osLocationTest) TestDeleteFile() {
 	expectedText := "file to delete"
 	fileName := "test.txt"
 	file, err := s.tmploc.NewFile(fileName)
-	s.NoError(err, "Creating file to test delete shouldn't fail")
+	s.Require().NoError(err, "Creating file to test delete shouldn't fail")
 
 	_, err = file.Write([]byte(expectedText))
-	s.NoError(err, "Shouldn't fail to write text to file.")
+	s.Require().NoError(err, "Shouldn't fail to write text to file.")
 
-	s.NoError(file.Close())
+	s.Require().NoError(file.Close())
 
 	exists, err := file.Exists()
-	s.NoError(err, "Exists shouldn't throw error.")
+	s.Require().NoError(err, "Exists shouldn't throw error.")
 	s.True(exists, "Exists should return true for test file.")
 
-	s.NoError(s.tmploc.DeleteFile(fileName), "Deleting the file shouldn't throw an error.")
+	s.Require().NoError(s.tmploc.DeleteFile(fileName), "Deleting the file shouldn't throw an error.")
 	exists, err = file.Exists()
-	s.NoError(err, "Shouldn't throw error testing for exists after delete.")
+	s.Require().NoError(err, "Shouldn't throw error testing for exists after delete.")
 	s.False(exists, "Exists should return false after deleting the file.")
 }
 

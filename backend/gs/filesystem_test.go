@@ -67,10 +67,10 @@ func (s *fileSystemSuite) TestNewFile() {
 			}
 			_, err := fs.NewFile(tc.volume, tc.filename)
 			if tc.expectedErrString == "" {
-				s.NoError(err)
+				s.Require().NoError(err)
 				return
 			}
-			s.EqualError(err, tc.expectedErrString)
+			s.Require().EqualError(err, tc.expectedErrString)
 		})
 	}
 }
@@ -124,10 +124,10 @@ func (s *fileSystemSuite) TestNewLocation() {
 			}
 			_, err := fs.NewLocation(tc.volume, tc.name)
 			if tc.expectedErrString == "" {
-				s.NoError(err)
+				s.Require().NoError(err)
 				return
 			}
-			s.EqualError(err, tc.expectedErrString)
+			s.Require().EqualError(err, tc.expectedErrString)
 		})
 	}
 }
@@ -205,9 +205,9 @@ func (s *fileSystemSuite) TestClient() {
 			client, err := fs.Client()
 
 			if tc.expectError {
-				s.Error(err)
+				s.Require().Error(err)
 			} else {
-				s.NoError(err)
+				s.Require().NoError(err)
 			}
 
 			if tc.expectNotNil {

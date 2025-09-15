@@ -60,7 +60,7 @@ func (s *SFTPConcurrencyTestSuite) TestClientTypedNilHandling() {
 		if err == nil {
 			s.T().Logf("Client type: %T, is nil: %v", client, client == nil)
 		}
-		s.Error(err, "Should get connection error due to invalid configuration")
+		s.Require().Error(err, "Should get connection error due to invalid configuration")
 	}
 }
 
@@ -121,7 +121,7 @@ func (s *SFTPConcurrencyTestSuite) TestConcurrentFailedConnections() {
 	// Assert that all operations failed with connection errors
 	s.NotEmpty(errors, "All operations should fail with connection errors")
 	for _, err := range errors {
-		s.Error(err, "Each operation should return an error")
+		s.Require().Error(err, "Each operation should return an error")
 	}
 }
 
@@ -150,7 +150,7 @@ func (s *SFTPConcurrencyTestSuite) TestClientFailureRobustness() {
 				// Verify that the filesystem is still usable after failures
 				_, err = fs.Client(auth)
 				// We expect an error due to wrong credentials, but no panic
-				s.Error(err, "Should get connection error due to wrong credentials")
+				s.Require().Error(err, "Should get connection error due to wrong credentials")
 			})
 		}
 	})

@@ -15,11 +15,11 @@ type OptionsTestSuite struct {
 }
 
 func (s *OptionsTestSuite) TearDownTest() {
-	s.NoError(os.Unsetenv("VFS_AZURE_TENANT_ID"))
-	s.NoError(os.Unsetenv("VFS_AZURE_CLIENT_ID"))
-	s.NoError(os.Unsetenv("VFS_AZURE_CLIENT_SECRET"))
-	s.NoError(os.Unsetenv("VFS_AZURE_STORAGE_ACCOUNT"))
-	s.NoError(os.Unsetenv("VFS_AZURE_STORAGE_ACCESS_KEY"))
+	s.Require().NoError(os.Unsetenv("VFS_AZURE_TENANT_ID"))
+	s.Require().NoError(os.Unsetenv("VFS_AZURE_CLIENT_ID"))
+	s.Require().NoError(os.Unsetenv("VFS_AZURE_CLIENT_SECRET"))
+	s.Require().NoError(os.Unsetenv("VFS_AZURE_STORAGE_ACCOUNT"))
+	s.Require().NoError(os.Unsetenv("VFS_AZURE_STORAGE_ACCESS_KEY"))
 }
 
 func (s *OptionsTestSuite) TestNewOptions() {
@@ -37,7 +37,7 @@ func (s *OptionsTestSuite) TestCredentials_ServiceAccount() {
 	}
 
 	credential, err := options.Credential()
-	s.NoError(err, "service account vars are present so no error")
+	s.Require().NoError(err, "service account vars are present so no error")
 	s.NotNil(credential, "expect a non-nil credential when service account vars are set")
 	s.Implements((*azcore.TokenCredential)(nil), credential, "credentials type should be TokenCredential")
 }
@@ -50,7 +50,7 @@ func (s *OptionsTestSuite) TestCredentials_StorageAccount() {
 	}
 
 	credential, err := options.Credential()
-	s.NoError(err, "service account vars are present so no error")
+	s.Require().NoError(err, "service account vars are present so no error")
 	s.NotNil(credential, "expect a non-nil credential when service account vars are set")
 	s.IsType((*azblob.SharedKeyCredential)(nil), credential, "credentials type should be SharedKeyCredential")
 }
@@ -62,7 +62,7 @@ func (s *OptionsTestSuite) TestCredentials_Anon() {
 	}
 
 	credential, err := options.Credential()
-	s.NoError(err, "anon vars are present so no error")
+	s.Require().NoError(err, "anon vars are present so no error")
 	s.Nil(credential, "when no env vars are set we should get a nil credential")
 }
 

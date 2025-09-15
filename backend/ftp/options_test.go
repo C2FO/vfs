@@ -68,18 +68,18 @@ func (s *optionsSuite) TestFetchUsername() {
 		s.Run(test.description, func() {
 			if test.envVar != nil {
 				err := os.Setenv(envUsername, *test.envVar)
-				s.NoError(err, test.description)
+				s.Require().NoError(err, test.description)
 			}
 
 			auth, err := authority.NewAuthority(test.authority)
-			s.NoError(err, test.description)
+			s.Require().NoError(err, test.description)
 
 			username := fetchUsername(auth, test.options)
 			s.Equal(test.expected, username, test.description)
 
 			if test.envVar != nil {
 				err := os.Unsetenv(envUsername)
-				s.NoError(err, test.description)
+				s.Require().NoError(err, test.description)
 			}
 		})
 	}
@@ -120,7 +120,7 @@ func (s *optionsSuite) TestFetchPassword() {
 		s.Run(test.description, func() {
 			if test.envVar != nil {
 				err := os.Setenv(envPassword, *test.envVar)
-				s.NoError(err, test.description)
+				s.Require().NoError(err, test.description)
 			}
 
 			password := fetchPassword(test.options)
@@ -151,11 +151,11 @@ func (s *optionsSuite) TestFetchHostPortString() {
 	for _, test := range tests {
 		s.Run(test.description, func() {
 			auth, err := authority.NewAuthority(test.authority)
-			s.NoError(err, test.description)
+			s.Require().NoError(err, test.description)
 
 			if test.envVar != nil {
 				err := os.Setenv(envPassword, *test.envVar)
-				s.NoError(err, test.description)
+				s.Require().NoError(err, test.description)
 			}
 
 			hostPortString := fetchHostPortString(auth)
@@ -238,7 +238,7 @@ func (s *optionsSuite) TestIsDisableEPSV() {
 		s.Run(test.description, func() {
 			if test.envVar != nil {
 				err := os.Setenv(envDisableEPSV, *test.envVar)
-				s.NoError(err, test.description)
+				s.Require().NoError(err, test.description)
 			}
 
 			disabled := isDisableOption(test.options)
@@ -301,7 +301,7 @@ func (s *optionsSuite) TestFetchTLSConfig() {
 	for _, test := range tests {
 		s.Run(test.description, func() {
 			auth, err := authority.NewAuthority(test.authority)
-			s.NoError(err, test.description)
+			s.Require().NoError(err, test.description)
 
 			tlsCfg := fetchTLSConfig(auth, test.options)
 			s.Equal(test.expected.MinVersion, tlsCfg.MinVersion, test.description)
@@ -380,10 +380,10 @@ func (s *optionsSuite) TestFetchProtocol() {
 
 	for _, test := range tests { //nolint:gocritic //rangeValCopy but changing breaks ide integration for table-driven tests
 		s.Run(test.description, func() {
-			s.NoError(os.Unsetenv(envProtocol))
+			s.Require().NoError(os.Unsetenv(envProtocol))
 			if test.envVar != nil {
 				err := os.Setenv(envProtocol, *test.envVar)
-				s.NoError(err, test.description)
+				s.Require().NoError(err, test.description)
 			}
 
 			protocol := fetchProtocol(test.options)
@@ -471,11 +471,11 @@ func (s *optionsSuite) TestFetchDialOptions() {
 		s.Run(test.description, func() {
 			if test.envVar != nil {
 				err := os.Setenv(envProtocol, *test.envVar)
-				s.NoError(err, test.description)
+				s.Require().NoError(err, test.description)
 			}
 
 			auth, err := authority.NewAuthority(test.authority)
-			s.NoError(err, test.description)
+			s.Require().NoError(err, test.description)
 
 			dialOpts := fetchDialOptions(context.Background(), auth, test.options)
 			s.Len(dialOpts, test.expected, test.description)

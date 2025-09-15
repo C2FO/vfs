@@ -86,7 +86,7 @@ func (s *FSNotifyWatcherTestSuite) TestNewFSNotifyWatcher() {
 		s.Require().NoError(err)
 
 		watcher, err := NewFSNotifyWatcher(location)
-		s.NoError(err)
+		s.Require().NoError(err)
 		s.NotNil(watcher)
 		s.Equal(location, watcher.location)
 		s.False(watcher.recursive)
@@ -97,16 +97,16 @@ func (s *FSNotifyWatcherTestSuite) TestNewFSNotifyWatcher() {
 		s.Require().NoError(err)
 
 		watcher, err := NewFSNotifyWatcher(location, WithRecursive(true))
-		s.NoError(err)
+		s.Require().NoError(err)
 		s.NotNil(watcher)
 		s.True(watcher.recursive)
 	})
 
 	s.Run("Nil location", func() {
 		watcher, err := NewFSNotifyWatcher(nil)
-		s.Error(err)
+		s.Require().Error(err)
 		s.Nil(watcher)
-		s.ErrorContains(err, "location cannot be nil")
+		s.Require().ErrorContains(err, "location cannot be nil")
 	})
 
 	s.Run("Non-local location", func() {
@@ -114,9 +114,9 @@ func (s *FSNotifyWatcherTestSuite) TestNewFSNotifyWatcher() {
 		s.Require().NoError(err)
 
 		watcher, err := NewFSNotifyWatcher(location)
-		s.Error(err)
+		s.Require().Error(err)
 		s.Nil(watcher)
-		s.ErrorContains(err, "fsnotify watcher only supports local filesystem locations")
+		s.Require().ErrorContains(err, "fsnotify watcher only supports local filesystem locations")
 	})
 }
 
@@ -145,7 +145,7 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 		defer cancel()
 
 		err := s.watcher.Start(ctx, eventHandler, errorHandler)
-		s.NoError(err)
+		s.Require().NoError(err)
 
 		// Give the watcher time to start
 		time.Sleep(getStabilizationDelay())
@@ -168,7 +168,7 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 
 		// Stop the watcher
 		err = s.watcher.Stop()
-		s.NoError(err)
+		s.Require().NoError(err)
 	})
 
 	s.Run("Already running", func() {
@@ -189,12 +189,12 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 
 		// Start first time
 		err := s.watcher.Start(ctx, eventHandler, errorHandler)
-		s.NoError(err)
+		s.Require().NoError(err)
 
 		// Try to start again
 		err = s.watcher.Start(ctx, eventHandler, errorHandler)
-		s.Error(err)
-		s.ErrorContains(err, "already running")
+		s.Require().Error(err)
+		s.Require().ErrorContains(err, "already running")
 
 		// Clean up
 		_ = s.watcher.Stop() // Ignore error in test cleanup
