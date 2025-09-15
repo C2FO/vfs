@@ -50,7 +50,6 @@ func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem 
 //
 // Deprecated: This method is deprecated and will be removed in a future release.
 func (fs *FileSystem) Retry() vfs.Retry {
-
 	return vfs.Retry(fs.retryer)
 }
 

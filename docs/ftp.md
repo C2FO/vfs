@@ -76,7 +76,6 @@ These methods are chainable: (*FileSystem) WithClient(client interface{})
 
     	  err := file.Close()
     	  #handle error
-
       }
 ```
 
@@ -118,7 +117,6 @@ The provided CopyToFile and CopyToLocation functions should be used instead in t
 
 		  err = file.Close()
 		  #handle error
-
 	  }
 ```
 

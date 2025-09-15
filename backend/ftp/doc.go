@@ -41,7 +41,6 @@ would have to be cast as ftp.FileSystem to use them.
 		  client, _ := _ftp.Dial("server.com:21")
 		  fs = ftp.NewFileSystem(ftp.WithClient(client))
 
-
 		  fs = ftp.NewFileSystem(
 			  fs.WithOptions(
 				  ftp.Options{
@@ -66,7 +65,6 @@ would have to be cast as ftp.FileSystem to use them.
 
 		  err = file.Close()
 		  #handle error
-
 	  }
 
 Note - this vfs implementation can have issues conducting simultaneous reads and writes on files created from the same filesystem. This can

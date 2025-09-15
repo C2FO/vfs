@@ -72,7 +72,6 @@ would have to be cast as sftp.FileSystem to use them.
 
 		  err := file.Close()
 		  #handle error
-
 	  }
 
 # Authentication

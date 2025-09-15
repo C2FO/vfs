@@ -147,7 +147,6 @@ func (s *vfsTestSuite) FileSystem(baseLoc vfs.Location) {
 			s.NoError(err, "there should be no error")
 			expected := buildExpectedURI(fs, baseLoc.Authority().String(), utils.EnsureTrailingSlash(path.Clean(name)))
 			s.Equal(expected, loc.URI(), "uri's should match")
-
 		} else {
 			s.Error(err, "should have validation error for scheme[%s] and name[%s]", fs.Scheme(), name)
 		}
@@ -197,7 +196,6 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 			s.NoError(err, "there should be no error")
 			expected := buildExpectedURI(srcLoc.FileSystem(), baseLoc.Authority().String(), utils.EnsureTrailingSlash(path.Clean(path.Join(srcLoc.Path(), name))))
 			s.Equal(expected, loc.URI(), "uri's should match")
-
 		} else {
 			s.Error(err, "should have validation error for scheme and name: %s : %s", srcLoc.FileSystem().Scheme(), name)
 		}

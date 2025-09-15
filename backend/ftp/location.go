@@ -203,7 +203,6 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 //
 //	loc, err := loc.NewLocation("../../")
 func (l *Location) ChangeDir(relativePath string) error {
-
 	err := utils.ValidateRelativeLocationPath(relativePath)
 	if err != nil {
 		return err
