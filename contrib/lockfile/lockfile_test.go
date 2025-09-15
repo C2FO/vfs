@@ -175,8 +175,8 @@ func TestAge(t *testing.T) {
 
 	age, err := lock.Age()
 	require.NoError(t, err)
-	require.True(t, age >= 0)
-	require.True(t, age < time.Second) // Should be very recent
+	require.GreaterOrEqual(t, age, time.Duration(0))
+	require.Less(t, age, time.Second) // Should be very recent
 
 	err = lock.Release()
 	require.NoError(t, err)

@@ -615,10 +615,10 @@ func (s *utilsSuite) TestPathToURI() {
 
 func (s *utilsSuite) TestGetURI() {
 	// set up mocks
-	mockFs1 := new(mocks.FileSystem)
+	mockFs1 := mocks.NewFileSystem(s.T())
 	mockFs1.EXPECT().Scheme().Return("file")
 
-	mockLoc1 := new(mocks.Location)
+	mockLoc1 := mocks.NewLocation(s.T())
 
 	auth, err := authority.NewAuthority("")
 	s.NoError(err)
@@ -627,22 +627,22 @@ func (s *utilsSuite) TestGetURI() {
 	mockLoc1.EXPECT().Authority().Return(auth)
 	mockLoc1.EXPECT().FileSystem().Return(mockFs1)
 
-	mockFile1 := new(mocks.File)
+	mockFile1 := mocks.NewFile(s.T())
 	mockFile1.EXPECT().Path().Return("/some/path/to/file.txt")
 	mockFile1.EXPECT().Location().Return(mockLoc1)
 
-	mockFs2 := new(mocks.FileSystem)
+	mockFs2 := mocks.NewFileSystem(s.T())
 	mockFs2.EXPECT().Scheme().Return("s3")
 
 	auth2, err := authority.NewAuthority("mybucket")
 	s.NoError(err)
 
-	mockLoc2 := new(mocks.Location)
+	mockLoc2 := mocks.NewLocation(s.T())
 	mockLoc2.EXPECT().Path().Return("/this/path/to/")
 	mockLoc2.EXPECT().Authority().Return(auth2)
 	mockLoc2.EXPECT().FileSystem().Return(mockFs2)
 
-	mockFile2 := new(mocks.File)
+	mockFile2 := mocks.NewFile(s.T())
 	mockFile2.EXPECT().Path().Return("/this/path/to/file.txt")
 	mockFile2.EXPECT().Location().Return(mockLoc2)
 

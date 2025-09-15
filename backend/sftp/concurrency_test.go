@@ -60,7 +60,7 @@ func (s *SFTPConcurrencyTestSuite) TestClientTypedNilHandling() {
 		if err == nil {
 			s.T().Logf("Client type: %T, is nil: %v", client, client == nil)
 		}
-		s.Assert().Error(err, "Should get connection error due to invalid configuration")
+		s.Error(err, "Should get connection error due to invalid configuration")
 	}
 }
 
@@ -116,12 +116,12 @@ func (s *SFTPConcurrencyTestSuite) TestConcurrentFailedConnections() {
 	}
 
 	// Assert that no panics occurred
-	s.Assert().Empty(panics, "No goroutines should panic")
+	s.Empty(panics, "No goroutines should panic")
 
 	// Assert that all operations failed with connection errors
-	s.Assert().NotEmpty(errors, "All operations should fail with connection errors")
+	s.NotEmpty(errors, "All operations should fail with connection errors")
 	for _, err := range errors {
-		s.Assert().Error(err, "Each operation should return an error")
+		s.Error(err, "Each operation should return an error")
 	}
 }
 
@@ -150,7 +150,7 @@ func (s *SFTPConcurrencyTestSuite) TestClientFailureRobustness() {
 				// Verify that the filesystem is still usable after failures
 				_, err = fs.Client(auth)
 				// We expect an error due to wrong credentials, but no panic
-				s.Assert().Error(err, "Should get connection error due to wrong credentials")
+				s.Error(err, "Should get connection error due to wrong credentials")
 			})
 		}
 	})
@@ -207,5 +207,5 @@ func (s *SFTPConcurrencyTestSuite) TestTimerCleanupRobustness() {
 	}
 
 	// Assert that no panics occurred
-	s.Assert().Empty(panics, "Timer cleanup should not cause panics")
+	s.Empty(panics, "Timer cleanup should not cause panics")
 }

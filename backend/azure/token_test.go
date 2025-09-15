@@ -66,11 +66,9 @@ func TestDefaultTokenCredentialFactory(t *testing.T) {
 				assert.NotNil(t, cred)
 				switch tt.name {
 				case "ClientSecretCredential":
-					_, ok := cred.(*azidentity.ClientSecretCredential)
-					assert.True(t, ok, "Expected ClientSecretCredential")
+					assert.IsType(t, (*azidentity.ClientSecretCredential)(nil), cred, "Expected ClientSecretCredential")
 				case "EnvironmentCredential":
-					_, ok := cred.(*azidentity.EnvironmentCredential)
-					assert.True(t, ok, "Expected EnvironmentCredential")
+					assert.IsType(t, (*azidentity.EnvironmentCredential)(nil), cred, "Expected EnvironmentCredential")
 				}
 			}
 		})

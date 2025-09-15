@@ -95,9 +95,9 @@ func (s *errorsSuite) TestErrorWrapFunctions() {
 
 	for _, tc := range testCases {
 		s.Run(tc.name+"_WithError", func() {
-			result := tc.wrapFunc(testError)
-			s.Error(result, "should return an error when given a non-nil error")
-			s.Equal(tc.expectedMsg, result.Error(), "error message should be properly wrapped")
+			err := tc.wrapFunc(testError)
+			s.Error(err, "should return an error when given a non-nil error")
+			s.EqualError(err, tc.expectedMsg, "error message should be properly wrapped")
 		})
 
 		s.Run(tc.name+"_WithNil", func() {

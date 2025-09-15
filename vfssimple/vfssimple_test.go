@@ -172,11 +172,9 @@ func (s *vfsSimpleSuite) TestParseURI() {
 			scheme, authority, path, err := parseURI(test.uri)
 			if test.err != nil {
 				s.Error(err, test.message)
-				if errors.Is(err, test.err) {
-					s.True(errors.Is(err, test.err), test.message)
-				} else {
+				if !errors.Is(err, test.err) {
 					// this is necessary since we can't recreate sentinel errors from url.Parse() to do errors.Is() comparison
-					s.Contains(err.Error(), test.err.Error(), test.message)
+					s.ErrorContains(err, test.err.Error(), test.message)
 				}
 			} else {
 				s.NoError(err, test.message)
@@ -190,11 +188,11 @@ func (s *vfsSimpleSuite) TestParseURI() {
 
 func (s *vfsSimpleSuite) TestParseSupportedURI() {
 	// register backend fs's that have a mock client injected that we can introspect in tests to ensure we right the right fs back
-	backend.Register("s3://mybucket/", s3.NewFileSystem(s3.WithClient(getS3NamedClientMock("bucket1"))))
-	backend.Register("s3://otherbucket/", s3.NewFileSystem(s3.WithClient(getS3NamedClientMock("bucket2"))))
-	backend.Register("s3://mybucket/path/", s3.NewFileSystem(s3.WithClient(getS3NamedClientMock("path"))))
-	backend.Register("s3://mybucket/path/file.txt", s3.NewFileSystem(s3.WithClient(getS3NamedClientMock("file1"))))
-	backend.Register("s3://mybucket/path/file.txt.pgp", s3.NewFileSystem(s3.WithClient(getS3NamedClientMock("file2"))))
+	backend.Register("s3://mybucket/", s3.NewFileSystem(s3.WithClient(getS3NamedClientMock(s.T(), "bucket1"))))
+	backend.Register("s3://otherbucket/", s3.NewFileSystem(s3.WithClient(getS3NamedClientMock(s.T(), "bucket2"))))
+	backend.Register("s3://mybucket/path/", s3.NewFileSystem(s3.WithClient(getS3NamedClientMock(s.T(), "path"))))
+	backend.Register("s3://mybucket/path/file.txt", s3.NewFileSystem(s3.WithClient(getS3NamedClientMock(s.T(), "file1"))))
+	backend.Register("s3://mybucket/path/file.txt.pgp", s3.NewFileSystem(s3.WithClient(getS3NamedClientMock(s.T(), "file2"))))
 
 	tests := []struct {
 		uri, message, scheme, authority, path, regFS string
@@ -279,11 +277,9 @@ func (s *vfsSimpleSuite) TestParseSupportedURI() {
 			fs, authority, path, err := parseSupportedURI(test.uri)
 			if test.err != nil {
 				s.Error(err, test.message)
-				if errors.Is(err, test.err) {
-					s.True(errors.Is(err, test.err), test.message)
-				} else {
+				if !errors.Is(err, test.err) {
 					// this is necessary since we can't recreate sentinel errors from url.Parse() to do errors.Is() comparison
-					s.Contains(err.Error(), test.err.Error(), test.message)
+					s.ErrorContains(err, test.err.Error(), test.message)
 				}
 			} else {
 				s.NoError(err, test.message)
@@ -309,19 +305,19 @@ func (s *vfsSimpleSuite) TestParseSupportedURI() {
 }
 
 func (s *vfsSimpleSuite) TestNewFile() {
-	backend.Register("s3://filetest/path/", s3.NewFileSystem(s3.WithClient(getS3NamedClientMock("filetest-path"))))
-	backend.Register("s3://filetest/", s3.NewFileSystem(s3.WithClient(getS3NamedClientMock("filetest-bucket"))))
+	backend.Register("s3://filetest/path/", s3.NewFileSystem(s3.WithClient(getS3NamedClientMock(s.T(), "filetest-path"))))
+	backend.Register("s3://filetest/", s3.NewFileSystem(s3.WithClient(getS3NamedClientMock(s.T(), "filetest-bucket"))))
 
 	// success
 	goodURI := "s3://filetest/path/file.txt"
 	file, err := NewFile(goodURI)
 	s.NoError(err, "no error expected for NewFile")
-	s.IsType(file, &s3.File{}, "should be an s3.File")
+	s.IsType((*s3.File)(nil), file, "should be an s3.File")
 	s.Equal(file.URI(), goodURI)
 	s3cli, err := file.Location().FileSystem().(*s3.FileSystem).Client()
 	s.NoError(err, "no error expected")
 	if c, ok := s3cli.(*namedS3ClientMock); ok {
-		s.Equal(c.RegName, "filetest-path", "should be 'filetest-path', not 'filetest-bucket' or 's3'")
+		s.Equal("filetest-path", c.RegName, "should be 'filetest-path', not 'filetest-bucket' or 's3'")
 	} else {
 		s.Fail("should have returned mock", "should not reach this")
 	}
@@ -331,29 +327,29 @@ func (s *vfsSimpleSuite) TestNewFile() {
 	file, err = NewFile(badURI)
 	s.Error(err, "error expected for NewFile")
 	s.Nil(file, "file should be nil")
-	s.True(errors.Is(err, ErrRegFsNotFound))
+	s.ErrorIs(err, ErrRegFsNotFound)
 
 	badURI = ""
 	file, err = NewFile(badURI)
 	s.Error(err, "error expected for NewFile")
 	s.Nil(file, "file should be nil")
-	s.True(errors.Is(err, ErrBlankURI))
+	s.ErrorIs(err, ErrBlankURI)
 }
 
 func (s *vfsSimpleSuite) TestNewLocation() {
-	backend.Register("s3://loctest/path/", s3.NewFileSystem(s3.WithClient(getS3NamedClientMock("loctest-path"))))
-	backend.Register("s3://loctest/", s3.NewFileSystem(s3.WithClient(getS3NamedClientMock("loctest-bucket"))))
+	backend.Register("s3://loctest/path/", s3.NewFileSystem(s3.WithClient(getS3NamedClientMock(s.T(), "loctest-path"))))
+	backend.Register("s3://loctest/", s3.NewFileSystem(s3.WithClient(getS3NamedClientMock(s.T(), "loctest-bucket"))))
 
 	// success
 	goodURI := "s3://loctest/path/to/here/"
 	loc, err := NewLocation(goodURI)
 	s.NoError(err, "no error expected for NewLocation")
-	s.IsType(loc, &s3.Location{}, "should be an s3.Location")
+	s.IsType((*s3.Location)(nil), loc, "should be an s3.Location")
 	s.Equal(loc.URI(), goodURI)
 	s3cli, err := loc.FileSystem().(*s3.FileSystem).Client()
 	s.NoError(err, "no error expected")
 	if c, ok := s3cli.(*namedS3ClientMock); ok {
-		s.Equal(c.RegName, "loctest-path", "should be 'loctest-path', not 'loctest-bucket' or 's3'")
+		s.Equal("loctest-path", c.RegName, "should be 'loctest-path', not 'loctest-bucket' or 's3'")
 	} else {
 		s.Fail("should have returned mock", "should not reach this")
 	}
@@ -363,13 +359,13 @@ func (s *vfsSimpleSuite) TestNewLocation() {
 	loc, err = NewLocation(badURI)
 	s.Error(err, "error expected for NewLocation")
 	s.Nil(loc, "location should be nil")
-	s.True(errors.Is(err, ErrRegFsNotFound))
+	s.ErrorIs(err, ErrRegFsNotFound)
 
 	badURI = ""
 	loc, err = NewLocation(badURI)
 	s.Error(err, "error expected for NewLocation")
 	s.Nil(loc, "location should be nil")
-	s.True(errors.Is(err, ErrBlankURI))
+	s.ErrorIs(err, ErrBlankURI)
 }
 
 type namedS3ClientMock struct {
@@ -379,9 +375,9 @@ type namedS3ClientMock struct {
 
 // getS3NamedClientMock returns an s3 client that satisfies the interface but we only really care about the name,
 // to introspect in the test return
-func getS3NamedClientMock(name string) *namedS3ClientMock {
+func getS3NamedClientMock(t *testing.T, name string) *namedS3ClientMock {
 	return &namedS3ClientMock{
-		Client:  &mocks.Client{},
+		Client:  mocks.NewClient(t),
 		RegName: name,
 	}
 }

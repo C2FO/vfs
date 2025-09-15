@@ -86,10 +86,10 @@ func (s *FSNotifyWatcherTestSuite) TestNewFSNotifyWatcher() {
 		s.Require().NoError(err)
 
 		watcher, err := NewFSNotifyWatcher(location)
-		s.Assert().NoError(err)
-		s.Assert().NotNil(watcher)
-		s.Assert().Equal(location, watcher.location)
-		s.Assert().False(watcher.recursive)
+		s.NoError(err)
+		s.NotNil(watcher)
+		s.Equal(location, watcher.location)
+		s.False(watcher.recursive)
 	})
 
 	s.Run("With recursive option", func() {
@@ -97,16 +97,16 @@ func (s *FSNotifyWatcherTestSuite) TestNewFSNotifyWatcher() {
 		s.Require().NoError(err)
 
 		watcher, err := NewFSNotifyWatcher(location, WithRecursive(true))
-		s.Assert().NoError(err)
-		s.Assert().NotNil(watcher)
-		s.Assert().True(watcher.recursive)
+		s.NoError(err)
+		s.NotNil(watcher)
+		s.True(watcher.recursive)
 	})
 
 	s.Run("Nil location", func() {
 		watcher, err := NewFSNotifyWatcher(nil)
-		s.Assert().Error(err)
-		s.Assert().Nil(watcher)
-		s.Assert().Contains(err.Error(), "location cannot be nil")
+		s.Error(err)
+		s.Nil(watcher)
+		s.ErrorContains(err, "location cannot be nil")
 	})
 
 	s.Run("Non-local location", func() {
@@ -114,9 +114,9 @@ func (s *FSNotifyWatcherTestSuite) TestNewFSNotifyWatcher() {
 		s.Require().NoError(err)
 
 		watcher, err := NewFSNotifyWatcher(location)
-		s.Assert().Error(err)
-		s.Assert().Nil(watcher)
-		s.Assert().Contains(err.Error(), "fsnotify watcher only supports local filesystem locations")
+		s.Error(err)
+		s.Nil(watcher)
+		s.ErrorContains(err, "fsnotify watcher only supports local filesystem locations")
 	})
 }
 
@@ -145,7 +145,7 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 		defer cancel()
 
 		err := s.watcher.Start(ctx, eventHandler, errorHandler)
-		s.Assert().NoError(err)
+		s.NoError(err)
 
 		// Give the watcher time to start
 		time.Sleep(getStabilizationDelay())
@@ -158,8 +158,8 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 		// Wait for event
 		select {
 		case event := <-events:
-			s.Assert().Equal(vfsevents.EventCreated, event.Type)
-			s.Assert().Equal("file://"+testFile, event.URI)
+			s.Equal(vfsevents.EventCreated, event.Type)
+			s.Equal("file://"+testFile, event.URI)
 		case err := <-errors:
 			s.Fail("Unexpected error: %v", err)
 		case <-time.After(getEventTimeout()):
@@ -168,7 +168,7 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 
 		// Stop the watcher
 		err = s.watcher.Stop()
-		s.Assert().NoError(err)
+		s.NoError(err)
 	})
 
 	s.Run("Already running", func() {
@@ -189,12 +189,12 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 
 		// Start first time
 		err := s.watcher.Start(ctx, eventHandler, errorHandler)
-		s.Assert().NoError(err)
+		s.NoError(err)
 
 		// Try to start again
 		err = s.watcher.Start(ctx, eventHandler, errorHandler)
-		s.Assert().Error(err)
-		s.Assert().Contains(err.Error(), "already running")
+		s.Error(err)
+		s.ErrorContains(err, "already running")
 
 		// Clean up
 		_ = s.watcher.Stop() // Ignore error in test cleanup
@@ -240,9 +240,9 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 
 		select {
 		case event := <-events:
-			s.Assert().Equal(vfsevents.EventCreated, event.Type)
-			s.Assert().Equal("file://"+testFile, event.URI)
-			s.Assert().Equal(testFile, event.Metadata["path"])
+			s.Equal(vfsevents.EventCreated, event.Type)
+			s.Equal("file://"+testFile, event.URI)
+			s.Equal(testFile, event.Metadata["path"])
 		case <-time.After(getEventTimeout()):
 			s.Fail("Timeout waiting for create event")
 		}
@@ -281,7 +281,7 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 			}
 		}
 
-		s.Assert().True(createReceived, "Should have received create event")
+		s.True(createReceived, "Should have received create event")
 
 		// Add a small delay before modifying to ensure filesystem stability
 		time.Sleep(getStabilizationDelay())
@@ -300,8 +300,8 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 			case event := <-events:
 				if event.Type == vfsevents.EventModified {
 					modifyReceived = true
-					s.Assert().Equal("file://"+testFile, event.URI)
-					s.Assert().Equal(testFile, event.Metadata["path"])
+					s.Equal("file://"+testFile, event.URI)
+					s.Equal(testFile, event.Metadata["path"])
 					break modifyLoop
 				}
 				// Continue waiting for modify event, ignore other events
@@ -310,7 +310,7 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 			}
 		}
 
-		s.Assert().True(modifyReceived, "Should have received modify event")
+		s.True(modifyReceived, "Should have received modify event")
 	})
 
 	s.Run("Delete file", func() {
@@ -344,7 +344,7 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 			case event := <-events:
 				// Accept both delete and rename events as valid for file removal
 				if event.Type == vfsevents.EventDeleted {
-					s.Assert().Equal("file://"+testFile, event.URI)
+					s.Equal("file://"+testFile, event.URI)
 					eventReceived = true
 				}
 				// Continue waiting if it's not a delete event (might be a modify event from the delete operation)
@@ -395,8 +395,8 @@ func (s *FSNotifyWatcherTestSuite) TestRecursiveWatching() {
 		// Wait for directory create event
 		select {
 		case event := <-events:
-			s.Assert().Equal(vfsevents.EventCreated, event.Type)
-			s.Assert().Equal("file://"+subDir, event.URI)
+			s.Equal(vfsevents.EventCreated, event.Type)
+			s.Equal("file://"+subDir, event.URI)
 		case <-time.After(getEventTimeout()):
 			s.Fail("Timeout waiting for directory create event")
 		}
@@ -412,8 +412,8 @@ func (s *FSNotifyWatcherTestSuite) TestRecursiveWatching() {
 		// Wait for file create event
 		select {
 		case event := <-events:
-			s.Assert().Equal(vfsevents.EventCreated, event.Type)
-			s.Assert().Equal("file://"+testFile, event.URI)
+			s.Equal(vfsevents.EventCreated, event.Type)
+			s.Equal("file://"+testFile, event.URI)
 		case <-time.After(getEventTimeout()):
 			s.Fail("Timeout waiting for nested file create event")
 		}
@@ -485,8 +485,8 @@ func (s *FSNotifyWatcherTestSuite) runEventFilteringTest(events chan vfsevents.E
 
 	fmt.Printf("TEST DEBUG: Final state - txtEventReceived: %t, logEventReceived: %t, eventCount: %d\n",
 		txtEventReceived, logEventReceived, eventCount)
-	s.Assert().True(txtEventReceived, "Should have received .txt file event")
-	s.Assert().False(logEventReceived, "Should not have received .log file event")
+	s.True(txtEventReceived, "Should have received .txt file event")
+	s.False(logEventReceived, "Should not have received .log file event")
 }
 
 func (s *FSNotifyWatcherTestSuite) collectAndVerifyEvents(events chan vfsevents.Event) (bool, bool, int) {
@@ -509,7 +509,7 @@ eventLoop:
 				txtEventReceived = true
 				fmt.Printf("TEST DEBUG: Marking txtEventReceived = true\n")
 				// Accept both Created and Modified events for .txt files
-				s.Assert().True(event.Type == vfsevents.EventCreated || event.Type == vfsevents.EventModified,
+				s.True(event.Type == vfsevents.EventCreated || event.Type == vfsevents.EventModified,
 					"Expected Created or Modified event for .txt file, got: %s", event.Type)
 			} else if s.isLogFileEvent(event.URI) {
 				logEventReceived = true
@@ -602,8 +602,8 @@ func (s *FSNotifyWatcherTestSuite) TestStatusCallback() {
 	// Should receive initial status
 	select {
 	case status := <-statuses:
-		s.Assert().True(status.Running)
-		s.Assert().Equal(int64(0), status.EventsProcessed)
+		s.True(status.Running)
+		s.Zero(status.EventsProcessed)
 	case <-time.After(getEventTimeout()):
 		s.Fail("Timeout waiting for initial status")
 	}
@@ -623,9 +623,9 @@ func (s *FSNotifyWatcherTestSuite) TestStatusCallback() {
 	// Should receive updated status
 	select {
 	case status := <-statuses:
-		s.Assert().True(status.Running)
-		s.Assert().Equal(int64(1), status.EventsProcessed)
-		s.Assert().False(status.LastEventTime.IsZero())
+		s.True(status.Running)
+		s.Equal(int64(1), status.EventsProcessed)
+		s.False(status.LastEventTime.IsZero())
 	case <-time.After(getEventTimeout()):
 		s.Fail("Timeout waiting for updated status")
 	}

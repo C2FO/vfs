@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend/azure/mocks"
 )
 
 type FileSystemTestSuite struct {
@@ -150,7 +151,7 @@ func (s *FileSystemTestSuite) TestNewFileSystem() {
 	s.Equal("bobby", newFS.options.AccountName, "Should set account name to bobby")
 
 	// test with client
-	azureMock := &MockAzureClient{}
+	azureMock := mocks.NewClient(s.T())
 	newFS = NewFileSystem(WithClient(azureMock))
 	s.NotNil(newFS, "Should return a new fileSystem for azure")
 	s.Equal(azureMock, newFS.client, "Should set client to azureMock")
@@ -166,7 +167,7 @@ func (s *FileSystemTestSuite) TestWithOptions() {
 }
 
 func (s *FileSystemTestSuite) TestClient() {
-	fs := NewFileSystem().WithClient(&MockAzureClient{})
+	fs := NewFileSystem().WithClient(mocks.NewClient(s.T()))
 	s.NotNil(fs.Client())
 
 	fs = NewFileSystem()

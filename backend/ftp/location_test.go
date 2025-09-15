@@ -66,13 +66,13 @@ func (lt *locationTestSuite) TestList() {
 	lt.client.On("List", locPath).Return([]*_ftp.Entry{}, errors.New("some error")).Once()
 	fileList, err = loc.List()
 	lt.Error(err, "should return error")
-	lt.Len(fileList, 0, "Should return no files on error")
+	lt.Empty(fileList, "Should return no files on error")
 
 	// file not found (location doesn't exist)
 	lt.client.On("List", locPath).Return([]*_ftp.Entry{}, errors.New("550")).Once()
 	fileList, err = loc.List()
 	lt.NoError(err, "Shouldn't return an error on file not found.")
-	lt.Len(fileList, 0, "Should return no files on file not found")
+	lt.Empty(fileList, "Should return no files on file not found")
 
 	// error getting client
 	defaultClientGetter = clientGetterReturnsError
@@ -83,8 +83,6 @@ func (lt *locationTestSuite) TestList() {
 	lt.Error(err, "error expected")
 	lt.ErrorIs(err, errClientGetter, "err should be correct type")
 	lt.Nil(fileList, "fileList should be nil")
-
-	lt.client.AssertExpectations(lt.T())
 }
 
 func (lt *locationTestSuite) TestListByPrefix() {
@@ -238,7 +236,6 @@ func (lt *locationTestSuite) TestListByPrefix() {
 	lt.Error(err, "error expected")
 	lt.ErrorIs(err, errClientGetter, "err should be correct type")
 	lt.Equal(expectedEmptyStringSlice, fileList, "fileList should be empty string slice")
-	lt.client.AssertExpectations(lt.T())
 
 	// error calling client.List()
 	loc.(*Location).fileSystem.WithClient(lt.client)
@@ -251,8 +248,6 @@ func (lt *locationTestSuite) TestListByPrefix() {
 	lt.Error(err, "error expected")
 	lt.ErrorIs(err, listErr, "err should be correct type")
 	lt.Equal(expectedEmptyStringSlice, fileList, "fileList should be empty string slice")
-
-	lt.client.AssertExpectations(lt.T())
 }
 
 func (lt *locationTestSuite) TestListByRegex() {
@@ -311,8 +306,6 @@ func (lt *locationTestSuite) TestListByRegex() {
 	lt.Error(err, "error is expected")
 	lt.ErrorIs(err, listErr, "error is right kind of error")
 	lt.Nil(fileList)
-
-	lt.client.AssertExpectations(lt.T())
 }
 
 func (lt *locationTestSuite) TestURI() {
@@ -452,7 +445,7 @@ func (lt *locationTestSuite) TestExists() {
 	lt.NoError(err)
 	exists, err = loc.Exists()
 	lt.NoError(err, "No error expected from Exists")
-	lt.True(!exists, "Call to Exists expected to return false.")
+	lt.False(exists, "Call to Exists expected to return false.")
 
 	// some error calling list
 	lt.client.On("List", "/my/").Return(entries, errors.New("some error")).Once()
@@ -460,7 +453,7 @@ func (lt *locationTestSuite) TestExists() {
 	lt.NoError(err)
 	exists, err = loc.Exists()
 	lt.Error(err, "from Exists")
-	lt.True(!exists, "Call to Exists expected to return false.")
+	lt.False(exists, "Call to Exists expected to return false.")
 
 	// check for not dir -- this shouldn't be possible since NewLocation won't accept non-absolute directories
 	entries = []*_ftp.Entry{
@@ -482,7 +475,7 @@ func (lt *locationTestSuite) TestExists() {
 	lt.NoError(err)
 	exists, err = loc.Exists()
 	lt.NoError(err, "No error expected from Exists")
-	lt.True(!exists, "Call to Exists expected to return false.")
+	lt.False(exists, "Call to Exists expected to return false.")
 
 	// error getting client
 	defaultClientGetter = clientGetterReturnsError
@@ -492,8 +485,6 @@ func (lt *locationTestSuite) TestExists() {
 	lt.Error(err, "error expected")
 	lt.ErrorIs(err, errClientGetter, "err should be correct type")
 	lt.False(exists, "exists should be false on error")
-
-	lt.client.AssertExpectations(lt.T())
 }
 
 func (lt *locationTestSuite) TestChangeDir() {
@@ -561,8 +552,6 @@ func (lt *locationTestSuite) TestDeleteFile() {
 	err = loc.DeleteFile("")
 	lt.Error(err, "failed delete")
 	lt.ErrorContains(err, utils.ErrBadRelFilePath, "failed delete")
-
-	lt.client.AssertExpectations(lt.T())
 }
 
 func TestLocation(t *testing.T) {
