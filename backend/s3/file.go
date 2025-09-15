@@ -17,7 +17,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 
 	"github.com/c2fo/vfs/v7"
-	"github.com/c2fo/vfs/v7/mocks"
 	"github.com/c2fo/vfs/v7/options"
 	"github.com/c2fo/vfs/v7/options/delete"
 	"github.com/c2fo/vfs/v7/options/newfile"
@@ -678,11 +677,6 @@ func uploadInput(f *File) *s3.PutObjectInput {
 // error is returned if the file is still not available after the specified retries.
 // nil is returned once the file is available.
 func waitUntilFileExists(file vfs.File, retries int) error {
-	// Ignore in-memory VFS files
-	if _, ok := file.(*mocks.ReadWriteFile); ok {
-		return nil
-	}
-
 	// Return as if file was found when retries is set to -1. Useful mainly for testing.
 	if retries == -1 {
 		return nil

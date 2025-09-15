@@ -78,9 +78,9 @@ type SqsClient_DeleteMessage_Call struct {
 }
 
 // DeleteMessage is a helper method to define mock.On call
-//   - ctx
-//   - params
-//   - optFns
+//   - ctx context.Context
+//   - params *sqs.DeleteMessageInput
+//   - optFns ...func(*sqs.Options)
 func (_e *SqsClient_Expecter) DeleteMessage(ctx interface{}, params interface{}, optFns ...interface{}) *SqsClient_DeleteMessage_Call {
 	return &SqsClient_DeleteMessage_Call{Call: _e.mock.On("DeleteMessage",
 		append([]interface{}{ctx, params}, optFns...)...)}
@@ -88,8 +88,25 @@ func (_e *SqsClient_Expecter) DeleteMessage(ctx interface{}, params interface{},
 
 func (_c *SqsClient_DeleteMessage_Call) Run(run func(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options))) *SqsClient_DeleteMessage_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := args[2].([]func(*sqs.Options))
-		run(args[0].(context.Context), args[1].(*sqs.DeleteMessageInput), variadicArgs...)
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *sqs.DeleteMessageInput
+		if args[1] != nil {
+			arg1 = args[1].(*sqs.DeleteMessageInput)
+		}
+		var arg2 []func(*sqs.Options)
+		var variadicArgs []func(*sqs.Options)
+		if len(args) > 2 {
+			variadicArgs = args[2].([]func(*sqs.Options))
+		}
+		arg2 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2...,
+		)
 	})
 	return _c
 }
@@ -144,9 +161,9 @@ type SqsClient_ReceiveMessage_Call struct {
 }
 
 // ReceiveMessage is a helper method to define mock.On call
-//   - ctx
-//   - params
-//   - optFns
+//   - ctx context.Context
+//   - params *sqs.ReceiveMessageInput
+//   - optFns ...func(*sqs.Options)
 func (_e *SqsClient_Expecter) ReceiveMessage(ctx interface{}, params interface{}, optFns ...interface{}) *SqsClient_ReceiveMessage_Call {
 	return &SqsClient_ReceiveMessage_Call{Call: _e.mock.On("ReceiveMessage",
 		append([]interface{}{ctx, params}, optFns...)...)}
@@ -154,8 +171,25 @@ func (_e *SqsClient_Expecter) ReceiveMessage(ctx interface{}, params interface{}
 
 func (_c *SqsClient_ReceiveMessage_Call) Run(run func(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options))) *SqsClient_ReceiveMessage_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := args[2].([]func(*sqs.Options))
-		run(args[0].(context.Context), args[1].(*sqs.ReceiveMessageInput), variadicArgs...)
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *sqs.ReceiveMessageInput
+		if args[1] != nil {
+			arg1 = args[1].(*sqs.ReceiveMessageInput)
+		}
+		var arg2 []func(*sqs.Options)
+		var variadicArgs []func(*sqs.Options)
+		if len(args) > 2 {
+			variadicArgs = args[2].([]func(*sqs.Options))
+		}
+		arg2 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2...,
+		)
 	})
 	return _c
 }

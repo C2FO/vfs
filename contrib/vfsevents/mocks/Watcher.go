@@ -67,10 +67,10 @@ type Watcher_Start_Call struct {
 }
 
 // Start is a helper method to define mock.On call
-//   - ctx
-//   - handler
-//   - errHandler
-//   - opts
+//   - ctx context.Context
+//   - handler vfsevents.HandlerFunc
+//   - errHandler vfsevents.ErrorHandlerFunc
+//   - opts ...vfsevents.StartOption
 func (_e *Watcher_Expecter) Start(ctx interface{}, handler interface{}, errHandler interface{}, opts ...interface{}) *Watcher_Start_Call {
 	return &Watcher_Start_Call{Call: _e.mock.On("Start",
 		append([]interface{}{ctx, handler, errHandler}, opts...)...)}
@@ -78,8 +78,30 @@ func (_e *Watcher_Expecter) Start(ctx interface{}, handler interface{}, errHandl
 
 func (_c *Watcher_Start_Call) Run(run func(ctx context.Context, handler vfsevents.HandlerFunc, errHandler vfsevents.ErrorHandlerFunc, opts ...vfsevents.StartOption)) *Watcher_Start_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := args[3].([]vfsevents.StartOption)
-		run(args[0].(context.Context), args[1].(vfsevents.HandlerFunc), args[2].(vfsevents.ErrorHandlerFunc), variadicArgs...)
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 vfsevents.HandlerFunc
+		if args[1] != nil {
+			arg1 = args[1].(vfsevents.HandlerFunc)
+		}
+		var arg2 vfsevents.ErrorHandlerFunc
+		if args[2] != nil {
+			arg2 = args[2].(vfsevents.ErrorHandlerFunc)
+		}
+		var arg3 []vfsevents.StartOption
+		var variadicArgs []vfsevents.StartOption
+		if len(args) > 3 {
+			variadicArgs = args[3].([]vfsevents.StartOption)
+		}
+		arg3 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3...,
+		)
 	})
 	return _c
 }
@@ -123,7 +145,7 @@ type Watcher_Stop_Call struct {
 }
 
 // Stop is a helper method to define mock.On call
-//   - opts
+//   - opts ...vfsevents.StopOption
 func (_e *Watcher_Expecter) Stop(opts ...interface{}) *Watcher_Stop_Call {
 	return &Watcher_Stop_Call{Call: _e.mock.On("Stop",
 		append([]interface{}{}, opts...)...)}
@@ -131,8 +153,15 @@ func (_e *Watcher_Expecter) Stop(opts ...interface{}) *Watcher_Stop_Call {
 
 func (_c *Watcher_Stop_Call) Run(run func(opts ...vfsevents.StopOption)) *Watcher_Stop_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := args[0].([]vfsevents.StopOption)
-		run(variadicArgs...)
+		var arg0 []vfsevents.StopOption
+		var variadicArgs []vfsevents.StopOption
+		if len(args) > 0 {
+			variadicArgs = args[0].([]vfsevents.StopOption)
+		}
+		arg0 = variadicArgs
+		run(
+			arg0...,
+		)
 	})
 	return _c
 }
