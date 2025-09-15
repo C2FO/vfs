@@ -179,7 +179,7 @@ func (s *ClientIntegrationTestSuite) TestProperties() {
 	props, err := client.Properties(f.Location().(*Location).Authority().String(), f.Path())
 	s.NoError(err, "The file exists so we shouldn't get an error")
 	s.NotNil(props, "We should get a non-nil BlobProperties pointer back")
-	s.Greater(props.Size, uint64(0), "The size should be greater than zero")
+	s.Positive(props.Size, "The size should be greater than zero")
 	s.NotNil(props.LastModified, "Should have a non-nil LastModified")
 }
 
@@ -221,7 +221,7 @@ func (s *ClientIntegrationTestSuite) TestDelete_NonExistentFile() {
 	s.Error(err, "The file does not exist so we expect an error")
 }
 
-func (s *ClientIntegrationTestSuite) TestTouch_NonexistentContainer() {
+func (s *ClientIntegrationTestSuite) TestTouch_NonExistentContainer() {
 	fs := NewFileSystem()
 	f, err := fs.NewFile("nosuchcontainer", "/file.txt")
 	s.NoError(err)
@@ -249,7 +249,7 @@ func (s *ClientIntegrationTestSuite) TestTouch_FileAlreadyExists() {
 	newProps, err := client.Properties(f.Location().(*Location).Authority().String(), f.Path())
 	s.NoError(err)
 	s.NotNil(newProps, "New props should be non-nil")
-	s.True(newProps.LastModified.After(*originalProps.LastModified), "newProps.LastModified should be after originalProps.LastModified")
+	s.Greater(*newProps.LastModified, *originalProps.LastModified, "newProps.LastModified should be after originalProps.LastModified")
 }
 
 func TestAzureClient(t *testing.T) {

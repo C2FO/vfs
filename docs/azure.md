@@ -245,7 +245,7 @@ File implements the vfs.File interface for Azure Blob Storage
 func (f *File) Close() error
 ```
 Close cleans up all of the backing data structures used for reading/writing
-files. This includes, closing the temp file, uploading the contents of the temp
+files. This includes closing the temp file, uploading the contents of the temp
 file to Azure Blob Storage (if necessary), and calling Seek(0, 0).
 
 #### func (*File) CopyToFile

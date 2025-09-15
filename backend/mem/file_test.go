@@ -585,7 +585,7 @@ func (s *memFileTest) TestWrite() {
 	length := len(bSlice)
 	num, err := s.testFile.Write(bSlice)
 	s.NoError(err, "unexpected write error")
-	s.EqualValues(length, num)
+	s.Equal(length, num)
 	s.NoError(s.testFile.Close(), "unexpected close error")
 
 	// test write after Seek (edit mode)
@@ -607,7 +607,7 @@ func (s *memFileTest) TestRead() {
 	s.NoError(err, "unexpected new file error")
 	num, err := fileToRead.Write(expectedSlice)
 	s.NoError(err, "unexpected write error")
-	s.EqualValues(length, num)
+	s.Equal(length, num)
 	s.NoError(fileToRead.Close(), "close error not expected")
 
 	b, err := io.ReadAll(fileToRead)
@@ -655,7 +655,7 @@ func (s *memFileTest) TestWriteThenReadNoClose() {
 }
 
 // TestLastModified Writes to a file then retrieves the value that LastModified() returns and the lastModified value
-// stored in the File struct and compares them against eachother.  Successful if they are equal.
+// stored in the File struct and compares them against each other.  Successful if they are equal.
 func (s *memFileTest) TestLastModified() {
 	_, err := s.testFile.Write([]byte("Hello World!"))
 	s.NoError(err, "write did not work as expected!")
@@ -670,7 +670,7 @@ func (s *memFileTest) TestLastModified() {
 
 	secondTime := *t
 
-	s.True(secondTime.UnixNano() > firstTime.UnixNano())
+	s.Greater(secondTime, firstTime)
 }
 
 // TestName creates a file and names it and then asserts that the given name and the return of Name() match.
@@ -697,7 +697,7 @@ func (s *memFileTest) TestSize() {
 	s.NoError(err, "unexpected error retrieving size")
 	size2, err := otherFile.Size()
 	s.NoError(err, "unexpected error retrieving size")
-	s.True(size1 > size2)
+	s.Greater(size1, size2)
 }
 
 // TestPath makes sure that locations return the correct paths, along with leading and trailing slashes
@@ -802,7 +802,7 @@ func (s *memFileTest) TestSeekBeyondEOF() {
 	// Verify gap is filled with zeros
 	gap := content[len(initialData):100]
 	for i, b := range gap {
-		s.Equal(byte(0), b, "gap should be filled with zeros at position %d", i)
+		s.Zero(b, "gap should be filled with zeros at position %d", i)
 	}
 
 	// Verify additional data is at the correct position

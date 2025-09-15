@@ -24,7 +24,7 @@ func (s *OptionsTestSuite) TearDownTest() {
 
 func (s *OptionsTestSuite) TestNewOptions() {
 	o := NewOptions()
-	s.NotNil(o, "when NewOptions returns an error we expect to get a nill options struct")
+	s.NotNil(o, "when NewOptions returns an error we expect to get a nil options struct")
 }
 
 func (s *OptionsTestSuite) TestCredentials_ServiceAccount() {

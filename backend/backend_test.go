@@ -18,20 +18,20 @@ type testSuite struct {
 
 func (s *testSuite) TestBackend() {
 	//
-	m1 := &mocks.FileSystem{}
+	m1 := mocks.NewFileSystem(s.T())
 	Register("mock", m1)
 
 	// register a new backend
-	m2 := &mocks.FileSystem{}
+	m2 := mocks.NewFileSystem(s.T())
 	Register("new mock", m2)
 
 	// register another backend
-	m3 := &mocks.FileSystem{}
+	m3 := mocks.NewFileSystem(s.T())
 	Register("newest mock", m3)
 
 	// get backend
 	b := Backend("new mock")
-	s.IsType(&mocks.FileSystem{}, b, "type is mocks.FileSystem")
+	s.IsType((*mocks.FileSystem)(nil), b, "type is mocks.FileSystem")
 
 	// check all RegisteredBackends names
 	s.Len(RegisteredBackends(), 3, "found 3 backends")
@@ -42,7 +42,7 @@ func (s *testSuite) TestBackend() {
 
 	// Unregister all backends
 	UnregisterAll()
-	s.Len(RegisteredBackends(), 0, "found 0 backends")
+	s.Empty(RegisteredBackends(), "found 0 backends")
 }
 
 func TestBackend(t *testing.T) {

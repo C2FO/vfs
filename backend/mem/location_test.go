@@ -34,8 +34,8 @@ func (s *memLocationTest) SetupTest() {
 
 // TestFSName tests out whether or not the location knows what filesystem it is on
 func (s *memLocationTest) TestFSName() {
-	s.Equal(s.testFile.Location().FileSystem().Name(), "In-Memory FileSystem")
-	s.Equal(s.testFile.Location().FileSystem().Scheme(), "mem")
+	s.Equal("In-Memory FileSystem", s.testFile.Location().FileSystem().Name())
+	s.Equal("mem", s.testFile.Location().FileSystem().Scheme())
 }
 
 // TestList tests that a location is capable of finding all files that exist there

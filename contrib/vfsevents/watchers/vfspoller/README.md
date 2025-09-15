@@ -55,9 +55,9 @@ func main() {
 
     // Define event handler
     eventHandler := func(event vfsevents.Event) {
-        log.Printf("File %s: %s at %s", 
-            event.Type.String(), 
-            event.URI, 
+        log.Printf("File %s: %s at %s",
+            event.Type.String(),
+            event.URI,
             time.Unix(event.Timestamp, 0).Format("2006-01-02 15:04:05"))
     }
 
@@ -174,7 +174,7 @@ err := poller.Start(ctx, eventHandler, errorHandler,
     vfsevents.WithRetryConfig(retryConfig),
     vfsevents.WithStatusCallback(func(status vfsevents.WatcherStatus) {
         if status.RetryAttempts > 0 {
-            log.Printf("Retry attempt %d after error: %v", 
+            log.Printf("Retry attempt %d after error: %v",
                 status.RetryAttempts, status.LastError)
         }
     }),

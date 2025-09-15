@@ -147,7 +147,6 @@ func (s *vfsTestSuite) FileSystem(baseLoc vfs.Location) {
 			s.NoError(err, "there should be no error")
 			expected := buildExpectedURI(fs, baseLoc.Authority().String(), utils.EnsureTrailingSlash(path.Clean(name)))
 			s.Equal(expected, loc.URI(), "uri's should match")
-
 		} else {
 			s.Error(err, "should have validation error for scheme[%s] and name[%s]", fs.Scheme(), name)
 		}
@@ -197,7 +196,6 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 			s.NoError(err, "there should be no error")
 			expected := buildExpectedURI(srcLoc.FileSystem(), baseLoc.Authority().String(), utils.EnsureTrailingSlash(path.Clean(path.Join(srcLoc.Path(), name))))
 			s.Equal(expected, loc.URI(), "uri's should match")
-
 		} else {
 			s.Error(err, "should have validation error for scheme and name: %s : %s", srcLoc.FileSystem().Scheme(), name)
 		}
@@ -445,10 +443,10 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 	*/
 	sz, err := srcFile.Write([]byte("this is a test\n"))
 	s.NoError(err)
-	s.EqualValues(15, sz)
+	s.Equal(15, sz)
 	sz, err = srcFile.Write([]byte("and more text"))
 	s.NoError(err)
-	s.EqualValues(13, sz)
+	s.Equal(13, sz)
 
 	/*
 		io.Closer
@@ -501,7 +499,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 	*/
 	b, err := srcFile.Size()
 	s.NoError(err)
-	s.EqualValues(28, b)
+	s.Equal(28, b)
 
 	/*
 		LastModified returns the timestamp the file was last modified (as *time.Time).
@@ -530,7 +528,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 
 	offset, err := srcFile.Seek(3, 0)
 	s.NoError(err)
-	s.EqualValues(3, offset, "seek was successful")
+	s.Equal(3, offset, "seek was successful")
 
 	str, err = io.ReadAll(srcFile)
 	s.NoError(err)
@@ -613,7 +611,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 			s.NoError(err)
 			b1, err := io.CopyBuffer(copyFile1, srcFile, buffer)
 			s.NoError(err)
-			s.EqualValues(28, b1)
+			s.Equal(28, b1)
 			err = copyFile1.Close()
 			s.NoError(err)
 
@@ -644,7 +642,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 			buffer = make([]byte, utils.TouchCopyMinBufferSize)
 			b2, err := io.CopyBuffer(copyFile2, srcFile, buffer)
 			s.NoError(err)
-			s.EqualValues(28, b2)
+			s.Equal(28, b2)
 
 			err = copyFile2.Close()
 			s.NoError(err)
@@ -823,7 +821,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 	newModified, err := touchedFile.LastModified()
 
 	s.NoError(err)
-	s.True(newModified.UnixNano() > modifiedDeRef.UnixNano(), "touch updated modified date for %s", touchedFile)
+	s.Greater(*newModified, modifiedDeRef, "touch updated modified date for %s", touchedFile)
 
 	/*
 		Delete unlinks the File on the file system.

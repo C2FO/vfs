@@ -102,7 +102,6 @@ var schemeRE = regexp.MustCompile("^[A-Za-z][A-Za-z0-9+.-]*://")
 
 // NewAuthority initializes Authority struct by parsing authority string.
 func NewAuthority(authority string) (Authority, error) {
-
 	var err error
 	matched := schemeRE.MatchString(authority)
 	if !matched {

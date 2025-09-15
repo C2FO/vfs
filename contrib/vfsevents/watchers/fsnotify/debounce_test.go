@@ -97,7 +97,7 @@ eventLoop:
 	require.NoError(t, err)
 
 	// Should receive multiple events (at least CREATE)
-	assert.GreaterOrEqual(t, len(receivedEvents), 1, "Should receive at least one event without debouncing")
+	assert.NotEmpty(t, receivedEvents, "Should receive at least one event without debouncing")
 }
 
 // testWithDebouncing tests behavior with debouncing enabled
@@ -158,7 +158,7 @@ eventLoop:
 	require.NoError(t, err)
 
 	// Should receive exactly one consolidated event
-	assert.Equal(t, 1, len(receivedEvents), "Should receive exactly one consolidated event with debouncing")
+	assert.Len(t, receivedEvents, 1, "Should receive exactly one consolidated event with debouncing")
 
 	if len(receivedEvents) > 0 {
 		// Check that it's a consolidated event
@@ -250,7 +250,7 @@ func testMemoryLeakPrevention(t *testing.T, location vfs.Location, tempDir strin
 	finalPendingCount := len(watcher.pendingEvents)
 	watcher.mu.Unlock()
 
-	assert.Equal(t, 0, finalPendingCount, "Pending events should be cleaned up on stop")
+	assert.Zero(t, finalPendingCount, "Pending events should be cleaned up on stop")
 }
 
 // testLongDebounceTimeout tests behavior with longer debounce timeout (SFTP scenario)
@@ -314,7 +314,7 @@ eventLoop:
 	require.NoError(t, err)
 
 	// Should receive exactly one consolidated event
-	assert.Equal(t, 1, len(receivedEvents), "Should receive exactly one consolidated event with long debounce")
+	assert.Len(t, receivedEvents, 1, "Should receive exactly one consolidated event with long debounce")
 }
 
 func TestDebouncingEdgeCases(t *testing.T) {

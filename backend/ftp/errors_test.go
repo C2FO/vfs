@@ -2,6 +2,8 @@ package ftp
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestDataConnErr_Error(t *testing.T) {
@@ -15,8 +17,6 @@ func TestDataConnErr_Error(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if tt.err.Error() != tt.expected {
-			t.Errorf("expected %v, got %v", tt.expected, tt.err.Error())
-		}
+		require.EqualError(t, tt.err, tt.expected)
 	}
 }

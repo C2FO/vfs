@@ -18,14 +18,14 @@ type fileSystemTestSuite struct {
 }
 
 func (ts *fileSystemTestSuite) SetupTest() {
-	client := &mocks.Client{}
+	client := mocks.NewClient(ts.T())
 	ts.ftpfs = &FileSystem{
 		ftpclient: client,
 	}
 }
 
 func (ts *fileSystemTestSuite) TestNewFileSystem() {
-	newFS := NewFileSystem(WithClient(&mocks.Client{}))
+	newFS := NewFileSystem(WithClient(mocks.NewClient(ts.T())))
 	ts.NotNil(newFS, "Should return a new fileSystem for ftp")
 
 	// test with options
@@ -34,13 +34,13 @@ func (ts *fileSystemTestSuite) TestNewFileSystem() {
 	ts.Equal(ProtocolFTPES, newFS.options.Protocol, "Should set options to ProtocolFTPES")
 
 	// test with client
-	mockClient := &mocks.Client{}
+	mockClient := mocks.NewClient(ts.T())
 	newFS = NewFileSystem(WithClient(mockClient))
 	ts.NotNil(newFS, "Should return a new fileSystem for ftp")
 	ts.Equal(mockClient, newFS.ftpclient, "Should set client to mockClient")
 
 	// test with dataconn
-	newFS = NewFileSystem(WithDataConn(&mocks.DataConn{}))
+	newFS = NewFileSystem(WithDataConn(mocks.NewDataConn(ts.T())))
 	ts.NotNil(newFS, "Should return a new fileSystem for ftp")
 	ts.NotNil(newFS.dataconn, "Should set dataconn to mockDataConn")
 }

@@ -106,7 +106,7 @@ func (s *FileSystemTestSuite) TestNewLocation_NilReceiver() {
 	var fs *FileSystem
 	loc, err := fs.NewLocation("temp", "/foo/bar/")
 	s.EqualError(err, "azure.FileSystem receiver pointer must be non-nil",
-		"The receiver pointer on the function call is nill so we should get an error")
+		"The receiver pointer on the function call is nil so we should get an error")
 	s.Nil(loc, "The call returned an error so the location should be nil")
 }
 

@@ -329,7 +329,7 @@ func (s *FileTestSuite) TestTouch() {
 	s.NoError(f.Touch())
 }
 
-func (s *FileTestSuite) TestTouch_NonexistentContainer() {
+func (s *FileTestSuite) TestTouch_NonExistentContainer() {
 	client := mocks.NewClient(s.T())
 	fs := NewFileSystem(WithClient(client))
 

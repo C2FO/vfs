@@ -441,7 +441,6 @@ func (f *File) openFile(flags int) (ReadWriteSeekCloser, error) { //nolint:gocyc
 
 			f.flagsUsed = flags
 			f.sftpfile = file
-
 		}
 		return f.sftpfile, nil
 	}
@@ -497,7 +496,6 @@ func (f *File) _open(flags int) (ReadWriteSeekCloser, error) {
 
 // setPermissions sets the file permissions if they are set in the options
 func (f *File) setPermissions(client Client, opts Options) error {
-
 	// ensure we're dealing with pointer to Options
 	ptrOpts := &opts
 

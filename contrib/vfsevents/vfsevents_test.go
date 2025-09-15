@@ -52,7 +52,7 @@ func (s *VfseventsTestSuite) TestEventType_String() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			s.Assert().Equal(tt.expected, tt.eventType.String())
+			s.Equal(tt.expected, tt.eventType.String())
 		})
 	}
 }
@@ -97,7 +97,7 @@ func (s *VfseventsTestSuite) TestErrorType_String() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			s.Assert().Equal(tt.expected, tt.errType.String())
+			s.Equal(tt.expected, tt.errType.String())
 		})
 	}
 }
@@ -131,7 +131,7 @@ func (s *VfseventsTestSuite) TestWatcherError() {
 
 		for _, tt := range tests {
 			s.Run(tt.name, func() {
-				s.Assert().Equal(tt.expected, tt.err.Error())
+				s.EqualError(tt.err, tt.expected)
 			})
 		}
 	})
@@ -144,7 +144,7 @@ func (s *VfseventsTestSuite) TestWatcherError() {
 			Cause:   cause,
 		}
 
-		s.Assert().Equal(cause, err.Unwrap())
+		s.Equal(cause, err.Unwrap())
 
 		errNoCause := &WatcherError{
 			Type:    ErrorTypeConnection,
@@ -152,7 +152,7 @@ func (s *VfseventsTestSuite) TestWatcherError() {
 			Cause:   nil,
 		}
 
-		s.Assert().Nil(errNoCause.Unwrap())
+		s.Nil(errNoCause.Unwrap())
 	})
 }
 
@@ -161,29 +161,29 @@ func (s *VfseventsTestSuite) TestNewWatcherError() {
 		cause := errors.New("underlying error")
 		err := NewWatcherError(ErrorTypeConnection, "connection failed", cause)
 
-		s.Assert().Equal(ErrorTypeConnection, err.Type)
-		s.Assert().Equal("connection failed", err.Message)
-		s.Assert().Equal(cause, err.Cause)
+		s.Equal(ErrorTypeConnection, err.Type)
+		s.Equal("connection failed", err.Message)
+		s.Equal(cause, err.Cause)
 	})
 
 	s.Run("Without cause", func() {
 		err := NewWatcherError(ErrorTypeAuth, "authentication failed", nil)
 
-		s.Assert().Equal(ErrorTypeAuth, err.Type)
-		s.Assert().Equal("authentication failed", err.Message)
-		s.Assert().Nil(err.Cause)
+		s.Equal(ErrorTypeAuth, err.Type)
+		s.Equal("authentication failed", err.Message)
+		s.Nil(err.Cause)
 	})
 }
 
 func (s *VfseventsTestSuite) TestDefaultRetryConfig() {
 	config := DefaultRetryConfig()
 
-	s.Assert().True(config.Enabled)
-	s.Assert().Equal(3, config.MaxRetries)
-	s.Assert().Equal(time.Second, config.InitialBackoff)
-	s.Assert().Equal(30*time.Second, config.MaxBackoff)
-	s.Assert().Equal(2.0, config.BackoffFactor)
-	s.Assert().Empty(config.RetryableErrors)
+	s.True(config.Enabled)
+	s.Equal(3, config.MaxRetries)
+	s.Equal(time.Second, config.InitialBackoff)
+	s.Equal(30*time.Second, config.MaxBackoff)
+	s.Equal(2.0, config.BackoffFactor)
+	s.Empty(config.RetryableErrors)
 }
 
 func (s *VfseventsTestSuite) TestWithRetryConfig() {
@@ -196,7 +196,7 @@ func (s *VfseventsTestSuite) TestWithRetryConfig() {
 
 	WithRetryConfig(retryConfig)(config)
 
-	s.Assert().Equal(retryConfig, config.RetryConfig)
+	s.Equal(retryConfig, config.RetryConfig)
 }
 
 func (s *VfseventsTestSuite) TestWithMaxRetries() {
@@ -204,7 +204,7 @@ func (s *VfseventsTestSuite) TestWithMaxRetries() {
 
 	WithMaxRetries(10)(config)
 
-	s.Assert().Equal(10, config.RetryConfig.MaxRetries)
+	s.Equal(10, config.RetryConfig.MaxRetries)
 }
 
 func (s *VfseventsTestSuite) TestWithRetryBackoff() {
@@ -214,8 +214,8 @@ func (s *VfseventsTestSuite) TestWithRetryBackoff() {
 
 	WithRetryBackoff(initial, maxBackoff)(config)
 
-	s.Assert().Equal(initial, config.RetryConfig.InitialBackoff)
-	s.Assert().Equal(maxBackoff, config.RetryConfig.MaxBackoff)
+	s.Equal(initial, config.RetryConfig.InitialBackoff)
+	s.Equal(maxBackoff, config.RetryConfig.MaxBackoff)
 }
 
 func (s *VfseventsTestSuite) TestWithRetryableErrors() {
@@ -224,7 +224,7 @@ func (s *VfseventsTestSuite) TestWithRetryableErrors() {
 
 	WithRetryableErrors(patterns)(config)
 
-	s.Assert().Equal(patterns, config.RetryConfig.RetryableErrors)
+	s.Equal(patterns, config.RetryConfig.RetryableErrors)
 }
 
 func (s *VfseventsTestSuite) TestWithEventFilter() {
@@ -235,14 +235,14 @@ func (s *VfseventsTestSuite) TestWithEventFilter() {
 
 	WithEventFilter(filter)(config)
 
-	s.Assert().NotNil(config.EventFilter)
+	s.NotNil(config.EventFilter)
 
 	// Test the filter function
 	createEvent := Event{Type: EventCreated}
 	deleteEvent := Event{Type: EventDeleted}
 
-	s.Assert().True(config.EventFilter(createEvent))
-	s.Assert().False(config.EventFilter(deleteEvent))
+	s.True(config.EventFilter(createEvent))
+	s.False(config.EventFilter(deleteEvent))
 }
 
 func (s *VfseventsTestSuite) TestWithStatusCallback() {
@@ -254,11 +254,11 @@ func (s *VfseventsTestSuite) TestWithStatusCallback() {
 
 	WithStatusCallback(callback)(config)
 
-	s.Assert().NotNil(config.StatusCallback)
+	s.NotNil(config.StatusCallback)
 
 	// Test the callback function
 	config.StatusCallback(WatcherStatus{})
-	s.Assert().True(called)
+	s.True(called)
 }
 
 func (s *VfseventsTestSuite) TestWithMetricsCollector() {
@@ -270,11 +270,11 @@ func (s *VfseventsTestSuite) TestWithMetricsCollector() {
 
 	WithMetricsCollector(collector)(config)
 
-	s.Assert().NotNil(config.MetricsCollector)
+	s.NotNil(config.MetricsCollector)
 
 	// Test the collector function
 	config.MetricsCollector(WatcherMetrics{})
-	s.Assert().True(called)
+	s.True(called)
 }
 
 func (s *VfseventsTestSuite) TestWithTimeout() {
@@ -283,7 +283,7 @@ func (s *VfseventsTestSuite) TestWithTimeout() {
 
 	WithTimeout(timeout)(config)
 
-	s.Assert().Equal(timeout, config.Timeout)
+	s.Equal(timeout, config.Timeout)
 }
 
 func (s *VfseventsTestSuite) TestWithForceStop() {
@@ -291,7 +291,7 @@ func (s *VfseventsTestSuite) TestWithForceStop() {
 
 	WithForceStop()(config)
 
-	s.Assert().True(config.Force)
+	s.True(config.Force)
 }
 
 func (s *VfseventsTestSuite) TestIsRetryableError() {
@@ -376,7 +376,7 @@ func (s *VfseventsTestSuite) TestIsRetryableError() {
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			result := IsRetryableError(tt.err, tt.config)
-			s.Assert().Equal(tt.retryable, result)
+			s.Equal(tt.retryable, result)
 		})
 	}
 }
@@ -424,7 +424,7 @@ func (s *VfseventsTestSuite) TestCalculateBackoff() {
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			backoff := CalculateBackoff(tt.attempt, tt.config)
-			s.Assert().True(backoff >= tt.minTime && backoff <= tt.maxTime,
+			s.True(backoff >= tt.minTime && backoff <= tt.maxTime,
 				"Expected backoff between %v and %v, got %v", tt.minTime, tt.maxTime, backoff)
 		})
 	}
@@ -476,7 +476,7 @@ func (s *VfseventsTestSuite) TestIsNetworkError() {
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			result := isNetworkError(tt.err)
-			s.Assert().Equal(tt.isNetwork, result)
+			s.Equal(tt.isNetwork, result)
 		})
 	}
 }
@@ -552,7 +552,7 @@ func (s *VfseventsTestSuite) TestIsTemporaryCloudError() {
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			result := isTemporaryCloudError(tt.err)
-			s.Assert().Equal(tt.isTemporary, result)
+			s.Equal(tt.isTemporary, result)
 		})
 	}
 }
@@ -566,10 +566,10 @@ func (s *VfseventsTestSuite) TestEvent() {
 			Timestamp: 1234567890,
 		}
 
-		s.Assert().Equal("s3://bucket/file.txt", event.URI)
-		s.Assert().Equal(EventCreated, event.Type)
-		s.Assert().Equal("1024", event.Metadata["size"])
-		s.Assert().Equal(int64(1234567890), event.Timestamp)
+		s.Equal("s3://bucket/file.txt", event.URI)
+		s.Equal(EventCreated, event.Type)
+		s.Equal("1024", event.Metadata["size"])
+		s.Equal(int64(1234567890), event.Timestamp)
 	})
 }
 
@@ -585,11 +585,11 @@ func (s *VfseventsTestSuite) TestWatcherStatus() {
 			LastRetryTime:     time.Now(),
 		}
 
-		s.Assert().True(status.Running)
-		s.Assert().Equal(int64(100), status.EventsProcessed)
-		s.Assert().Equal("test error", status.LastError.Error())
-		s.Assert().Equal(int64(5), status.RetryAttempts)
-		s.Assert().Equal(int64(2), status.ConsecutiveErrors)
+		s.True(status.Running)
+		s.Equal(int64(100), status.EventsProcessed)
+		s.EqualError(status.LastError, "test error")
+		s.Equal(int64(5), status.RetryAttempts)
+		s.Equal(int64(2), status.ConsecutiveErrors)
 	})
 }
 
@@ -602,10 +602,10 @@ func (s *VfseventsTestSuite) TestWatcherMetrics() {
 			MemoryUsage:     1024 * 1024,
 		}
 
-		s.Assert().Equal(10.5, metrics.EventsPerSecond)
-		s.Assert().Equal(100*time.Millisecond, metrics.AverageLatency)
-		s.Assert().Equal(0.05, metrics.ErrorRate)
-		s.Assert().Equal(uint64(1024*1024), metrics.MemoryUsage)
+		s.Equal(10.5, metrics.EventsPerSecond)
+		s.Equal(100*time.Millisecond, metrics.AverageLatency)
+		s.Equal(0.05, metrics.ErrorRate)
+		s.Equal(uint64(1024*1024), metrics.MemoryUsage)
 	})
 }
 
