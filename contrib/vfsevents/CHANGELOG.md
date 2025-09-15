@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use more appropriate unit test assertion patterns where possible.
 - Minor whitespace cleanup.
 - General spelling and grammar corrections.
+- Regenerate mockery types with the latest version.
 - More reliable mock expectation assertions in unit tests.
 
 ## [contrib/vfsevents/v1.0.1] - 2025-08-05
