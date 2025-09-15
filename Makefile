@@ -1,5 +1,9 @@
 GOBIN ?= $$(go env GOPATH)/bin
 
+.PHONY: lint
+lint:
+	golangci-lint run --build-tags=vfsintegration
+
 .PHONY: install-go-test-coverage
 install-go-test-coverage:
 	go install github.com/vladopajic/go-test-coverage/v2@latest

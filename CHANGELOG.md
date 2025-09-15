@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - More reliable mock expectation assertions in unit tests.
 - Minor whitespace cleanup. 
 - General spelling and grammar corrections.
+- Check `vfsintegration` tests for lint issues.
 - Remove unnecessary mockery types and regenerate with the latest version.
 
 ## [v7.8.1] - 2025-08-07
