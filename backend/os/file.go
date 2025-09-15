@@ -51,8 +51,7 @@ func (f *File) LastModified() (*time.Time, error) {
 		return nil, utils.WrapLastModifiedError(err)
 	}
 
-	statsTime := stats.ModTime()
-	return &statsTime, nil
+	return utils.Ptr(stats.ModTime()), nil
 }
 
 // Name returns the base name of the file path.

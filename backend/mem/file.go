@@ -249,8 +249,7 @@ func (f *File) Exists() (bool, error) {
 // Location simply returns the file's underlying location struct pointer
 func (f *File) Location() vfs.Location {
 	// copy the location
-	location := *f.memFile.location
-	return &location
+	return utils.Ptr(*f.memFile.location)
 }
 
 // CopyToLocation copies the current file to the given location.  If file exists
