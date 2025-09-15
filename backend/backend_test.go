@@ -18,15 +18,15 @@ type testSuite struct {
 
 func (s *testSuite) TestBackend() {
 	//
-	m1 := &mocks.FileSystem{}
+	m1 := mocks.NewFileSystem(s.T())
 	Register("mock", m1)
 
 	// register a new backend
-	m2 := &mocks.FileSystem{}
+	m2 := mocks.NewFileSystem(s.T())
 	Register("new mock", m2)
 
 	// register another backend
-	m3 := &mocks.FileSystem{}
+	m3 := mocks.NewFileSystem(s.T())
 	Register("newest mock", m3)
 
 	// get backend

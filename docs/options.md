@@ -43,4 +43,3 @@ Now, in each implementation of file.Delete(... options.DeleteOptions), implement
         ...
     }
 ```
-

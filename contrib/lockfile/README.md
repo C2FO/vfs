@@ -107,7 +107,7 @@ err := lockfile.WithLock(f, func(f vfs.File) error {
         return fmt.Errorf("failed to process data: %w", err)
     }
     // Create archive vfs.File
-    archiveFile, err := f.Location().NewFile("archive/" + f.Name()) 
+    archiveFile, err := f.Location().NewFile("archive/" + f.Name())
     if err != nil {
         return fmt.Errorf("failed to create archive file: %w", err)
     }
@@ -116,7 +116,6 @@ err := lockfile.WithLock(f, func(f vfs.File) error {
     if err := f.MoveToFile(archiveFile); err != nil {
         return fmt.Errorf("failed to move file to archive: %w", err)
     }
-    
 
     return nil
 })
@@ -167,7 +166,7 @@ lock, err := lockfile.NewLock(f, lockfile.WithOwnerID("ingestion-service-1"))
 // Get lock metadata
 meta, err := lock.Metadata()
 if err == nil {
-    log.Printf("Lock held by %s (PID: %d) since %v", 
+    log.Printf("Lock held by %s (PID: %d) since %v",
         meta.Hostname, meta.PID, meta.CreatedAt)
 }
 
@@ -203,7 +202,7 @@ The lockfile utility works by:
 
 When using S3, be aware of its eventual consistency model:
 
-1. **Read-After-Write Consistency**: 
+1. **Read-After-Write Consistency**:
    - New objects (PUTs) are immediately available
    - Updates to existing objects (PUTs) may take time to propagate
    - Deletes may take time to propagate
@@ -217,7 +216,7 @@ When using S3, be aware of its eventual consistency model:
    ```go
    // Use longer TTLs to account for propagation delays
    lock, err := lockfile.NewLock(f, lockfile.WithTTL(10 * time.Minute))
-   
+
    // Implement retry logic with exponential backoff
    var err error
    for i := 0; i < 3; i++ {
@@ -252,4 +251,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.

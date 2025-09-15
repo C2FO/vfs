@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Fixed
 - Use more appropriate unit test assertion patterns where possible.
+- More reliable mock expectation assertions in unit tests.
+- Minor whitespace cleanup. 
+- General spelling and grammar corrections.
 
 ## [v7.8.1] - 2025-08-07
 ### Fixed
@@ -37,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v7.5.0] - 2025-07-08
 ### Added
 - Add ability to suppress AWS SDK v2 "WARN Response has no supported checksum. Not validating response payload."
-### Securtiy
+### Security
 - Updated dependencies and addressed dependabot issue #18 (CVE-2025-22868).
 
 ## [v7.4.1] - 2025-05-05
@@ -154,7 +157,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [6.22.0] - 2024-11-06
 ### Fixed
 - [#214](https://github.com/C2FO/vfs/issues/214) Fix issue where s3 backend didn't reset `readEOFSeen` flag when resetting the file cursor during Seek operations.
- 
+
 ## [6.21.0] - 2024-11-04
 ### Fixed
 - Unit Test improvements: report underlying unit tests errors, always run test cases in a sub-test, always use test suite functions, use more specific assert functions where possible.

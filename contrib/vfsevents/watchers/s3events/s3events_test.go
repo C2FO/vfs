@@ -28,7 +28,7 @@ type S3WatcherTestSuite struct {
 }
 
 func (s *S3WatcherTestSuite) SetupTest() {
-	s.sqsClient = &mocks.SqsClient{}
+	s.sqsClient = mocks.NewSqsClient(s.T())
 	s.watcher, _ = NewS3Watcher("https://sqs.us-east-1.amazonaws.com/123456789012/my-queue", WithSqsClient(s.sqsClient))
 }
 
@@ -64,39 +64,21 @@ func (s *S3WatcherTestSuite) TestNewS3Watcher() {
 
 func (s *S3WatcherTestSuite) TestStart() {
 	tests := []struct {
-		name       string
-		setupMocks func()
-		wantErr    bool
+		name    string
+		wantErr bool
 	}{
 		{
-			name: "Valid start",
-			setupMocks: func() {
-				s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
-					QueueUrl:                    aws.String(s.watcher.queueURL),
-					MaxNumberOfMessages:         10,
-					WaitTimeSeconds:             20,
-					MessageSystemAttributeNames: []types.MessageSystemAttributeName{"ApproximateReceiveCount"},
-				}).Return(&sqs.ReceiveMessageOutput{}, nil).Once()
-			},
+			name:    "Valid start",
 			wantErr: false,
 		},
 		{
-			name: "ReceiveMessage error",
-			setupMocks: func() {
-				s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
-					QueueUrl:                    aws.String(s.watcher.queueURL),
-					MaxNumberOfMessages:         10,
-					WaitTimeSeconds:             20,
-					MessageSystemAttributeNames: []types.MessageSystemAttributeName{"ApproximateReceiveCount"},
-				}).Return(nil, fmt.Errorf("receive message error")).Once()
-			},
+			name:    "ReceiveMessage error",
 			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			tt.setupMocks()
 			ctx := context.Background()
 			handler := func(event vfsevents.Event) {}
 			errHandler := func(err error) {

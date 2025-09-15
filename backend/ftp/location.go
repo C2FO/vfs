@@ -79,7 +79,7 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 		baseprefix = prefix
 		fullpath = utils.EnsureTrailingSlash(fullpath)
 	} else {
-		// get baseprefix fix from the fullpath
+		// get baseprefix from the fullpath
 		baseprefix = path.Base(fullpath)
 		// get absolute dir path of fullpath
 		fullpath = utils.EnsureTrailingSlash(path.Dir(fullpath))
@@ -196,14 +196,13 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 	}, nil
 }
 
-// ChangeDir takes a relative path, and modifies the underlying Location's path. The caller is modified by this
+// ChangeDir takes a relative path and modifies the underlying Location's path. The caller is modified by this
 // so the only return is any error. For this implementation there are no errors.
 //
 // Deprecated: Use NewLocation instead:
 //
 //	loc, err := loc.NewLocation("../../")
 func (l *Location) ChangeDir(relativePath string) error {
-
 	err := utils.ValidateRelativeLocationPath(relativePath)
 	if err != nil {
 		return err

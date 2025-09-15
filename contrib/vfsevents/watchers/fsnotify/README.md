@@ -49,8 +49,8 @@ func main() {
 
     // Define event handler
     eventHandler := func(event vfsevents.Event) {
-        fmt.Printf("Event: %s on %s\n", 
-            event.Type.String(), 
+        fmt.Printf("Event: %s on %s\n",
+            event.Type.String(),
             event.URI)
     }
 
@@ -96,7 +96,7 @@ func main() {
     }
 
     // Create FSNotify watcher with 500ms debouncing
-    watcher, err := fsnotify.NewFSNotifyWatcher(location, 
+    watcher, err := fsnotify.NewFSNotifyWatcher(location,
         fsnotify.WithDebounce(500*time.Millisecond),
         fsnotify.WithRecursive(true))
     if err != nil {
@@ -104,10 +104,10 @@ func main() {
     }
 
     eventHandler := func(event vfsevents.Event) {
-        fmt.Printf("Debounced Event: %s on %s\n", 
-            event.Type.String(), 
+        fmt.Printf("Debounced Event: %s on %s\n",
+            event.Type.String(),
             event.URI)
-        
+
         // Check if this was a consolidated event
         if op, exists := event.Metadata["fsnotify_op"]; exists && op == "multiple" {
             fmt.Printf("  -> Consolidated multiple operations\n")
@@ -137,7 +137,7 @@ Enables or disables recursive watching of subdirectories.
 
 ```go
 // Watch directory and all subdirectories
-watcher, err := fsnotify.NewFSNotifyWatcher(location, 
+watcher, err := fsnotify.NewFSNotifyWatcher(location,
     fsnotify.WithRecursive(true))
 ```
 
@@ -148,7 +148,7 @@ Enables or disables event debouncing with the specified time interval.
 
 ```go
 // Watch directory with 500ms debouncing
-watcher, err := fsnotify.NewFSNotifyWatcher(location, 
+watcher, err := fsnotify.NewFSNotifyWatcher(location,
     fsnotify.WithDebounce(500*time.Millisecond))
 ```
 
@@ -160,7 +160,7 @@ watcher, err := fsnotify.NewFSNotifyWatcher(location,
 // Start with event filtering - only process .txt and .log files
 err := watcher.Start(ctx, eventHandler, errorHandler,
     vfsevents.WithEventFilter(func(e vfsevents.Event) bool {
-        return strings.HasSuffix(e.URI, ".txt") || 
+        return strings.HasSuffix(e.URI, ".txt") ||
                strings.HasSuffix(e.URI, ".log")
     }),
 )
@@ -179,7 +179,7 @@ Event debouncing consolidates multiple related filesystem events into single log
 
 ```go
 // Enable 200ms debouncing - events within 200ms are consolidated
-watcher, err := fsnotify.NewFSNotifyWatcher(location, 
+watcher, err := fsnotify.NewFSNotifyWatcher(location,
     fsnotify.WithDebounce(200*time.Millisecond))
 ```
 
@@ -187,7 +187,7 @@ watcher, err := fsnotify.NewFSNotifyWatcher(location,
 
 ```go
 // For SFTP/NFS with delayed writes, use longer debounce periods
-watcher, err := fsnotify.NewFSNotifyWatcher(location, 
+watcher, err := fsnotify.NewFSNotifyWatcher(location,
     fsnotify.WithDebounce(2*time.Second))
 ```
 
@@ -196,7 +196,7 @@ watcher, err := fsnotify.NewFSNotifyWatcher(location,
 When debouncing is enabled, events are consolidated using these rules:
 
 1. **Delete events take priority** over Create/Modified events
-2. **Create events take priority** over Modified events  
+2. **Create events take priority** over Modified events
 3. **Multiple events** for the same file are merged into a single event
 4. **Event metadata** includes `"fsnotify_op": "multiple"` for consolidated events
 5. **Timestamp** reflects the first event time in the sequence
@@ -228,7 +228,7 @@ When debouncing is enabled, events are consolidated using these rules:
 // Monitor watcher status and performance
 err := watcher.Start(ctx, eventHandler, errorHandler,
     vfsevents.WithStatusCallback(func(status vfsevents.WatcherStatus) {
-        fmt.Printf("Events processed: %d, Running: %t\n", 
+        fmt.Printf("Events processed: %d, Running: %t\n",
             status.EventsProcessed, status.Running)
     }),
 )

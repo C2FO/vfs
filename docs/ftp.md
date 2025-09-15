@@ -76,7 +76,6 @@ These methods are chainable: (*FileSystem) WithClient(client interface{})
 
     	  err := file.Close()
     	  #handle error
-
       }
 ```
 
@@ -118,7 +117,6 @@ The provided CopyToFile and CopyToLocation functions should be used instead in t
 
 		  err = file.Close()
 		  #handle error
-
 	  }
 ```
 
@@ -151,7 +149,7 @@ authority, ie "ftp://service.com/".
 #### PASSWORD
 
 Passwords may be passed via [Options.Password](#type-options) or via the environmental variable
-`VFS_FTP_PASSWORD`. If not password is provided, default is "anonymous".
+`VFS_FTP_PASSWORD`. If no password is provided, default is "anonymous".
 Password precedence is default, env var, Options.Password, such that env var, if
 set, overrides default and Options.Password, if set, overrides env var.
 

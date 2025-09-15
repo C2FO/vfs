@@ -221,7 +221,7 @@ func (s *ClientIntegrationTestSuite) TestDelete_NonExistentFile() {
 	s.Error(err, "The file does not exist so we expect an error")
 }
 
-func (s *ClientIntegrationTestSuite) TestTouch_NonexistentContainer() {
+func (s *ClientIntegrationTestSuite) TestTouch_NonExistentContainer() {
 	fs := NewFileSystem()
 	f, err := fs.NewFile("nosuchcontainer", "/file.txt")
 	s.NoError(err)

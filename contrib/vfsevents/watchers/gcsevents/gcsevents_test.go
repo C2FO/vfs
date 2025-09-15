@@ -26,7 +26,7 @@ type GCSWatcherTestSuite struct {
 }
 
 func (s *GCSWatcherTestSuite) SetupTest() {
-	s.pubsubClient = &mocks.PubSubClient{}
+	s.pubsubClient = mocks.NewPubSubClient(s.T())
 	s.watcher, _ = NewGCSWatcher("my-project-id", "my-subscription", WithPubSubClient(s.pubsubClient))
 }
 

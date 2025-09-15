@@ -223,7 +223,6 @@ func (l *Location) NewFile(relFilePath string, opts ...options.NewFileOption) (v
 		path:     utils.EnsureLeadingSlash(path.Join(l.path, relFilePath)),
 		opts:     opts,
 	}, nil
-
 }
 
 // DeleteFile removes the file at fileName path.

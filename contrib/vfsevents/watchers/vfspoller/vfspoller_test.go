@@ -267,7 +267,7 @@ func (s *PollerTestSuite) TestPollWithRetry() {
 			name: "Success on first attempt",
 			setupMocks: func(loc *mocks.Location) {
 				loc.EXPECT().List().Return([]string{"file1"}, nil).Once()
-				file := &mocks.File{}
+				file := mocks.NewFile(s.T())
 				file.EXPECT().URI().Return("scheme:///file1")
 				file.EXPECT().LastModified().Return(func() *time.Time { t := time.Now().UTC().Add(-time.Hour); return &t }(), nil)
 				file.EXPECT().Size().Return(uint64(100), nil)
@@ -305,7 +305,7 @@ func (s *PollerTestSuite) TestPollWithRetry() {
 				loc.EXPECT().List().Return(nil, fmt.Errorf("connection timeout")).Once()
 				// Second call succeeds
 				loc.EXPECT().List().Return([]string{"file1"}, nil).Once()
-				file := &mocks.File{}
+				file := mocks.NewFile(s.T())
 				file.EXPECT().URI().Return("scheme:///file1")
 				file.EXPECT().LastModified().Return(func() *time.Time { t := time.Now().UTC().Add(-time.Hour); return &t }(), nil)
 				file.EXPECT().Size().Return(uint64(100), nil)
@@ -386,10 +386,9 @@ func (s *PollerTestSuite) TestPollWithRetry() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			loc := &mocks.Location{}
+			loc := mocks.NewLocation(s.T())
 			// Setup Exists() mock before creating poller
 			loc.EXPECT().Exists().Return(true, nil)
-			loc.EXPECT().URI().Return("file:///test/path")
 
 			poller, _ := NewPoller(loc)
 			tt.setupMocks(loc)
