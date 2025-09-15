@@ -120,7 +120,7 @@ func (lt *locationTestSuite) TestVolume() {
 
 	bucket := "c2fo-vfs-a"
 	loc, err := fs.NewLocation(bucket, "/")
-	lt.NoError(err)
+	lt.Require().NoError(err)
 	lt.Equal(bucket, loc.Volume(), "Volume() should return the bucket name on location.")
 }
 
@@ -130,15 +130,15 @@ func (lt *locationTestSuite) TestPath() {
 	fs := NewFileSystem(WithClient(server.Client()))
 
 	loc, err := fs.NewLocation("bucket", "/path/")
-	lt.NoError(err)
+	lt.Require().NoError(err)
 	lt.Equal("/path/", loc.Path(), "Path() should return the path on location.")
 
 	loc2, err2 := fs.NewLocation("bucket", "/path/../newpath/")
-	lt.NoError(err2)
+	lt.Require().NoError(err2)
 	lt.Equal("/newpath/", loc2.Path(), "Path() should return the path on location.")
 
 	loc3, err3 := fs.NewLocation("bucket", "/path/./to/")
-	lt.NoError(err3)
+	lt.Require().NoError(err3)
 	lt.Equal("/path/to/", loc3.Path(), "Path() should return the path on location.")
 }
 
@@ -148,7 +148,7 @@ func (lt *locationTestSuite) TestNewFile() {
 	fs := NewFileSystem(WithClient(server.Client()))
 
 	loc, err := fs.NewLocation("bucket", "/some/path/to/")
-	lt.NoError(err)
+	lt.Require().NoError(err)
 	lt.Equal("/some/path/to/", loc.Path(), "Path() should return the path on location.")
 
 	newfile, _ := loc.NewFile("a/file.txt")
@@ -160,27 +160,27 @@ func (lt *locationTestSuite) TestNewFile() {
 	// test nil pointer
 	var nilLoc *Location
 	_, err = nilLoc.NewFile("/path/to/file.txt")
-	lt.EqualError(err, "non-nil gs.Location pointer is required", "errors returned by NewFile")
+	lt.Require().EqualError(err, "non-nil gs.Location pointer is required", "errors returned by NewFile")
 
 	// test empty path error
 	_, err = loc.NewFile("")
-	lt.EqualError(err, "non-empty string filePath is required", "errors returned by NewFile")
+	lt.Require().EqualError(err, "non-empty string filePath is required", "errors returned by NewFile")
 
 	// test validation error
 	_, err = loc.NewFile("/absolute/path/to/file.txt")
-	lt.EqualError(err, utils.ErrBadRelFilePath, "errors returned by NewLocation")
+	lt.Require().EqualError(err, utils.ErrBadRelFilePath, "errors returned by NewLocation")
 
 	// new tests for location update
 	lt.Run("new file with relative path updates location", func() {
 		newFile, err := loc.NewFile("../newfile.txt")
-		lt.NoError(err)
+		lt.Require().NoError(err)
 		lt.Equal("/some/path/newfile.txt", newFile.Path(), "NewFile with relative path should update location correctly")
 		lt.Equal("/some/path/", newFile.Location().Path(), "NewFile with relative path should update location correctly")
 	})
 
 	lt.Run("new file with relative path to root", func() {
 		newFile, err := loc.NewFile("../../../../newrootfile.txt")
-		lt.NoError(err)
+		lt.Require().NoError(err)
 		lt.Equal("/newrootfile.txt", newFile.Path(), "NewFile with relative path to root should update location correctly")
 		lt.Equal("/", newFile.Location().Path(), "NewFile with relative path to root should update location correctly")
 	})
@@ -201,9 +201,9 @@ func (lt *locationTestSuite) TestExists_true() {
 	defer server.Stop()
 	fs := NewFileSystem(WithClient(server.Client()))
 	loc, err := fs.NewLocation(bucket, "/")
-	lt.NoError(err)
+	lt.Require().NoError(err)
 	exists, err := loc.Exists()
-	lt.NoError(err, "No error expected from Exists")
+	lt.Require().NoError(err, "No error expected from Exists")
 	lt.True(exists, "Call to Exists expected to return true.")
 }
 
@@ -213,9 +213,9 @@ func (lt *locationTestSuite) TestExists_false() {
 	fs := NewFileSystem(WithClient(server.Client()))
 	bucket := "foo"
 	loc, err := fs.NewLocation(bucket, "/")
-	lt.NoError(err)
+	lt.Require().NoError(err)
 	exists, err := loc.Exists()
-	lt.NoError(err, "No error expected from Exists")
+	lt.Require().NoError(err, "No error expected from Exists")
 	lt.False(exists, "Call to Exists expected to return true.")
 }
 
@@ -227,30 +227,30 @@ func (lt *locationTestSuite) TestChangeDir() {
 	// test nil Location
 	var nilLoc *Location
 	err := nilLoc.ChangeDir("path/to/")
-	lt.EqualErrorf(err, "non-nil gs.Location pointer is required", "error expected for nil location")
+	lt.Require().EqualErrorf(err, "non-nil gs.Location pointer is required", "error expected for nil location")
 
 	auth, err := authority.NewAuthority("bucket")
-	lt.NoError(err)
+	lt.Require().NoError(err)
 	loc := &Location{fileSystem: fs, prefix: "/", authority: auth}
 
 	err1 := loc.ChangeDir("../")
-	lt.NoError(err1, "no error expected")
+	lt.Require().NoError(err1, "no error expected")
 	lt.Equal("/", loc.Path())
 
 	err2 := loc.ChangeDir("hello/")
-	lt.NoError(err2, "no error expected")
+	lt.Require().NoError(err2, "no error expected")
 	lt.Equal("/hello/", loc.Path())
 
 	err3 := loc.ChangeDir("../.././../")
-	lt.NoError(err3, "no error expected")
+	lt.Require().NoError(err3, "no error expected")
 	lt.Equal("/", loc.Path())
 
 	err4 := loc.ChangeDir("here/is/a/path/")
-	lt.NoError(err4, "no error expected")
+	lt.Require().NoError(err4, "no error expected")
 	lt.Equal("/here/is/a/path/", loc.Path())
 
 	err5 := loc.ChangeDir("../")
-	lt.NoError(err5, "no error expected")
+	lt.Require().NoError(err5, "no error expected")
 	lt.Equal("/here/is/a/", loc.Path())
 }
 
@@ -260,28 +260,28 @@ func (lt *locationTestSuite) TestNewLocation() {
 	fs := NewFileSystem(WithClient(server.Client()))
 
 	loc, err := fs.NewLocation("bucket", "/old/")
-	lt.NoError(err)
+	lt.Require().NoError(err)
 	newLoc, err := loc.NewLocation("new/path/")
-	lt.NoError(err, "No error from successful call to NewLocation")
+	lt.Require().NoError(err, "No error from successful call to NewLocation")
 	lt.Equal("/old/new/path/", newLoc.Path(), "New location should have correct path set")
 	lt.Equal("/old/", loc.Path(), "Ensure original path is unchanged.")
 
 	newRelLoc, err := newLoc.NewLocation("../../some/path/")
-	lt.NoError(err)
+	lt.Require().NoError(err)
 	lt.Equal("/old/some/path/", newRelLoc.Path(), "NewLocation works with rel dot paths")
 
 	// test nil pointer
 	var nilLoc *Location
 	_, err = nilLoc.NewLocation("/path/to/")
-	lt.EqualError(err, "non-nil gs.Location pointer is required", "errors returned by NewLocation")
+	lt.Require().EqualError(err, "non-nil gs.Location pointer is required", "errors returned by NewLocation")
 
 	// test empty path error
 	_, err = loc.NewLocation("")
-	lt.EqualError(err, "non-empty string relativePath is required", "errors returned by NewLocation")
+	lt.Require().EqualError(err, "non-empty string relativePath is required", "errors returned by NewLocation")
 
 	// test validation error
 	_, err = loc.NewLocation("/absolute/path/to/")
-	lt.EqualError(err, utils.ErrBadRelLocationPath, "errors returned by NewLocation")
+	lt.Require().EqualError(err, utils.ErrBadRelLocationPath, "errors returned by NewLocation")
 }
 
 func (lt *locationTestSuite) TestStringURI() {
@@ -289,7 +289,7 @@ func (lt *locationTestSuite) TestStringURI() {
 	defer server.Stop()
 	fs := NewFileSystem(WithClient(server.Client()))
 	auth, err := authority.NewAuthority("mybucket")
-	lt.NoError(err)
+	lt.Require().NoError(err)
 	loc := &Location{fileSystem: fs, prefix: "some/path/to/location", authority: auth}
 	lt.Equal("gs://mybucket/some/path/to/location/", loc.String(), "uri is returned")
 }
@@ -310,16 +310,16 @@ func (lt *locationTestSuite) TestDeleteFile() {
 	fs := NewFileSystem(WithClient(server.Client()))
 
 	loc, err := fs.NewLocation(bucket, "/old/")
-	lt.NoError(err)
+	lt.Require().NoError(err)
 
 	lt.Run("delete existing", func() {
 		err = loc.DeleteFile("filename.txt")
-		lt.NoError(err, "Successful delete should not return an error.")
+		lt.Require().NoError(err, "Successful delete should not return an error.")
 	})
 
 	lt.Run("delete non-existing", func() {
 		err = loc.DeleteFile("filename.txt")
-		lt.Error(err, "Delete of non existing file should fail")
+		lt.Require().Error(err, "Delete of non existing file should fail")
 	})
 }
 

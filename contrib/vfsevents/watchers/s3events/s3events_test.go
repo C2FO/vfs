@@ -54,9 +54,9 @@ func (s *S3WatcherTestSuite) TestNewS3Watcher() {
 		s.Run(tt.name, func() {
 			_, err := NewS3Watcher(tt.queueURL)
 			if tt.wantErr {
-				s.Error(err)
+				s.Require().Error(err)
 			} else {
-				s.NoError(err)
+				s.Require().NoError(err)
 			}
 		})
 	}
@@ -83,14 +83,14 @@ func (s *S3WatcherTestSuite) TestStart() {
 			handler := func(event vfsevents.Event) {}
 			errHandler := func(err error) {
 				if tt.wantErr {
-					s.Error(err)
+					s.Require().Error(err)
 				} else {
-					s.NoError(err)
+					s.Require().NoError(err)
 				}
 			}
 			err := s.watcher.Start(ctx, handler, errHandler)
-			s.NoError(err)
-			s.NoError(s.watcher.Stop())
+			s.Require().NoError(err)
+			s.Require().NoError(s.watcher.Stop())
 		})
 	}
 }
@@ -299,9 +299,9 @@ func (s *S3WatcherTestSuite) TestPoll() {
 
 			err := s.watcher.pollOnce(context.TODO(), func(event vfsevents.Event) {}, status, config)
 			if tt.wantErr {
-				s.Error(err)
+				s.Require().Error(err)
 			} else {
-				s.NoError(err)
+				s.Require().NoError(err)
 			}
 		})
 	}
@@ -419,7 +419,7 @@ func (s *S3WatcherTestSuite) TestPollWithRetry() {
 
 			// Create watcher with retry configuration
 			watcher, err := NewS3Watcher("https://sqs.us-east-1.amazonaws.com/123456789012/my-queue", WithSqsClient(s.sqsClient))
-			s.NoError(err)
+			s.Require().NoError(err)
 
 			// Create start config with retry settings
 			config := &vfsevents.StartConfig{
@@ -525,7 +525,7 @@ func (s *S3WatcherTestSuite) TestWithReceivedCount() {
 			watcher, err := NewS3Watcher("https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
 				WithSqsClient(s.sqsClient),
 				WithReceivedCount(tt.receivedCount))
-			s.NoError(err)
+			s.Require().NoError(err)
 
 			// Create test S3 event
 			event := S3Event{
@@ -581,9 +581,9 @@ func (s *S3WatcherTestSuite) TestWithReceivedCount() {
 
 			err = watcher.pollOnce(context.Background(), handler, status, config)
 			if tt.expectError {
-				s.Error(err)
+				s.Require().Error(err)
 			} else {
-				s.NoError(err)
+				s.Require().NoError(err)
 			}
 
 			s.Equal(tt.expectMessageProcessed, handlerCalled,
@@ -598,7 +598,7 @@ func (s *S3WatcherTestSuite) TestWithReceivedCountNoAttributes() {
 	watcher, err := NewS3Watcher("https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
 		WithSqsClient(s.sqsClient),
 		WithReceivedCount(5))
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	event := S3Event{
 		Records: []S3Record{
@@ -643,7 +643,7 @@ func (s *S3WatcherTestSuite) TestWithReceivedCountNoAttributes() {
 	status := &vfsevents.WatcherStatus{}
 
 	err = watcher.pollOnce(context.Background(), handler, status, config)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.True(handlerCalled, "Handler should be called when no attributes are present")
 }
 
@@ -652,7 +652,7 @@ func (s *S3WatcherTestSuite) TestWithReceivedCountMissingAttribute() {
 	watcher, err := NewS3Watcher("https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
 		WithSqsClient(s.sqsClient),
 		WithReceivedCount(5))
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	event := S3Event{
 		Records: []S3Record{
@@ -700,7 +700,7 @@ func (s *S3WatcherTestSuite) TestWithReceivedCountMissingAttribute() {
 	status := &vfsevents.WatcherStatus{}
 
 	err = watcher.pollOnce(context.Background(), handler, status, config)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.True(handlerCalled, "Handler should be called when ApproximateReceiveCount attribute is missing")
 }
 
@@ -733,7 +733,7 @@ func (s *S3WatcherTestSuite) TestNewS3WatcherWithReceivedCount() {
 				WithSqsClient(s.sqsClient),
 				WithReceivedCount(tt.receivedCount))
 
-			s.NoError(err)
+			s.Require().NoError(err)
 			s.Equal(tt.expected, watcher.receivedCount, "receivedCount should be set correctly")
 		})
 	}
@@ -744,7 +744,7 @@ func (s *S3WatcherTestSuite) TestDefaultReceivedCount() {
 	watcher, err := NewS3Watcher("https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
 		WithSqsClient(s.sqsClient))
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Equal(5, watcher.receivedCount, "Default receivedCount should be 5")
 }
 

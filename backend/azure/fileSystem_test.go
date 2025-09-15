@@ -22,28 +22,28 @@ func (s *FileSystemTestSuite) TestVFSFileSystemImplementor() {
 func (s *FileSystemTestSuite) TestNewFile() {
 	fs := NewFileSystem()
 	file, err := fs.NewFile("", "")
-	s.EqualError(err, "non-empty strings for container and path are required", "volume and path are required")
+	s.Require().EqualError(err, "non-empty strings for container and path are required", "volume and path are required")
 	s.Nil(file)
 
 	fs = NewFileSystem()
 	file, err = fs.NewFile("temp", "")
-	s.EqualError(err, "non-empty strings for container and path are required", "volume and path are required")
+	s.Require().EqualError(err, "non-empty strings for container and path are required", "volume and path are required")
 	s.Nil(file)
 
 	fs = NewFileSystem()
 	file, err = fs.NewFile("", "/blah/blah.txt")
-	s.EqualError(err, "non-empty strings for container and path are required", "volume and path are required")
+	s.Require().EqualError(err, "non-empty strings for container and path are required", "volume and path are required")
 	s.Nil(file)
 
 	fs = NewFileSystem()
 	file, err = fs.NewFile("temp", "blah/blah.txt")
-	s.EqualError(err, "absolute file path is invalid - must include leading slash and may not include trailing slash",
+	s.Require().EqualError(err, "absolute file path is invalid - must include leading slash and may not include trailing slash",
 		"the path is invalid so we expect an error")
 	s.Nil(file, "Since an error was returned we expect a nil file to be returned")
 
 	fs = NewFileSystem()
 	file, err = fs.NewFile("temp", "/foo/bar/test.txt")
-	s.NoError(err, "The file path and volume are valid so we expect no errors")
+	s.Require().NoError(err, "The file path and volume are valid so we expect no errors")
 	s.NotNil(file, "No error was returned so we expect to get a non-nil file struct")
 	s.Equal("az://temp/foo/bar/test.txt", file.String())
 }
@@ -51,53 +51,54 @@ func (s *FileSystemTestSuite) TestNewFile() {
 func (s *FileSystemTestSuite) TestNewFile_NilReceiver() {
 	var fs *FileSystem
 	file, err := fs.NewFile("temp", "/foo/bar/test.txt")
-	s.EqualError(err, "azure.FileSystem receiver pointer must be non-nil", "the receiver pointer is nil so we would receive an error")
+	s.Require().EqualError(err, "azure.FileSystem receiver pointer must be non-nil",
+		"the receiver pointer is nil so we would receive an error")
 	s.Nil(file, "Since there was an error we expect a nil file to be returned")
 }
 
 func (s *FileSystemTestSuite) TestNewLocation() {
 	fs := NewFileSystem()
 	loc, err := fs.NewLocation("", "")
-	s.Error(err, "volume and path are required")
+	s.Require().Error(err, "volume and path are required")
 	s.Nil(loc, "volume and path are required")
 
 	fs = NewFileSystem()
 	loc, err = fs.NewLocation("", "/foo/bar/")
-	s.Error(err, "volume and path are required")
+	s.Require().Error(err, "volume and path are required")
 	s.Nil(loc, "volume and path are required")
 
 	fs = NewFileSystem()
 	loc, err = fs.NewLocation("temp", "")
-	s.Error(err, "volume and path are required")
+	s.Require().Error(err, "volume and path are required")
 	s.Nil(loc, "volume and path are required")
 
 	fs = NewFileSystem()
 	loc, err = fs.NewLocation("temp", "foo/bar/")
-	s.EqualError(err, "absolute location path is invalid - must include leading and trailing slashes",
+	s.Require().EqualError(err, "absolute location path is invalid - must include leading and trailing slashes",
 		"The path does not start with a slash and therefore not an absolute path so we expect an error")
 	s.Nil(loc, "Since an error was returned the location is nil")
 
 	fs = NewFileSystem()
 	loc, err = fs.NewLocation("temp", "/foo/bar")
-	s.EqualError(err, "absolute location path is invalid - must include leading and trailing slashes",
+	s.Require().EqualError(err, "absolute location path is invalid - must include leading and trailing slashes",
 		"The path does not end with a slash and therefore not an absolute path so we expect an error")
 	s.Nil(loc, "Since an error was returned the location is nil")
 
 	fs = NewFileSystem()
 	loc, err = fs.NewLocation("temp", "/foo/bar/")
-	s.NoError(err, "the path is valid so we expect no error")
+	s.Require().NoError(err, "the path is valid so we expect no error")
 	s.NotNil(loc, "Since there was no error we expect a non-nil location")
 	s.Equal("az://temp/foo/bar/", loc.String())
 
 	fs = NewFileSystem()
 	loc, err = fs.NewLocation("temp", "/path/../to/")
-	s.NoError(err, "the path is valid so we expect no error")
+	s.Require().NoError(err, "the path is valid so we expect no error")
 	s.NotNil(loc, "Since there was no error we expect a non-nil location")
 	s.Equal("az://temp/to/", loc.String())
 
 	fs = NewFileSystem()
 	loc, err = fs.NewLocation("temp", "/path/./to/")
-	s.NoError(err, "the path is valid so we expect no error")
+	s.Require().NoError(err, "the path is valid so we expect no error")
 	s.NotNil(loc, "Since there was no error we expect a non-nil location")
 	s.Equal("az://temp/path/to/", loc.String())
 }
@@ -105,7 +106,7 @@ func (s *FileSystemTestSuite) TestNewLocation() {
 func (s *FileSystemTestSuite) TestNewLocation_NilReceiver() {
 	var fs *FileSystem
 	loc, err := fs.NewLocation("temp", "/foo/bar/")
-	s.EqualError(err, "azure.FileSystem receiver pointer must be non-nil",
+	s.Require().EqualError(err, "azure.FileSystem receiver pointer must be non-nil",
 		"The receiver pointer on the function call is nil so we should get an error")
 	s.Nil(loc, "The call returned an error so the location should be nil")
 }
@@ -133,12 +134,12 @@ func (s *FileSystemTestSuite) TestRetry() {
 	retryFn := fs.Retry()
 	s.NotNil(retryFn)
 	err := retryFn(doNothing)
-	s.NoError(err, "The default retry function just calls the passed func")
+	s.Require().NoError(err, "The default retry function just calls the passed func")
 
 	fs = NewFileSystem(WithOptions(Options{RetryFunc: errorRetry}))
 	retryFn = fs.Retry()
 	err = retryFn(doNothing)
-	s.EqualError(err, "i always error", "This implementation should use the retry function from the options which always errors")
+	s.Require().EqualError(err, "i always error", "This implementation should use the retry function from the options which always errors")
 }
 
 func (s *FileSystemTestSuite) TestNewFileSystem() {

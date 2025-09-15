@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Regenerate mockery types with the latest version.
 - More reliable mock expectation assertions in unit tests.
 - Use the shared `utils.Ptr` func everywhere.
+- Enable testifylint in golangci-lint and fix associated issues.
 
 ## [contrib/vfsevents/v1.0.1] - 2025-08-05
 ### Fixed

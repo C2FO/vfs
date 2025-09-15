@@ -105,9 +105,9 @@ func (ts *fileTestSuite) TestRead() {
 
 	buffer := make([]byte, utils.TouchCopyMinBufferSize)
 	_, copyErr := io.CopyBuffer(localFile, file, buffer)
-	ts.NoError(copyErr, "no error expected")
+	ts.Require().NoError(copyErr, "no error expected")
 	closeErr := file.Close()
-	ts.NoError(closeErr, "no error expected")
+	ts.Require().NoError(closeErr, "no error expected")
 
 	ts.Equal(localFile.String(), contents, "Copying an gs file to a buffer should fill buffer with file's contents")
 }
@@ -168,7 +168,7 @@ func (ts *fileTestSuite) TestDeleteError() {
 	ts.Require().NoError(err, "Shouldn't fail creating new file")
 
 	err = file.Delete()
-	ts.Error(err, "Should return an error if gs client had error")
+	ts.Require().Error(err, "Should return an error if gs client had error")
 }
 
 func (ts *fileTestSuite) TestDeleteRemoveAllVersions() {
@@ -219,12 +219,12 @@ func (ts *fileTestSuite) TestWrite() {
 	fs := NewFileSystem(WithClient(server.Client()))
 
 	file, err := fs.NewFile(bucketName, "/"+objectName)
-	ts.NoError(err, "Shouldn't fail creating new file")
+	ts.Require().NoError(err, "Shouldn't fail creating new file")
 
 	count, err := file.Write([]byte(contents))
 
 	ts.Len(contents, count, "Returned count of bytes written should match number of bytes passed to Write.")
-	ts.NoError(err, "Error should be nil when calling Write")
+	ts.Require().NoError(err, "Error should be nil when calling Write")
 }
 
 func (ts *fileTestSuite) TestWriteWithContentType() {
@@ -241,13 +241,13 @@ func (ts *fileTestSuite) TestWriteWithContentType() {
 	fs := NewFileSystem(WithClient(client))
 
 	file, err := fs.NewFile(bucketName, "/"+objectName, newfile.WithContentType("text/plain"))
-	ts.NoError(err, "Shouldn't fail creating new file")
+	ts.Require().NoError(err, "Shouldn't fail creating new file")
 
 	_, err = file.Write([]byte(contents))
-	ts.NoError(err, "Error should be nil when calling Write")
+	ts.Require().NoError(err, "Error should be nil when calling Write")
 
 	err = file.Close()
-	ts.NoError(err, "Error should be nil when calling Close")
+	ts.Require().NoError(err, "Error should be nil when calling Close")
 
 	attrs, err := bucket.Object(objectName).Attrs(ctx)
 	ts.Require().NoError(err)
@@ -267,10 +267,10 @@ func (ts *fileTestSuite) TestTouchWithContentType() {
 	fs := NewFileSystem(WithClient(client))
 
 	file, err := fs.NewFile(bucketName, "/"+objectName, newfile.WithContentType("text/plain"))
-	ts.NoError(err, "Shouldn't fail creating new file")
+	ts.Require().NoError(err, "Shouldn't fail creating new file")
 
 	err = file.Touch()
-	ts.NoError(err, "Error should be nil when calling Touch")
+	ts.Require().NoError(err, "Error should be nil when calling Touch")
 
 	attrs, err := bucket.Object(objectName).Attrs(ctx)
 	ts.Require().NoError(err)
@@ -283,7 +283,7 @@ func (ts *fileTestSuite) TestGetLocation() {
 	fs := NewFileSystem(WithClient(server.Client()))
 
 	file, err := fs.NewFile("bucket", "/path/hello.txt")
-	ts.NoError(err, "Shouldn't fail creating new file.")
+	ts.Require().NoError(err, "Shouldn't fail creating new file.")
 
 	location := file.Location()
 	ts.Equal("gs", location.FileSystem().Scheme(), "Should initialize location with FS underlying file.")
@@ -313,7 +313,7 @@ func (ts *fileTestSuite) TestExists() {
 
 	exists, err := file.Exists()
 	ts.True(exists, "Should return true for exists based on this setup")
-	ts.NoError(err, "Shouldn't return an error when exists is true")
+	ts.Require().NoError(err, "Shouldn't return an error when exists is true")
 }
 
 func (ts *fileTestSuite) TestNotExists() {
@@ -326,7 +326,7 @@ func (ts *fileTestSuite) TestNotExists() {
 
 	exists, err := file.Exists()
 	ts.False(exists, "Should return false for exists based on setup")
-	ts.NoError(err, "Error from key not existing should be hidden since it just confirms it doesn't")
+	ts.Require().NoError(err, "Error from key not existing should be hidden since it just confirms it doesn't")
 }
 
 func (ts *fileTestSuite) TestMoveAndCopy() {
@@ -395,13 +395,13 @@ func (ts *fileTestSuite) TestMoveAndCopy() {
 			ts.False(fsFileNameExists(fs, sourceBucketName, targetName), "target should not exist")
 
 			sourceFile, err := fs.NewFile(sourceBucketName, "/"+sourceName)
-			ts.NoError(err)
+			ts.Require().NoError(err)
 			targetFile, err := fs.NewFile(targetBucketName, "/"+targetName)
-			ts.NoError(err)
+			ts.Require().NoError(err)
 
 			if testCase.readFirst {
 				_, err := io.ReadAll(sourceFile)
-				ts.NoError(err)
+				ts.Require().NoError(err)
 			}
 
 			if testCase.move {
@@ -411,9 +411,9 @@ func (ts *fileTestSuite) TestMoveAndCopy() {
 			}
 
 			if testCase.readFirst {
-				ts.Error(err, "Error should be returned for operation on file that has been read (i.e. has non 0 cursor position)")
+				ts.Require().Error(err, "Error should be returned for operation on file that has been read (i.e. has non 0 cursor position)")
 			} else {
-				ts.NoError(err, "Error shouldn't be returned from successful operation")
+				ts.Require().NoError(err, "Error shouldn't be returned from successful operation")
 
 				if testCase.move {
 					ts.False(objectExists(sourceBucket, sourceName), "source should not exist")
@@ -500,13 +500,13 @@ func (ts *fileTestSuite) TestMoveAndCopyBuffered() {
 			ts.False(fsFileNameExists(fs, sourceBucketName, targetName), "target should not exist")
 
 			sourceFile, err := fs.NewFile(sourceBucketName, "/"+sourceName)
-			ts.NoError(err)
+			ts.Require().NoError(err)
 			targetFile, err := fs.NewFile(targetBucketName, "/"+targetName)
-			ts.NoError(err)
+			ts.Require().NoError(err)
 
 			if testCase.readFirst {
 				_, err := io.ReadAll(sourceFile)
-				ts.NoError(err)
+				ts.Require().NoError(err)
 			}
 
 			if testCase.move {
@@ -516,9 +516,9 @@ func (ts *fileTestSuite) TestMoveAndCopyBuffered() {
 			}
 
 			if testCase.readFirst {
-				ts.Error(err, "Error should be returned for operation on file that has been read (i.e. has non 0 cursor position)")
+				ts.Require().Error(err, "Error should be returned for operation on file that has been read (i.e. has non 0 cursor position)")
 			} else {
-				ts.NoError(err, "Error shouldn't be returned from successful operation")
+				ts.Require().NoError(err, "Error shouldn't be returned from successful operation")
 
 				if testCase.move {
 					ts.False(objectExists(sourceBucket, sourceName), "source should not exist")
