@@ -116,7 +116,7 @@ ftp vfs backend defaults to "anonymous" if no username is provided in the author
 
 ## PASSWORD
 
-Passwords may be passed via Options.Password or via the environmental variable *VFS_FTP_PASSWORD*.  If not password is provided,
+Passwords may be passed via Options.Password or via the environmental variable *VFS_FTP_PASSWORD*.  If no password is provided,
 default is "anonymous".  Password precedence is default, env var, Options.Password, such that env var, if set, overrides default
 and Options.Password, if set, overrides env var.
 

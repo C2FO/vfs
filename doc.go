@@ -73,7 +73,7 @@ The project now uses the [aws-sdk-go-v2] library instead of the deprecated, EOL
     `https://<storage-account-name>.core.windows.net/<blob-container-name>/path/to/file.txt`.
 
 # GS Backend
-  - The Options.Retry field, with the now deprecated vfs.Retry type, has been moved to gs.FileSystem as the new gs.Retyer
+  - The Options.Retry field, with the now deprecated vfs.Retry type, has been moved to gs.FileSystem as the new gs.Retryer
     type.  It is now set via the gs.NewFileSystem() using functional option gs.WithRetryer.  All previous Retry usage has
     been replaced with gs.WithRetryer.  Update your code to use the new gs.WithRetryer functional option.
 

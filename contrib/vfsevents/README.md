@@ -400,7 +400,7 @@ func main() {
 
 ## Examples
 
-See the [examples](./examples/) directory for comprehensive usage examples including:
+See the [watchers](./watchers) directory for comprehensive usage examples including:
 - Basic file monitoring with VFS Poller
 - Real-time S3 event processing
 - GCS event handling with file operations

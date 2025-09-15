@@ -454,7 +454,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	return f.cursorPos, nil
 }
 
-// Write implements the standard for io.Writer.  Note that writes are not committed to S3 until CLose() is called.
+// Write implements the standard for io.Writer.  Note that writes are not committed to S3 until Close() is called.
 func (f *File) Write(data []byte) (int, error) {
 	// check/initialize for writer
 	err := f.initWriters()
@@ -618,7 +618,7 @@ func (f *File) isSameAuth(targetFile *File) (bool, types.ObjectCannedACL) {
 		ACL = targetOptions.ACL
 	}
 
-	// since accesskey and session token are mutually exclusive, one will be nil
+	// since access key and session token are mutually exclusive, one will be nil
 	// if both are the same, we're using the same credentials
 	isSameAccount := (fileOptions.AccessKeyID == targetOptions.AccessKeyID) && (fileOptions.SessionToken == targetOptions.SessionToken)
 
@@ -673,7 +673,7 @@ func uploadInput(f *File) *s3.PutObjectInput {
 }
 
 // WaitUntilFileExists attempts to ensure that a recently written file is available before moving on.  This is helpful for
-// attempting to overcome race conditions withe S3's "eventual consistency".
+// attempting to overcome race conditions with S3's "eventual consistency".
 // WaitUntilFileExists accepts vfs.File and an int representing the number of times to retry(once a second).
 // error is returned if the file is still not available after the specified retries.
 // nil is returned once the file is available.

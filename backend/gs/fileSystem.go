@@ -150,7 +150,7 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 // Deprecated: This method is deprecated and will be removed in a future release.
 // Use WithContext option:
 //
-//	fs := gs.NewFileSystem(WithContext(ctx)
+//	fs := gs.NewFileSystem(WithContext(ctx))
 //
 // instead of:
 //

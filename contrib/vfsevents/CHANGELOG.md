@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Fixed
 - Minor whitespace cleanup.
+- General spelling and grammar corrections.
 
 ## [contrib/vfsevents/v1.0.1] - 2025-08-05
 ### Fixed

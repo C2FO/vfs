@@ -655,7 +655,7 @@ func (s *memFileTest) TestWriteThenReadNoClose() {
 }
 
 // TestLastModified Writes to a file then retrieves the value that LastModified() returns and the lastModified value
-// stored in the File struct and compares them against eachother.  Successful if they are equal.
+// stored in the File struct and compares them against each other.  Successful if they are equal.
 func (s *memFileTest) TestLastModified() {
 	_, err := s.testFile.Write([]byte("Hello World!"))
 	s.NoError(err, "write did not work as expected!")
