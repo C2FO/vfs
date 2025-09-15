@@ -41,7 +41,6 @@ would have to be cast as ftp.FileSystem to use them.
 		  client, _ := _ftp.Dial("server.com:21")
 		  fs = ftp.NewFileSystem(ftp.WithClient(client))
 
-
 		  fs = ftp.NewFileSystem(
 			  fs.WithOptions(
 				  ftp.Options{
@@ -66,7 +65,6 @@ would have to be cast as ftp.FileSystem to use them.
 
 		  err = file.Close()
 		  #handle error
-
 	  }
 
 Note - this vfs implementation can have issues conducting simultaneous reads and writes on files created from the same filesystem. This can
@@ -118,7 +116,7 @@ ftp vfs backend defaults to "anonymous" if no username is provided in the author
 
 ## PASSWORD
 
-Passwords may be passed via Options.Password or via the environmental variable *VFS_FTP_PASSWORD*.  If not password is provided,
+Passwords may be passed via Options.Password or via the environmental variable *VFS_FTP_PASSWORD*.  If no password is provided,
 default is "anonymous".  Password precedence is default, env var, Options.Password, such that env var, if set, overrides default
 and Options.Password, if set, overrides env var.
 

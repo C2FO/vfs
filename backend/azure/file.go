@@ -29,7 +29,7 @@ type File struct {
 	isDirty  bool
 }
 
-// Close cleans up all the backing data structures used for reading/writing files.  This includes, closing the
+// Close cleans up all the backing data structures used for reading/writing files.  This includes closing the
 // temp file, uploading the contents of the temp file to Azure Blob Storage (if necessary), and calling Seek(0, 0).
 func (f *File) Close() error {
 	if f.tempFile != nil {

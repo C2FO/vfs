@@ -140,7 +140,7 @@ func (lt *locationTestSuite) TestListByPrefix() {
 			},
 		},
 		{
-			description:   "standard prefix - non found",
+			description:   "standard prefix - none found",
 			path:          "/some/path/",
 			prefix:        "blah",
 			resolvedPath:  "/some/path/",

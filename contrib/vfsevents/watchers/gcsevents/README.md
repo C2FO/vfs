@@ -33,7 +33,7 @@ When you overwrite a file in GCS (e.g., `gsutil cp new.txt gs://bucket/existing.
 
 **Why suppress the second event?**
 - **User-centric semantics**: You performed one action (overwrite), so you get one event
-- **Atomic operations**: One logical file operation = one event  
+- **Atomic operations**: One logical file operation = one event
 - **Intuitive behavior**: Overwrites appear as modifications (as expected)
 - **Reduced complexity**: Applications don't need to correlate multiple events for single operations
 - **Clean abstraction**: Hide cloud storage implementation details from file system users

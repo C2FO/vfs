@@ -93,7 +93,7 @@ func WithPubSubClient(client PubSubClient) Option {
 
 // NewGCSWatcher initializes a GCSWatcher with the given Pub/Sub projectID and subscriptionID.
 // It also accepts functional options to customize the watcher.
-// Note: The projectID and subscriptionID will be used to construct the fully-qualified subscription name
+// Note: The projectID and subscriptionID will be used to construct the fully qualified subscription name
 // "projects/{project}/subscriptions/{subscription}".
 func NewGCSWatcher(projectID, subscriptionID string, opts ...Option) (*GCSWatcher, error) {
 	if projectID == "" {

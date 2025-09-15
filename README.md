@@ -3,23 +3,23 @@
 [![GitHub tag](https://img.shields.io/github/tag/c2fo/vfs.svg?style=flat)](https://github.com/c2fo/vfs/releases)
 [![Build Status](https://travis-ci.org/C2FO/vfs.svg?branch=master)](https://travis-ci.org/C2FO/vfs)
 [![GoDoc](https://pkg.go.dev/badge/github.com/c2fo/vfs/v6?utm_source=godoc)](https://pkg.go.dev/github.com/c2fo/vfs/v7)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](License.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 [![Go Report Card](https://goreportcard.com/badge/github.com/c2fo/vfs)](https://goreportcard.com/report/github.com/c2fo/vfs)
 [![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)
 
 ## Overview
 
-*vfs* provides a unified interface for working with different storage backends (local OS, Azure, S3, GCS, SFTP, etc.) in 
-a consistent way. Rather than handling each backend independently, you interact with a core set of interfaces that 
+*vfs* provides a unified interface for working with different storage backends (local OS, Azure, S3, GCS, SFTP, etc.) in
+a consistent way. Rather than handling each backend independently, you interact with a core set of interfaces that
 abstract backend details. This allows you to:
 
-* Seamlessly read, write, and manage files across multiple storages.  
-* Treat remote or cloud-based paths as if they were local (e.g. using standard `io.Reader`/`io.Writer` interfaces).  
-* Simplify environment-agnostic development by keeping most logic backend-agnostic.  
+* Seamlessly read, write, and manage files across multiple storages.
+* Treat remote or cloud-based paths as if they were local (e.g. using standard `io.Reader`/`io.Writer` interfaces).
+* Simplify environment-agnostic development by keeping most logic backend-agnostic.
 * Plug in or mock storage functionality to facilitate testing and modular application design.
 
-By focusing on *[FileSystem](https://pkg.go.dev/github.com/c2fo/vfs/v7#FileSystem)*, 
-*[Location](https://pkg.go.dev/github.com/c2fo/vfs/v7#Location)*, and 
+By focusing on *[FileSystem](https://pkg.go.dev/github.com/c2fo/vfs/v7#FileSystem)*,
+*[Location](https://pkg.go.dev/github.com/c2fo/vfs/v7#Location)*, and
 *[File](https://pkg.go.dev/github.com/c2fo/vfs/v7#File)* interfaces, you can build reusable flows for file operations without
 needing to deeply understand each backend's specific APIs. Users can add or swap backends as needed, providing flexibility
 for hybrid or evolving storage requirements.
@@ -89,11 +89,11 @@ This snippet shows the basic setup: an osFile is created from a URI and written 
 
 ## FAQ
 
-**Q**: Why am I seeing an empty file when using `io.Copy` on some backends if my source is empty?  
+**Q**: Why am I seeing an empty file when using `io.Copy` on some backends if my source is empty?
 **A**: An empty `Reader` often means the backend doesn't write a file until data is actually written. Use `utils.TouchCopy` if you need to ensure a zero-byte file is created.
 
 **Q**: Will vfs v6 still be supported?
-**A**: Yes and no. We will continue to provide security patches and bug fixes for v6, but new features and enhancements 
+**A**: Yes and no. We will continue to provide security patches and bug fixes for v6, but new features and enhancements
 will be added to v7.
 
 **Q**: How long will v6 be supported?
@@ -111,7 +111,7 @@ The project now uses the `aws-sdk-go-v2` library instead of the deprecated, EOL 
 these changes to the S3 backend:
 
 - The S3 backend's `s3fs.Client()` function now returns an `s3.Client` which is a subset of AWS's sdk v2 functionality.
-  This change may require updates to your code if you were relying on client functionality not directly required by the 
+  This change may require updates to your code if you were relying on client functionality not directly required by the
   s3 vfs backend.
 - The `Option.Retry` field is now an `aws.Retryer` instead of a `request.Retry`. Ensure that your Option logic is
   compatible with the new type.
@@ -142,7 +142,6 @@ Additionally, we have added functional option interface, `FileSystemOption`, to 
 of backends. This interface allows for more complex configuration options to be passed to the via the `NewFileSystem` function.
 This will replace backend-specific chainable functions that require casting the filesystem to the backend type first. See [#238](https://github.com/C2FO/vfs/issues/238).
 
-
 ### Upgrading from v5 to v6
 
 With `v6`, sftp.Options struct changed to accept an array of Key Exchange algorithms rather than a string. To update,
@@ -157,7 +156,6 @@ becomes
 ```
   "keyExchanges":["diffie-hellman-group-a256"]
 ```
-
 
 ## Contributing
 

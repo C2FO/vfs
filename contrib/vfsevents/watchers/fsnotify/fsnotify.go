@@ -136,7 +136,6 @@ func (w *FSNotifyWatcher) Start(
 	handler vfsevents.HandlerFunc,
 	errHandler vfsevents.ErrorHandlerFunc,
 	opts ...vfsevents.StartOption) error {
-
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -289,7 +288,6 @@ func (w *FSNotifyWatcher) watchLoop(
 	errHandler vfsevents.ErrorHandlerFunc,
 	status *vfsevents.WatcherStatus,
 	config *vfsevents.StartConfig) {
-
 	for {
 		select {
 		case <-ctx.Done():

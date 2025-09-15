@@ -186,7 +186,7 @@ func main() {
     }
 
     // Create FSNotify watcher with recursive watching
-    watcher, err := fsnotify.NewFSNotifyWatcher(location, 
+    watcher, err := fsnotify.NewFSNotifyWatcher(location,
         fsnotify.WithRecursive(true))
     if err != nil {
         log.Fatal(err)
@@ -194,9 +194,9 @@ func main() {
 
     // Define event handler
     eventHandler := func(event vfsevents.Event) {
-        fmt.Printf("FSNotify Event: %s on %s\n", 
+        fmt.Printf("FSNotify Event: %s on %s\n",
             event.Type.String(), event.URI)
-        
+
         // Access FSNotify-specific metadata
         if path, exists := event.Metadata["path"]; exists {
             fmt.Printf("Local path: %s\n", path)
@@ -213,7 +213,7 @@ func main() {
     err = watcher.Start(ctx, eventHandler, errorHandler,
         vfsevents.WithEventFilter(func(e vfsevents.Event) bool {
             // Only process .txt and .log files
-            return strings.HasSuffix(e.URI, ".txt") || 
+            return strings.HasSuffix(e.URI, ".txt") ||
                    strings.HasSuffix(e.URI, ".log")
         }),
         vfsevents.WithStatusCallback(func(status vfsevents.WatcherStatus) {
@@ -268,9 +268,9 @@ func main() {
 
     // Define handlers
     eventHandler := func(event vfsevents.Event) {
-        fmt.Printf("VFS Event: %s on %s at %s\n", 
-            event.Type.String(), 
-            event.URI, 
+        fmt.Printf("VFS Event: %s on %s at %s\n",
+            event.Type.String(),
+            event.URI,
             time.Unix(event.Timestamp, 0).Format("2006-01-02 15:04:05"))
     }
 
@@ -323,7 +323,7 @@ func main() {
     // Define handlers
     eventHandler := func(event vfsevents.Event) {
         fmt.Printf("S3 Event: %s on %s\n", event.Type.String(), event.URI)
-        
+
         // Access S3-specific metadata
         if bucketName, exists := event.Metadata["bucketName"]; exists {
             fmt.Printf("Bucket: %s\n", bucketName)
@@ -373,7 +373,7 @@ func main() {
     // Define handlers
     eventHandler := func(event vfsevents.Event) {
         fmt.Printf("GCS Event: %s on %s\n", event.Type.String(), event.URI)
-        
+
         // Access GCS-specific metadata
         if objectName, exists := event.Metadata["objectName"]; exists {
             fmt.Printf("Object: %s\n", objectName)
@@ -400,7 +400,7 @@ func main() {
 
 ## Examples
 
-See the [examples](./examples/) directory for comprehensive usage examples including:
+See the [watchers](./watchers) directory for comprehensive usage examples including:
 - Basic file monitoring with VFS Poller
 - Real-time S3 event processing
 - GCS event handling with file operations
