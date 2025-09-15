@@ -474,9 +474,9 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 
 			// Verify consecutive errors tracking
 			if tt.wantErr && tt.wantRetryCount > 0 {
-				s.Greater(status.ConsecutiveErrors, int64(0))
+				s.Positive(status.ConsecutiveErrors)
 			} else if !tt.wantErr {
-				s.Equal(int64(0), status.ConsecutiveErrors)
+				s.Zero(status.ConsecutiveErrors)
 			}
 		})
 	}

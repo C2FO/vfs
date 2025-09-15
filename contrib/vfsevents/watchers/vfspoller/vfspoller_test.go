@@ -416,7 +416,7 @@ func (s *PollerTestSuite) TestPollWithRetry() {
 			// Verify retry timing for retry scenarios
 			if tt.retryConfig.Enabled && status.RetryAttempts > 0 {
 				expectedMinTime := time.Duration(status.RetryAttempts) * tt.retryConfig.InitialBackoff / 2 // Account for jitter
-				s.True(elapsed >= expectedMinTime, "Retry backoff timing too short: %v < %v", elapsed, expectedMinTime)
+				s.GreaterOrEqual(elapsed, expectedMinTime, "Retry backoff timing too short")
 			}
 		})
 	}

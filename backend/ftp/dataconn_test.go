@@ -60,7 +60,7 @@ func (s *dataConnSuite) TestGetDataConn_alreadyExists() {
 		types.OpenRead,
 	)
 	s.NoError(err, "no error expected")
-	s.IsTypef(&dataConn{}, dc, "dataconn returned")
+	s.IsTypef((*dataConn)(nil), dc, "dataconn returned")
 }
 
 func (s *dataConnSuite) TestGetDataConn_openForRead() {
@@ -77,7 +77,7 @@ func (s *dataConnSuite) TestGetDataConn_openForRead() {
 		types.OpenRead,
 	)
 	s.NoError(err, "no error expected")
-	s.IsTypef(&dataConn{}, dc, "dataconn returned")
+	s.IsTypef((*dataConn)(nil), dc, "dataconn returned")
 }
 
 func (s *dataConnSuite) TestGetDataConn_errorClientSetup() {
@@ -222,7 +222,7 @@ func (s *dataConnSuite) TestGetDataConn_writeSuccess() {
 		types.OpenWrite,
 	)
 	s.NoError(err, "no error expected")
-	s.IsTypef(&dataConn{}, dc, "dataconn returned")
+	s.IsTypef((*dataConn)(nil), dc, "dataconn returned")
 
 	// brief sleep to ensure goroutines running StorFrom can all complete
 	time.Sleep(50 * time.Millisecond)
@@ -272,7 +272,7 @@ func (s *dataConnSuite) TestGetDataConn_writeAfterReadSuccess() {
 		types.OpenWrite,
 	)
 	s.NoError(err, "no error expected")
-	s.IsTypef(&dataConn{}, dc, "dataconn returned")
+	s.IsTypef((*dataConn)(nil), dc, "dataconn returned")
 
 	// brief sleep to ensure goroutines running StorFrom can all complete
 	time.Sleep(50 * time.Millisecond)

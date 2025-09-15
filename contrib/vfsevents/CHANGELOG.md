@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Fixed
+- Use more appropriate unit test assertion patterns where possible.
 - Minor whitespace cleanup.
 - General spelling and grammar corrections.
 - More reliable mock expectation assertions in unit tests.

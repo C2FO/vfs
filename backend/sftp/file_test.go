@@ -69,7 +69,7 @@ func (ts *fileTestSuite) TestRead() {
 	buffer := make([]byte, utils.TouchCopyMinBufferSize)
 	b, copyErr := io.CopyBuffer(localFile, sftpfile, buffer)
 	ts.NoError(copyErr, "no error expected")
-	ts.Equal(b, int64(12), "byte count after copy")
+	ts.Equal(int64(12), b, "byte count after copy")
 	ts.NoError(sftpfile.Close(), "no error expected")
 	ts.Equal(localFile.String(), contents, "Copying an sftp file to a buffer should fill buffer with localfile's contents")
 }
@@ -207,7 +207,7 @@ func (ts *fileTestSuite) Test_openFile() {
 			_, err = file._open(tt.flags)
 			if tt.expectedError {
 				ts.Error(err)
-				ts.Contains(err.Error(), tt.expectedErrMsg)
+				ts.ErrorContains(err, tt.expectedErrMsg)
 			} else {
 				ts.NoError(err)
 			}
@@ -729,6 +729,7 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	ts.NoError(err, "Error shouldn't be returned from successful call to CopyToFile")
 
 	ts.Equal(newFile.URI(), "sftp://user@host2.com:22/some/other/path.txt", "new file uri check")
+
 }
 
 func (ts *fileTestSuite) TestTouch() {
@@ -921,7 +922,7 @@ func (ts *fileTestSuite) TestNewFile() {
 	key := "/path/to/file"
 	sftpFile, err := fs.NewFile(authorityStr, key)
 	ts.NoError(err, "newFile should succeed")
-	ts.IsType(&File{}, sftpFile, "newFile returned a File struct")
+	ts.IsType((*File)(nil), sftpFile, "newFile returned a File struct")
 	ts.Equal(authorityStr, sftpFile.Location().Authority().String())
 	ts.Equal(key, sftpFile.Path())
 }
@@ -986,7 +987,7 @@ func (ts *fileTestSuite) TestSetDefaultPermissions() {
 			err := file.setPermissions(tests[i].client, tests[i].options)
 			if tests[i].expectedError {
 				ts.Error(err)
-				ts.Contains(err.Error(), tests[i].expectedErrMsg)
+				ts.ErrorContains(err, tests[i].expectedErrMsg)
 			} else {
 				ts.NoError(err)
 			}

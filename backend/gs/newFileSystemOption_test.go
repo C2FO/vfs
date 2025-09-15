@@ -47,5 +47,5 @@ func TestWithRetryer(t *testing.T) {
 	opt.Apply(fs)
 
 	assert.NotNil(t, fs.retryer, "Retryer should not be nil")
-	assert.True(t, reflect.ValueOf(retryer).Pointer() == reflect.ValueOf(fs.retryer).Pointer(), "Retryer should be set correctly")
+	assert.Equal(t, reflect.ValueOf(retryer).Pointer(), reflect.ValueOf(fs.retryer).Pointer(), "Retryer should be set correctly")
 }
