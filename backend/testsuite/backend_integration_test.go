@@ -32,8 +32,8 @@ type vfsTestSuite struct {
 	testLocations map[string]vfs.Location
 }
 
-func buildExpectedURI(fs vfs.FileSystem, authorityStr, path string) string {
-	return fmt.Sprintf("%s://%s%s", fs.Scheme(), authorityStr, path)
+func buildExpectedURI(fs vfs.FileSystem, authorityStr, p string) string {
+	return fmt.Sprintf("%s://%s%s", fs.Scheme(), authorityStr, p)
 }
 
 func (s *vfsTestSuite) SetupSuite() {
@@ -194,7 +194,8 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 		loc, err := srcLoc.NewLocation(name)
 		if validates {
 			s.NoError(err, "there should be no error")
-			expected := buildExpectedURI(srcLoc.FileSystem(), baseLoc.Authority().String(), utils.EnsureTrailingSlash(path.Clean(path.Join(srcLoc.Path(), name))))
+			expected := buildExpectedURI(srcLoc.FileSystem(), baseLoc.Authority().String(),
+				utils.EnsureTrailingSlash(path.Clean(path.Join(srcLoc.Path(), name))))
 			s.Equal(expected, loc.URI(), "uri's should match")
 		} else {
 			s.Error(err, "should have validation error for scheme and name: %s : %s", srcLoc.FileSystem().Scheme(), name)
@@ -247,10 +248,14 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 	cdTestLoc, err := srcLoc.NewLocation("chdirTest/")
 	s.NoError(err)
 
-	s.Error(cdTestLoc.ChangeDir(""), "empty string should error")
-	s.Error(cdTestLoc.ChangeDir("/home/"), "absolute path should error")
-	s.Error(cdTestLoc.ChangeDir("file.txt"), "file should error")
-	s.NoError(cdTestLoc.ChangeDir("l1dir1/./l2dir1/../l2dir2/"), "should be no error for relative path")
+	cdTestLoc, err = cdTestLoc.NewLocation("")
+	s.Error(err, "empty string should error")
+	cdTestLoc, err = cdTestLoc.NewLocation("/home/")
+	s.Error(err, "absolute path should error")
+	cdTestLoc, err = cdTestLoc.NewLocation("file.txt")
+	s.Error(err, "file should error")
+	cdTestLoc, err = cdTestLoc.NewLocation("l1dir1/./l2dir1/../l2dir2/")
+	s.NoError(err, "should be no error for relative path")
 
 	// Path returns absolute location path, ie /some/path/to/.
 	//	==== Path() string
@@ -490,7 +495,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 		fmt.Stringer
 	*/
 	s.Equal(baseLoc.URI()+"fileTestSrc/srcFile.txt", srcFile.String(), "string(er) explicit test")
-	s.Equal(baseLoc.URI()+"fileTestSrc/srcFile.txt", fmt.Sprintf("%s", srcFile), "string(er) implicit test")
+	s.Equal(baseLoc.URI()+"fileTestSrc/srcFile.txt", fmt.Sprintf("%s", srcFile), "string(er) implicit test") //nolint:gocritic,staticcheck
 
 	/*
 		Size returns the size of the file in bytes.
@@ -541,16 +546,16 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 		dstLoc, err := testLoc.NewLocation("dstLoc/")
 		s.NoError(err)
 		fmt.Printf("** location %s **\n", dstLoc)
-		defer func() {
-			// clean up dstLoc after test for OS
-			if dstLoc.FileSystem().Scheme() == "file" {
+		if dstLoc.FileSystem().Scheme() == "file" {
+			s.T().Cleanup(func() {
+				// clean up dstLoc after test for OS
 				exists, err := dstLoc.Exists()
 				s.Require().NoError(err)
 				if exists {
 					s.NoError(os.RemoveAll(dstLoc.Path()), "failed to clean up file test dstLoc")
 				}
-			}
-		}()
+			})
+		}
 
 		// CopyToLocation will copy the current file to the provided location.
 		//
@@ -918,62 +923,6 @@ func (s *vfsTestSuite) gsList(baseLoc vfs.Location) {
 	// CLEAN UP
 	s.NoError(f.Delete(), "clean up file.txt")
 	s.NoError(objHandle.Delete(ctx))
-}
-
-func sftpRemoveAll(location *sftp.Location) error {
-	// get sftp client from FileSystem
-	client, err := location.FileSystem().(*sftp.FileSystem).Client(location.Authority())
-	if err != nil {
-		return err
-	}
-
-	// recursively remove directory
-	return recursiveSFTPRemove(location.Path(), client)
-}
-
-func recursiveSFTPRemove(absPath string, client sftp.Client) error {
-	// we can return early if we can just remove it
-	err := client.Remove(absPath)
-	// if we succeeded or it didn't exist, just return
-	if err == nil || os.IsNotExist(err) {
-		// success
-		return nil
-	}
-
-	// handle error unless it was directory which we'll assume we couldn't delete because it isn't empty
-	if !strings.HasSuffix(absPath, "/") {
-		// not a directory (file's should have already been deleted) so return err
-		return err
-	}
-
-	// Remove child objects in directory
-	children, err := client.ReadDir(absPath)
-	if err != nil {
-		return err
-	}
-
-	var rErr error
-	for _, child := range children {
-		childName := child.Name()
-		// TODO: what about symlinks to directories? we're not recursing into them, which I think is right
-		//      if we need to, we'd do:
-		//          if child.Mode() & ModeSymLink != 0 {
-		// 	          do something
-		// 	        }
-		if child.IsDir() {
-			childName = utils.EnsureTrailingSlash(childName)
-		}
-		err := recursiveSFTPRemove(absPath+childName, client)
-		if err != nil {
-			rErr = err
-		}
-	}
-	if rErr != nil {
-		return rErr
-	}
-
-	// try to remove the object again
-	return client.Remove(absPath)
 }
 
 func TestVFS(t *testing.T) {

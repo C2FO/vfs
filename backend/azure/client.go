@@ -15,9 +15,9 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blockblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
-	"github.com/c2fo/vfs/v7/backend/azure/types"
 
 	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend/azure/types"
 	"github.com/c2fo/vfs/v7/utils"
 )
 
