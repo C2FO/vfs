@@ -290,7 +290,7 @@ func (s *FileTestSuite) TestTouch() {
 	s.NoError(f.Touch())
 }
 
-func (s *FileTestSuite) TestTouch_NonexistentContainer() {
+func (s *FileTestSuite) TestTouch_NonExistentContainer() {
 	client := MockAzureClient{ExpectedError: errors.New("i always error")}
 	fs := NewFileSystem(WithClient(&client))
 

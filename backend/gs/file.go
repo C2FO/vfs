@@ -249,7 +249,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	return f.cursorPos, nil
 }
 
-// Write implements the standard for io.Writer.  Note that writes are not committed to GCS until CLose() is called.
+// Write implements the standard for io.Writer.  Note that writes are not committed to GCS until Close() is called.
 func (f *File) Write(data []byte) (int, error) {
 	// Here, we initialize both a tempFileWriter and a gcsWriter if they haven't been initialized yet.
 	// Then write to both the local tempFileWriter and the gcsWriter stream.  We do this on the unlikely chance

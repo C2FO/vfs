@@ -359,7 +359,7 @@ func (ts *fileTestSuite) TestSeekError() {
 	client.AssertExpectations(ts.T())
 }
 
-func (ts *fileTestSuite) TestExists_noMlst() {
+func (ts *fileTestSuite) TestExists_noMLST() {
 	ftpfile, err := ts.fs.NewFile("user@host.com", "/path/hello.txt")
 	ts.Require().NoError(err, "Shouldn't fail creating new file.")
 
@@ -392,7 +392,7 @@ func (ts *fileTestSuite) TestExists_noMlst() {
 	ts.False(exists, "exists should be false on error")
 }
 
-func (ts *fileTestSuite) TestExists_mlst() {
+func (ts *fileTestSuite) TestExists_MLST() {
 	ftpfile, err := ts.fs.NewFile("user@host.com", "/path/hello.txt")
 	ts.Require().NoError(err, "Shouldn't fail creating new file.")
 
@@ -423,7 +423,7 @@ func (ts *fileTestSuite) TestExists_mlst() {
 	ts.False(exists, "exists should be false on error")
 }
 
-func (ts *fileTestSuite) TestNotExists_noMlst() {
+func (ts *fileTestSuite) TestNotExists_noMLST() {
 	ftpfile, err := ts.fs.NewFile("user@host.com", "/path/hello.txt")
 	ts.Require().NoError(err, "Shouldn't fail creating new file.")
 
@@ -439,7 +439,7 @@ func (ts *fileTestSuite) TestNotExists_noMlst() {
 	ts.NoError(err, "Error from key not existing should be hidden since it just confirms it doesn't")
 }
 
-func (ts *fileTestSuite) TestNotExists_mlst() {
+func (ts *fileTestSuite) TestNotExists_MLST() {
 	ftpfile, err := ts.fs.NewFile("user@host.com", "/path/hello.txt")
 	ts.Require().NoError(err, "Shouldn't fail creating new file.")
 
@@ -1300,7 +1300,7 @@ func (f *FakeDataConn) AssertSingleOpErr(err error) {
 	f.singleOpErr = err
 }
 
-func (f *FakeDataConn) AssertMlst(mlst bool) {
+func (f *FakeDataConn) AssertMLST(mlst bool) {
 	f.mlst = mlst
 }
 
