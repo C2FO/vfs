@@ -12,7 +12,7 @@ tasks:
 
   - name: "Run golangci-lint"
     default_selected: true
-    command: "golangci-lint run --max-same-issues 0 ./..."
+    command: "golangci-lint run --max-same-issues 0 --build-tags=vfsintegration ./..."
     per_module: true
     working_dir: "{{.module_root}}"
 
