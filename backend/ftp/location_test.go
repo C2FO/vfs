@@ -83,8 +83,6 @@ func (lt *locationTestSuite) TestList() {
 	lt.Error(err, "error expected")
 	lt.ErrorIs(err, errClientGetter, "err should be correct type")
 	lt.Nil(fileList, "fileList should be nil")
-
-	lt.client.AssertExpectations(lt.T())
 }
 
 func (lt *locationTestSuite) TestListByPrefix() {
@@ -238,7 +236,6 @@ func (lt *locationTestSuite) TestListByPrefix() {
 	lt.Error(err, "error expected")
 	lt.ErrorIs(err, errClientGetter, "err should be correct type")
 	lt.Equal(expectedEmptyStringSlice, fileList, "fileList should be empty string slice")
-	lt.client.AssertExpectations(lt.T())
 
 	// error calling client.List()
 	loc.(*Location).fileSystem.WithClient(lt.client)
@@ -251,8 +248,6 @@ func (lt *locationTestSuite) TestListByPrefix() {
 	lt.Error(err, "error expected")
 	lt.ErrorIs(err, listErr, "err should be correct type")
 	lt.Equal(expectedEmptyStringSlice, fileList, "fileList should be empty string slice")
-
-	lt.client.AssertExpectations(lt.T())
 }
 
 func (lt *locationTestSuite) TestListByRegex() {
@@ -311,8 +306,6 @@ func (lt *locationTestSuite) TestListByRegex() {
 	lt.Error(err, "error is expected")
 	lt.ErrorIs(err, listErr, "error is right kind of error")
 	lt.Nil(fileList)
-
-	lt.client.AssertExpectations(lt.T())
 }
 
 func (lt *locationTestSuite) TestURI() {
@@ -492,8 +485,6 @@ func (lt *locationTestSuite) TestExists() {
 	lt.Error(err, "error expected")
 	lt.ErrorIs(err, errClientGetter, "err should be correct type")
 	lt.False(exists, "exists should be false on error")
-
-	lt.client.AssertExpectations(lt.T())
 }
 
 func (lt *locationTestSuite) TestChangeDir() {
@@ -561,8 +552,6 @@ func (lt *locationTestSuite) TestDeleteFile() {
 	err = loc.DeleteFile("")
 	lt.Error(err, "failed delete")
 	lt.ErrorContains(err, utils.ErrBadRelFilePath, "failed delete")
-
-	lt.client.AssertExpectations(lt.T())
 }
 
 func TestLocation(t *testing.T) {

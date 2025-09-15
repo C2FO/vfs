@@ -24,7 +24,7 @@ type locationTestSuite struct {
 }
 
 func (lt *locationTestSuite) SetupTest() {
-	lt.s3cliMock = &mocks.Client{}
+	lt.s3cliMock = mocks.NewClient(lt.T())
 	lt.fs = &FileSystem{client: lt.s3cliMock}
 }
 
@@ -54,7 +54,6 @@ func (lt *locationTestSuite) TestList() {
 	for _, fileKey := range fileList {
 		lt.Contains(expectedFileList, fileKey, "All returned keys should be in expected file list.")
 	}
-	lt.s3cliMock.AssertExpectations(lt.T())
 }
 
 func (lt *locationTestSuite) TestList_pagedCall() {
@@ -77,7 +76,7 @@ func (lt *locationTestSuite) TestList_pagedCall() {
 		IsTruncated: &isTruncatedTrue,
 		NextMarker:  &firstCallOutputMarker,
 		Prefix:      &prefix,
-	}, nil)
+	}, nil).Once()
 
 	lt.s3cliMock.On("ListObjects", matchContext, &s3.ListObjectsInput{
 		Bucket:    &bucket,
@@ -88,7 +87,7 @@ func (lt *locationTestSuite) TestList_pagedCall() {
 		Contents:    convertKeysToS3Objects(secondKeyList),
 		IsTruncated: &isTruncatedFalse,
 		Prefix:      &prefix,
-	}, nil)
+	}, nil).Once()
 
 	loc, err := lt.fs.NewLocation(bucket, locPath)
 	lt.NoError(err)
@@ -98,7 +97,6 @@ func (lt *locationTestSuite) TestList_pagedCall() {
 	for _, expectedKey := range expectedFileList {
 		lt.Contains(fileList, expectedKey, "All returned keys should be in expected file list.")
 	}
-	lt.s3cliMock.AssertNumberOfCalls(lt.T(), "ListObjects", 2)
 }
 
 func (lt *locationTestSuite) TestListByPrefix() {
@@ -127,7 +125,6 @@ func (lt *locationTestSuite) TestListByPrefix() {
 	for _, fileKey := range fileList {
 		lt.Contains(expectedFileList, fileKey, "All returned keys should be in the expected list.")
 	}
-	lt.s3cliMock.AssertExpectations(lt.T())
 }
 
 func (lt *locationTestSuite) TestListByRegex() {
@@ -157,7 +154,6 @@ func (lt *locationTestSuite) TestListByRegex() {
 	for _, fileKey := range fileList {
 		lt.Contains(expectedFileList, fileKey, "All returned keys should be in the expected list.")
 	}
-	lt.s3cliMock.AssertExpectations(lt.T())
 }
 
 //nolint:staticcheck // deprecated method test
@@ -232,7 +228,6 @@ func (lt *locationTestSuite) TestExists_true() {
 	exists, err := loc.Exists()
 	lt.NoError(err, "No error expected from Exists")
 	lt.True(exists, "Call to Exists expected to return true.")
-	lt.s3cliMock.AssertExpectations(lt.T())
 }
 
 func (lt *locationTestSuite) TestExists_false() {
@@ -245,7 +240,6 @@ func (lt *locationTestSuite) TestExists_false() {
 	exists, err := loc.Exists()
 	lt.NoError(err, "No error expected from Exists")
 	lt.False(exists, "Call to Exists expected to return true.")
-	lt.s3cliMock.AssertExpectations(lt.T())
 }
 
 func (lt *locationTestSuite) TestChangeDir() {
@@ -319,7 +313,6 @@ func (lt *locationTestSuite) TestDeleteFile() {
 
 	err = loc.DeleteFile("filename.txt")
 	lt.NoError(err, "Successful delete should not return an error.")
-	lt.s3cliMock.AssertExpectations(lt.T())
 }
 
 func (lt *locationTestSuite) TestDeleteFileWithAllVersionsOption() {
@@ -332,14 +325,13 @@ func (lt *locationTestSuite) TestDeleteFileWithAllVersionsOption() {
 		Versions: versions,
 	}
 	lt.s3cliMock.On("ListObjectVersions", matchContext, mock.AnythingOfType("*s3.ListObjectVersionsInput")).Return(&versOutput, nil)
-	lt.s3cliMock.On("DeleteObject", matchContext, mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
+	lt.s3cliMock.On("DeleteObject", matchContext, mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil).Times(3)
 	loc, err := lt.fs.NewLocation("bucket", "/old/")
 	lt.NoError(err)
 
 	err = loc.DeleteFile("filename.txt", delete.WithAllVersions())
 	lt.NoError(err, "Successful delete should not return an error.")
 	lt.s3cliMock.AssertExpectations(lt.T())
-	lt.s3cliMock.AssertNumberOfCalls(lt.T(), "DeleteObject", 3)
 }
 
 func TestLocation(t *testing.T) {
