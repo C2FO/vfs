@@ -7,8 +7,12 @@ type Error string
 func (e Error) Error() string { return string(e) }
 
 const (
+	// ErrCopyToNotPossible - CopyTo/MoveTo operations are only possible when seek position is 0,0
+	ErrCopyToNotPossible = Error("current cursor offset is not 0 as required for this operation")
+
 	// CopyToNotPossible - CopyTo/MoveTo operations are only possible when seek position is 0,0
-	CopyToNotPossible = Error("current cursor offset is not 0 as required for this operation")
+	// Deprecated: Use ErrCopyToNotPossible instead
+	CopyToNotPossible = ErrCopyToNotPossible //nolint:errname
 
 	// ErrNotExist - File does not exist
 	ErrNotExist = Error("file does not exist")

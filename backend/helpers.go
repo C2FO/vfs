@@ -16,7 +16,7 @@ func ValidateCopySeekPosition(f vfs.File) error {
 		return fmt.Errorf("failed to determine current cursor offset: %w", err)
 	}
 	if offset != 0 {
-		return vfs.CopyToNotPossible
+		return vfs.ErrCopyToNotPossible
 	}
 
 	return nil

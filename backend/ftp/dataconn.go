@@ -25,7 +25,7 @@ type dataConn struct {
 // in a single op connection.
 func (dc *dataConn) Delete(path string) error {
 	if dc.mode != types.SingleOp {
-		return singleOpInvalidDataconnType
+		return errDataconnSingleOpInvalid
 	}
 	return dc.c.Delete(path)
 }
@@ -35,7 +35,7 @@ func (dc *dataConn) Delete(path string) error {
 // in a single op connection.
 func (dc *dataConn) GetEntry(p string) (*_ftp.Entry, error) {
 	if dc.mode != types.SingleOp {
-		return nil, singleOpInvalidDataconnType
+		return nil, errDataconnSingleOpInvalid
 	}
 	return dc.c.GetEntry(p)
 }
@@ -43,7 +43,7 @@ func (dc *dataConn) GetEntry(p string) (*_ftp.Entry, error) {
 // List conducts an FTP list for the given path. Only allowed in a single op connection.
 func (dc *dataConn) List(p string) ([]*_ftp.Entry, error) {
 	if dc.mode != types.SingleOp {
-		return nil, singleOpInvalidDataconnType
+		return nil, errDataconnSingleOpInvalid
 	}
 	return dc.c.List(p)
 }
@@ -52,7 +52,7 @@ func (dc *dataConn) List(p string) ([]*_ftp.Entry, error) {
 // Only allowed in a single op connection.
 func (dc *dataConn) MakeDir(path string) error {
 	if dc.mode != types.SingleOp {
-		return singleOpInvalidDataconnType
+		return errDataconnSingleOpInvalid
 	}
 	return dc.c.MakeDir(path)
 }
@@ -61,7 +61,7 @@ func (dc *dataConn) MakeDir(path string) error {
 // to the name specified at to. Only allowed in a single op connection.
 func (dc *dataConn) Rename(from, to string) error {
 	if dc.mode != types.SingleOp {
-		return singleOpInvalidDataconnType
+		return errDataconnSingleOpInvalid
 	}
 	return dc.c.Rename(from, to)
 }
@@ -77,7 +77,7 @@ func (dc *dataConn) IsSetTimeSupported() bool {
 // in single op mode.
 func (dc *dataConn) SetTime(path string, t time.Time) error {
 	if dc.mode != types.SingleOp {
-		return singleOpInvalidDataconnType
+		return errDataconnSingleOpInvalid
 	}
 	return dc.c.SetTime(path, t)
 }
@@ -95,7 +95,7 @@ func (dc *dataConn) Mode() types.OpenType {
 // Read will read bytes from the DataConn open file to the given buffer. Only allowed in an open read DataConn
 func (dc *dataConn) Read(buf []byte) (int, error) {
 	if dc.mode != types.OpenRead {
-		return 0, readInvalidDataconnType
+		return 0, errDataconnReadInvalid
 	}
 	return dc.R.Read(buf)
 }
@@ -103,7 +103,7 @@ func (dc *dataConn) Read(buf []byte) (int, error) {
 // Write will write bytes to the DataConn open file.
 func (dc *dataConn) Write(data []byte) (int, error) {
 	if dc.mode != types.OpenWrite {
-		return 0, writeInvalidDataconnType
+		return 0, errDataconnWriteInvalid
 	}
 	return dc.W.Write(data)
 }

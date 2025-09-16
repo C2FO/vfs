@@ -8,12 +8,12 @@ import (
 
 func TestDataConnErr_Error(t *testing.T) {
 	tests := []struct {
-		err      dataConnErr
+		err      dataConnError
 		expected string
 	}{
-		{singleOpInvalidDataconnType, "dataconn must be open for single op mode to conduct a single op action"},
-		{readInvalidDataconnType, "dataconn must be open for read mode to conduct a read"},
-		{writeInvalidDataconnType, "dataconn must be open for write mode to conduct a write"},
+		{errDataconnSingleOpInvalid, "dataconn must be open for single op mode to conduct a single op action"},
+		{errDataconnReadInvalid, "dataconn must be open for read mode to conduct a read"},
+		{errDataconnWriteInvalid, "dataconn must be open for write mode to conduct a write"},
 	}
 
 	for _, tt := range tests {
