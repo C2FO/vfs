@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Check `vfsintegration` tests for lint issues.
 - Remove unnecessary mockery types and regenerate with the latest version.
 - Use the shared `utils.Ptr` func everywhere.
+- Fix typed nil pointer bug in sftp backend.  Fixes #287.
 
 ## [v7.8.1] - 2025-08-07
 ### Fixed

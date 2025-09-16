@@ -140,12 +140,12 @@ func (fs *FileSystem) connTimerStart() {
 
 	fs.connTimer = time.AfterFunc(time.Duration(aliveSec)*time.Second, func() {
 		// close connection and nil-ify client to force lazy reconnect
-		if fs.sftpclient != nil {
+		if fs.sftpclient != nil && (!reflect.ValueOf(fs.sftpclient).IsValid() || !reflect.ValueOf(fs.sftpclient).IsNil()) {
 			_ = fs.sftpclient.Close()
 			fs.sftpclient = nil
 		}
 
-		if fs.sshConn != nil {
+		if fs.sshConn != nil && (!reflect.ValueOf(fs.sshConn).IsValid() || !reflect.ValueOf(fs.sshConn).IsNil()) {
 			_ = fs.sshConn.Close()
 			fs.sshConn = nil
 		}
