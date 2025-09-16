@@ -32,6 +32,7 @@ linters:
     - unparam
     - unused
     - wastedassign
+    - whitespace
   settings:
     errcheck:
       check-type-assertions: false

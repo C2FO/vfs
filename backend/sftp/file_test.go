@@ -729,7 +729,6 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	ts.Require().NoError(err, "Error shouldn't be returned from successful call to CopyToFile")
 
 	ts.Equal("sftp://user@host2.com:22/some/other/path.txt", newFile.URI(), "new file uri check")
-
 }
 
 func (ts *fileTestSuite) TestTouch() {
