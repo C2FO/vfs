@@ -3,6 +3,7 @@ package gcsevents
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -86,7 +87,7 @@ func (s *GCSWatcherTestSuite) TestStart() {
 		{
 			name: "Receive error",
 			setupMocks: func() {
-				s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).Return(fmt.Errorf("receive error")).Once()
+				s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).Return(errors.New("receive error")).Once()
 			},
 			wantErr: true,
 		},
@@ -191,7 +192,7 @@ func (s *GCSWatcherTestSuite) TestPoll() {
 			setupMocks: func() {
 				s.pubsubClient.EXPECT().
 					Receive(mock.Anything, mock.Anything).
-					Return(fmt.Errorf("receive error")).
+					Return(errors.New("receive error")).
 					Once()
 			},
 			wantErr: true,
@@ -265,7 +266,7 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 			},
 			setupMocks: func() {
 				s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
-					Return(fmt.Errorf("network error")).
+					Return(errors.New("network error")).
 					Once()
 			},
 			expectCalls:    1,
@@ -284,7 +285,7 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 			setupMocks: func() {
 				// First call fails with retryable error
 				s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
-					Return(fmt.Errorf("deadline exceeded")).
+					Return(errors.New("deadline exceeded")).
 					Once()
 
 				// Second call succeeds
@@ -324,7 +325,7 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 			},
 			setupMocks: func() {
 				s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
-					Return(fmt.Errorf("invalid credentials")).
+					Return(errors.New("invalid credentials")).
 					Once()
 			},
 			expectCalls:    1,
@@ -343,7 +344,7 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 			setupMocks: func() {
 				// All attempts fail with retryable error
 				s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
-					Return(fmt.Errorf("service unavailable")).
+					Return(errors.New("service unavailable")).
 					Times(3) // Initial attempt + 2 retries
 			},
 			expectCalls:    3,
@@ -361,7 +362,7 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 			},
 			setupMocks: func() {
 				s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
-					Return(fmt.Errorf("deadline exceeded")).
+					Return(errors.New("deadline exceeded")).
 					Maybe() // May be called multiple times before context cancellation
 			},
 			expectCalls:    1, // At least one call before cancellation
@@ -381,7 +382,7 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 			setupMocks: func() {
 				// First call fails with custom retryable error
 				s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
-					Return(fmt.Errorf("custom error pattern occurred")).
+					Return(errors.New("custom error pattern occurred")).
 					Once()
 
 				// Second call succeeds

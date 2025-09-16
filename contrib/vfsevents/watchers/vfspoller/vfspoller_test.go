@@ -2,6 +2,7 @@ package vfspoller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"sort"
@@ -180,7 +181,7 @@ func (s *PollerTestSuite) TestPoll() {
 		{
 			name: "List error",
 			setupMocks: func(loc *mocks.Location) {
-				loc.EXPECT().List().Return(nil, fmt.Errorf("list error"))
+				loc.EXPECT().List().Return(nil, errors.New("list error"))
 			},
 			wantErr: true,
 		},
@@ -188,7 +189,7 @@ func (s *PollerTestSuite) TestPoll() {
 			name: "NewFile error",
 			setupMocks: func(loc *mocks.Location) {
 				loc.EXPECT().List().Return([]string{"file1"}, nil)
-				loc.EXPECT().NewFile("file1").Return(nil, fmt.Errorf("new file error"))
+				loc.EXPECT().NewFile("file1").Return(nil, errors.New("new file error"))
 			},
 			wantErr: true,
 		},
@@ -288,7 +289,7 @@ func (s *PollerTestSuite) TestPollWithRetry() {
 		{
 			name: "Retry disabled - fail immediately",
 			setupMocks: func(loc *mocks.Location) {
-				loc.EXPECT().List().Return(nil, fmt.Errorf("connection timeout")).Once()
+				loc.EXPECT().List().Return(nil, errors.New("connection timeout")).Once()
 			},
 			retryConfig: vfsevents.RetryConfig{
 				Enabled: false,
@@ -302,7 +303,7 @@ func (s *PollerTestSuite) TestPollWithRetry() {
 			name: "Retryable error with success on second attempt",
 			setupMocks: func(loc *mocks.Location) {
 				// First call fails with retryable error
-				loc.EXPECT().List().Return(nil, fmt.Errorf("connection timeout")).Once()
+				loc.EXPECT().List().Return(nil, errors.New("connection timeout")).Once()
 				// Second call succeeds
 				loc.EXPECT().List().Return([]string{"file1"}, nil).Once()
 				file := mocks.NewFile(s.T())
@@ -327,7 +328,7 @@ func (s *PollerTestSuite) TestPollWithRetry() {
 		{
 			name: "Non-retryable error - fail immediately",
 			setupMocks: func(loc *mocks.Location) {
-				loc.EXPECT().List().Return(nil, fmt.Errorf("permission denied")).Once()
+				loc.EXPECT().List().Return(nil, errors.New("permission denied")).Once()
 			},
 			retryConfig: vfsevents.RetryConfig{
 				Enabled:         true,
@@ -346,7 +347,7 @@ func (s *PollerTestSuite) TestPollWithRetry() {
 			name: "Max retries exceeded",
 			setupMocks: func(loc *mocks.Location) {
 				// All attempts fail with retryable error
-				loc.EXPECT().List().Return(nil, fmt.Errorf("connection timeout")).Times(3) // MaxRetries=2 means 3 total attempts
+				loc.EXPECT().List().Return(nil, errors.New("connection timeout")).Times(3) // MaxRetries=2 means 3 total attempts
 			},
 			retryConfig: vfsevents.RetryConfig{
 				Enabled:         true,
@@ -365,7 +366,7 @@ func (s *PollerTestSuite) TestPollWithRetry() {
 			name: "Custom retryable error patterns",
 			setupMocks: func(loc *mocks.Location) {
 				// First call fails with custom retryable error
-				loc.EXPECT().List().Return(nil, fmt.Errorf("S3 SlowDown")).Once()
+				loc.EXPECT().List().Return(nil, errors.New("S3 SlowDown")).Once()
 				// Second call succeeds
 				loc.EXPECT().List().Return([]string{}, nil).Once()
 			},

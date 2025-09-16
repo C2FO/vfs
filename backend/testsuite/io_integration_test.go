@@ -4,7 +4,6 @@ package testsuite
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path"
@@ -194,7 +193,7 @@ func (s *ioTestSuite) SetupSuite() {
 			case "ftp":
 				s.testLocations[l.FileSystem().Scheme()] = l.(*ftp.Location)
 			default:
-				panic(fmt.Sprintf("unknown scheme: %s", l.FileSystem().Scheme()))
+				panic("unknown scheme: " + l.FileSystem().Scheme())
 			}
 		}
 	}

@@ -26,6 +26,7 @@ linters:
     - lll
     - misspell
     - nolintlint
+    - perfsprint
     - prealloc
     - revive
     - staticcheck

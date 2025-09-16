@@ -57,7 +57,7 @@ func (f *File) stat(ctx context.Context) (*_ftp.Entry, error) {
 	if dc.IsTimePreciseInList() {
 		entry, err := dc.GetEntry(f.Path())
 		if err != nil {
-			if strings.HasPrefix(err.Error(), fmt.Sprintf("%d", _ftp.StatusFileUnavailable)) {
+			if strings.HasPrefix(err.Error(), strconv.Itoa(_ftp.StatusFileUnavailable)) {
 				return nil, os.ErrNotExist
 			}
 			return nil, err
@@ -66,7 +66,7 @@ func (f *File) stat(ctx context.Context) (*_ftp.Entry, error) {
 	} else {
 		entries, err := dc.List(f.Path())
 		if err != nil {
-			if strings.HasPrefix(err.Error(), fmt.Sprintf("%d", _ftp.StatusFileUnavailable)) {
+			if strings.HasPrefix(err.Error(), strconv.Itoa(_ftp.StatusFileUnavailable)) {
 				return nil, os.ErrNotExist
 			}
 			return nil, err

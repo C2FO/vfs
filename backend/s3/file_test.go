@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -334,7 +335,7 @@ func (ts *fileTestSuite) TestGetCopyObject() {
 
 	// ensure spaces are properly encoded (or not)
 	for i, t := range tests {
-		ts.Run(fmt.Sprintf("%d", i), func() {
+		ts.Run(strconv.Itoa(i), func() {
 			sourceFile := &File{
 				location: &Location{
 					fileSystem: &FileSystem{

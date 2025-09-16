@@ -9,6 +9,7 @@ package fsnotify
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -94,7 +95,7 @@ func WithDebounce(duration time.Duration) Option {
 // The location must be a local filesystem path (file:// scheme).
 func NewFSNotifyWatcher(location vfs.Location, opts ...Option) (*FSNotifyWatcher, error) {
 	if location == nil {
-		return nil, fmt.Errorf("location cannot be nil")
+		return nil, errors.New("location cannot be nil")
 	}
 
 	// Verify this is a local filesystem location FIRST
@@ -140,7 +141,7 @@ func (w *FSNotifyWatcher) Start(
 	defer w.mu.Unlock()
 
 	if w.cancel != nil {
-		return fmt.Errorf("fsnotify watcher is already running")
+		return errors.New("fsnotify watcher is already running")
 	}
 
 	// Process start options
@@ -196,7 +197,7 @@ func (w *FSNotifyWatcher) Stop(opts ...vfsevents.StopOption) error {
 	defer w.mu.Unlock()
 
 	if w.cancel == nil {
-		return fmt.Errorf("fsnotify watcher is not running")
+		return errors.New("fsnotify watcher is not running")
 	}
 
 	// Process stop options

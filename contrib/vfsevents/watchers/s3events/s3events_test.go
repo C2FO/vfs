@@ -3,6 +3,7 @@ package s3events
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -281,7 +282,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 					MaxNumberOfMessages:         10,
 					WaitTimeSeconds:             20,
 					MessageSystemAttributeNames: []types.MessageSystemAttributeName{"ApproximateReceiveCount"},
-				}).Return(nil, fmt.Errorf("receive message error")).Once()
+				}).Return(nil, errors.New("receive message error")).Once()
 			},
 			wantErr: true,
 		},
@@ -381,7 +382,7 @@ func (s *S3WatcherTestSuite) TestPollWithRetry() {
 					MaxNumberOfMessages:         10,
 					WaitTimeSeconds:             20,
 					MessageSystemAttributeNames: []types.MessageSystemAttributeName{"ApproximateReceiveCount"},
-				}).Return(nil, fmt.Errorf("network error")).Maybe()
+				}).Return(nil, errors.New("network error")).Maybe()
 			},
 			wantErr:        false, // poll method returns nil on context cancellation
 			contextTimeout: 50 * time.Millisecond,

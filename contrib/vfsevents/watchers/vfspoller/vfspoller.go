@@ -3,6 +3,7 @@ package vfspoller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
@@ -78,7 +79,7 @@ func WithCleanupAge(age time.Duration) Option {
 func NewPoller(location vfs.Location, opts ...Option) (*Poller, error) {
 	// validate location
 	if location == nil {
-		return nil, fmt.Errorf("location cannot be nil")
+		return nil, errors.New("location cannot be nil")
 	}
 	exists, err := location.Exists()
 	if err != nil {
@@ -116,7 +117,7 @@ func (p *Poller) Start(
 	defer p.mu.Unlock()
 
 	if p.cancel != nil {
-		return fmt.Errorf("poller is already running")
+		return errors.New("poller is already running")
 	}
 
 	// Process start options

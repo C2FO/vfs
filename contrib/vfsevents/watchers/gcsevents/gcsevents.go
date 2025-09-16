@@ -4,7 +4,9 @@ package gcsevents
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -97,10 +99,10 @@ func WithPubSubClient(client PubSubClient) Option {
 // "projects/{project}/subscriptions/{subscription}".
 func NewGCSWatcher(projectID, subscriptionID string, opts ...Option) (*GCSWatcher, error) {
 	if projectID == "" {
-		return nil, fmt.Errorf("projectID cannot be empty")
+		return nil, errors.New("projectID cannot be empty")
 	}
 	if subscriptionID == "" {
-		return nil, fmt.Errorf("subscription cannot be empty")
+		return nil, errors.New("subscription cannot be empty")
 	}
 
 	w := &GCSWatcher{}
@@ -133,7 +135,7 @@ func (w *GCSWatcher) Start(
 	defer w.mu.Unlock()
 
 	if w.cancel != nil {
-		return fmt.Errorf("GCS watcher is already running")
+		return errors.New("GCS watcher is already running")
 	}
 
 	// Process start options
@@ -282,7 +284,7 @@ func (w *GCSWatcher) receive(
 				"bucketName": gcsEvent.Bucket,
 				"object":     gcsEvent.Name,
 				"eventType":  eventType,
-				"generation": fmt.Sprintf("%d", gcsEvent.Generation),
+				"generation": strconv.FormatInt(gcsEvent.Generation, 10),
 			}
 
 			// Add overwroteGeneration if present (indicates this was an overwrite)
@@ -363,7 +365,7 @@ func (w *GCSWatcher) Stop(opts ...vfsevents.StopOption) error {
 	defer w.mu.Unlock()
 
 	if w.cancel == nil {
-		return fmt.Errorf("GCS watcher is not running")
+		return errors.New("GCS watcher is not running")
 	}
 
 	// Process stop options

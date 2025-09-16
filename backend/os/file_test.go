@@ -2,7 +2,6 @@ package os
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path"
@@ -656,14 +655,14 @@ func (s *osFileTest) TestPath() {
 func (s *osFileTest) TestURI() {
 	file, err := s.tmploc.NewFile("some/file/test.txt")
 	s.Require().NoError(err)
-	expected := fmt.Sprintf("file://%s", filepath.ToSlash(filepath.Join(osLocationPath(s.tmploc), "some", "file", "test.txt")))
+	expected := "file://" + filepath.ToSlash(filepath.Join(osLocationPath(s.tmploc), "some", "file", "test.txt"))
 	s.Equal(expected, file.URI(), "%s does not match %s", file.URI(), expected)
 }
 
 func (s *osFileTest) TestStringer() {
 	file, err := s.tmploc.NewFile("some/file/test.txt")
 	s.Require().NoError(err)
-	s.Equal(fmt.Sprintf("file://%s", filepath.ToSlash(filepath.Join(osLocationPath(s.tmploc), "some", "file", "test.txt"))), file.String())
+	s.Equal("file://"+filepath.ToSlash(filepath.Join(osLocationPath(s.tmploc), "some", "file", "test.txt")), file.String())
 }
 
 //nolint:staticcheck // deprecated method test

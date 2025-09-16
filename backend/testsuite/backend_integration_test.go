@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -71,7 +72,7 @@ func (s *vfsTestSuite) SetupSuite() {
 		case "ftp":
 			s.testLocations[l.FileSystem().Scheme()] = l.(*ftp.Location)
 		default:
-			panic(fmt.Sprintf("unknown scheme: %s", l.FileSystem().Scheme()))
+			panic("unknown scheme: " + l.FileSystem().Scheme())
 		}
 	}
 }
@@ -266,7 +267,7 @@ func (s *vfsTestSuite) Location(baseLoc vfs.Location) {
 	//
 	// URI's for locations must always end with a separator character.
 	s.True(strings.HasSuffix(cdTestLoc.URI(), "locTestSrc/chdirTest/l1dir1/l2dir2/"), "should end with dot dirs resolved")
-	prefix := fmt.Sprintf("%s://", cdTestLoc.FileSystem().Scheme())
+	prefix := cdTestLoc.FileSystem().Scheme() + "://"
 	s.True(strings.HasPrefix(cdTestLoc.URI(), prefix), "should start with schema and abs slash")
 
 	/* Exists returns boolean if the location exists on the file system. Returns an error if any.
@@ -749,7 +750,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 		}
 
 		for i, test := range tests {
-			s.Run(fmt.Sprintf("%d", i), func() {
+			s.Run(strconv.Itoa(i), func() {
 				// setup src
 				srcSpaces, err := srcLoc.NewFile(path.Join(test.Path, test.Filename))
 				s.Require().NoError(err)

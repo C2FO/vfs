@@ -4,6 +4,7 @@ package s3events
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -101,7 +102,7 @@ func WithReceivedCount(count uint) Option {
 func NewS3Watcher(queueURL string, opts ...Option) (*S3Watcher, error) {
 	// validate queueURL
 	if queueURL == "" {
-		return nil, fmt.Errorf("queueURL cannot be empty")
+		return nil, errors.New("queueURL cannot be empty")
 	}
 
 	w := &S3Watcher{
@@ -137,7 +138,7 @@ func (w *S3Watcher) Start(
 	defer w.mu.Unlock()
 
 	if w.cancel != nil {
-		return fmt.Errorf("S3 watcher is already running")
+		return errors.New("S3 watcher is already running")
 	}
 
 	// Process start options
@@ -306,7 +307,7 @@ func (w *S3Watcher) processMessage(
 				metadata["sequencer"] = s3Event.Records[i].S3.Object.Sequencer
 			}
 			if s3Event.Records[i].S3.Object.Size > 0 {
-				metadata["size"] = fmt.Sprintf("%d", s3Event.Records[i].S3.Object.Size)
+				metadata["size"] = strconv.FormatInt(s3Event.Records[i].S3.Object.Size, 10)
 			}
 
 			event := vfsevents.Event{
