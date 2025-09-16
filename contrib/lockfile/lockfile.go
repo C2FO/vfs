@@ -38,11 +38,11 @@ var (
 
 // Metadata contains information about the current lock holder.
 type Metadata struct {
-	CreatedAt time.Time     `json:"created_at"`
+	CreatedAt time.Time     `json:"createdAt"`
 	TTL       time.Duration `json:"ttl"`
 	Hostname  string        `json:"hostname"`
 	PID       int           `json:"pid"`
-	OwnerID   string        `json:"owner_id,omitempty"`
+	OwnerID   string        `json:"ownerId,omitempty"`
 }
 
 // StaleHandler is a function that is called when a lock is stale.

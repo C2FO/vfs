@@ -18,7 +18,7 @@ type Options struct {
 	SecretAccessKey             string                `json:"secretAccessKey,omitempty"`
 	SessionToken                string                `json:"sessionToken,omitempty"`
 	Region                      string                `json:"region,omitempty"`
-	RoleARN                     string                `json:"roleARN,omitempty"`
+	RoleARN                     string                `json:"roleArn,omitempty"`
 	Endpoint                    string                `json:"endpoint,omitempty"`
 	ACL                         types.ObjectCannedACL `json:"acl,omitempty"`
 	ForcePathStyle              bool                  `json:"forcePathStyle,omitempty"`
