@@ -23,6 +23,7 @@ linters:
     - gosec
     - govet
     - ineffassign
+    - intrange
     - lll
     - misspell
     - nolintlint

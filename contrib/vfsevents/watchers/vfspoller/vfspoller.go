@@ -195,7 +195,7 @@ func (p *Poller) poll(handler vfsevents.HandlerFunc, config *vfsevents.StartConf
 	// Retry List() operation if retry is enabled
 	if config.RetryConfig.Enabled {
 		var lastErr error
-		for attempt := 0; attempt <= config.RetryConfig.MaxRetries; attempt++ {
+		for attempt := range config.RetryConfig.MaxRetries + 1 {
 			filenames, err = p.location.List()
 			if err == nil {
 				// Success - reset consecutive error count
@@ -454,7 +454,7 @@ func (p *Poller) enforceMaxFiles() {
 
 	// Remove the oldest files to get back to maxFiles
 	numToRemove := len(entries) - p.maxFiles
-	for i := 0; i < numToRemove; i++ {
+	for i := range numToRemove {
 		delete(p.fileCache, entries[i].uri)
 	}
 }

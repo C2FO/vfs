@@ -257,7 +257,7 @@ type Options interface{}
 //
 //	var retrier Retry = func(wrapped func() error) error {
 //	  var ret error
-//	  for i := 0; i < 5; i++ {
+//	  for range 5 {
 //	     if err := wrapped(); err != nil { ret = err; continue }
 //	  }
 //	  return ret

@@ -219,7 +219,7 @@ When using S3, be aware of its eventual consistency model:
 
    // Implement retry logic with exponential backoff
    var err error
-   for i := 0; i < 3; i++ {
+   for i := range 3 {
        if err = lock.Acquire(); err == nil {
            break
        }

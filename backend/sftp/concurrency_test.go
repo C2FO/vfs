@@ -54,7 +54,7 @@ func (s *SFTPConcurrencyTestSuite) TestClientTypedNilHandling() {
 	s.Require().NoError(err)
 
 	// Multiple attempts should fail gracefully without panics
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		client, err := fs.Client(auth)
 		s.T().Logf("Attempt %d: client=%v, err=%v", i+1, client, err)
 		if err == nil {
@@ -83,7 +83,7 @@ func (s *SFTPConcurrencyTestSuite) TestConcurrentFailedConnections() {
 	panicChan := make(chan interface{}, numGoroutines)
 	errorChan := make(chan error, numGoroutines)
 
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -129,7 +129,7 @@ func (s *SFTPConcurrencyTestSuite) TestConcurrentFailedConnections() {
 // to ensure the filesystem remains stable and doesn't panic
 func (s *SFTPConcurrencyTestSuite) TestClientFailureRobustness() {
 	s.Run("Multiple failed connection attempts should not panic", func() {
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			s.Run(fmt.Sprintf("Attempt %d", i+1), func() {
 				// Create a new filesystem for each attempt to avoid state pollution
 				fs := NewFileSystem(WithOptions(Options{
@@ -143,7 +143,7 @@ func (s *SFTPConcurrencyTestSuite) TestClientFailureRobustness() {
 
 				// Test multiple client creation attempts that will fail
 				// This is where the typed nil issue would occur
-				for j := 0; j < 3; j++ {
+				for range 3 {
 					_, _ = fs.Client(auth) // This should fail but not panic
 				}
 
@@ -175,7 +175,7 @@ func (s *SFTPConcurrencyTestSuite) TestTimerCleanupRobustness() {
 	var wg sync.WaitGroup
 	panicChan := make(chan interface{}, numOperations)
 
-	for i := 0; i < numOperations; i++ {
+	for range numOperations {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

@@ -196,7 +196,7 @@ func (w *GCSWatcher) receiveWithRetry(
 	}
 
 	var lastErr error
-	for attempt := 0; attempt <= c.RetryConfig.MaxRetries; attempt++ {
+	for attempt := range c.RetryConfig.MaxRetries + 1 {
 		err := w.receive(ctx, handler, errHandler, status, c)
 
 		if err == nil {

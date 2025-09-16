@@ -339,7 +339,7 @@ func (ts *fileTestSuite) TestMoveAndCopy() {
 
 	testCases := TestCases{}
 
-	for idx := 0; idx <= (1<<3)-1; idx++ {
+	for idx := range 1 << 3 {
 		testCases = append(testCases, TestCase{
 			move:       (idx & (1 << 0)) != 0,
 			readFirst:  (idx & (1 << 1)) != 0,
@@ -443,7 +443,7 @@ func (ts *fileTestSuite) TestMoveAndCopyBuffered() {
 	type TestCases []TestCase
 	testCases := TestCases{}
 
-	for idx := 0; idx <= (1<<3)-1; idx++ {
+	for idx := range 1 << 3 {
 		testCases = append(testCases, TestCase{
 			move:       (idx & (1 << 0)) != 0,
 			readFirst:  (idx & (1 << 1)) != 0,

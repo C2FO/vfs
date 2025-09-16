@@ -194,7 +194,7 @@ func testMemoryLeakPrevention(t *testing.T, location vfs.Location, tempDir strin
 
 	// Create multiple files to populate the pending events map
 	// Use a longer debounce time to ensure events stay pending
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		testFile := filepath.Join(tempDir, fmt.Sprintf("leak_test_%d.txt", i))
 		err = os.WriteFile(testFile, []byte("content"), 0600)
 		require.NoError(t, err)
