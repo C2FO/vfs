@@ -24,6 +24,7 @@ linters:
     - lll
     - misspell
     - nolintlint
+    - prealloc
     - revive
     - staticcheck
     - testifylint

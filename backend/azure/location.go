@@ -37,13 +37,13 @@ func (l *Location) List() ([]string, error) {
 		return nil, err
 	}
 
-	var ret []string
-	for _, item := range list {
-		ret = append(ret, path.Base(item))
+	if len(list) == 0 {
+		return []string{}, nil
 	}
 
-	if len(ret) == 0 {
-		return []string{}, nil
+	ret := make([]string, len(list))
+	for i, item := range list {
+		ret[i] = path.Base(item)
 	}
 
 	return ret, nil

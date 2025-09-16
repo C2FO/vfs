@@ -441,7 +441,7 @@ func (p *Poller) enforceMaxFiles() {
 		firstSeen time.Time
 	}
 
-	var entries []fileEntry
+	entries := make([]fileEntry, 0, len(p.fileCache))
 	for uri, fileInfo := range p.fileCache {
 		entries = append(entries, fileEntry{uri: uri, firstSeen: fileInfo.FirstSeen})
 	}

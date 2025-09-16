@@ -597,7 +597,7 @@ func (s *PollerTestSuite) TestEnforceMaxFiles() {
 					uri       string
 					firstSeen time.Time
 				}
-				var entries []fileEntry
+				entries := make([]fileEntry, 0, len(tt.initialCache))
 				for uri, info := range tt.initialCache {
 					entries = append(entries, fileEntry{uri: uri, firstSeen: info.FirstSeen})
 				}

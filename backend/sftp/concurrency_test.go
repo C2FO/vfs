@@ -104,13 +104,13 @@ func (s *SFTPConcurrencyTestSuite) TestConcurrentFailedConnections() {
 	close(errorChan)
 
 	// Collect any panics that occurred
-	var panics []interface{}
+	panics := make([]interface{}, 0, len(panicChan))
 	for panic := range panicChan {
 		panics = append(panics, panic)
 	}
 
 	// Collect errors
-	var errors []error
+	errors := make([]error, 0, len(errorChan))
 	for err := range errorChan {
 		errors = append(errors, err)
 	}
@@ -201,7 +201,7 @@ func (s *SFTPConcurrencyTestSuite) TestTimerCleanupRobustness() {
 	close(panicChan)
 
 	// Collect any panics that occurred
-	var panics []interface{}
+	panics := make([]interface{}, 0, len(panicChan))
 	for panic := range panicChan {
 		panics = append(panics, panic)
 	}
