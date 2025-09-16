@@ -588,7 +588,7 @@ func (s *PollerTestSuite) TestEnforceMaxFiles() {
 			poller.enforceMaxFiles()
 
 			// Verify cache size
-			s.Equal(tt.expectedSize, len(poller.fileCache), "Cache size should match expected")
+			s.Len(poller.fileCache, tt.expectedSize, "Cache size should match expected")
 
 			// If enforcement was needed, verify oldest files were removed
 			if len(tt.initialCache) > tt.maxFiles && tt.maxFiles > 0 {

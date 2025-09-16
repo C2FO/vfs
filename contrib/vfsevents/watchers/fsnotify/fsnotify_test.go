@@ -161,7 +161,7 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 			s.Equal(vfsevents.EventCreated, event.Type)
 			s.Equal("file://"+testFile, event.URI)
 		case err := <-errors:
-			s.Fail("Unexpected error: %v", err)
+			s.Require().NoError(err)
 		case <-time.After(getEventTimeout()):
 			s.Fail("Timeout waiting for create event")
 		}
@@ -514,7 +514,7 @@ eventLoop:
 			} else if s.isLogFileEvent(event.URI) {
 				logEventReceived = true
 				fmt.Printf("TEST DEBUG: Marking logEventReceived = true - THIS SHOULD NOT HAPPEN!\n")
-				s.Fail("Received unexpected event: %+v", event)
+				s.Fail("Received unexpected event", event)
 			} else {
 				fmt.Printf("TEST DEBUG: Received unexpected event (not test.txt or test.log): %+v\n", event)
 			}
@@ -556,7 +556,7 @@ func (s *FSNotifyWatcherTestSuite) checkForAdditionalEvents(events chan vfsevent
 		if s.isLogFileEvent(event2.URI) {
 			*logEventReceived = true
 			fmt.Printf("TEST DEBUG: Marking logEventReceived = true - THIS SHOULD NOT HAPPEN!\n")
-			s.Fail("Received unexpected event: %+v", event2)
+			s.Fail("Received unexpected event", event2)
 		}
 	case <-time.After(200 * time.Millisecond):
 		// No additional events, good

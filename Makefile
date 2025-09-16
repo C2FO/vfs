@@ -1,8 +1,11 @@
 GOBIN ?= $$(go env GOPATH)/bin
+MODULES := $(shell find . -type f -name "go.mod" -exec dirname {} \;)
 
 .PHONY: lint
-lint:
-	golangci-lint run --build-tags=vfsintegration
+lint: $(addprefix lint/,$(MODULES))
+lint/%:
+	@echo "Running golangci-lint in $*/"
+	@cd $* && golangci-lint run --build-tags=vfsintegration
 
 .PHONY: install-go-test-coverage
 install-go-test-coverage:

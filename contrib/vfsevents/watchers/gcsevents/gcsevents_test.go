@@ -450,7 +450,7 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 				func(err error) {
 					// Error handler - should be called on error
 					if !tt.wantErr {
-						s.Fail("Unexpected error: %v", err)
+						s.Require().NoError(err)
 					}
 				},
 				status,
@@ -534,7 +534,7 @@ func (s *GCSWatcherTestSuite) TestRetryBackoffTiming() {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify event was processed
-	s.GreaterOrEqual(len(receivedEvents), 0, "Should process events without error")
+	s.NotEmpty(receivedEvents, "Should process events without error")
 }
 
 func (s *GCSWatcherTestSuite) TestMapGCSEventType() {
@@ -683,7 +683,7 @@ func (s *GCSWatcherTestSuite) TestEnhancedMetadata() {
 		receivedEvent = &event
 	}
 	errHandler := func(err error) {
-		s.Fail("Unexpected error: %v", err)
+		s.Require().NoError(err)
 	}
 
 	s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
@@ -732,7 +732,7 @@ func (s *GCSWatcherTestSuite) TestOverwriteEventSuppression() {
 		receivedEvents = append(receivedEvents, event)
 	}
 	errHandler := func(err error) {
-		s.Fail("Unexpected error: %v", err)
+		s.Require().NoError(err)
 	}
 
 	// Simulate GCS overwrite scenario: two events for one logical operation

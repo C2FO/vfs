@@ -26,10 +26,10 @@ linters:
     - nolintlint
     - revive
     - staticcheck
+    - testifylint
     - unconvert
     - unparam
     - unused
-    - testifylint
   settings:
     errcheck:
       check-type-assertions: false
