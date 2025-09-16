@@ -16,6 +16,7 @@ linters:
   enable:
     - bodyclose
     - errcheck
+    - errorlint
     - gocritic
     - gocyclo
     - gosec

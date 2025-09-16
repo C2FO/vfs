@@ -46,7 +46,7 @@ func (o *Options) GetFileMode() (*os.FileMode, error) {
 	// Convert the string to an unsigned integer, interpreting it as an octal value
 	parsed, err := strconv.ParseUint(*o.FilePermissions, 0, 32)
 	if err != nil {
-		return nil, fmt.Errorf("invalid file mode: %v", err)
+		return nil, fmt.Errorf("invalid file mode: %w", err)
 	}
 	return utils.Ptr(os.FileMode(parsed)), nil
 }

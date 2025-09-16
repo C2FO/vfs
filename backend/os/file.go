@@ -245,8 +245,9 @@ func (f *File) MoveToFile(file vfs.File) error {
 func safeOsRename(srcName, dstName string) error {
 	err := os.Rename(srcName, dstName)
 	if err != nil {
-		e, ok := err.(*os.LinkError)
-		if ok && (e.Err.Error() == osCrossDeviceLinkError || (runtime.GOOS == "windows" && e.Err.Error() == "Access is denied.")) {
+		var e *os.LinkError
+		if errors.As(err, &e) && (e.Err.Error() == osCrossDeviceLinkError ||
+			(runtime.GOOS == "windows" && e.Err.Error() == "Access is denied.")) {
 			// do cross-device renaming
 			if err := osCopy(srcName, dstName); err != nil {
 				return err
