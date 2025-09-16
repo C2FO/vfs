@@ -446,9 +446,7 @@ func (f *File) Delete(_ ...options.DeleteOption) error {
 			// casting a file to the object's "i" interface
 			file := thisObj.i.(*memFile)
 			file.exists = false
-			file = nil
 			thisObj.i = nil
-			thisObj = nil
 			// setting that key to nil so it truly no longer lives on this system
 			delete(mapRef[loc.Authority().String()], str)
 		}

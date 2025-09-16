@@ -72,7 +72,7 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 	//   loc, _ := fs.NewLocation("user@host:21", "/some/path/")
 	//   loc.ListByPrefix("subdir/prefix")
 	// the location fullpath should resolve to be "/some/path/subdir/" while the prefix would be "prefix".
-	baseprefix := ""
+	var baseprefix string
 	if prefix == "." {
 		// for prefix of ".", it is necessary to manually set baseprefix as "." and
 		// add trailing slash since path.Join thinks that "." is a directory

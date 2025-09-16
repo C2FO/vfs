@@ -215,9 +215,7 @@ func (l *Location) DeleteFile(relFilePath string, _ ...options.DeleteOption) err
 		if thisObj, ok2 := mapRef[vol][fullPath]; ok2 {
 			file := thisObj.i.(*memFile)
 			file.exists = false
-			file = nil
 			thisObj.i = nil
-			thisObj = nil
 			mapRef[vol][fullPath] = nil // setting that key to nil so it truly no longer lives on this system
 			delete(mapRef[vol], fullPath)
 			return nil
