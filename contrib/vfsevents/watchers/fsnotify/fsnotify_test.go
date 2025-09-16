@@ -60,9 +60,7 @@ type FSNotifyWatcherTestSuite struct {
 
 func (s *FSNotifyWatcherTestSuite) SetupTest() {
 	// Create a temporary directory for testing
-	var err error
-	s.tempDir, err = os.MkdirTemp("", "fsnotify_test_*")
-	s.Require().NoError(err)
+	s.tempDir = s.T().TempDir()
 }
 
 func (s *FSNotifyWatcherTestSuite) TearDownTest() {
@@ -70,13 +68,6 @@ func (s *FSNotifyWatcherTestSuite) TearDownTest() {
 	if s.watcher != nil {
 		_ = s.watcher.Stop() // Ignore error in test teardown
 		s.watcher = nil
-	}
-
-	// Clean up temporary directory
-	if s.tempDir != "" {
-		err := os.RemoveAll(s.tempDir)
-		s.Require().NoError(err)
-		s.tempDir = ""
 	}
 }
 

@@ -1,7 +1,6 @@
 package azure
 
 import (
-	"os"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -55,9 +54,9 @@ func TestDefaultTokenCredentialFactory(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.NoError(t, os.Setenv("AZURE_TENANT_ID", tt.envTenantID))
-			require.NoError(t, os.Setenv("AZURE_CLIENT_ID", tt.envClientID))
-			require.NoError(t, os.Setenv("AZURE_CLIENT_SECRET", tt.envClientSecret))
+			t.Setenv("AZURE_TENANT_ID", tt.envTenantID)
+			t.Setenv("AZURE_CLIENT_ID", tt.envClientID)
+			t.Setenv("AZURE_CLIENT_SECRET", tt.envClientSecret)
 			cred, err := DefaultTokenCredentialFactory(tt.tenantID, tt.clientID, tt.clientSecret)
 			if tt.expectError {
 				require.Error(t, err)

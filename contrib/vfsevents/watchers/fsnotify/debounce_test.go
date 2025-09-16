@@ -18,9 +18,7 @@ import (
 )
 
 func TestDebouncing(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "fsnotify_debounce_*")
-	require.NoError(t, err)
-	defer func() { _ = os.RemoveAll(tempDir) }()
+	tempDir := t.TempDir()
 
 	location, err := vfssimple.NewLocation(fileURL(tempDir))
 	require.NoError(t, err)
@@ -318,9 +316,7 @@ eventLoop:
 }
 
 func TestDebouncingEdgeCases(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "fsnotify_debounce_edge_*")
-	require.NoError(t, err)
-	defer func() { _ = os.RemoveAll(tempDir) }()
+	tempDir := t.TempDir()
 
 	location, err := vfssimple.NewLocation(fileURL(tempDir))
 	require.NoError(t, err)

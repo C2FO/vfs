@@ -360,8 +360,7 @@ func (s *memFileTest) TestCopyToLocationOS() {
 	s.Require().NoError(s.testFile.Close(), "unexpected error closing file")
 
 	var osFile vfs.File
-	dir, err := os.MkdirTemp("", "osDir")
-	s.Require().NoError(err)
+	dir := s.T().TempDir()
 	osFileName := filepath.Join(dir, "osFile.txt")
 
 	osFile, err = backend.Backend(_os.Scheme).NewFile("", osFileName)
@@ -392,8 +391,6 @@ func (s *memFileTest) TestCopyToLocationOS() {
 	s.Require().NoError(err, "unexpected read error")
 	s.Equal(readSlice2, readSlice) // both reads should be the same
 	s.Require().NoError(copiedFile.Close())
-	cleanErr := os.RemoveAll(dir) // clean up
-	s.Require().NoError(cleanErr, "unexpected error cleaning up osFiles")
 }
 
 // TestCopyToFile tests "CopyToFile()" between two files both in the in-memory FileSystem
@@ -426,8 +423,7 @@ func (s *memFileTest) TestCopyToFileOS() {
 	expectedText := "Hello World!"
 	var osFile vfs.File
 	var err error
-	dir, err := os.MkdirTemp("", "osDir")
-	s.Require().NoError(err)
+	dir := s.T().TempDir()
 	osFileName := filepath.Join(dir, "osFile.txt")
 
 	osFile, err = backend.Backend(_os.Scheme).NewFile("", osFileName)

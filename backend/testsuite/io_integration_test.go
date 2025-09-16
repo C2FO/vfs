@@ -139,8 +139,7 @@ type ioTestSuite struct {
 The following example shows how to setup the test suite to run against a local directory for unix file baseline
 
 // setup local tests
-osTemp, err := os.MkdirTemp("", "vfs-io-test")
-s.Require().NoError(err)
+osTemp := s.T().TempDir()
 
 // add baseline OS test
 loc := osTemp + "/"
