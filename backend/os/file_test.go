@@ -2,7 +2,6 @@ package os
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path"
@@ -33,16 +32,12 @@ type osFileTest struct {
 func (s *osFileTest) SetupSuite() {
 	fs := &FileSystem{}
 	s.fileSystem = fs
-	dir, err := os.MkdirTemp("", "os_file_test")
+	dir := s.T().TempDir()
 	dir = utils.EnsureTrailingSlash(dir)
-	s.Require().NoError(err)
+	var err error
 	s.tmploc, err = fs.NewLocation("", dir)
 	s.Require().NoError(err)
 	setupTestFiles(s.tmploc)
-}
-
-func (s *osFileTest) TearDownSuite() {
-	teardownTestFiles(s.tmploc)
 }
 
 func (s *osFileTest) SetupTest() {
@@ -260,17 +255,11 @@ func (s *osFileTest) TestCopyToLocationIgnoreExtraSeparator() {
 
 func (s *osFileTest) TestMoveToLocation() {
 	expectedText := "moved file"
-	dir, terr := os.MkdirTemp(filepath.Join(osLocationPath(s.tmploc), "test_files"), "example")
-	s.Require().NoError(terr)
+	dir := s.T().TempDir()
 
 	origFileName := filepath.Join(dir, "test_files", "move.txt")
 	file, nerr := s.fileSystem.NewFile("", origFileName)
 	s.Require().NoError(nerr)
-
-	defer func() {
-		err := os.RemoveAll(dir)
-		s.Require().NoError(err, "remove all error not expected")
-	}()
 
 	_, werr := file.Write([]byte(expectedText))
 	s.Require().NoError(werr, "write error not expected")
@@ -325,12 +314,7 @@ func (s *osFileTest) TestMoveToLocation() {
 }
 
 func (s *osFileTest) TestSafeOsRename() {
-	dir, err := os.MkdirTemp(filepath.Join(osLocationPath(s.tmploc), "test_files"), "example")
-	s.Require().NoError(err)
-	defer func() {
-		err := os.RemoveAll(dir)
-		s.Require().NoError(err, "remove all error not expected")
-	}()
+	dir := s.T().TempDir()
 
 	// TODO: I haven't figured out a way to test safeOsRename since setting up the scenario is
 	//     very os-dependent so here I will actually only ensure non-"invalid cross-device link"
@@ -366,12 +350,7 @@ func (s *osFileTest) TestSafeOsRename() {
 }
 
 func (s *osFileTest) TestOsCopy() {
-	dir, err := os.MkdirTemp(filepath.Join(osLocationPath(s.tmploc), "test_files"), "example")
-	s.Require().NoError(err)
-	defer func() {
-		err := os.RemoveAll(dir)
-		s.Require().NoError(err, "remove all error not expected")
-	}()
+	dir := s.T().TempDir()
 
 	file1, err := s.fileSystem.NewFile("", path.Join(dir, "original.txt"))
 	s.Require().NoError(err)
@@ -398,19 +377,13 @@ func (s *osFileTest) TestOsCopy() {
 }
 
 func (s *osFileTest) TestMoveToFile() {
-	dir, terr := os.MkdirTemp(filepath.Join(osLocationPath(s.tmploc), "test_files"), "example")
-	s.Require().NoError(terr)
+	dir := s.T().TempDir()
 
 	file1, err := s.fileSystem.NewFile("", path.Join(dir, "original.txt"))
 	s.Require().NoError(err)
 
 	file2, err := s.fileSystem.NewFile("", path.Join(dir, "move.txt"))
 	s.Require().NoError(err)
-
-	defer func() {
-		err := os.RemoveAll(dir)
-		s.Require().NoError(err, "remove all error not expected")
-	}()
 
 	text := "original file"
 	_, werr := file1.Write([]byte(text))
@@ -682,14 +655,14 @@ func (s *osFileTest) TestPath() {
 func (s *osFileTest) TestURI() {
 	file, err := s.tmploc.NewFile("some/file/test.txt")
 	s.Require().NoError(err)
-	expected := fmt.Sprintf("file://%s", filepath.ToSlash(filepath.Join(osLocationPath(s.tmploc), "some", "file", "test.txt")))
+	expected := "file://" + filepath.ToSlash(filepath.Join(osLocationPath(s.tmploc), "some", "file", "test.txt"))
 	s.Equal(expected, file.URI(), "%s does not match %s", file.URI(), expected)
 }
 
 func (s *osFileTest) TestStringer() {
 	file, err := s.tmploc.NewFile("some/file/test.txt")
 	s.Require().NoError(err)
-	s.Equal(fmt.Sprintf("file://%s", filepath.ToSlash(filepath.Join(osLocationPath(s.tmploc), "some", "file", "test.txt"))), file.String())
+	s.Equal("file://"+filepath.ToSlash(filepath.Join(osLocationPath(s.tmploc), "some", "file", "test.txt")), file.String())
 }
 
 //nolint:staticcheck // deprecated method test
@@ -733,19 +706,11 @@ func setupTestFiles(baseLoc vfs.Location) {
 	writeStringFile(baseLoc, "test_files/subdir/test.txt", `hello world too`)
 }
 
-func teardownTestFiles(baseLoc vfs.Location) {
-	err := os.RemoveAll(baseLoc.Path())
-	if err != nil {
-		panic(err)
-	}
-}
-
 func createDir(baseLoc vfs.Location, dirname string) {
 	dir := path.Join(baseLoc.Path(), dirname)
 	perm := os.FileMode(0755)
 	err := os.Mkdir(dir, perm)
 	if err != nil {
-		teardownTestFiles(baseLoc)
 		panic(err)
 	}
 }
@@ -754,17 +719,14 @@ func writeStringFile(baseLoc vfs.Location, filename, data string) {
 	file := path.Join(baseLoc.Path(), filename)
 	f, err := os.Create(file) //nolint:gosec
 	if err != nil {
-		teardownTestFiles(baseLoc)
 		panic(err)
 	}
 	_, err = f.WriteString(data)
 	if err != nil {
-		teardownTestFiles(baseLoc)
 		panic(err)
 	}
 	err = f.Close()
 	if err != nil {
-		teardownTestFiles(baseLoc)
 		panic(err)
 	}
 }

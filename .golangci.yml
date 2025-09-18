@@ -16,20 +16,29 @@ linters:
   enable:
     - bodyclose
     - errcheck
+    - errname
+    - errorlint
     - gocritic
     - gocyclo
     - gosec
     - govet
     - ineffassign
+    - intrange
     - lll
     - misspell
     - nolintlint
+    - perfsprint
+    - prealloc
     - revive
     - staticcheck
+    - tagliatelle
+    - testifylint
     - unconvert
     - unparam
     - unused
-    - testifylint
+    - usetesting
+    - wastedassign
+    - whitespace
   settings:
     errcheck:
       check-type-assertions: false

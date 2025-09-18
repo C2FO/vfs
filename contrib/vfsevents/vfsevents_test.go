@@ -152,7 +152,7 @@ func (s *VfseventsTestSuite) TestWatcherError() {
 			Cause:   nil,
 		}
 
-		s.Nil(errNoCause.Unwrap())
+		s.Require().NoError(errNoCause.Unwrap())
 	})
 }
 
@@ -171,7 +171,7 @@ func (s *VfseventsTestSuite) TestNewWatcherError() {
 
 		s.Equal(ErrorTypeAuth, err.Type)
 		s.Equal("authentication failed", err.Message)
-		s.Nil(err.Cause)
+		s.Require().NoError(err.Unwrap())
 	})
 }
 
@@ -182,7 +182,7 @@ func (s *VfseventsTestSuite) TestDefaultRetryConfig() {
 	s.Equal(3, config.MaxRetries)
 	s.Equal(time.Second, config.InitialBackoff)
 	s.Equal(30*time.Second, config.MaxBackoff)
-	s.Equal(2.0, config.BackoffFactor)
+	s.InEpsilon(2.0, config.BackoffFactor, 0.001)
 	s.Empty(config.RetryableErrors)
 }
 
@@ -602,9 +602,9 @@ func (s *VfseventsTestSuite) TestWatcherMetrics() {
 			MemoryUsage:     1024 * 1024,
 		}
 
-		s.Equal(10.5, metrics.EventsPerSecond)
+		s.InEpsilon(10.5, metrics.EventsPerSecond, 0.001)
 		s.Equal(100*time.Millisecond, metrics.AverageLatency)
-		s.Equal(0.05, metrics.ErrorRate)
+		s.InEpsilon(0.05, metrics.ErrorRate, 0.001)
 		s.Equal(uint64(1024*1024), metrics.MemoryUsage)
 	})
 }

@@ -4,7 +4,6 @@ package testsuite
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path"
@@ -139,8 +138,7 @@ type ioTestSuite struct {
 The following example shows how to setup the test suite to run against a local directory for unix file baseline
 
 // setup local tests
-osTemp, err := os.MkdirTemp("", "vfs-io-test")
-s.Require().NoError(err)
+osTemp := s.T().TempDir()
 
 // add baseline OS test
 loc := osTemp + "/"
@@ -195,7 +193,7 @@ func (s *ioTestSuite) SetupSuite() {
 			case "ftp":
 				s.testLocations[l.FileSystem().Scheme()] = l.(*ftp.Location)
 			default:
-				panic(fmt.Sprintf("unknown scheme: %s", l.FileSystem().Scheme()))
+				panic("unknown scheme: " + l.FileSystem().Scheme())
 			}
 		}
 	}

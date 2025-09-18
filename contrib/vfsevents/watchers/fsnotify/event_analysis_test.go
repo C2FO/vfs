@@ -18,9 +18,7 @@ import (
 // TestEventAnalysis analyzes different file writing patterns to understand
 // the underlying filesystem event sequences
 func TestEventAnalysis(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "fsnotify_event_analysis_*")
-	require.NoError(t, err)
-	defer func() { _ = os.RemoveAll(tempDir) }()
+	tempDir := t.TempDir()
 
 	location, err := vfssimple.NewLocation(fileURL(tempDir))
 	require.NoError(t, err)

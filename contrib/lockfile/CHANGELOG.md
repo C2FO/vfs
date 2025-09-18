@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Use more appropriate unit test assertion patterns where possible.
 - Minor whitespace cleanup.
+- Enabled tagliatelle golangci-lint linter and fix associated issues.
 
 ## [contrib/lockfile/v1.0.0] - 2025-08-04
 ### Added

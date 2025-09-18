@@ -67,7 +67,7 @@ func (l *Location) ListByPrefix(filenamePrefix string) ([]string, error) {
 	for {
 		objAttrs, err := it.Next()
 		if err != nil {
-			if err == iterator.Done {
+			if errors.Is(err, iterator.Done) {
 				break
 			}
 			return nil, err

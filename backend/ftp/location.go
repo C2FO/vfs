@@ -3,9 +3,9 @@ package ftp
 import (
 	"context"
 	"errors"
-	"fmt"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 
 	_ftp "github.com/jlaffaye/ftp"
@@ -35,7 +35,7 @@ func (l *Location) List() ([]string, error) {
 
 	entries, err := dc.List(l.Path())
 	if err != nil {
-		if strings.HasPrefix(err.Error(), fmt.Sprintf("%d", _ftp.StatusFileUnavailable)) {
+		if strings.HasPrefix(err.Error(), strconv.Itoa(_ftp.StatusFileUnavailable)) {
 			// in this case the directory does not exist
 			return filenames, nil
 		}
@@ -72,7 +72,7 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 	//   loc, _ := fs.NewLocation("user@host:21", "/some/path/")
 	//   loc.ListByPrefix("subdir/prefix")
 	// the location fullpath should resolve to be "/some/path/subdir/" while the prefix would be "prefix".
-	baseprefix := ""
+	var baseprefix string
 	if prefix == "." {
 		// for prefix of ".", it is necessary to manually set baseprefix as "." and
 		// add trailing slash since path.Join thinks that "." is a directory
@@ -95,7 +95,7 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 	entries, err := dc.List(fullpath)
 	if err != nil {
 		// fullpath does not exist, is not an error here
-		if strings.HasPrefix(err.Error(), fmt.Sprintf("%d", _ftp.StatusFileUnavailable)) {
+		if strings.HasPrefix(err.Error(), strconv.Itoa(_ftp.StatusFileUnavailable)) {
 			// in this case the directory does not exist
 			return []string{}, nil
 		}
@@ -161,7 +161,7 @@ func (l *Location) Exists() (bool, error) {
 
 	entries, err := dc.List(parentDir)
 	if err != nil {
-		if strings.HasPrefix(err.Error(), fmt.Sprintf("%d", _ftp.StatusFileUnavailable)) {
+		if strings.HasPrefix(err.Error(), strconv.Itoa(_ftp.StatusFileUnavailable)) {
 			// in this case the directory does not exist
 			return false, nil
 		}

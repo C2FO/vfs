@@ -30,7 +30,7 @@ func (lt *locationTestSuite) TestList() {
 	var createObjects func(prefix string, level int, levels int)
 	createObjects = func(prefix string, level int, levels int) {
 		objectPrefixes = append(objectPrefixes, prefix)
-		for idx := 0; idx < fileCount; idx++ {
+		for idx := range fileCount {
 			objectBaseName := fmt.Sprintf("f%d.txt", idx)
 			objectName := fmt.Sprintf("%s%s", prefix, objectBaseName)
 			objectNames = append(objectNames, objectName)
@@ -46,7 +46,7 @@ func (lt *locationTestSuite) TestList() {
 			})
 		}
 		if levels > 0 {
-			for idx := 0; idx < dirCount; idx++ {
+			for idx := range dirCount {
 				createObjects(fmt.Sprintf("%sd%d/", prefix, idx), level+1, levels-1)
 			}
 		}

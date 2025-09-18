@@ -41,8 +41,8 @@ func Backend(name string) vfs.FileSystem {
 
 // RegisteredBackends returns an array of backend names
 func RegisteredBackends() []string {
-	var f []string
 	mmu.RLock()
+	f := make([]string, 0, len(m))
 	for k := range m {
 		f = append(f, k)
 	}

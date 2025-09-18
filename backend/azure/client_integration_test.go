@@ -206,8 +206,9 @@ func (s *ClientIntegrationTestSuite) TestProperties_NonExistentFile() {
 	s.Require().NoError(err, "Env variables (AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_ACCESS_KEY) should contain valid azure account credentials")
 
 	_, err = client.Properties(f.Location().URI(), f.Path())
-	s.Require().Error(err, "The file does not exist so we expect an error")
-	s.Equal(404, err.(*azcore.ResponseError).StatusCode)
+	var rerr *azcore.ResponseError
+	s.Require().ErrorAs(err, &rerr, "The file does not exist so we expect an error")
+	s.Equal(404, rerr.StatusCode)
 }
 
 func (s *ClientIntegrationTestSuite) TestDelete_NonExistentFile() {

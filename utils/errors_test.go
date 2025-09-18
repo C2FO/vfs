@@ -1,7 +1,7 @@
 package utils_test
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -19,7 +19,7 @@ type errorsSuite struct {
 
 // TestErrorWrapFunctions tests all error wrap functions with both nil and non-nil errors
 func (s *errorsSuite) TestErrorWrapFunctions() {
-	testError := fmt.Errorf("test error")
+	testError := errors.New("test error")
 
 	testCases := []struct {
 		name        string
@@ -109,7 +109,7 @@ func (s *errorsSuite) TestErrorWrapFunctions() {
 
 // TestErrorWrapFunctionsWithUnwrap tests that wrapped errors can be unwrapped
 func (s *errorsSuite) TestErrorWrapFunctionsWithUnwrap() {
-	originalError := fmt.Errorf("original error")
+	originalError := errors.New("original error")
 
 	testCases := []struct {
 		name     string

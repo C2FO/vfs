@@ -31,9 +31,7 @@ type optionsSuite struct {
 }
 
 func (o *optionsSuite) SetupSuite() {
-	dir, err := os.MkdirTemp("", "sftp_options_test")
-	o.Require().NoError(err, "setting up sftp_options_test temp dir")
-	o.tmpdir = dir
+	o.tmpdir = o.T().TempDir()
 
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	o.Require().NoError(err)
@@ -44,10 +42,6 @@ func (o *optionsSuite) SetupSuite() {
 	keyFiles, err := setupKeyFiles(o.tmpdir)
 	o.Require().NoError(err)
 	o.keyFiles = *keyFiles
-}
-
-func (o *optionsSuite) TearDownSuite() {
-	o.Require().NoError(os.RemoveAll(o.tmpdir), "cleaning up after test")
 }
 
 type foundFileTest struct {

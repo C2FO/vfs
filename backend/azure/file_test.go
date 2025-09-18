@@ -20,7 +20,7 @@ import (
 	"github.com/c2fo/vfs/v7/utils"
 )
 
-var blobNotFoundErr = &azcore.ResponseError{ErrorCode: string(bloberror.BlobNotFound)}
+var errBlobNotFound = &azcore.ResponseError{ErrorCode: string(bloberror.BlobNotFound)}
 
 type FileTestSuite struct {
 	suite.Suite
@@ -43,7 +43,7 @@ func (s *FileTestSuite) TestClose_FlushTempFile() {
 	fs := NewFileSystem(WithClient(client))
 	f, _ := fs.NewFile("test-container", "/foo.txt")
 
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(nil, blobNotFoundErr)
+	client.EXPECT().Properties("test-container", "/foo.txt").Return(nil, errBlobNotFound)
 	client.EXPECT().Upload(mock.Anything, mock.Anything, "").Return(nil)
 	_, err := f.Write([]byte("Hello, World!"))
 	s.Require().NoError(err)
@@ -127,7 +127,7 @@ func (s *FileTestSuite) TestExists_NonExistentFile() {
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.Require().NoError(err, "The path is valid so no error should be returned")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(nil, blobNotFoundErr)
+	client.EXPECT().Properties("test-container", "/foo.txt").Return(nil, errBlobNotFound)
 	exists, err := f.Exists()
 	s.Require().NoError(err, "no error is returned when the file does not exist")
 	s.False(exists)
@@ -137,7 +137,7 @@ func (s *FileTestSuite) TestCloseWithContentType() {
 	client := mocks.NewClient(s.T())
 	fs := NewFileSystem(WithClient(client))
 	f, _ := fs.NewFile("test-container", "/foo.txt", newfile.WithContentType("text/plain"))
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(nil, blobNotFoundErr)
+	client.EXPECT().Properties("test-container", "/foo.txt").Return(nil, errBlobNotFound)
 	client.EXPECT().Upload(mock.Anything, mock.Anything, "text/plain").Return(nil)
 	_, _ = f.Write([]byte("Hello, World!"))
 	s.Require().NoError(f.Close())
@@ -346,7 +346,7 @@ func (s *FileTestSuite) TestTouchWithContentType() {
 
 	f, err := fs.NewFile("test-container", "/foo.txt", newfile.WithContentType("text/plain"))
 	s.Require().NoError(err, "The path is valid so no error should be returned")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(nil, blobNotFoundErr)
+	client.EXPECT().Properties("test-container", "/foo.txt").Return(nil, errBlobNotFound)
 	client.EXPECT().Upload(mock.Anything, mock.Anything, "text/plain").Return(nil)
 	s.Require().NoError(f.Touch())
 }
@@ -396,7 +396,7 @@ func (s *FileTestSuite) TestCheckTempFile_FileDoesNotExist() {
 	s.NotNil(azureFile)
 
 	s.Nil(azureFile.tempFile, "No calls to checkTempFile have occurred so we expect tempFile to be nil")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(nil, blobNotFoundErr)
+	client.EXPECT().Properties("test-container", "/foo.txt").Return(nil, errBlobNotFound)
 	err = azureFile.checkTempFile()
 	s.Require().NoError(err, "Check temp file should create a local temp file so no error is expected")
 	s.NotNil(azureFile.tempFile, "After the call to checkTempFile we should have a non-nil tempFile")

@@ -120,7 +120,7 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 	}()
 	// validate seek is at 0,0 before doing copy
 	if f.cursorPos != 0 {
-		return vfs.CopyToNotPossible
+		return vfs.ErrCopyToNotPossible
 	}
 
 	// if target is S3

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -334,7 +335,7 @@ func (ts *fileTestSuite) TestGetCopyObject() {
 
 	// ensure spaces are properly encoded (or not)
 	for i, t := range tests {
-		ts.Run(fmt.Sprintf("%d", i), func() {
+		ts.Run(strconv.Itoa(i), func() {
 			sourceFile := &File{
 				location: &Location{
 					fileSystem: &FileSystem{
@@ -590,13 +591,11 @@ func (ts *fileTestSuite) TestDeleteError() {
 }
 
 func (ts *fileTestSuite) TestDeleteWithAllVersionsOption() {
-	var versions []types.ObjectVersion
-	verIds := [...]string{"ver1", "ver2"}
-	for i := range verIds {
-		versions = append(versions, types.ObjectVersion{VersionId: &verIds[i]})
-	}
 	versOutput := s3.ListObjectVersionsOutput{
-		Versions: versions,
+		Versions: []types.ObjectVersion{
+			{VersionId: utils.Ptr("ver1")},
+			{VersionId: utils.Ptr("ver2")},
+		},
 	}
 	s3cliMock.On("ListObjectVersions", matchContext, mock.AnythingOfType("*s3.ListObjectVersionsInput")).Return(&versOutput, nil)
 	s3cliMock.On("DeleteObject", matchContext, mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil).Times(3)
@@ -606,20 +605,18 @@ func (ts *fileTestSuite) TestDeleteWithAllVersionsOption() {
 }
 
 func (ts *fileTestSuite) TestDeleteWithAllVersionsOptionError() {
-	var versions []types.ObjectVersion
-	verIds := [...]string{"ver1", "ver2"}
-	for i := range verIds {
-		versions = append(versions, types.ObjectVersion{VersionId: &verIds[i]})
-	}
 	versOutput := s3.ListObjectVersionsOutput{
-		Versions: versions,
+		Versions: []types.ObjectVersion{
+			{VersionId: utils.Ptr("ver1")},
+			{VersionId: utils.Ptr("ver2")},
+		},
 	}
 	s3cliMock.On("ListObjectVersions", matchContext, mock.AnythingOfType("*s3.ListObjectVersionsInput")).
 		Return(&versOutput, nil)
 	key := utils.Ptr(utils.RemoveLeadingSlash(testFileName))
 	s3cliMock.On("DeleteObject", matchContext, &s3.DeleteObjectInput{Key: key, Bucket: &bucket}).
 		Return(&s3.DeleteObjectOutput{}, nil).Once()
-	s3cliMock.On("DeleteObject", matchContext, &s3.DeleteObjectInput{Key: key, Bucket: &bucket, VersionId: &verIds[0]}).
+	s3cliMock.On("DeleteObject", matchContext, &s3.DeleteObjectInput{Key: key, Bucket: &bucket, VersionId: utils.Ptr("ver1")}).
 		Return(nil, errors.New("something went wrong")).Once()
 
 	err := testFile.Delete(delete.WithAllVersions())
