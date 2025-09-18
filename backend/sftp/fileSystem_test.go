@@ -129,8 +129,8 @@ func (ts *fileSystemTestSuite) TestClient() {
 func (ts *fileSystemTestSuite) TestClientWithAutoDisconnect() {
 	getClientCount := 0
 	client := mocks.NewClient(ts.T())
-	client.On("ReadDir", "/").Return([]os.FileInfo{}, nil).Times(3)
-	client.On("Close").Return(nil).Once()
+	client.EXPECT().ReadDir("/").Return([]os.FileInfo{}, nil).Times(3)
+	client.EXPECT().Close().Return(nil).Once()
 	defaultClientGetter = func(authority.Authority, Options) (Client, io.Closer, error) {
 		getClientCount++
 		return client, nil, nil

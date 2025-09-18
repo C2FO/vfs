@@ -122,7 +122,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 					},
 				}
 				body, _ := json.Marshal(event)
-				s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+				s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 					QueueUrl:                    aws.String(s.watcher.queueURL),
 					MaxNumberOfMessages:         10,
 					WaitTimeSeconds:             20,
@@ -138,7 +138,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 						},
 					},
 				}, nil).Once()
-				s.sqsClient.On("DeleteMessage", mock.Anything, &sqs.DeleteMessageInput{
+				s.sqsClient.EXPECT().DeleteMessage(mock.Anything, &sqs.DeleteMessageInput{
 					QueueUrl:      aws.String(s.watcher.queueURL),
 					ReceiptHandle: aws.String("receipt-handle"),
 				}).Return(&sqs.DeleteMessageOutput{}, nil).Once()
@@ -165,7 +165,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 					},
 				}
 				body, _ := json.Marshal(event)
-				s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+				s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 					QueueUrl:                    aws.String(s.watcher.queueURL),
 					MaxNumberOfMessages:         10,
 					WaitTimeSeconds:             20,
@@ -181,7 +181,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 						},
 					},
 				}, nil).Once()
-				s.sqsClient.On("DeleteMessage", mock.Anything, &sqs.DeleteMessageInput{
+				s.sqsClient.EXPECT().DeleteMessage(mock.Anything, &sqs.DeleteMessageInput{
 					QueueUrl:      aws.String(s.watcher.queueURL),
 					ReceiptHandle: aws.String("receipt-handle"),
 				}).Return(&sqs.DeleteMessageOutput{}, nil).Once()
@@ -208,7 +208,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 					},
 				}
 				body, _ := json.Marshal(event)
-				s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+				s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 					QueueUrl:                    aws.String(s.watcher.queueURL),
 					MaxNumberOfMessages:         10,
 					WaitTimeSeconds:             20,
@@ -224,7 +224,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 						},
 					},
 				}, nil).Once()
-				s.sqsClient.On("DeleteMessage", mock.Anything, &sqs.DeleteMessageInput{
+				s.sqsClient.EXPECT().DeleteMessage(mock.Anything, &sqs.DeleteMessageInput{
 					QueueUrl:      aws.String(s.watcher.queueURL),
 					ReceiptHandle: aws.String("receipt-handle"),
 				}).Return(&sqs.DeleteMessageOutput{}, nil).Once()
@@ -251,7 +251,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 					},
 				}
 				body, _ := json.Marshal(event)
-				s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+				s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 					QueueUrl:                    aws.String(s.watcher.queueURL),
 					MaxNumberOfMessages:         10,
 					WaitTimeSeconds:             20,
@@ -277,7 +277,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 		{
 			name: "ReceiveMessage error",
 			setupMocks: func() {
-				s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+				s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 					QueueUrl:                    aws.String(s.watcher.queueURL),
 					MaxNumberOfMessages:         10,
 					WaitTimeSeconds:             20,
@@ -339,7 +339,7 @@ func (s *S3WatcherTestSuite) TestPollWithRetry() {
 				}
 				body, _ := json.Marshal(s3Event)
 				// First successful call
-				s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+				s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 					QueueUrl:                    aws.String(s.watcher.queueURL),
 					MaxNumberOfMessages:         10,
 					WaitTimeSeconds:             20,
@@ -355,12 +355,12 @@ func (s *S3WatcherTestSuite) TestPollWithRetry() {
 						},
 					},
 				}, nil).Once()
-				s.sqsClient.On("DeleteMessage", mock.Anything, &sqs.DeleteMessageInput{
+				s.sqsClient.EXPECT().DeleteMessage(mock.Anything, &sqs.DeleteMessageInput{
 					QueueUrl:      aws.String(s.watcher.queueURL),
 					ReceiptHandle: aws.String("receipt-handle"),
 				}).Return(&sqs.DeleteMessageOutput{}, nil).Once()
 				// Subsequent calls return empty to avoid infinite loop
-				s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+				s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 					QueueUrl:                    aws.String(s.watcher.queueURL),
 					MaxNumberOfMessages:         10,
 					WaitTimeSeconds:             20,
@@ -377,7 +377,7 @@ func (s *S3WatcherTestSuite) TestPollWithRetry() {
 			},
 			setupMocks: func() {
 				// S3 poll continues even with errors - they're handled by error handler
-				s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+				s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 					QueueUrl:                    aws.String(s.watcher.queueURL),
 					MaxNumberOfMessages:         10,
 					WaitTimeSeconds:             20,
@@ -398,7 +398,7 @@ func (s *S3WatcherTestSuite) TestPollWithRetry() {
 			},
 			setupMocks: func() {
 				// Any response is fine - context will cancel
-				s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+				s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 					QueueUrl:                    aws.String(s.watcher.queueURL),
 					MaxNumberOfMessages:         10,
 					WaitTimeSeconds:             20,
@@ -544,7 +544,7 @@ func (s *S3WatcherTestSuite) TestWithReceivedCount() {
 			body, _ := json.Marshal(event)
 
 			// Setup mock expectations
-			s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+			s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 				QueueUrl:                    aws.String(watcher.queueURL),
 				MaxNumberOfMessages:         10,
 				WaitTimeSeconds:             20,
@@ -615,7 +615,7 @@ func (s *S3WatcherTestSuite) TestWithReceivedCountNoAttributes() {
 	}
 	body, _ := json.Marshal(event)
 
-	s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+	s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 		QueueUrl:                    aws.String(watcher.queueURL),
 		MaxNumberOfMessages:         10,
 		WaitTimeSeconds:             20,
@@ -669,7 +669,7 @@ func (s *S3WatcherTestSuite) TestWithReceivedCountMissingAttribute() {
 	}
 	body, _ := json.Marshal(event)
 
-	s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+	s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 		QueueUrl:                    aws.String(watcher.queueURL),
 		MaxNumberOfMessages:         10,
 		WaitTimeSeconds:             20,
@@ -912,13 +912,13 @@ func (s *S3WatcherTestSuite) TestEnhancedMetadata() {
 		Body: aws.String(string(body)),
 	}
 
-	s.sqsClient.On("ReceiveMessage", mock.Anything, mock.Anything).
+	s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, mock.Anything).
 		Return(&sqs.ReceiveMessageOutput{
 			Messages: []types.Message{message},
 		}, nil).
 		Once()
 
-	s.sqsClient.On("DeleteMessage", mock.Anything, mock.Anything).
+	s.sqsClient.EXPECT().DeleteMessage(mock.Anything, mock.Anything).
 		Return(&sqs.DeleteMessageOutput{}, nil).
 		Once()
 
@@ -996,13 +996,13 @@ func (s *S3WatcherTestSuite) TestNonVersionedBucketMetadata() {
 		Body: aws.String(string(body)),
 	}
 
-	s.sqsClient.On("ReceiveMessage", mock.Anything, mock.Anything).
+	s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, mock.Anything).
 		Return(&sqs.ReceiveMessageOutput{
 			Messages: []types.Message{message},
 		}, nil).
 		Once()
 
-	s.sqsClient.On("DeleteMessage", mock.Anything, mock.Anything).
+	s.sqsClient.EXPECT().DeleteMessage(mock.Anything, mock.Anything).
 		Return(&sqs.DeleteMessageOutput{}, nil).
 		Once()
 
