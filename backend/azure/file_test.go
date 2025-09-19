@@ -43,8 +43,8 @@ func (s *FileTestSuite) TestClose_FlushTempFile() {
 	fs := NewFileSystem(WithClient(client))
 	f, _ := fs.NewFile("test-container", "/foo.txt")
 
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(nil, errBlobNotFound)
-	client.EXPECT().Upload(mock.Anything, mock.Anything, "").Return(nil)
+	client.EXPECT().Properties(mock.Anything, "test-container", "/foo.txt").Return(nil, errBlobNotFound)
+	client.EXPECT().Upload(mock.Anything, mock.Anything, mock.Anything, "").Return(nil)
 	_, err := f.Write([]byte("Hello, World!"))
 	s.Require().NoError(err)
 	s.Require().NoError(f.Close())
@@ -56,8 +56,8 @@ func (s *FileTestSuite) TestRead() {
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.Require().NoError(err, "The file should exist so no error should be returned")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
-	client.EXPECT().Download(mock.Anything).Return(io.NopCloser(strings.NewReader("Hello World!")), nil)
+	client.EXPECT().Properties(mock.Anything, "test-container", "/foo.txt").Return(&BlobProperties{}, nil)
+	client.EXPECT().Download(mock.Anything, mock.Anything).Return(io.NopCloser(strings.NewReader("Hello World!")), nil)
 	contents := make([]byte, 12)
 	n, err := f.Read(contents)
 	s.Require().NoError(err)
@@ -71,8 +71,8 @@ func (s *FileTestSuite) TestSeek() {
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.Require().NoError(err, "The file should exist so no error should be returned")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
-	client.EXPECT().Download(mock.Anything).Return(io.NopCloser(strings.NewReader("Hello World!")), nil)
+	client.EXPECT().Properties(mock.Anything, "test-container", "/foo.txt").Return(&BlobProperties{}, nil)
+	client.EXPECT().Download(mock.Anything, mock.Anything).Return(io.NopCloser(strings.NewReader("Hello World!")), nil)
 	newOffset, err := f.Seek(6, io.SeekStart)
 	s.Require().NoError(err)
 	s.Equal(int64(6), newOffset)
@@ -90,8 +90,8 @@ func (s *FileTestSuite) TestWrite() {
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.NotNil(f)
 	s.Require().NoError(err)
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
-	client.EXPECT().Download(mock.Anything).Return(io.NopCloser(strings.NewReader("Hello World!")), nil)
+	client.EXPECT().Properties(mock.Anything, "test-container", "/foo.txt").Return(&BlobProperties{}, nil)
+	client.EXPECT().Download(mock.Anything, mock.Anything).Return(io.NopCloser(strings.NewReader("Hello World!")), nil)
 	n, err := f.Write([]byte(" Aaaaand, Goodbye!"))
 	s.Require().NoError(err)
 	s.Equal(18, n)
@@ -115,7 +115,7 @@ func (s *FileTestSuite) TestExists() {
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.Require().NoError(err, "The file should exist so no error should be returned")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
+	client.EXPECT().Properties(mock.Anything, "test-container", "/foo.txt").Return(&BlobProperties{}, nil)
 	exists, err := f.Exists()
 	s.Require().NoError(err)
 	s.True(exists)
@@ -127,7 +127,7 @@ func (s *FileTestSuite) TestExists_NonExistentFile() {
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.Require().NoError(err, "The path is valid so no error should be returned")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(nil, errBlobNotFound)
+	client.EXPECT().Properties(mock.Anything, "test-container", "/foo.txt").Return(nil, errBlobNotFound)
 	exists, err := f.Exists()
 	s.Require().NoError(err, "no error is returned when the file does not exist")
 	s.False(exists)
@@ -137,8 +137,8 @@ func (s *FileTestSuite) TestCloseWithContentType() {
 	client := mocks.NewClient(s.T())
 	fs := NewFileSystem(WithClient(client))
 	f, _ := fs.NewFile("test-container", "/foo.txt", newfile.WithContentType("text/plain"))
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(nil, errBlobNotFound)
-	client.EXPECT().Upload(mock.Anything, mock.Anything, "text/plain").Return(nil)
+	client.EXPECT().Properties(mock.Anything, "test-container", "/foo.txt").Return(nil, errBlobNotFound)
+	client.EXPECT().Upload(mock.Anything, mock.Anything, mock.Anything, "text/plain").Return(nil)
 	_, _ = f.Write([]byte("Hello, World!"))
 	s.Require().NoError(f.Close())
 }
@@ -156,9 +156,9 @@ func (s *FileTestSuite) TestCopyToLocation() {
 	fs := NewFileSystem(WithClient(client))
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	targetLoc, _ := fs.NewLocation("test-container", "/new/folder/")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
-	client.EXPECT().Download(mock.Anything).Return(io.NopCloser(strings.NewReader("blah")), nil)
-	client.EXPECT().Copy(mock.Anything, mock.Anything).Return(nil)
+	client.EXPECT().Properties(mock.Anything, "test-container", "/foo.txt").Return(&BlobProperties{}, nil)
+	client.EXPECT().Download(mock.Anything, mock.Anything).Return(io.NopCloser(strings.NewReader("blah")), nil)
+	client.EXPECT().Copy(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	copiedFile, err := source.CopyToLocation(targetLoc)
 	s.Require().NoError(err)
 	s.NotNil(copiedFile)
@@ -171,9 +171,9 @@ func (s *FileTestSuite) TestCopyToFile() {
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	target, _ := fs.NewFile("test-container", "/bar.txt")
 
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
-	client.EXPECT().Download(mock.Anything).Return(io.NopCloser(strings.NewReader("blah")), nil)
-	client.EXPECT().Copy(mock.Anything, mock.Anything).Return(nil)
+	client.EXPECT().Properties(mock.Anything, "test-container", "/foo.txt").Return(&BlobProperties{}, nil)
+	client.EXPECT().Download(mock.Anything, mock.Anything).Return(io.NopCloser(strings.NewReader("blah")), nil)
+	client.EXPECT().Copy(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	err := source.CopyToFile(target)
 	s.Require().NoError(err)
 }
@@ -185,9 +185,9 @@ func (s *FileTestSuite) TestCopyToFileBuffered() {
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	target, _ := fs.NewFile("test-container", "/bar.txt")
 
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
-	client.EXPECT().Download(mock.Anything).Return(io.NopCloser(strings.NewReader("blah")), nil)
-	client.EXPECT().Copy(mock.Anything, mock.Anything).Return(nil)
+	client.EXPECT().Properties(mock.Anything, "test-container", "/foo.txt").Return(&BlobProperties{}, nil)
+	client.EXPECT().Download(mock.Anything, mock.Anything).Return(io.NopCloser(strings.NewReader("blah")), nil)
+	client.EXPECT().Copy(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	err := source.CopyToFile(target)
 	s.Require().NoError(err)
 }
@@ -198,10 +198,10 @@ func (s *FileTestSuite) TestMoveToLocation() {
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	target, _ := fs.NewLocation("test-container", "/new/folder/")
 
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
-	client.EXPECT().Download(mock.Anything).Return(io.NopCloser(strings.NewReader("blah")), nil)
-	client.EXPECT().Copy(mock.Anything, mock.Anything).Return(nil)
-	client.EXPECT().Delete(mock.Anything).Return(nil)
+	client.EXPECT().Properties(mock.Anything, "test-container", "/foo.txt").Return(&BlobProperties{}, nil)
+	client.EXPECT().Download(mock.Anything, mock.Anything).Return(io.NopCloser(strings.NewReader("blah")), nil)
+	client.EXPECT().Copy(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	client.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 	movedFile, err := source.MoveToLocation(target)
 	s.Require().NoError(err)
 	s.NotNil(movedFile)
@@ -213,10 +213,10 @@ func (s *FileTestSuite) TestMoveToFile() {
 	fs := NewFileSystem(WithClient(client))
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	target, _ := fs.NewFile("test-container", "/bar.txt")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
-	client.EXPECT().Download(mock.Anything).Return(io.NopCloser(strings.NewReader("blah")), nil)
-	client.EXPECT().Copy(mock.Anything, mock.Anything).Return(nil)
-	client.EXPECT().Delete(mock.Anything).Return(nil)
+	client.EXPECT().Properties(mock.Anything, "test-container", "/foo.txt").Return(&BlobProperties{}, nil)
+	client.EXPECT().Download(mock.Anything, mock.Anything).Return(io.NopCloser(strings.NewReader("blah")), nil)
+	client.EXPECT().Copy(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	client.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 	err := source.MoveToFile(target)
 	s.Require().NoError(err)
 }
@@ -227,7 +227,7 @@ func (s *FileTestSuite) TestDelete() {
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.Require().NoError(err, "The path is valid so no error should be returned")
-	client.EXPECT().Delete(mock.Anything).Return(nil)
+	client.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
 	s.Require().NoError(f.Delete(), "The delete should succeed so there should be no error")
 }
 
@@ -237,8 +237,8 @@ func (s *FileTestSuite) TestDeleteWithAllVersionsOption() {
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.Require().NoError(err, "The path is valid so no error should be returned")
-	client.EXPECT().Delete(mock.Anything).Return(nil)
-	client.EXPECT().DeleteAllVersions(mock.Anything).Return(nil)
+	client.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil)
+	client.EXPECT().DeleteAllVersions(mock.Anything, mock.Anything).Return(nil)
 	s.Require().NoError(f.Delete(delete.WithAllVersions()), "The delete should succeed so there should be no error")
 }
 
@@ -248,7 +248,7 @@ func (s *FileTestSuite) TestDeleteWithAllVersionsOption_Error() {
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.Require().NoError(err, "The path is valid so no error should be returned")
-	client.EXPECT().Delete(mock.Anything).Return(errors.New("i always error"))
+	client.EXPECT().Delete(mock.Anything, mock.Anything).Return(errors.New("i always error"))
 	err = f.Delete(delete.WithAllVersions())
 	s.Require().Error(err, "If the file does not exist we get an error")
 }
@@ -259,7 +259,7 @@ func (s *FileTestSuite) TestDelete_NonExistentFile() {
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.Require().NoError(err, "The path is valid so no error should be returned")
-	client.EXPECT().Delete(mock.Anything).Return(errors.New("i always error"))
+	client.EXPECT().Delete(mock.Anything, mock.Anything).Return(errors.New("i always error"))
 	err = f.Delete()
 	s.Require().Error(err, "If the file does not exist we get an error")
 }
@@ -271,7 +271,7 @@ func (s *FileTestSuite) TestLastModified() {
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.Require().NoError(err, "The path is valid so no error should be returned")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{LastModified: &now}, nil)
+	client.EXPECT().Properties(mock.Anything, "test-container", "/foo.txt").Return(&BlobProperties{LastModified: &now}, nil)
 	t, err := f.LastModified()
 	s.Require().NoError(err)
 	s.NotNil(t)
@@ -283,7 +283,7 @@ func (s *FileTestSuite) TestSize() {
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.Require().NoError(err, "The path is valid so no error should be returned")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{Size: to.Ptr[int64](5)}, nil)
+	client.EXPECT().Properties(mock.Anything, "test-container", "/foo.txt").Return(&BlobProperties{Size: to.Ptr[int64](5)}, nil)
 	size, err := f.Size()
 	s.Require().NoError(err)
 	s.Equal(uint64(5), size, "The size should be 5")
@@ -295,7 +295,7 @@ func (s *FileTestSuite) TestSize_NonExistentFile() {
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.Require().NoError(err, "The path is valid so no error should be returned")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(nil, errors.New("i always error"))
+	client.EXPECT().Properties(mock.Anything, "test-container", "/foo.txt").Return(nil, errors.New("i always error"))
 	size, err := f.Size()
 	s.Require().Error(err, "If the file does not exist we get an error")
 	s.Zero(size, "the file does not exist so the size is 0")
@@ -324,8 +324,8 @@ func (s *FileTestSuite) TestTouch() {
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.Require().NoError(err, "The path is valid so no error should be returned")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
-	client.EXPECT().SetMetadata(mock.Anything, mock.Anything).Return(nil)
+	client.EXPECT().Properties(mock.Anything, "test-container", "/foo.txt").Return(&BlobProperties{}, nil)
+	client.EXPECT().SetMetadata(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	s.Require().NoError(f.Touch())
 }
 
@@ -335,8 +335,8 @@ func (s *FileTestSuite) TestTouch_NonExistentContainer() {
 
 	f, err := fs.NewFile("nosuchcontainer", "/foo.txt")
 	s.Require().NoError(err, "The path is valid so no error should be returned")
-	client.EXPECT().Properties("nosuchcontainer", "/foo.txt").Return(&BlobProperties{}, nil)
-	client.EXPECT().SetMetadata(mock.Anything, mock.Anything).Return(errors.New("i always error"))
+	client.EXPECT().Properties(mock.Anything, "nosuchcontainer", "/foo.txt").Return(&BlobProperties{}, nil)
+	client.EXPECT().SetMetadata(mock.Anything, mock.Anything, mock.Anything).Return(errors.New("i always error"))
 	s.Require().Error(f.Touch(), "The container does not exist so creating the new file should error")
 }
 
@@ -346,8 +346,8 @@ func (s *FileTestSuite) TestTouchWithContentType() {
 
 	f, err := fs.NewFile("test-container", "/foo.txt", newfile.WithContentType("text/plain"))
 	s.Require().NoError(err, "The path is valid so no error should be returned")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(nil, errBlobNotFound)
-	client.EXPECT().Upload(mock.Anything, mock.Anything, "text/plain").Return(nil)
+	client.EXPECT().Properties(mock.Anything, "test-container", "/foo.txt").Return(nil, errBlobNotFound)
+	client.EXPECT().Upload(mock.Anything, mock.Anything, mock.Anything, "text/plain").Return(nil)
 	s.Require().NoError(f.Touch())
 }
 
@@ -373,8 +373,8 @@ func (s *FileTestSuite) TestCheckTempFile() {
 	s.NotNil(azureFile)
 
 	s.Nil(azureFile.tempFile, "No calls to checkTempFile have occurred so we expect tempFile to be nil")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
-	client.EXPECT().Download(mock.Anything).Return(io.NopCloser(strings.NewReader("Hello World!")), nil)
+	client.EXPECT().Properties(mock.Anything, "test-container", "/foo.txt").Return(&BlobProperties{}, nil)
+	client.EXPECT().Download(mock.Anything, mock.Anything).Return(io.NopCloser(strings.NewReader("Hello World!")), nil)
 	err = azureFile.checkTempFile()
 	s.Require().NoError(err, "Check temp file should create a local temp file so no error is expected")
 	s.NotNil(azureFile.tempFile, "After the call to checkTempFile we should have a non-nil tempFile")
@@ -396,7 +396,7 @@ func (s *FileTestSuite) TestCheckTempFile_FileDoesNotExist() {
 	s.NotNil(azureFile)
 
 	s.Nil(azureFile.tempFile, "No calls to checkTempFile have occurred so we expect tempFile to be nil")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(nil, errBlobNotFound)
+	client.EXPECT().Properties(mock.Anything, "test-container", "/foo.txt").Return(nil, errBlobNotFound)
 	err = azureFile.checkTempFile()
 	s.Require().NoError(err, "Check temp file should create a local temp file so no error is expected")
 	s.NotNil(azureFile.tempFile, "After the call to checkTempFile we should have a non-nil tempFile")
@@ -418,8 +418,8 @@ func (s *FileTestSuite) TestCheckTempFile_DownloadError() {
 	s.NotNil(azureFile)
 
 	s.Nil(azureFile.tempFile, "No calls to checkTempFile have occurred so we expect tempFile to be nil")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
-	client.EXPECT().Download(mock.Anything).Return(nil, errors.New("i always error"))
+	client.EXPECT().Properties(mock.Anything, "test-container", "/foo.txt").Return(&BlobProperties{}, nil)
+	client.EXPECT().Download(mock.Anything, mock.Anything).Return(nil, errors.New("i always error"))
 	err = azureFile.checkTempFile()
 	s.Require().Error(err, "The call to client.Download() errors so we expect to get an error")
 }
