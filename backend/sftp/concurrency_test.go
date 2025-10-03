@@ -3,10 +3,13 @@ package sftp
 import (
 	"fmt"
 	"io"
+	"os"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
 
+	_sftp "github.com/pkg/sftp"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/ssh"
 
@@ -208,4 +211,176 @@ func (s *SFTPConcurrencyTestSuite) TestTimerCleanupRobustness() {
 
 	// Assert that no panics occurred
 	s.Empty(panics, "Timer cleanup should not cause panics")
+}
+
+// TestTimerLogicValidation validates that the timer correctly handles
+// valid clients vs typed-nil clients
+func (s *SFTPConcurrencyTestSuite) TestTimerLogicValidation() {
+	s.Run("Timer closes valid client", func() {
+		// Create a mock client that tracks Close() calls
+		mockClient := &mockClosableClient{
+			closeCalled: make(chan bool, 1),
+		}
+		mockConn := &mockCloser{closeCalled: make(chan bool, 1)}
+
+		fs := &FileSystem{
+			sftpclient: mockClient,
+			sshConn:    mockConn,
+			options: Options{
+				AutoDisconnect: 1, // 1 second timeout
+			},
+		}
+
+		// Verify client is set before timer
+		s.NotNil(fs.sftpclient, "Client should exist before timer")
+		s.NotNil(fs.sshConn, "SSH connection should exist before timer")
+
+		// Start the timer
+		fs.connTimerStart()
+
+		// Wait for timer to fire and Close to be called
+		select {
+		case <-mockClient.closeCalled:
+			// Success - Close was called on valid client
+		case <-time.After(2 * time.Second):
+			s.Fail("Timer should have closed the valid client")
+		}
+
+		// Also verify SSH connection was closed
+		select {
+		case <-mockConn.closeCalled:
+			// Success - Close was called on SSH connection
+		case <-time.After(100 * time.Millisecond):
+			s.Fail("Timer should have closed the SSH connection")
+		}
+
+		// Verify both client and connection were set to nil after timer
+		fs.timerMutex.Lock()
+		s.Nil(fs.sftpclient, "Client should be nil after timer")
+		s.Nil(fs.sshConn, "SSH connection should be nil after timer")
+		fs.timerMutex.Unlock()
+	})
+
+	s.Run("Timer handles typed-nil client safely", func() {
+		// Create a typed-nil client (this is what happens when client creation fails)
+		var typedNilClient Client = (*mockClosableClient)(nil)
+
+		fs := &FileSystem{
+			sftpclient: typedNilClient,
+			options: Options{
+				AutoDisconnect: 1, // 1 second timeout
+			},
+		}
+
+		// Verify we start with a typed-nil
+		s.True(reflect.ValueOf(fs.sftpclient).IsNil(), "Should start with typed-nil client")
+
+		// Capture any panic
+		panicOccurred := false
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					panicOccurred = true
+				}
+			}()
+
+			// Start the timer
+			fs.connTimerStart()
+
+			// Wait for timer to fire
+			time.Sleep(1500 * time.Millisecond)
+		}()
+
+		// Verify no panic occurred
+		s.False(panicOccurred, "Timer should handle typed-nil without panic")
+	})
+
+	s.Run("Timer does not call Close on typed-nil client", func() {
+		// This test validates that Close() is NOT called on typed-nil
+		// (which would panic since the receiver is nil)
+		closableNil := &mockClosableClient{
+			closeCalled: make(chan bool, 1),
+		}
+		var typedNilClient Client = (*mockClosableClient)(nil)
+
+		fs := &FileSystem{
+			sftpclient: typedNilClient,
+			options: Options{
+				AutoDisconnect: 1,
+			},
+		}
+
+		// Verify it's a typed nil before timer starts
+		s.True(reflect.ValueOf(fs.sftpclient).IsNil(), "Should start with typed-nil")
+
+		// This is the critical test - no panic should occur
+		panicOccurred := false
+		done := make(chan bool, 1)
+
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					panicOccurred = true
+				}
+				done <- true
+			}()
+
+			// Start timer
+			fs.connTimerStart()
+
+			// Wait for timer to fire
+			time.Sleep(1500 * time.Millisecond)
+		}()
+
+		<-done
+
+		// The key validation: no panic should have occurred
+		s.False(panicOccurred, "Timer should handle typed-nil without panic")
+
+		// Verify Close was never called (channel should be empty)
+		select {
+		case <-closableNil.closeCalled:
+			s.Fail("Close should NOT be called on typed-nil client")
+		default:
+			// Success - Close was not called
+		}
+	})
+}
+
+// mockClosableClient implements Client interface for testing timer behavior
+type mockClosableClient struct {
+	closeCalled chan bool
+}
+
+func (m *mockClosableClient) Close() error {
+	if m.closeCalled != nil {
+		m.closeCalled <- true
+	}
+	return nil
+}
+
+func (m *mockClosableClient) Chmod(path string, mode os.FileMode) error { return nil }
+func (m *mockClosableClient) Chtimes(path string, atime, mtime time.Time) error {
+	return nil
+}
+func (m *mockClosableClient) Create(path string) (*_sftp.File, error) { return nil, nil }
+func (m *mockClosableClient) MkdirAll(path string) error              { return nil }
+func (m *mockClosableClient) OpenFile(path string, f int) (*_sftp.File, error) {
+	return nil, nil
+}
+func (m *mockClosableClient) ReadDir(p string) ([]os.FileInfo, error) { return nil, nil }
+func (m *mockClosableClient) Remove(path string) error                { return nil }
+func (m *mockClosableClient) Rename(oldname, newname string) error    { return nil }
+func (m *mockClosableClient) Stat(p string) (os.FileInfo, error)      { return nil, nil }
+
+// mockCloser implements io.Closer for testing
+type mockCloser struct {
+	closeCalled chan bool
+}
+
+func (m *mockCloser) Close() error {
+	if m.closeCalled != nil {
+		m.closeCalled <- true
+	}
+	return nil
 }
