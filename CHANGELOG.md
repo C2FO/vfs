@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v7.9.0] - 2025-10-07
+### Added
+- Added ConnectionTimout option (default 30s) to sftp backend configurable via WithOption or WithConnectionTimeout.
+
 ## [v7.8.3] - 2025-10-02
 ### Fixed
 - Fixes #289. Inverted logic in SFTP connTimerStart causing premature connection closes

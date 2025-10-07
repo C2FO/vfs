@@ -1,12 +1,15 @@
 package sftp
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"time"
 
 	"github.com/mitchellh/go-homedir"
 	_sftp "github.com/pkg/sftp"
@@ -32,6 +35,7 @@ type Options struct {
 	MACs               []string            `json:"macs,omitempty"`
 	HostKeyAlgorithms  []string            `json:"hostKeyAlgorithms,omitempty"`
 	AutoDisconnect     int                 `json:"autoDisconnect,omitempty"` // seconds before disconnecting. default: 10
+	ConnectTimeout     int                 `json:"connectTimeout,omitempty"` // seconds before conn AND auth timeout. default: 30
 	KnownHostsCallback ssh.HostKeyCallback // env var VFS_SFTP_INSECURE_KNOWN_HOSTS
 	FileBufferSize     int                 `json:"fileBufferSize,omitempty"`  // Buffer Size In Bytes Used with utils.TouchCopyBuffered
 	FilePermissions    *string             `json:"filePermissions,omitempty"` // Default File Permissions for new files
@@ -133,17 +137,54 @@ func GetClient(a authority.Authority, opts Options) (sftpclient *_sftp.Client, s
 	config.Auth = authMethods
 	config.HostKeyCallback = hostKeyCallback
 
+	// Set connection timeout (default 30 seconds)
+	// This timeout covers BOTH TCP connection AND SSH authentication
+	connectTimeout := 30 * time.Second
+	if opts.ConnectTimeout > 0 {
+		connectTimeout = time.Duration(opts.ConnectTimeout) * time.Second
+	}
+
 	// default to port 22
 	host := fmt.Sprintf("%s:%d", a.Host(), a.Port())
 	if a.Port() == 0 {
 		host = fmt.Sprintf("%s:%d", host, 22)
 	}
 
-	// TODO begin timeout until session is created
-	sshConn, err := ssh.Dial("tcp", host, config)
+	// Create context with timeout to cover full connection + auth
+	ctx, cancel := context.WithTimeout(context.Background(), connectTimeout)
+	defer cancel()
+
+	// Use custom dialer with timeout context
+	// This ensures timeout covers both TCP connection AND SSH authentication
+	var dialer net.Dialer
+	netConn, err := dialer.DialContext(ctx, "tcp", host)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to connect to %s: %w", host, err)
 	}
+
+	// Set deadline on the connection to enforce timeout during SSH handshake/auth
+	// This is critical for servers that hang during authentication
+	deadline, _ := ctx.Deadline()
+	if err := netConn.SetDeadline(deadline); err != nil {
+		_ = netConn.Close()
+		return nil, nil, fmt.Errorf("failed to set connection deadline: %w", err)
+	}
+
+	// Perform SSH handshake - will timeout if it exceeds the deadline set above
+	sshClientConn, chans, reqs, err := ssh.NewClientConn(netConn, host, config)
+	if err != nil {
+		_ = netConn.Close()
+		return nil, nil, fmt.Errorf("SSH handshake failed: %w", err)
+	}
+
+	// Clear deadline after successful connection - operations should not be time-limited
+	if err := netConn.SetDeadline(time.Time{}); err != nil {
+		_ = netConn.Close()
+		return nil, nil, fmt.Errorf("failed to clear connection deadline: %w", err)
+	}
+
+	// Create SSH client from the connection
+	sshConn := ssh.NewClient(sshClientConn, chans, reqs)
 
 	sftpClient, err := _sftp.NewClient(sshConn)
 	if err != nil {

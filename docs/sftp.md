@@ -203,6 +203,17 @@ NOTE: AutoDisconnect has nothing to do with "keep alive".  Here we're only conce
 the server from disconnecting us.  If that is something you want, you'd have to implement yourself, injecting your own
 client using WithClient().
 
+### ConnectTimeout
+
+By default, the SFTP backend will wait indefinitely for a connection to be established and for the authentication handshake
+to complete. This can cause an application to hang if the remote server is unresponsive or misconfigured (e.g., it never 
+responds after an incorrect password).
+
+The `ConnectTimeout` option sets a deadline for the entire connection process, including TCP connection and SSH authentication.
+If the connection and authentication do not succeed within this duration, the operation will fail with a timeout error.
+
+`Options.ConnectTimeout` accepts an integer representing the number of seconds. The default value is 30 seconds.
+
 ## Usage
 
 ```go
@@ -586,6 +597,7 @@ type Options struct {
 	MACs               []string            `json:"macs,omitempty"`
 	HostKeyAlgorithms  []string            `json:"hostKeyAlgorithms,omitempty"`
 	AutoDisconnect     int                 `json:"autoDisconnect,omitempty"` // seconds before disconnecting. default: 10
+	ConnectTimeout     int                 `json:"connectTimeout,omitempty"` // seconds before connection AND authentication timeout. default: 30
 	KnownHostsCallback ssh.HostKeyCallback // env var VFS_SFTP_INSECURE_KNOWN_HOSTS
 	FileBufferSize     int                 // Buffer Size In Bytes Used with utils.TouchCopyBuffered
 }
