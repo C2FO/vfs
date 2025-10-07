@@ -213,6 +213,60 @@ func (s *SFTPConcurrencyTestSuite) TestTimerCleanupRobustness() {
 	s.Empty(panics, "Timer cleanup should not cause panics")
 }
 
+// TestConnectTimeout validates that connection timeout prevents indefinite hangs
+func (s *SFTPConcurrencyTestSuite) TestConnectTimeout() {
+	s.Run("Connection timeout prevents indefinite hang", func() {
+		// Create filesystem with very short timeout
+		fs := NewFileSystem(WithOptions(Options{
+			Username:           "testuser",
+			Password:           "wrongpassword",
+			ConnectTimeout:     2,                           // 2 second timeout
+			KnownHostsCallback: ssh.InsecureIgnoreHostKey(), //nolint:gosec // Test code
+		}))
+
+		// Use an IP that will timeout (non-routable IP)
+		// 192.0.2.1 is reserved for documentation/testing (RFC 5737)
+		auth, err := authority.NewAuthority("sftp://testuser@192.0.2.1:22")
+		s.Require().NoError(err)
+
+		// This should timeout within ~2 seconds, not hang forever
+		start := time.Now()
+		_, err = fs.Client(auth)
+		elapsed := time.Since(start)
+
+		// Should get an error
+		s.Require().Error(err, "Should get timeout error")
+
+		// Should timeout within reasonable time (2s timeout + some overhead)
+		s.Less(elapsed, 5*time.Second, "Should timeout quickly, not hang forever")
+
+		s.T().Logf("Connection attempt failed after %v (expected ~2s)", elapsed)
+	})
+
+	s.Run("Default timeout is applied", func() {
+		// Create filesystem without explicit timeout (should use default 30s)
+		fs := NewFileSystem(WithOptions(Options{
+			Username:           "testuser",
+			Password:           "wrongpassword",
+			KnownHostsCallback: ssh.InsecureIgnoreHostKey(), //nolint:gosec // Test code
+		}))
+
+		auth, err := authority.NewAuthority("sftp://testuser@192.0.2.1:22")
+		s.Require().NoError(err)
+
+		// This should timeout with default (30s), not hang forever
+		start := time.Now()
+		_, err = fs.Client(auth)
+		elapsed := time.Since(start)
+
+		s.Require().Error(err, "Should get timeout error")
+		// Should be much less than "forever" - give it up to 35s for default 30s timeout
+		s.Less(elapsed, 35*time.Second, "Should use default timeout, not hang forever")
+
+		s.T().Logf("Connection attempt with default timeout failed after %v", elapsed)
+	})
+}
+
 // TestTimerLogicValidation validates that the timer correctly handles
 // valid clients vs typed-nil clients
 func (s *SFTPConcurrencyTestSuite) TestTimerLogicValidation() {

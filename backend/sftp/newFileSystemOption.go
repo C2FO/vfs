@@ -54,3 +54,23 @@ func (o *optionsOpt) Apply(fs *FileSystem) {
 func (o *optionsOpt) NewFileSystemOptionName() string {
 	return optionNameOptions
 }
+
+// WithConnectTimeout returns a NewFileSystemOption that sets the timeout for both
+// TCP connection AND SSH authentication in seconds. Default is 30 seconds.
+//
+// This is critical for preventing indefinite hangs when:
+// - Connecting to unresponsive servers
+// - Authentication fails but server doesn't respond
+// - Network issues cause connection delays
+//
+// The timeout covers the complete connection process:
+//  1. TCP connection establishment
+//  2. SSH protocol handshake
+//  3. Authentication (password, key, etc.)
+//
+// Example:
+//
+//	fs := sftp.NewFileSystem(sftp.WithConnectTimeout(10)) // 10 second timeout
+func WithConnectTimeout(seconds int) options.NewFileSystemOption[FileSystem] {
+	return WithOptions(Options{ConnectTimeout: seconds})
+}

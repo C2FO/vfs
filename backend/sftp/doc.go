@@ -131,6 +131,7 @@ Example:
 				Ciphers: []string{ "aes256-ctr", "aes192-ctr", "aes128-ctr" },
 				MACs: []string{ "hmac-sha2-256", "hmac-sha2-512" },
 				HostKeyAlgorithms: []string{ "ssh-rsa", "ssh-ed25519" },
+				ConnectTimeout: 15, // 15-second timeout for connection and auth
 				// other settings
 			},
 		),
@@ -170,6 +171,29 @@ Default value is 10 seconds.
 
 Any server request action using the same underlying FileSystem (and therefore sftp client), will reset the timer.  This
 should be the most desirable behavior.
+
+# ConnectTimeout
+
+By default, the SFTP backend will wait indefinitely for a connection to be established and for the authentication
+handshake to complete. This can cause an application to hang if the remote server is unresponsive or misconfigured
+(e.g., it never responds after an incorrect password).
+
+The `ConnectTimeout` option sets a deadline for the entire connection process, including TCP connection and SSH
+authentication. If the connection and authentication do not succeed within this duration, the operation will fail
+with a timeout error.
+
+`Options.ConnectTimeout` accepts an integer representing the number of seconds. The default value is 30 seconds.
+
+Example:
+
+	fs := sftp.NewFileSystem(
+		sftp.WithOptions(
+			sftp.Options{
+				ConnectTimeout: 15, // Set a 15-second timeout for connection and auth
+				// other settings
+			},
+		),
+	)
 
 	func doSFTPStuff() {
 		fs := sftp.NewFileSystem()
