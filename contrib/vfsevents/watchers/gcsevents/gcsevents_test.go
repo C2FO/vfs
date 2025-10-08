@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 

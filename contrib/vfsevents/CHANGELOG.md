@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Security
+- Updated to go 1.24.8
+- Updated dependcies
+### Fixed
+- Fixed lint issues where t.Context() shoudl be used and pubsub v1 is deprecated, so updated.
 
 ## [contrib/vfsevents/v1.0.2] - 2025-09-16
 ### Fixed
