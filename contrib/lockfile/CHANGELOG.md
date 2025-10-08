@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [contrib/lockfile/v1.1.0] - 2025-10-07
+### Security
+- Update go form 1.23 to 1.24
+- Update dependencies
+### Fixed
+- lockfile_test.go was using its own package namespace which required importing lockfile (and did so incorrectly reference v7 (which doesn't apply to contrib packages).
+
 ## [contrib/lockfile/v1.0.1] - 2025-09-16
 ### Fixed
 - Use more appropriate unit test assertion patterns where possible.

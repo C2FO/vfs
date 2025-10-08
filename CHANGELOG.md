@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v7.10.0] - 2025-10-07
+### Security
+- Updated dependencies.
+- Updated go v1.23 to v1.24.
+- Updated gh action versions.
+### Fixed
+- Fixed Authority tests broken by stricter parsing of IPv6 address by go 1.24.
+
 ## [v7.9.0] - 2025-10-07
 ### Added
 - Added ConnectTimeout option (default 30s) to sftp backend configurable via WithOption or WithConnectTimeout.

@@ -9,16 +9,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
 
       - name: Generate test coverage
         run: go test ./... -coverprofile=./cover.out -covermode=atomic -coverpkg=./...
 
       - name: Check test coverage
-        # using vladopajic/go-test-coverage@v2.13.0 below
-        uses: vladopajic/go-test-coverage@992aa9921a42c39d1fe0015d32593f0820589586
+        # using vladopajic/go-test-coverage@v2.17.0 below
+        uses: vladopajic/go-test-coverage@cc5012c2cfa84542e02b079141958a885861d326
         with:
           config: ./.testcoverage.yml

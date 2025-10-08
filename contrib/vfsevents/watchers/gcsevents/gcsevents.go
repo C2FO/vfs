@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 
 	"github.com/c2fo/vfs/contrib/vfsevents"
 )
@@ -119,7 +119,7 @@ func NewGCSWatcher(projectID, subscriptionID string, opts ...Option) (*GCSWatche
 		}
 
 		subscriptionName := fmt.Sprintf("projects/%s/subscriptions/%s", projectID, subscriptionID)
-		w.pubsubClient = client.Subscription(subscriptionName)
+		w.pubsubClient = client.Subscriber(subscriptionName)
 	}
 
 	return w, nil

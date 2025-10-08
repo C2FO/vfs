@@ -57,7 +57,7 @@ func testNoDebouncing(t *testing.T, location vfs.Location, tempDir string) {
 		errors <- err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	err = watcher.Start(ctx, eventHandler, errorHandler)
@@ -115,7 +115,7 @@ func testWithDebouncing(t *testing.T, location vfs.Location, tempDir string) {
 		errors <- err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	err = watcher.Start(ctx, eventHandler, errorHandler)
@@ -186,7 +186,7 @@ func testMemoryLeakPrevention(t *testing.T, location vfs.Location, tempDir strin
 		errors <- err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	err = watcher.Start(ctx, eventHandler, errorHandler)
@@ -268,7 +268,7 @@ func testLongDebounceTimeout(t *testing.T, location vfs.Location, tempDir string
 		errors <- err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	err = watcher.Start(ctx, eventHandler, errorHandler)
@@ -337,7 +337,7 @@ func TestDebouncingEdgeCases(t *testing.T) {
 			errors <- err
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 		defer cancel()
 
 		err = watcher.Start(ctx, eventHandler, errorHandler)
