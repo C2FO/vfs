@@ -59,7 +59,7 @@ jobs:
         run: |
           git config --global url."https://c2fo-read-only:${{ secrets.GH_CI_READ }}@github.com/c2fo".insteadOf "https://github.com/c2fo"
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # Add any setup steps before running the `github/codeql-action/init` action.
       # This includes steps like installing compilers or runtimes (`actions/setup-node`
@@ -67,13 +67,13 @@ jobs:
       # - name: Setup runtime (example)
       #   uses: actions/setup-example@v1
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.23' # The Go version to download (if necessary) and use.
+          go-version: '1.24' # The Go version to download (if necessary) and use.
       # Initializes the CodeQL tools for scanning.
       - name: Initialize CodeQL
-        # using v3.28.12 below
-        uses: github/codeql-action/init@5f8171a638ada777af81d42b55959a643bb29017
+        # using 4.30.7 below
+        uses: github/codeql-action/init@e296a935590eb16afc0c0108289f68c87e2a89a5
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
@@ -101,7 +101,7 @@ jobs:
           exit 1
 
       - name: Perform CodeQL Analysis
-        # using v3.28.12 below
-        uses: github/codeql-action/analyze@5f8171a638ada777af81d42b55959a643bb29017
+        # using v4.30.7 below
+        uses: github/codeql-action/analyze@e296a935590eb16afc0c0108289f68c87e2a89a5
         with:
           category: "/language:${{matrix.language}}"
