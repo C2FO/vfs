@@ -1,4 +1,4 @@
-package lockfile_test
+package lockfile
 
 import (
 	"errors"
@@ -9,14 +9,13 @@ import (
 
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/backend/mem"
-	"github.com/c2fo/vfs/v7/contrib/lockfile"
 )
 
 func TestNewLock(t *testing.T) {
 	tests := []struct {
 		name          string
 		filePath      string
-		opts          []lockfile.Option
+		opts          []Option
 		expectedError error
 	}{
 		{
@@ -28,13 +27,13 @@ func TestNewLock(t *testing.T) {
 		{
 			name:          "with TTL",
 			filePath:      "/test.txt",
-			opts:          []lockfile.Option{lockfile.WithTTL(5 * time.Second)},
+			opts:          []Option{WithTTL(5 * time.Second)},
 			expectedError: nil,
 		},
 		{
 			name:          "with owner ID",
 			filePath:      "/test.txt",
-			opts:          []lockfile.Option{lockfile.WithOwnerID("test-owner")},
+			opts:          []Option{WithOwnerID("test-owner")},
 			expectedError: nil,
 		},
 	}
@@ -45,7 +44,7 @@ func TestNewLock(t *testing.T) {
 			f, err := fs.NewFile("", tt.filePath)
 			require.NoError(t, err)
 
-			lock, err := lockfile.NewLock(f, tt.opts...)
+			lock, err := NewLock(f, tt.opts...)
 			if tt.expectedError != nil {
 				require.Error(t, err)
 				require.ErrorIs(t, err, tt.expectedError)
@@ -84,7 +83,7 @@ func TestAcquireAndRelease(t *testing.T) {
 			f, err := fs.NewFile("", "/test.txt")
 			require.NoError(t, err)
 
-			lock, err := lockfile.NewLock(f, lockfile.WithTTL(tt.ttl))
+			lock, err := NewLock(f, WithTTL(tt.ttl))
 			require.NoError(t, err)
 
 			if tt.shouldAcquire {
@@ -116,16 +115,16 @@ func TestConcurrentLocks(t *testing.T) {
 	require.NoError(t, err)
 
 	// First lock
-	lock1, err := lockfile.NewLock(f)
+	lock1, err := NewLock(f)
 	require.NoError(t, err)
 	err = lock1.Acquire()
 	require.NoError(t, err)
 
 	// Second lock attempt should fail
-	lock2, err := lockfile.NewLock(f)
+	lock2, err := NewLock(f)
 	require.NoError(t, err)
 	err = lock2.Acquire()
-	require.ErrorIs(t, err, lockfile.ErrLockAlreadyHeld)
+	require.ErrorIs(t, err, ErrLockAlreadyHeld)
 
 	// Release first lock
 	err = lock1.Release()
@@ -143,7 +142,7 @@ func TestMetadata(t *testing.T) {
 	f, err := fs.NewFile("", "/test.txt")
 	require.NoError(t, err)
 
-	lock, err := lockfile.NewLock(f, lockfile.WithTTL(5*time.Second), lockfile.WithOwnerID("test-owner"))
+	lock, err := NewLock(f, WithTTL(5*time.Second), WithOwnerID("test-owner"))
 	require.NoError(t, err)
 
 	err = lock.Acquire()
@@ -167,7 +166,7 @@ func TestAge(t *testing.T) {
 	f, err := fs.NewFile("", "/test.txt")
 	require.NoError(t, err)
 
-	lock, err := lockfile.NewLock(f)
+	lock, err := NewLock(f)
 	require.NoError(t, err)
 
 	err = lock.Acquire()
@@ -188,7 +187,7 @@ func TestStaleLock(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a lock with a very short TTL
-	lock1, err := lockfile.NewLock(f, lockfile.WithTTL(100*time.Millisecond))
+	lock1, err := NewLock(f, WithTTL(100*time.Millisecond))
 	require.NoError(t, err)
 
 	err = lock1.Acquire()
@@ -199,9 +198,9 @@ func TestStaleLock(t *testing.T) {
 
 	// Create second lock with stale handler
 	staleHandlerCalled := false
-	lock2, err := lockfile.NewLock(f,
-		lockfile.WithTTL(5*time.Second),
-		lockfile.OnStale(func(meta lockfile.Metadata) error {
+	lock2, err := NewLock(f,
+		WithTTL(5*time.Second),
+		OnStale(func(meta Metadata) error {
 			staleHandlerCalled = true
 			return nil
 		}),
@@ -220,34 +219,34 @@ func TestStaleLock(t *testing.T) {
 func TestErrorCases(t *testing.T) {
 	tests := []struct {
 		name          string
-		setup         func() (*lockfile.Lock, error)
-		action        func(*lockfile.Lock) error
+		setup         func() (*Lock, error)
+		action        func(*Lock) error
 		expectedError error
 	}{
 		{
 			name: "release without acquire",
-			setup: func() (*lockfile.Lock, error) {
+			setup: func() (*Lock, error) {
 				fs := mem.NewFileSystem()
 				f, err := fs.NewFile("", "/test.txt")
 				if err != nil {
 					return nil, err
 				}
-				return lockfile.NewLock(f)
+				return NewLock(f)
 			},
-			action:        func(l *lockfile.Lock) error { return l.Release() },
+			action:        func(l *Lock) error { return l.Release() },
 			expectedError: nil, // Release is now idempotent
 		},
 		{
 			name: "metadata without lock",
-			setup: func() (*lockfile.Lock, error) {
+			setup: func() (*Lock, error) {
 				fs := mem.NewFileSystem()
 				f, err := fs.NewFile("", "/test.txt")
 				if err != nil {
 					return nil, err
 				}
-				return lockfile.NewLock(f)
+				return NewLock(f)
 			},
-			action: func(l *lockfile.Lock) error {
+			action: func(l *Lock) error {
 				_, err := l.Metadata()
 				return err
 			},
@@ -277,7 +276,7 @@ func TestWithLock(t *testing.T) {
 
 	// Test successful lock acquisition and execution
 	called := false
-	err = lockfile.WithLock(f, func(f vfs.File) error {
+	err = WithLock(f, func(f vfs.File) error {
 		called = true
 		return nil
 	})
@@ -285,22 +284,22 @@ func TestWithLock(t *testing.T) {
 	require.True(t, called)
 
 	// Test concurrent access
-	lock, err := lockfile.NewLock(f)
+	lock, err := NewLock(f)
 	require.NoError(t, err)
 	err = lock.Acquire()
 	require.NoError(t, err)
 
-	err = lockfile.WithLock(f, func(f vfs.File) error {
+	err = WithLock(f, func(f vfs.File) error {
 		return nil
 	})
-	require.ErrorIs(t, err, lockfile.ErrLockAlreadyHeld)
+	require.ErrorIs(t, err, ErrLockAlreadyHeld)
 
 	err = lock.Release()
 	require.NoError(t, err)
 
 	// Test error propagation
 	expectedErr := errors.New("test error")
-	err = lockfile.WithLock(f, func(f vfs.File) error {
+	err = WithLock(f, func(f vfs.File) error {
 		return expectedErr
 	})
 	require.ErrorIs(t, err, expectedErr)

@@ -29,7 +29,7 @@ go get github.com/c2fo/vfs/contrib/lockfile
 ```go
 import (
     "github.com/c2fo/vfs/v7/vfssimple"
-    "github.com/c2fo/vfs/v7/contrib/lockfile"
+    "github.com/c2fo/vfs/contrib/lockfile"
 )
 
 // Create a file using vfssimple
