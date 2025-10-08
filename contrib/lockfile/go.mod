@@ -1,6 +1,6 @@
 module github.com/c2fo/vfs/contrib/lockfile
 
-go 1.24.8
+go 1.24.7
 
 require (
 	github.com/c2fo/vfs/v7 v7.9.0
