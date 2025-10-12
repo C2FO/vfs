@@ -40,7 +40,7 @@ ftp can be augmented with some implementation-specific methods. [Backend](backen
 [vfs.FileSystem](../README.md#type-filesystem) interface, so it would have to be cast as ftp.FileSystem to use
 them.
 
-These methods are chainable: (*FileSystem) WithClient(client interface{})
+These methods are chainable: (*FileSystem) WithClient(client any)
 *FileSystem (*FileSystem) WithOptions(opts vfs.Options) *FileSystem
 
 ```go
