@@ -324,7 +324,7 @@ func (s *osFileTest) TestSafeOsRename() {
 	testfile := path.Join(dir, "original.txt")
 	file1, err := s.fileSystem.NewFile("", testfile)
 	s.Require().NoError(err)
-	var testBytes = []byte("test me")
+	testBytes := []byte("test me")
 	_, err = file1.Write(testBytes)
 	s.Require().NoError(err)
 	s.Require().NoError(file1.Close())
@@ -354,7 +354,7 @@ func (s *osFileTest) TestOsCopy() {
 
 	file1, err := s.fileSystem.NewFile("", path.Join(dir, "original.txt"))
 	s.Require().NoError(err)
-	var testBytes = []byte("test me")
+	testBytes := []byte("test me")
 	_, err = file1.Write(testBytes)
 	s.Require().NoError(err)
 	s.Require().NoError(file1.Close())

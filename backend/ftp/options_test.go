@@ -166,8 +166,8 @@ func (s *optionsSuite) TestFetchHostPortString() {
 }
 
 func (s *optionsSuite) TestIsDisableEPSV() {
-	var trueVal = true
-	var falseVal = false
+	trueVal := true
+	falseVal := false
 	tests := []struct {
 		description string
 		options     Options
