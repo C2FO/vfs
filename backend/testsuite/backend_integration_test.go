@@ -3,7 +3,6 @@
 package testsuite
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -892,7 +891,7 @@ func (s *vfsTestSuite) gsList(baseLoc vfs.Location) {
 		Bucket("enterprise-test").
 		Object(utils.RemoveLeadingSlash(baseLoc.Path() + "myfolder/"))
 
-	ctx := context.Background()
+	ctx := s.T().Context()
 
 	// write zero length object
 	writer := objHandle.NewWriter(ctx)

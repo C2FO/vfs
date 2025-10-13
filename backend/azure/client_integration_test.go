@@ -4,7 +4,6 @@
 package azure
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -38,23 +37,25 @@ func (s *ClientIntegrationTestSuite) SetupSuite() {
 	s.Require().NoError(err)
 	s.containerClient = cli
 
-	_, err = s.containerClient.Create(context.Background(), nil)
+	ctx := s.T().Context()
+
+	_, err = s.containerClient.Create(ctx, nil)
 	s.Require().NoError(err)
 
 	// The create function claims to be synchronous but for some reason it does not exist for a little bit so
 	// we need to wait for it to be there.
-	_, err = s.containerClient.GetProperties(context.Background(), nil)
+	_, err = s.containerClient.GetProperties(ctx, nil)
 	for {
 		time.Sleep(2 * time.Second)
 		if err == nil || !bloberror.HasCode(err, bloberror.BlobNotFound) {
 			break
 		}
-		_, err = s.containerClient.GetProperties(context.Background(), nil)
+		_, err = s.containerClient.GetProperties(ctx, nil)
 	}
 }
 
 func (s *ClientIntegrationTestSuite) TearDownSuite() {
-	_, err := s.containerClient.Delete(context.Background(), nil)
+	_, err := s.containerClient.Delete(s.T().Context(), nil)
 	s.Require().NoError(err)
 }
 

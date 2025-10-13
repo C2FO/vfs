@@ -118,6 +118,8 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 	s.watcher, err = NewFSNotifyWatcher(location)
 	s.Require().NoError(err)
 
+	ctx := s.T().Context()
+
 	s.Run("Valid start", func() {
 		events := make(chan vfsevents.Event, 10)
 		errors := make(chan error, 10)
@@ -132,7 +134,7 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 			errors <- err
 		}
 
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
 		err := s.watcher.Start(ctx, eventHandler, errorHandler)
@@ -176,8 +178,6 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 			errors <- err
 		}
 
-		ctx := context.Background()
-
 		// Start first time
 		err := s.watcher.Start(ctx, eventHandler, errorHandler)
 		s.Require().NoError(err)
@@ -213,7 +213,7 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 		errors <- err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.T().Context())
 	defer cancel()
 
 	err = s.watcher.Start(ctx, eventHandler, errorHandler)
@@ -367,7 +367,7 @@ func (s *FSNotifyWatcherTestSuite) TestRecursiveWatching() {
 		errors <- err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.T().Context())
 	defer cancel()
 
 	err = s.watcher.Start(ctx, eventHandler, errorHandler)
@@ -431,7 +431,7 @@ func (s *FSNotifyWatcherTestSuite) TestEventFiltering() {
 		errors <- err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.T().Context())
 	defer cancel()
 
 	// Start with event filter - only .txt files
@@ -581,7 +581,7 @@ func (s *FSNotifyWatcherTestSuite) TestStatusCallback() {
 		statuses <- status
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.T().Context())
 	defer cancel()
 
 	err = s.watcher.Start(ctx, eventHandler, errorHandler,

@@ -80,7 +80,6 @@ func (s *S3WatcherTestSuite) TestStart() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			ctx := context.Background()
 			handler := func(event vfsevents.Event) {}
 			errHandler := func(err error) {
 				if tt.wantErr {
@@ -89,7 +88,7 @@ func (s *S3WatcherTestSuite) TestStart() {
 					s.Require().NoError(err)
 				}
 			}
-			err := s.watcher.Start(ctx, handler, errHandler)
+			err := s.watcher.Start(s.T().Context(), handler, errHandler)
 			s.Require().NoError(err)
 			s.Require().NoError(s.watcher.Stop())
 		})
@@ -298,7 +297,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 			}
 			config := &vfsevents.StartConfig{}
 
-			err := s.watcher.pollOnce(context.TODO(), func(event vfsevents.Event) {}, status, config)
+			err := s.watcher.pollOnce(s.T().Context(), func(event vfsevents.Event) {}, status, config)
 			if tt.wantErr {
 				s.Require().Error(err)
 			} else {
@@ -431,7 +430,7 @@ func (s *S3WatcherTestSuite) TestPollWithRetry() {
 			status := &vfsevents.WatcherStatus{}
 
 			// Create context with timeout to control polling duration
-			ctx, cancel := context.WithTimeout(context.Background(), tt.contextTimeout)
+			ctx, cancel := context.WithTimeout(s.T().Context(), tt.contextTimeout)
 			defer cancel()
 
 			// Track errors via error handler
@@ -580,7 +579,7 @@ func (s *S3WatcherTestSuite) TestWithReceivedCount() {
 			config := &vfsevents.StartConfig{}
 			status := &vfsevents.WatcherStatus{}
 
-			err = watcher.pollOnce(context.Background(), handler, status, config)
+			err = watcher.pollOnce(s.T().Context(), handler, status, config)
 			if tt.expectError {
 				s.Require().Error(err)
 			} else {
@@ -643,7 +642,7 @@ func (s *S3WatcherTestSuite) TestWithReceivedCountNoAttributes() {
 	config := &vfsevents.StartConfig{}
 	status := &vfsevents.WatcherStatus{}
 
-	err = watcher.pollOnce(context.Background(), handler, status, config)
+	err = watcher.pollOnce(s.T().Context(), handler, status, config)
 	s.Require().NoError(err)
 	s.True(handlerCalled, "Handler should be called when no attributes are present")
 }
@@ -700,7 +699,7 @@ func (s *S3WatcherTestSuite) TestWithReceivedCountMissingAttribute() {
 	config := &vfsevents.StartConfig{}
 	status := &vfsevents.WatcherStatus{}
 
-	err = watcher.pollOnce(context.Background(), handler, status, config)
+	err = watcher.pollOnce(s.T().Context(), handler, status, config)
 	s.Require().NoError(err)
 	s.True(handlerCalled, "Handler should be called when ApproximateReceiveCount attribute is missing")
 }
@@ -923,7 +922,7 @@ func (s *S3WatcherTestSuite) TestEnhancedMetadata() {
 		Once()
 
 	// Use longer timeout for Windows compatibility
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(s.T().Context(), 5*time.Second)
 	defer cancel()
 
 	config := &vfsevents.StartConfig{}
@@ -1006,7 +1005,7 @@ func (s *S3WatcherTestSuite) TestNonVersionedBucketMetadata() {
 		Return(&sqs.DeleteMessageOutput{}, nil).
 		Once()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(s.T().Context(), 100*time.Millisecond)
 	defer cancel()
 
 	config := &vfsevents.StartConfig{}

@@ -221,7 +221,7 @@ func (s *fileSystemSuite) TestClient() {
 
 func (s *fileSystemSuite) TestWithContext() {
 	fs := &FileSystem{}
-	ctx := context.Background()
+	ctx := s.T().Context()
 	fs = fs.WithContext(ctx)
 	s.Equal(ctx, fs.ctx)
 }

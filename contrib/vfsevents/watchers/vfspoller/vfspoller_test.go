@@ -119,11 +119,10 @@ func (s *PollerTestSuite) TestStart() {
 			location := mocks.NewLocation(s.T())
 			location.EXPECT().Exists().Return(true, nil)
 			poller, _ := NewPoller(location)
-			ctx := context.Background()
 			errFunc := func(err error) {
 				s.Require().NoError(err)
 			}
-			err := poller.Start(ctx, tt.handler, errFunc)
+			err := poller.Start(s.T().Context(), tt.handler, errFunc)
 			if tt.wantErr {
 				s.Require().Error(err)
 			} else {
@@ -135,7 +134,6 @@ func (s *PollerTestSuite) TestStart() {
 }
 
 func (s *PollerTestSuite) TestStop() {
-	ctx := context.Background()
 	handler := func(event vfsevents.Event) {}
 	location := mocks.NewLocation(s.T())
 	location.EXPECT().Exists().Return(true, nil)
@@ -143,7 +141,7 @@ func (s *PollerTestSuite) TestStop() {
 	errFunc := func(err error) {
 		s.Require().NoError(err)
 	}
-	err := poller.Start(ctx, handler, errFunc)
+	err := poller.Start(s.T().Context(), handler, errFunc)
 	s.Require().NoError(err)
 	s.Require().NoError(poller.Stop())
 	// Ensure that the polling process stops correctly
