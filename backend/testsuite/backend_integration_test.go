@@ -739,10 +739,9 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 		s.Require().NoError(err)
 
 		// ensure that MoveToFile() works for files with spaces
-		type moveSpaceTest struct {
+		tests := []struct {
 			Path, Filename string
-		}
-		tests := []moveSpaceTest{
+		}{
 			{Path: "file/", Filename: "has space.txt"},
 			{Path: "file/", Filename: "has%20encodedSpace.txt"},
 			{Path: "path has/", Filename: "space.txt"},

@@ -14,17 +14,15 @@ type authoritySuite struct {
 	suite.Suite
 }
 
-type authorityTest struct {
-	authorityString                    string
-	host, user, pass, str, hostPortStr string
-	port                               uint16
-	hasError                           bool
-	errMessage                         string
-	message                            string
-}
-
 func (a *authoritySuite) TestAuthority() {
-	tests := []authorityTest{
+	tests := []struct {
+		authorityString                    string
+		host, user, pass, str, hostPortStr string
+		port                               uint16
+		hasError                           bool
+		errMessage                         string
+		message                            string
+	}{
 		{
 			authorityString: "some.host.com",
 			host:            "some.host.com",
@@ -296,14 +294,12 @@ func (a *authoritySuite) TestAuthority() {
 	}
 }
 
-type encodeAuthorityTest struct {
-	rawAuthority    string
-	expectedEncoded string
-	message         string
-}
-
 func (a *authoritySuite) TestEncodeAuthority() {
-	tests := []encodeAuthorityTest{
+	tests := []struct {
+		rawAuthority    string
+		expectedEncoded string
+		message         string
+	}{
 		{
 			rawAuthority:    "user@someserver.com:22",
 			expectedEncoded: "user@someserver.com:22",

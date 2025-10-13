@@ -330,21 +330,16 @@ func (ts *fileTestSuite) TestNotExists() {
 }
 
 func (ts *fileTestSuite) TestMoveAndCopy() {
-	type TestCase struct {
+	testCases := make([]struct {
 		move       bool
 		readFirst  bool
 		sameBucket bool
-	}
-	type TestCases []TestCase
+	}, 1<<3)
 
-	testCases := TestCases{}
-
-	for idx := range 1 << 3 {
-		testCases = append(testCases, TestCase{
-			move:       (idx & (1 << 0)) != 0,
-			readFirst:  (idx & (1 << 1)) != 0,
-			sameBucket: (idx & (1 << 2)) != 0,
-		})
+	for idx := range testCases {
+		testCases[idx].move = (idx & (1 << 0)) != 0
+		testCases[idx].readFirst = (idx & (1 << 1)) != 0
+		testCases[idx].sameBucket = (idx & (1 << 2)) != 0
 	}
 
 	for _, testCase := range testCases {
@@ -435,20 +430,16 @@ func (ts *fileTestSuite) TestMoveAndCopy() {
 }
 
 func (ts *fileTestSuite) TestMoveAndCopyBuffered() {
-	type TestCase struct {
+	testCases := make([]struct {
 		move       bool
 		readFirst  bool
 		sameBucket bool
-	}
-	type TestCases []TestCase
-	testCases := TestCases{}
+	}, 1<<3)
 
-	for idx := range 1 << 3 {
-		testCases = append(testCases, TestCase{
-			move:       (idx & (1 << 0)) != 0,
-			readFirst:  (idx & (1 << 1)) != 0,
-			sameBucket: (idx & (1 << 2)) != 0,
-		})
+	for idx := range testCases {
+		testCases[idx].move = (idx & (1 << 0)) != 0
+		testCases[idx].readFirst = (idx & (1 << 1)) != 0
+		testCases[idx].sameBucket = (idx & (1 << 2)) != 0
 	}
 
 	for _, testCase := range testCases {

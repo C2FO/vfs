@@ -44,14 +44,6 @@ func (o *optionsSuite) SetupSuite() {
 	o.keyFiles = *keyFiles
 }
 
-type foundFileTest struct {
-	file       string
-	expected   bool
-	hasError   bool
-	errMessage string
-	message    string
-}
-
 func (o *optionsSuite) TestFoundFile() {
 	// test file
 	filename := filepath.Join(o.tmpdir, "some.key")
@@ -62,7 +54,13 @@ func (o *optionsSuite) TestFoundFile() {
 	o.Require().NoError(f.Close(), "closing file for foundfile test")
 	defer func() { o.Require().NoError(os.Remove(filename), "clean up file for foundfile test") }()
 
-	tests := []foundFileTest{
+	tests := []struct {
+		file       string
+		expected   bool
+		hasError   bool
+		errMessage string
+		message    string
+	}{
 		{
 			file:       filename,
 			expected:   true,
@@ -92,17 +90,15 @@ func (o *optionsSuite) TestFoundFile() {
 	}
 }
 
-type getFileTest struct {
-	keyfile    string
-	passphrase string
-	hasError   bool
-	err        error
-	errMessage string
-	message    string
-}
-
 func (o *optionsSuite) TestGetKeyFile() {
-	tests := []getFileTest{
+	tests := []struct {
+		keyfile    string
+		passphrase string
+		hasError   bool
+		err        error
+		errMessage string
+		message    string
+	}{
 		{
 			keyfile:    o.keyFiles.SSHPrivateKey,
 			passphrase: o.keyFiles.passphrase,
@@ -159,14 +155,6 @@ func (o *optionsSuite) TestGetKeyFile() {
 	}
 }
 
-type hostkeyTest struct {
-	options    Options
-	envVars    map[string]string
-	hasError   bool
-	errMessage string
-	message    string
-}
-
 func (o *optionsSuite) TestGetHostKeyCallback() {
 	knownHosts := filepath.Join(o.tmpdir, "known_hosts")
 	f, err := os.Create(knownHosts) //nolint:gosec
@@ -176,7 +164,13 @@ func (o *optionsSuite) TestGetHostKeyCallback() {
 	o.Require().NoError(f.Close(), "closing file for getHostKeyCallback test")
 	defer func() { o.Require().NoError(os.Remove(knownHosts), "clean up file for getHostKeyCallback test") }()
 
-	tests := []hostkeyTest{
+	tests := []struct {
+		options    Options
+		envVars    map[string]string
+		hasError   bool
+		errMessage string
+		message    string
+	}{
 		{
 			options: Options{
 				KnownHostsCallback: ssh.FixedHostKey(o.publicKey),
@@ -261,18 +255,16 @@ func (o *optionsSuite) TestGetHostKeyCallback() {
 	}
 }
 
-type authTest struct {
-	options     Options
-	envVars     map[string]string
-	returnCount int
-	hasError    bool
-	errMessage  string
-	err         error
-	message     string
-}
-
 func (o *optionsSuite) TestGetAuthMethods() {
-	tests := []authTest{
+	tests := []struct {
+		options     Options
+		envVars     map[string]string
+		returnCount int
+		hasError    bool
+		errMessage  string
+		err         error
+		message     string
+	}{
 		{
 			options: Options{
 				Password: "somepassword",
@@ -408,15 +400,6 @@ func (o *optionsSuite) TestGetAuthMethods() {
 	}
 }
 
-type getClientTest struct {
-	options   Options
-	authority authority.Authority
-	hasError  bool
-	err       error
-	errRegex  string
-	message   string
-}
-
 func (o *optionsSuite) TestGetClient() {
 	auth, err := authority.NewAuthority("someuser@badhost")
 	o.Require().NoError(err)
@@ -439,7 +422,14 @@ func (o *optionsSuite) TestGetClient() {
 	err = os.Setenv("VFS_SFTP_USERNAME", "envuser")
 	o.Require().NoError(err)
 
-	tests := []getClientTest{
+	tests := []struct {
+		options   Options
+		authority authority.Authority
+		hasError  bool
+		err       error
+		errRegex  string
+		message   string
+	}{
 		{
 			authority: auth,
 			options: Options{

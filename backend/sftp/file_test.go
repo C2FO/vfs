@@ -120,15 +120,13 @@ func (ts *fileTestSuite) TestSeek() {
 }
 
 func (ts *fileTestSuite) Test_openFile() {
-	type testCase struct {
+	tests := []struct {
 		name           string
 		flags          int
 		setupMocks     func(client *mocks.Client)
 		expectedError  bool
 		expectedErrMsg string
-	}
-
-	tests := []testCase{
+	}{
 		{
 			name:  "Open file for read",
 			flags: os.O_RDONLY,
@@ -732,16 +730,15 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 }
 
 func (ts *fileTestSuite) TestTouch() {
-	type testCase struct {
+	err := errors.New("some error")
+	testCases := []struct {
 		name           string
 		filePath       string
 		fileExists     bool
 		setPermissions bool
 		expectedError  error
 		setupMocks     func(client *mocks.Client, sftpFile *mocks.ReadWriteSeekCloser, fileInfo *mocks.FileInfo)
-	}
-	err := errors.New("some error")
-	testCases := []testCase{
+	}{
 		{
 			name:       "file exists",
 			filePath:   "/some/path.txt",
@@ -927,15 +924,13 @@ func (ts *fileTestSuite) TestNewFile() {
 }
 
 func (ts *fileTestSuite) TestSetDefaultPermissions() {
-	type testCase struct {
+	tests := []struct {
 		name           string
 		client         *mocks.Client
 		options        Options
 		expectedError  bool
 		expectedErrMsg string
-	}
-
-	tests := []testCase{
+	}{
 		{
 			name: "No options provided",
 			client: func() *mocks.Client {
