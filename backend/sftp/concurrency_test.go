@@ -83,7 +83,7 @@ func (s *SFTPConcurrencyTestSuite) TestConcurrentFailedConnections() {
 	// Start multiple goroutines that will all fail to connect
 	const numGoroutines = 10
 	var wg sync.WaitGroup
-	panicChan := make(chan interface{}, numGoroutines)
+	panicChan := make(chan any, numGoroutines)
 	errorChan := make(chan error, numGoroutines)
 
 	for range numGoroutines {
@@ -107,7 +107,7 @@ func (s *SFTPConcurrencyTestSuite) TestConcurrentFailedConnections() {
 	close(errorChan)
 
 	// Collect any panics that occurred
-	panics := make([]interface{}, 0, len(panicChan))
+	panics := make([]any, 0, len(panicChan))
 	for panic := range panicChan {
 		panics = append(panics, panic)
 	}
@@ -176,7 +176,7 @@ func (s *SFTPConcurrencyTestSuite) TestTimerCleanupRobustness() {
 	// Start multiple operations that will fail but might trigger the timer
 	const numOperations = 10
 	var wg sync.WaitGroup
-	panicChan := make(chan interface{}, numOperations)
+	panicChan := make(chan any, numOperations)
 
 	for range numOperations {
 		wg.Add(1)
@@ -204,7 +204,7 @@ func (s *SFTPConcurrencyTestSuite) TestTimerCleanupRobustness() {
 	close(panicChan)
 
 	// Collect any panics that occurred
-	panics := make([]interface{}, 0, len(panicChan))
+	panics := make([]any, 0, len(panicChan))
 	for panic := range panicChan {
 		panics = append(panics, panic)
 	}

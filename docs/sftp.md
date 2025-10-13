@@ -45,7 +45,7 @@ them.
 
 These methods are chainable:
 
-* `(*FileSystem) WithClient(client interface{})*FileSystem`
+* `(*FileSystem) WithClient(client any)*FileSystem`
 * `(*FileSystem) WithOptions(opts vfs.Options) *FileSystem`
 
 ```go
@@ -451,7 +451,7 @@ Scheme return "sftp" as the initial part of a file URI ie: sftp://
 #### func (*FileSystem) WithClient
 
 ```go
-func (fs *FileSystem) WithClient(client interface{}) *FileSystem
+func (fs *FileSystem) WithClient(client any) *FileSystem
 ```
 WithClient passes in an sftp client and returns the filesystem (chainable)
 

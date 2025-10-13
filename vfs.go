@@ -248,7 +248,7 @@ type File interface {
 // Use the specific options struct for the file system with the NewFileSystem function:
 //
 //	fs := s3.NewFileSystem(s3.WithOptions(s3Opts))
-type Options interface{}
+type Options any
 
 // Retry is a function that can be used to wrap any operation into a definable retry operation. The wrapped argument
 // is called by the underlying VFS implementation.
