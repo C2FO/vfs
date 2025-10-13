@@ -233,10 +233,8 @@ func (o *optionsSuite) TestGetHostKeyCallback() {
 	for _, t := range tests { //nolint:gocritic // rangeValCopy
 		o.Run(t.message, func() {
 			// setup env vars, if any
-			tmpMap := make(map[string]string)
 			for k, v := range t.envVars {
-				tmpMap[k] = os.Getenv(k)
-				o.Require().NoError(os.Setenv(k, v))
+				o.T().Setenv(k, v)
 			}
 
 			// apply test
@@ -245,11 +243,6 @@ func (o *optionsSuite) TestGetHostKeyCallback() {
 				o.Require().EqualError(err, t.errMessage, t.message)
 			} else {
 				o.Require().NoError(err, t.message)
-			}
-
-			// return env vars to original value
-			for k, v := range tmpMap {
-				o.Require().NoError(os.Setenv(k, v))
 			}
 		})
 	}
@@ -373,10 +366,8 @@ func (o *optionsSuite) TestGetAuthMethods() {
 	for _, t := range tests { //nolint:gocritic // rangeValCopy
 		o.Run(t.message, func() {
 			// setup env vars, if any
-			tmpMap := make(map[string]string)
 			for k, v := range t.envVars {
-				tmpMap[k] = os.Getenv(k)
-				o.Require().NoError(os.Setenv(k, v))
+				o.T().Setenv(k, v)
 			}
 
 			// apply test
@@ -391,11 +382,6 @@ func (o *optionsSuite) TestGetAuthMethods() {
 				o.Require().NoError(err, t.message)
 				o.Len(auth, t.returnCount, "auth count")
 			}
-
-			// return env vars to original value
-			for k, v := range tmpMap {
-				o.Require().NoError(os.Setenv(k, v))
-			}
 		})
 	}
 }
@@ -408,19 +394,7 @@ func (o *optionsSuite) TestGetClient() {
 	o.Require().NoError(err)
 
 	// Set environment variable for testing
-	origEnvUsername := os.Getenv("VFS_SFTP_USERNAME")
-	defer func() {
-		// Reset environment variable after test
-		if origEnvUsername != "" {
-			err := os.Setenv("VFS_SFTP_USERNAME", origEnvUsername)
-			o.Require().NoError(err, "restoring original VFS_SFTP_USERNAME env var")
-		} else {
-			err := os.Unsetenv("VFS_SFTP_USERNAME")
-			o.Require().NoError(err, "unsetting VFS_SFTP_USERNAME env var")
-		}
-	}()
-	err = os.Setenv("VFS_SFTP_USERNAME", "envuser")
-	o.Require().NoError(err)
+	o.T().Setenv("VFS_SFTP_USERNAME", "envuser")
 
 	tests := []struct {
 		options   Options
