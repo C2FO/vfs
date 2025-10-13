@@ -52,7 +52,7 @@ would have to be cast as s3.FileSystem to use the following:
 	    // to pass specific client, for instance a mock client
 	    s3MockClient := mocks.NewClient(t)
 	    s3MockClient.EXPECT().
-	        GetObject(matchContext, mock.AnythingOfType("*s3.GetObjectInput")).
+	        GetObject(matchContext, mock.IsType((*s3.GetObjectInput)(nil))).
 	        Return(&s3.GetObjectOutput{
 	            Body: nopCloser{bytes.NewBufferString("Hello world!")},
 	            }, nil)

@@ -127,16 +127,18 @@ func (s *GCSWatcherTestSuite) TestPoll() {
 					TimeCreated: JSONTime(time.Now()),
 				}
 				body, _ := json.Marshal(event)
-				s.pubsubClient.On("Receive", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-					handler := args.Get(1).(func(context.Context, *pubsub.Message))
-					handler(context.TODO(), &pubsub.Message{
-						Data: body,
-						Attributes: map[string]string{
-							"eventType": EventObjectFinalize,
-							"eventTime": time.Now().Format(time.RFC3339),
-						},
-					})
-				}).Return(nil).Once()
+				s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
+					Run(func(_ context.Context, handler func(context.Context, *pubsub.Message)) {
+						handler(context.TODO(), &pubsub.Message{
+							Data: body,
+							Attributes: map[string]string{
+								"eventType": EventObjectFinalize,
+								"eventTime": time.Now().Format(time.RFC3339),
+							},
+						})
+					}).
+					Return(nil).
+					Once()
 			},
 			wantErr: false,
 		},
@@ -149,16 +151,18 @@ func (s *GCSWatcherTestSuite) TestPoll() {
 					TimeCreated: JSONTime(time.Now()),
 				}
 				body, _ := json.Marshal(event)
-				s.pubsubClient.On("Receive", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-					handler := args.Get(1).(func(context.Context, *pubsub.Message))
-					handler(context.TODO(), &pubsub.Message{
-						Data: body,
-						Attributes: map[string]string{
-							"eventType": EventObjectDelete,
-							"eventTime": time.Now().Format(time.RFC3339),
-						},
-					})
-				}).Return(nil).Once()
+				s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
+					Run(func(_ context.Context, handler func(context.Context, *pubsub.Message)) {
+						handler(context.TODO(), &pubsub.Message{
+							Data: body,
+							Attributes: map[string]string{
+								"eventType": EventObjectDelete,
+								"eventTime": time.Now().Format(time.RFC3339),
+							},
+						})
+					}).
+					Return(nil).
+					Once()
 			},
 			wantErr: false,
 		},
@@ -171,9 +175,8 @@ func (s *GCSWatcherTestSuite) TestPoll() {
 					TimeCreated: JSONTime(time.Now()),
 				}
 				body, _ := json.Marshal(event)
-				s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
-					Run(func(args mock.Arguments) {
-						handler := args.Get(1).(func(context.Context, *pubsub.Message))
+				s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
+					Run(func(_ context.Context, handler func(context.Context, *pubsub.Message)) {
 						handler(context.TODO(), &pubsub.Message{
 							Data: body,
 							Attributes: map[string]string{
@@ -241,9 +244,8 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 					TimeCreated: JSONTime(time.Now()),
 				}
 				body, _ := json.Marshal(event)
-				s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
-					Run(func(args mock.Arguments) {
-						handler := args.Get(1).(func(context.Context, *pubsub.Message))
+				s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
+					Run(func(_ context.Context, handler func(context.Context, *pubsub.Message)) {
 						handler(context.TODO(), &pubsub.Message{
 							Data: body,
 							Attributes: map[string]string{
@@ -265,7 +267,7 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 				Enabled: false,
 			},
 			setupMocks: func() {
-				s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
+				s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
 					Return(errors.New("network error")).
 					Once()
 			},
@@ -284,7 +286,7 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 			},
 			setupMocks: func() {
 				// First call fails with retryable error
-				s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
+				s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
 					Return(errors.New("deadline exceeded")).
 					Once()
 
@@ -296,9 +298,8 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 					TimeCreated: JSONTime(time.Now()),
 				}
 				body, _ := json.Marshal(event)
-				s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
-					Run(func(args mock.Arguments) {
-						handler := args.Get(1).(func(context.Context, *pubsub.Message))
+				s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
+					Run(func(_ context.Context, handler func(context.Context, *pubsub.Message)) {
 						handler(context.TODO(), &pubsub.Message{
 							Data: body,
 							Attributes: map[string]string{
@@ -324,7 +325,7 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 				BackoffFactor:  2.0,
 			},
 			setupMocks: func() {
-				s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
+				s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
 					Return(errors.New("invalid credentials")).
 					Once()
 			},
@@ -343,7 +344,7 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 			},
 			setupMocks: func() {
 				// All attempts fail with retryable error
-				s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
+				s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
 					Return(errors.New("service unavailable")).
 					Times(3) // Initial attempt + 2 retries
 			},
@@ -361,7 +362,7 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 				BackoffFactor:  2.0,
 			},
 			setupMocks: func() {
-				s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
+				s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
 					Return(errors.New("deadline exceeded")).
 					Maybe() // May be called multiple times before context cancellation
 			},
@@ -381,7 +382,7 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 			},
 			setupMocks: func() {
 				// First call fails with custom retryable error
-				s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
+				s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
 					Return(errors.New("custom error pattern occurred")).
 					Once()
 
@@ -393,9 +394,8 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 					TimeCreated: JSONTime(time.Now()),
 				}
 				body, _ := json.Marshal(event)
-				s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
-					Run(func(args mock.Arguments) {
-						handler := args.Get(1).(func(context.Context, *pubsub.Message))
+				s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
+					Run(func(_ context.Context, handler func(context.Context, *pubsub.Message)) {
 						handler(context.TODO(), &pubsub.Message{
 							Data: body,
 							Attributes: map[string]string{
@@ -509,10 +509,8 @@ func (s *GCSWatcherTestSuite) TestRetryBackoffTiming() {
 		"overwrittenByGeneration": "1111111111",
 	}
 
-	s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
-		Run(func(args mock.Arguments) {
-			handler := args.Get(1).(func(context.Context, *pubsub.Message))
-
+	s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
+		Run(func(_ context.Context, handler func(context.Context, *pubsub.Message)) {
 			// Send OBJECT_FINALIZE event (should generate EventModified)
 			handler(context.TODO(), &pubsub.Message{
 				Data:       body,
@@ -687,9 +685,8 @@ func (s *GCSWatcherTestSuite) TestEnhancedMetadata() {
 		s.Require().NoError(err)
 	}
 
-	s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
-		Run(func(args mock.Arguments) {
-			handler := args.Get(1).(func(context.Context, *pubsub.Message))
+	s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
+		Run(func(_ context.Context, handler func(context.Context, *pubsub.Message)) {
 			handler(context.TODO(), &pubsub.Message{
 				Data:       body,
 				Attributes: attributes,
@@ -759,10 +756,8 @@ func (s *GCSWatcherTestSuite) TestOverwriteEventSuppression() {
 		"eventTime":               "2023-01-01T12:00:01Z",
 	}
 
-	s.pubsubClient.On("Receive", mock.Anything, mock.Anything).
-		Run(func(args mock.Arguments) {
-			handler := args.Get(1).(func(context.Context, *pubsub.Message))
-
+	s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
+		Run(func(_ context.Context, handler func(context.Context, *pubsub.Message)) {
 			// Send OBJECT_FINALIZE event (should generate EventModified)
 			handler(context.TODO(), &pubsub.Message{
 				Data:       body,
