@@ -15,6 +15,11 @@ import (
 	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
+var (
+	errLocationRequired = errors.New("non-nil gs.Location pointer is required")
+	errPathRequired     = errors.New("non-empty string for path is required")
+)
+
 // Location implements vfs.Location for gs fs.
 type Location struct {
 	fileSystem   *FileSystem
@@ -132,11 +137,11 @@ func (l *Location) Exists() (bool, error) {
 // NewLocation creates a new location instance relative to the current location's path.
 func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 	if l == nil {
-		return nil, errors.New("non-nil gs.Location pointer is required")
+		return nil, errLocationRequired
 	}
 
 	if relativePath == "" {
-		return nil, errors.New("non-empty string relativePath is required")
+		return nil, errPathRequired
 	}
 
 	if err := utils.ValidateRelativeLocationPath(relativePath); err != nil {
@@ -157,11 +162,11 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 //	loc, err := loc.NewLocation("../../")
 func (l *Location) ChangeDir(relativePath string) error {
 	if l == nil {
-		return errors.New("non-nil gs.Location pointer is required")
+		return errLocationRequired
 	}
 
 	if relativePath == "" {
-		return errors.New("non-empty string relativePath is required")
+		return errPathRequired
 	}
 
 	err := utils.ValidateRelativeLocationPath(relativePath)
@@ -186,11 +191,11 @@ func (l *Location) FileSystem() vfs.FileSystem {
 // NewFile returns a new file instance at the given path, relative to the current location.
 func (l *Location) NewFile(relFilePath string, opts ...options.NewFileOption) (vfs.File, error) {
 	if l == nil {
-		return nil, errors.New("non-nil gs.Location pointer is required")
+		return nil, errLocationRequired
 	}
 
 	if relFilePath == "" {
-		return nil, errors.New("non-empty string filePath is required")
+		return nil, errPathRequired
 	}
 
 	err := utils.ValidateRelativeFilePath(relFilePath)

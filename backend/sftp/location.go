@@ -14,6 +14,11 @@ import (
 	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
+var (
+	errLocationRequired = errors.New("non-nil sftp.Location pointer receiver is required")
+	errPathRequired     = errors.New("non-empty string relativePath is required")
+)
+
 // Location implements the vfs.Location interface specific to sftp fs.
 type Location struct {
 	fileSystem *FileSystem
@@ -150,11 +155,11 @@ func (l *Location) Exists() (bool, error) {
 // relativePath argument, returning the resulting location.
 func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 	if l == nil {
-		return nil, errors.New("non-nil sftp.Location pointer receiver is required")
+		return nil, errLocationRequired
 	}
 
 	if relativePath == "" {
-		return nil, errors.New("non-empty string relativePath is required")
+		return nil, errPathRequired
 	}
 
 	if err := utils.ValidateRelativeLocationPath(relativePath); err != nil {
@@ -176,11 +181,11 @@ func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 //	loc, err := loc.NewLocation("../../")
 func (l *Location) ChangeDir(relativePath string) error {
 	if l == nil {
-		return errors.New("non-nil sftp.Location pointer receiver is required")
+		return errLocationRequired
 	}
 
 	if relativePath == "" {
-		return errors.New("non-empty string relativePath is required")
+		return errPathRequired
 	}
 
 	err := utils.ValidateRelativeLocationPath(relativePath)
@@ -201,11 +206,11 @@ func (l *Location) ChangeDir(relativePath string) error {
 // argument is expected to be a relative path to the location's current path.
 func (l *Location) NewFile(relFilePath string, opts ...options.NewFileOption) (vfs.File, error) {
 	if l == nil {
-		return nil, errors.New("non-nil sftp.Location pointer receiver is required")
+		return nil, errLocationRequired
 	}
 
 	if relFilePath == "" {
-		return nil, errors.New("non-empty string filePath is required")
+		return nil, errPathRequired
 	}
 
 	err := utils.ValidateRelativeFilePath(relFilePath)

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"cloud.google.com/go/storage"
+	"github.com/c2fo/vfs/v7/utils"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/api/option"
 )
@@ -20,42 +21,42 @@ func TestFileSystemSuite(t *testing.T) {
 
 func (s *fileSystemSuite) TestNewFile() {
 	testCases := []struct {
-		description       string
-		volume            string
-		filename          string
-		expectedErrString string
-		nilFS             bool
+		description string
+		volume      string
+		filename    string
+		expectedErr error
+		nilFS       bool
 	}{
 		{
-			description:       "nil filesystem",
-			volume:            "bucket",
-			filename:          "/file.txt",
-			expectedErrString: "non-nil gs.FileSystem pointer is required",
-			nilFS:             true,
+			description: "nil filesystem",
+			volume:      "bucket",
+			filename:    "/file.txt",
+			expectedErr: errFileSystemRequired,
+			nilFS:       true,
 		},
 		{
-			description:       "empty volume",
-			volume:            "",
-			filename:          "/file.txt",
-			expectedErrString: "non-empty strings for Bucket and Key are required",
+			description: "empty volume",
+			volume:      "",
+			filename:    "/file.txt",
+			expectedErr: errAuthorityAndPathRequired,
 		},
 		{
-			description:       "empty filename",
-			volume:            "bucket",
-			filename:          "",
-			expectedErrString: "non-empty strings for Bucket and Key are required",
+			description: "empty filename",
+			volume:      "bucket",
+			filename:    "",
+			expectedErr: errAuthorityAndPathRequired,
 		},
 		{
-			description:       "invalid filename",
-			volume:            "bucket",
-			filename:          "/file.txt/",
-			expectedErrString: "absolute file path is invalid - must include leading slash and may not include trailing slash",
+			description: "invalid filename",
+			volume:      "bucket",
+			filename:    "/file.txt/",
+			expectedErr: utils.ErrBadAbsFilePath,
 		},
 		{
-			description:       "valid filename",
-			volume:            "bucket",
-			filename:          "/file.txt",
-			expectedErrString: "",
+			description: "valid filename",
+			volume:      "bucket",
+			filename:    "/file.txt",
+			expectedErr: nil,
 		},
 	}
 
@@ -66,53 +67,53 @@ func (s *fileSystemSuite) TestNewFile() {
 				fs = nil
 			}
 			_, err := fs.NewFile(tc.volume, tc.filename)
-			if tc.expectedErrString == "" {
+			if tc.expectedErr == nil {
 				s.Require().NoError(err)
 				return
 			}
-			s.Require().EqualError(err, tc.expectedErrString)
+			s.Require().ErrorIs(err, tc.expectedErr)
 		})
 	}
 }
 
 func (s *fileSystemSuite) TestNewLocation() {
 	testCases := []struct {
-		description       string
-		volume            string
-		name              string
-		expectedErrString string
-		nilFS             bool
+		description string
+		volume      string
+		name        string
+		expectedErr error
+		nilFS       bool
 	}{
 		{
-			description:       "nil filesystem",
-			volume:            "bucket",
-			name:              "/",
-			expectedErrString: "non-nil gs.FileSystem pointer is required",
-			nilFS:             true,
+			description: "nil filesystem",
+			volume:      "bucket",
+			name:        "/",
+			expectedErr: errFileSystemRequired,
+			nilFS:       true,
 		},
 		{
-			description:       "empty volume",
-			volume:            "",
-			name:              "/",
-			expectedErrString: "non-empty strings for bucket and key are required",
+			description: "empty volume",
+			volume:      "",
+			name:        "/",
+			expectedErr: errAuthorityAndPathRequired,
 		},
 		{
-			description:       "empty name",
-			volume:            "bucket",
-			name:              "",
-			expectedErrString: "non-empty strings for bucket and key are required",
+			description: "empty name",
+			volume:      "bucket",
+			name:        "",
+			expectedErr: errAuthorityAndPathRequired,
 		},
 		{
-			description:       "invalid name",
-			volume:            "bucket",
-			name:              "/path",
-			expectedErrString: "absolute location path is invalid - must include leading and trailing slashes",
+			description: "invalid name",
+			volume:      "bucket",
+			name:        "/path",
+			expectedErr: utils.ErrBadAbsLocationPath,
 		},
 		{
-			description:       "valid name",
-			volume:            "bucket",
-			name:              "/path/",
-			expectedErrString: "",
+			description: "valid name",
+			volume:      "bucket",
+			name:        "/path/",
+			expectedErr: nil,
 		},
 	}
 
@@ -123,11 +124,11 @@ func (s *fileSystemSuite) TestNewLocation() {
 				fs = nil
 			}
 			_, err := fs.NewLocation(tc.volume, tc.name)
-			if tc.expectedErrString == "" {
+			if tc.expectedErr == nil {
 				s.Require().NoError(err)
 				return
 			}
-			s.Require().EqualError(err, tc.expectedErrString)
+			s.Require().ErrorIs(err, tc.expectedErr)
 		})
 	}
 }

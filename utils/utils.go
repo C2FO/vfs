@@ -15,17 +15,20 @@ import (
 	"github.com/c2fo/vfs/v7"
 )
 
+var (
+	// ErrBadAbsFilePath is returned when a file path is not absolute
+	ErrBadAbsFilePath = errors.New("absolute file path is invalid - must include leading slash and may not include trailing slash")
+	// ErrBadRelFilePath is returned when a file path is not relative
+	ErrBadRelFilePath = errors.New("relative file path is invalid - may not include leading or trailing slashes")
+	// ErrBadAbsLocationPath is returned when a file path is not absolute
+	ErrBadAbsLocationPath = errors.New("absolute location path is invalid - must include leading and trailing slashes")
+	// ErrBadRelLocationPath is returned when a file path is not relative
+	ErrBadRelLocationPath = errors.New("relative location path is invalid - may not include leading slash but must include trailing slash")
+	// ErrBadPrefix is returned when a prefix is not relative or ends in / or is empty
+	ErrBadPrefix = errors.New("prefix is invalid - may not include leading or trailing slashes and may not be empty")
+)
+
 const (
-	// ErrBadAbsFilePath constant is returned when a file path is not absolute
-	ErrBadAbsFilePath = "absolute file path is invalid - must include leading slash and may not include trailing slash"
-	// ErrBadRelFilePath constant is returned when a file path is not relative
-	ErrBadRelFilePath = "relative file path is invalid - may not include leading or trailing slashes"
-	// ErrBadAbsLocationPath constant is returned when a file path is not absolute
-	ErrBadAbsLocationPath = "absolute location path is invalid - must include leading and trailing slashes"
-	// ErrBadRelLocationPath constant is returned when a file path is not relative
-	ErrBadRelLocationPath = "relative location path is invalid - may not include leading slash but must include trailing slash"
-	// ErrBadPrefix constant is returned when a prefix is not relative or ends in / or is empty
-	ErrBadPrefix = "prefix is invalid - may not include leading or trailing slashes and may not be empty"
 	// TouchCopyMinBufferSize min buffer size used in TouchCopyBuffered in bytes
 	TouchCopyMinBufferSize = 262144
 )
@@ -49,7 +52,7 @@ func RemoveLeadingSlash(path string) string {
 // ValidateAbsoluteFilePath ensures that a file path has a leading slash but not a trailing slash
 func ValidateAbsoluteFilePath(name string) error {
 	if !strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") {
-		return errors.New(ErrBadAbsFilePath)
+		return ErrBadAbsFilePath
 	}
 	return nil
 }
@@ -57,7 +60,7 @@ func ValidateAbsoluteFilePath(name string) error {
 // ValidateRelativeFilePath ensures that a file path has neither leading nor trailing slashes
 func ValidateRelativeFilePath(name string) error {
 	if name == "" || name == "." || strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") {
-		return errors.New(ErrBadRelFilePath)
+		return ErrBadRelFilePath
 	}
 	return nil
 }
@@ -65,7 +68,7 @@ func ValidateRelativeFilePath(name string) error {
 // ValidateAbsoluteLocationPath ensure that a file path has both leading and trailing slashes
 func ValidateAbsoluteLocationPath(name string) error {
 	if !strings.HasPrefix(name, "/") || !strings.HasSuffix(name, "/") {
-		return errors.New(ErrBadAbsLocationPath)
+		return ErrBadAbsLocationPath
 	}
 	return nil
 }
@@ -73,7 +76,7 @@ func ValidateAbsoluteLocationPath(name string) error {
 // ValidateRelativeLocationPath ensure that a file path has no leading slash but has a trailing slash
 func ValidateRelativeLocationPath(name string) error {
 	if strings.HasPrefix(name, "/") || !strings.HasSuffix(name, "/") {
-		return errors.New(ErrBadRelLocationPath)
+		return ErrBadRelLocationPath
 	}
 	return nil
 }
@@ -82,7 +85,7 @@ func ValidateRelativeLocationPath(name string) error {
 // may not be empty but unlike relative file path, *may* be simply "."
 func ValidatePrefix(prefix string) error {
 	if prefix == "" || strings.HasPrefix(prefix, "/") || strings.HasSuffix(prefix, "/") {
-		return errors.New(ErrBadPrefix)
+		return ErrBadPrefix
 	}
 	return nil
 }

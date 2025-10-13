@@ -225,7 +225,7 @@ func (lt *locationTestSuite) TestListByPrefix() {
 	badprefix := ""
 	fileList, err = loc.ListByPrefix(badprefix)
 	lt.Require().Error(err, "error expected")
-	lt.Require().ErrorContains(err, utils.ErrBadPrefix, "err should be correct type")
+	lt.Require().ErrorIs(err, utils.ErrBadPrefix, "err should be correct type")
 	lt.Equal(expectedEmptyStringSlice, fileList, "fileList should be empty string slice")
 
 	// error getting client
@@ -382,11 +382,11 @@ func (lt *locationTestSuite) TestNewFile() {
 
 	// test empty path error
 	_, err = loc.NewFile("")
-	lt.Require().EqualError(err, utils.ErrBadRelFilePath, "errors returned by NewFile")
+	lt.Require().ErrorIs(err, utils.ErrBadRelFilePath, "errors returned by NewFile")
 
 	// test validation error
 	_, err = loc.NewFile("/absolute/path/to/file.txt")
-	lt.Require().EqualError(err, utils.ErrBadRelFilePath, "errors returned by NewLocation")
+	lt.Require().ErrorIs(err, utils.ErrBadRelFilePath, "errors returned by NewLocation")
 
 	// new tests for location update
 	lt.Run("new file with relative path updates location", func() {
@@ -525,11 +525,11 @@ func (lt *locationTestSuite) TestNewLocation() {
 
 	// test empty path error
 	_, err = loc.NewLocation("")
-	lt.Require().EqualError(err, utils.ErrBadRelLocationPath, "errors returned by NewLocation")
+	lt.Require().ErrorIs(err, utils.ErrBadRelLocationPath, "errors returned by NewLocation")
 
 	// test validation error
 	_, err = loc.NewLocation("/absolute/path/to/")
-	lt.Require().EqualError(err, utils.ErrBadRelLocationPath, "errors returned by NewLocation")
+	lt.Require().ErrorIs(err, utils.ErrBadRelLocationPath, "errors returned by NewLocation")
 }
 
 func (lt *locationTestSuite) TestDeleteFile() {
@@ -551,7 +551,7 @@ func (lt *locationTestSuite) TestDeleteFile() {
 	// getting NewFile
 	err = loc.DeleteFile("")
 	lt.Require().Error(err, "failed delete")
-	lt.Require().ErrorContains(err, utils.ErrBadRelFilePath, "failed delete")
+	lt.Require().ErrorIs(err, utils.ErrBadRelFilePath, "failed delete")
 }
 
 func TestLocation(t *testing.T) {

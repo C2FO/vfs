@@ -192,15 +192,15 @@ func (lt *locationTestSuite) TestNewFile() {
 	// test nil pointer
 	var nilLoc *Location
 	_, err = nilLoc.NewFile("/path/to/file.txt")
-	lt.Require().EqualError(err, "non-nil s3.Location pointer is required", "errors returned by NewFile")
+	lt.Require().ErrorIs(err, errLocationRequired, "errors returned by NewFile")
 
 	// test empty path error
 	_, err = loc.NewFile("")
-	lt.Require().EqualError(err, "non-empty string filePath is required", "errors returned by NewFile")
+	lt.Require().ErrorIs(err, errPathRequired, "errors returned by NewFile")
 
 	// test validation error
 	_, err = loc.NewFile("/absolute/path/to/file.txt")
-	lt.Require().EqualError(err, utils.ErrBadRelFilePath, "errors returned by NewLocation")
+	lt.Require().ErrorIs(err, utils.ErrBadRelFilePath, "errors returned by NewLocation")
 
 	// new tests for location update
 	lt.Run("new file with relative path updates location", func() {
@@ -246,7 +246,7 @@ func (lt *locationTestSuite) TestChangeDir() {
 	// test nil Location
 	var nilLoc *Location
 	err := nilLoc.ChangeDir("path/to/")
-	lt.Require().EqualErrorf(err, "non-nil s3.Location pointer is required", "error expected for nil location")
+	lt.Require().ErrorIsf(err, errLocationRequired, "error expected for nil location")
 
 	auth, err := authority.NewAuthority("bucket")
 	lt.Require().NoError(err)
@@ -288,15 +288,15 @@ func (lt *locationTestSuite) TestNewLocation() {
 	// test nil pointer
 	var nilLoc *Location
 	_, err = nilLoc.NewLocation("/path/to/")
-	lt.Require().EqualError(err, "non-nil s3.Location pointer is required", "errors returned by NewLocation")
+	lt.Require().ErrorIs(err, errLocationRequired, "errors returned by NewLocation")
 
 	// test empty path error
 	_, err = loc.NewLocation("")
-	lt.Require().EqualError(err, "non-empty string relativePath is required", "errors returned by NewLocation")
+	lt.Require().ErrorIs(err, errPathRequired, "errors returned by NewLocation")
 
 	// test validation error
 	_, err = loc.NewLocation("/absolute/path/to/")
-	lt.Require().EqualError(err, utils.ErrBadRelLocationPath, "errors returned by NewLocation")
+	lt.Require().ErrorIs(err, utils.ErrBadRelLocationPath, "errors returned by NewLocation")
 }
 
 func (lt *locationTestSuite) TestStringURI() {

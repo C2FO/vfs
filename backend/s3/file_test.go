@@ -702,17 +702,18 @@ func (ts *fileTestSuite) TestUploadInputContentType() {
 }
 
 func (ts *fileTestSuite) TestNewFile() {
-	fs := &FileSystem{}
+	var fs *FileSystem
 	// fs is nil
 	_, err := fs.NewFile("", "")
-	ts.Require().Errorf(err, "non-nil s3.FileSystem pointer is required")
+	ts.Require().ErrorIs(err, errFileSystemRequired)
 
+	fs = &FileSystem{}
 	// bucket is ""
 	_, err = fs.NewFile("", "asdf")
-	ts.Require().Errorf(err, "non-empty strings for bucket and key are required")
+	ts.Require().ErrorIs(err, errAuthorityAndNameRequired)
 	// key is ""
 	_, err = fs.NewFile("asdf", "")
-	ts.Require().Errorf(err, "non-empty strings for bucket and key are required")
+	ts.Require().ErrorIs(err, errAuthorityAndNameRequired)
 
 	//
 	bucket := "mybucket"

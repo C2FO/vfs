@@ -32,6 +32,11 @@ var noOpRetryer Retryer = func(wrapped func() error) error {
 	return wrapped()
 }
 
+var (
+	errFileSystemRequired       = errors.New("non-nil gs.FileSystem pointer is required")
+	errAuthorityAndPathRequired = errors.New("non-empty strings for authority and path are required")
+)
+
 // NewFileSystem initializer for FileSystem struct accepts google cloud storage client and returns FileSystem or error.
 func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem {
 	fs := &FileSystem{
@@ -56,11 +61,11 @@ func (fs *FileSystem) Retry() vfs.Retry {
 // NewFile function returns the gcs implementation of vfs.File.
 func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.NewFileOption) (vfs.File, error) {
 	if fs == nil {
-		return nil, errors.New("non-nil gs.FileSystem pointer is required")
+		return nil, errFileSystemRequired
 	}
 
 	if authorityStr == "" || filePath == "" {
-		return nil, errors.New("non-empty strings for Bucket and Key are required")
+		return nil, errAuthorityAndPathRequired
 	}
 
 	if err := utils.ValidateAbsoluteFilePath(filePath); err != nil {
@@ -81,11 +86,11 @@ func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.New
 // NewLocation function returns the GCS implementation of vfs.Location.
 func (fs *FileSystem) NewLocation(authorityStr, locPath string) (loc vfs.Location, err error) {
 	if fs == nil {
-		return nil, errors.New("non-nil gs.FileSystem pointer is required")
+		return nil, errFileSystemRequired
 	}
 
 	if authorityStr == "" || locPath == "" {
-		return nil, errors.New("non-empty strings for bucket and key are required")
+		return nil, errAuthorityAndPathRequired
 	}
 
 	if err := utils.ValidateAbsoluteLocationPath(locPath); err != nil {

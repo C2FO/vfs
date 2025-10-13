@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/c2fo/vfs/v7/utils"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
@@ -154,8 +155,7 @@ func (s *LocationTestSuite) TestNewLocation() {
 func (s *LocationTestSuite) TestNewLocation_NilReceiver() {
 	var l *Location
 	nl, err := l.NewLocation("test-container/")
-	s.Require().EqualError(err, "azure.Location receiver pointer must be non-nil",
-		"The receiver for NewLocation must be non-nil so we expect an error")
+	s.Require().ErrorIs(err, errLocationRequired, "The receiver for NewLocation must be non-nil so we expect an error")
 	s.Nil(nl, "An error was returned so we expect a nil location to be returned")
 }
 
@@ -176,21 +176,21 @@ func (s *LocationTestSuite) TestChangeDir() {
 	s.Require().NoError(err)
 	l = l.(*Location)
 	err = l.ChangeDir("/test-dir/")
-	s.Require().EqualError(err, "relative location path is invalid - may not include leading slash but must include trailing slash",
+	s.Require().ErrorIs(err, utils.ErrBadRelLocationPath,
 		"The path begins with a slash and therefore is not a relative path so this should return an error")
 
 	l, err = NewFileSystem().NewLocation("test-container", "/")
 	s.Require().NoError(err)
 	l = l.(*Location)
 	err = l.ChangeDir("test-dir")
-	s.Require().EqualError(err, "relative location path is invalid - may not include leading slash but must include trailing slash",
+	s.Require().ErrorIs(err, utils.ErrBadRelLocationPath,
 		"The path does not end with a slash and therefore is not a relative path so this should return an error")
 
 	l, err = NewFileSystem().NewLocation("test-container", "/")
 	s.Require().NoError(err)
 	l = l.(*Location)
 	err = l.ChangeDir("")
-	s.Require().EqualError(err, "relative location path is invalid - may not include leading slash but must include trailing slash",
+	s.Require().ErrorIs(err, utils.ErrBadRelLocationPath,
 		"An empty relative path does not end with a slash and therefore is not a valid relative path so this should return an error")
 }
 
@@ -198,7 +198,7 @@ func (s *LocationTestSuite) TestChangeDir_NilReceiver() {
 	var l *Location
 	s.Nil(l)
 	err := l.ChangeDir("")
-	s.Require().EqualError(err, "azure.Location receiver pointer must be non-nil")
+	s.Require().ErrorIs(err, errLocationRequired)
 }
 
 func (s *LocationTestSuite) TestFileSystem() {
@@ -212,17 +212,17 @@ func (s *LocationTestSuite) TestNewFile() {
 	l, _ := fs.NewLocation("test-container", "/folder/")
 
 	f, err := l.NewFile("")
-	s.Require().EqualError(err, "relative file path is invalid - may not include leading or trailing slashes",
+	s.Require().ErrorIs(err, utils.ErrBadRelFilePath,
 		"Empty string is not a valid relative file path so we expect an error")
 	s.Nil(f, "Since the call to NewFile resulted in an error we expect a nil pointer")
 
 	f, err = l.NewFile("/foo/bar.txt")
-	s.Require().EqualError(err, "relative file path is invalid - may not include leading or trailing slashes",
+	s.Require().ErrorIs(err, utils.ErrBadRelFilePath,
 		"The file path begins with a slash therefore it is not a valid relative file path so we expect an error")
 	s.Nil(f, "Since the call to NewFile resulted in an error we expect a nil pointer")
 
 	f, err = l.NewFile("foo/bar/")
-	s.Require().EqualError(err, "relative file path is invalid - may not include leading or trailing slashes",
+	s.Require().ErrorIs(err, utils.ErrBadRelFilePath,
 		"The file path ends with a slash therefore it is not a valid relative file path so we expect an error")
 	s.Nil(f, "Since the call to NewFile resulted in an error we expect a nil pointer")
 
@@ -251,8 +251,7 @@ func (s *LocationTestSuite) TestNewFile() {
 func (s *LocationTestSuite) TestNewFile_NilReceiver() {
 	var l *Location
 	f, err := l.NewFile("foo/bar.txt")
-	s.Require().EqualError(err, "azure.Location receiver pointer must be non-nil",
-		"Can't create a new file from a nil location so we expect an error")
+	s.Require().ErrorIs(err, errLocationRequired, "Can't create a new file from a nil location so we expect an error")
 	s.Nil(f, "the call to NewFile returned an error so we expect a nil pointer")
 }
 
