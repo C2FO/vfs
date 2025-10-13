@@ -56,11 +56,11 @@ func (ts *fileSystemTestSuite) TestNewFile_Error() {
 	// test nil pointer
 	var nilftpfs *FileSystem
 	_, err := nilftpfs.NewFile("host.com", "/path/to/file.txt")
-	ts.Require().EqualError(err, "non-nil ftp.FileSystem pointer is required", "errors returned by NewFile")
+	ts.Require().ErrorIs(err, errFileSystemRequired, "errors returned by NewFile")
 
 	// test validation error
 	file, err := ts.ftpfs.NewFile("host.com", "relative/path/to/file.txt")
-	ts.Require().EqualError(err, utils.ErrBadAbsFilePath, "errors returned by NewFile")
+	ts.Require().ErrorIs(err, utils.ErrBadAbsFilePath, "errors returned by NewFile")
 	ts.Nil(file, "NewFile shouldn't return a file")
 
 	filePath := ""
@@ -70,7 +70,7 @@ func (ts *fileSystemTestSuite) TestNewFile_Error() {
 
 	filePath = "/some/file.txt"
 	file, err = ts.ftpfs.NewFile("", filePath)
-	ts.Require().EqualError(err, "non-empty string for authority and path is required", "bad authority")
+	ts.Require().ErrorIs(err, errAuthorityAndPathRequired, "bad authority")
 	ts.Nil(file, "NewFile(%s) shouldn't return a file", filePath)
 }
 
@@ -85,21 +85,21 @@ func (ts *fileSystemTestSuite) TestNewLocation_Error() {
 	// test nil pointer
 	var nilftpfs *FileSystem
 	_, err := nilftpfs.NewLocation("somehost.com", "/path/to/")
-	ts.Require().EqualError(err, "non-nil ftp.FileSystem pointer is required", "errors returned by NewLocation")
+	ts.Require().ErrorIs(err, errFileSystemRequired, "errors returned by NewLocation")
 
 	// test validation error
 	file, err := ts.ftpfs.NewLocation("host.com", "relative/path/to/")
-	ts.Require().EqualError(err, utils.ErrBadAbsLocationPath, "errors returned by NewLocation")
+	ts.Require().ErrorIs(err, utils.ErrBadAbsLocationPath, "errors returned by NewLocation")
 	ts.Nil(file, "NewFile shouldn't return a file")
 
 	locPath := ""
 	file, err = ts.ftpfs.NewLocation("host.com", locPath)
-	ts.Require().EqualError(err, "non-empty string for authority and path is required", "NewLocation(%s)", locPath)
+	ts.Require().ErrorIs(err, errAuthorityAndPathRequired, "NewLocation(%s)", locPath)
 	ts.Nil(file, "NewLocation(%s) shouldn't return a file", locPath)
 
 	locPath = "/path/"
 	file, err = ts.ftpfs.NewLocation("", locPath)
-	ts.Require().EqualError(err, "non-empty string for authority and path is required", "NewLocation(%s)", locPath)
+	ts.Require().ErrorIs(err, errAuthorityAndPathRequired, "NewLocation(%s)", locPath)
 	ts.Nil(file, "NewLocation(%s) shouldn't return a file", locPath)
 }
 

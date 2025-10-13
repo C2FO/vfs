@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/c2fo/vfs/v7/utils"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v7"
@@ -22,23 +23,22 @@ func (s *FileSystemTestSuite) TestVFSFileSystemImplementor() {
 func (s *FileSystemTestSuite) TestNewFile() {
 	fs := NewFileSystem()
 	file, err := fs.NewFile("", "")
-	s.Require().EqualError(err, "non-empty strings for container and path are required", "volume and path are required")
+	s.Require().ErrorIs(err, errContainerAndPathRequired)
 	s.Nil(file)
 
 	fs = NewFileSystem()
 	file, err = fs.NewFile("temp", "")
-	s.Require().EqualError(err, "non-empty strings for container and path are required", "volume and path are required")
+	s.Require().ErrorIs(err, errContainerAndPathRequired)
 	s.Nil(file)
 
 	fs = NewFileSystem()
 	file, err = fs.NewFile("", "/blah/blah.txt")
-	s.Require().EqualError(err, "non-empty strings for container and path are required", "volume and path are required")
+	s.Require().ErrorIs(err, errContainerAndPathRequired)
 	s.Nil(file)
 
 	fs = NewFileSystem()
 	file, err = fs.NewFile("temp", "blah/blah.txt")
-	s.Require().EqualError(err, "absolute file path is invalid - must include leading slash and may not include trailing slash",
-		"the path is invalid so we expect an error")
+	s.Require().ErrorIs(err, utils.ErrBadAbsFilePath, "the path is invalid so we expect an error")
 	s.Nil(file, "Since an error was returned we expect a nil file to be returned")
 
 	fs = NewFileSystem()
@@ -51,8 +51,7 @@ func (s *FileSystemTestSuite) TestNewFile() {
 func (s *FileSystemTestSuite) TestNewFile_NilReceiver() {
 	var fs *FileSystem
 	file, err := fs.NewFile("temp", "/foo/bar/test.txt")
-	s.Require().EqualError(err, "azure.FileSystem receiver pointer must be non-nil",
-		"the receiver pointer is nil so we would receive an error")
+	s.Require().ErrorIs(err, errFileSystemRequired, "the receiver pointer is nil so we would receive an error")
 	s.Nil(file, "Since there was an error we expect a nil file to be returned")
 }
 
@@ -74,13 +73,13 @@ func (s *FileSystemTestSuite) TestNewLocation() {
 
 	fs = NewFileSystem()
 	loc, err = fs.NewLocation("temp", "foo/bar/")
-	s.Require().EqualError(err, "absolute location path is invalid - must include leading and trailing slashes",
+	s.Require().ErrorIs(err, utils.ErrBadAbsLocationPath,
 		"The path does not start with a slash and therefore not an absolute path so we expect an error")
 	s.Nil(loc, "Since an error was returned the location is nil")
 
 	fs = NewFileSystem()
 	loc, err = fs.NewLocation("temp", "/foo/bar")
-	s.Require().EqualError(err, "absolute location path is invalid - must include leading and trailing slashes",
+	s.Require().ErrorIs(err, utils.ErrBadAbsLocationPath,
 		"The path does not end with a slash and therefore not an absolute path so we expect an error")
 	s.Nil(loc, "Since an error was returned the location is nil")
 
@@ -106,8 +105,7 @@ func (s *FileSystemTestSuite) TestNewLocation() {
 func (s *FileSystemTestSuite) TestNewLocation_NilReceiver() {
 	var fs *FileSystem
 	loc, err := fs.NewLocation("temp", "/foo/bar/")
-	s.Require().EqualError(err, "azure.FileSystem receiver pointer must be non-nil",
-		"The receiver pointer on the function call is nil so we should get an error")
+	s.Require().ErrorIs(err, errFileSystemRequired, "The receiver pointer on the function call is nil so we should get an error")
 	s.Nil(loc, "The call returned an error so the location should be nil")
 }
 
