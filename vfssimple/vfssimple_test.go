@@ -291,11 +291,9 @@ func (s *vfsSimpleSuite) TestParseSupportedURI() {
 				case "s3":
 					s3cli, err := fs.(*s3.FileSystem).Client()
 					s.Require().NoError(err, test.message)
-					if c, ok := s3cli.(*namedS3ClientMock); ok {
-						s.Equal(c.RegName, test.regFS, test.message)
-					} else {
-						s.Fail("should have returned mock", test.message)
-					}
+					c, ok := s3cli.(*namedS3ClientMock)
+					s.Require().True(ok, "should have returned mock", test.message)
+					s.Equal(test.regFS, c.RegName, test.message)
 				default:
 					s.Fail("we should have a case for returned fs type", test.message)
 				}
@@ -316,11 +314,9 @@ func (s *vfsSimpleSuite) TestNewFile() {
 	s.Equal(file.URI(), goodURI)
 	s3cli, err := file.Location().FileSystem().(*s3.FileSystem).Client()
 	s.Require().NoError(err, "no error expected")
-	if c, ok := s3cli.(*namedS3ClientMock); ok {
-		s.Equal("filetest-path", c.RegName, "should be 'filetest-path', not 'filetest-bucket' or 's3'")
-	} else {
-		s.Fail("should have returned mock", "should not reach this")
-	}
+	c, ok := s3cli.(*namedS3ClientMock)
+	s.Require().True(ok, "should have returned mock")
+	s.Equal("filetest-path", c.RegName, "should be 'filetest-path', not 'filetest-bucket' or 's3'")
 
 	// failure
 	badURI := "unknown://filetest/path/file.txt"
@@ -348,11 +344,9 @@ func (s *vfsSimpleSuite) TestNewLocation() {
 	s.Equal(loc.URI(), goodURI)
 	s3cli, err := loc.FileSystem().(*s3.FileSystem).Client()
 	s.Require().NoError(err, "no error expected")
-	if c, ok := s3cli.(*namedS3ClientMock); ok {
-		s.Equal("loctest-path", c.RegName, "should be 'loctest-path', not 'loctest-bucket' or 's3'")
-	} else {
-		s.Fail("should have returned mock", "should not reach this")
-	}
+	c, ok := s3cli.(*namedS3ClientMock)
+	s.Require().True(ok, "should have returned mock")
+	s.Equal("loctest-path", c.RegName, "should be 'loctest-path', not 'loctest-bucket' or 's3'")
 
 	// failure
 	badURI := "unknown://filetest/path/to/here/"
@@ -376,6 +370,7 @@ type namedS3ClientMock struct {
 // getS3NamedClientMock returns an s3 client that satisfies the interface but we only really care about the name,
 // to introspect in the test return
 func getS3NamedClientMock(t *testing.T, name string) *namedS3ClientMock {
+	t.Helper()
 	return &namedS3ClientMock{
 		Client:  mocks.NewClient(t),
 		RegName: name,

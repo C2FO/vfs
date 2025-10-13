@@ -2,7 +2,6 @@ package ftp
 
 import (
 	"bytes"
-	"context"
 	"crypto/tls"
 	"os"
 	"testing"
@@ -68,8 +67,7 @@ func (s *optionsSuite) TestFetchUsername() {
 	for _, test := range tests {
 		s.Run(test.description, func() {
 			if test.envVar != nil {
-				err := os.Setenv(envUsername, *test.envVar)
-				s.Require().NoError(err, test.description)
+				s.T().Setenv(envUsername, *test.envVar)
 			}
 
 			auth, err := authority.NewAuthority(test.authority)
@@ -120,8 +118,7 @@ func (s *optionsSuite) TestFetchPassword() {
 	for _, test := range tests { //nolint:gocritic //rangeValCopy but changing breaks ide integration for table-driven tests
 		s.Run(test.description, func() {
 			if test.envVar != nil {
-				err := os.Setenv(envPassword, *test.envVar)
-				s.Require().NoError(err, test.description)
+				s.T().Setenv(envPassword, *test.envVar)
 			}
 
 			password := fetchPassword(test.options)
@@ -155,8 +152,7 @@ func (s *optionsSuite) TestFetchHostPortString() {
 			s.Require().NoError(err, test.description)
 
 			if test.envVar != nil {
-				err := os.Setenv(envPassword, *test.envVar)
-				s.Require().NoError(err, test.description)
+				s.T().Setenv(envPassword, *test.envVar)
 			}
 
 			hostPortString := fetchHostPortString(auth)
@@ -238,8 +234,7 @@ func (s *optionsSuite) TestIsDisableEPSV() {
 	for _, test := range tests { //nolint:gocritic //rangeValCopy but changing breaks ide integration for table-driven tests
 		s.Run(test.description, func() {
 			if test.envVar != nil {
-				err := os.Setenv(envDisableEPSV, *test.envVar)
-				s.Require().NoError(err, test.description)
+				s.T().Setenv(envDisableEPSV, *test.envVar)
 			}
 
 			disabled := isDisableOption(test.options)
@@ -383,8 +378,7 @@ func (s *optionsSuite) TestFetchProtocol() {
 		s.Run(test.description, func() {
 			s.Require().NoError(os.Unsetenv(envProtocol))
 			if test.envVar != nil {
-				err := os.Setenv(envProtocol, *test.envVar)
-				s.Require().NoError(err, test.description)
+				s.T().Setenv(envProtocol, *test.envVar)
 			}
 
 			protocol := fetchProtocol(test.options)
@@ -471,14 +465,13 @@ func (s *optionsSuite) TestFetchDialOptions() {
 	for _, test := range tests {
 		s.Run(test.description, func() {
 			if test.envVar != nil {
-				err := os.Setenv(envProtocol, *test.envVar)
-				s.Require().NoError(err, test.description)
+				s.T().Setenv(envProtocol, *test.envVar)
 			}
 
 			auth, err := authority.NewAuthority(test.authority)
 			s.Require().NoError(err, test.description)
 
-			dialOpts := fetchDialOptions(context.Background(), auth, test.options)
+			dialOpts := fetchDialOptions(s.T().Context(), auth, test.options)
 			s.Len(dialOpts, test.expected, test.description)
 		})
 	}

@@ -86,7 +86,7 @@ func (o *optionsTestSuite) TestGetClient() {
 	for _, tt := range tests { //nolint:gocritic //rangeValCopy
 		o.Run(tt.name, func() {
 			for k, v := range tt.envVar {
-				_ = os.Setenv(k, v)
+				o.T().Setenv(k, v)
 			}
 			client, err := GetClient(tt.opts)
 			tt.expected(o, client, err)

@@ -119,11 +119,10 @@ func (s *PollerTestSuite) TestStart() {
 			location := mocks.NewLocation(s.T())
 			location.EXPECT().Exists().Return(true, nil)
 			poller, _ := NewPoller(location)
-			ctx := context.Background()
 			errFunc := func(err error) {
 				s.Require().NoError(err)
 			}
-			err := poller.Start(ctx, tt.handler, errFunc)
+			err := poller.Start(s.T().Context(), tt.handler, errFunc)
 			if tt.wantErr {
 				s.Require().Error(err)
 			} else {
@@ -135,7 +134,6 @@ func (s *PollerTestSuite) TestStart() {
 }
 
 func (s *PollerTestSuite) TestStop() {
-	ctx := context.Background()
 	handler := func(event vfsevents.Event) {}
 	location := mocks.NewLocation(s.T())
 	location.EXPECT().Exists().Return(true, nil)
@@ -143,7 +141,7 @@ func (s *PollerTestSuite) TestStop() {
 	errFunc := func(err error) {
 		s.Require().NoError(err)
 	}
-	err := poller.Start(ctx, handler, errFunc)
+	err := poller.Start(s.T().Context(), handler, errFunc)
 	s.Require().NoError(err)
 	s.Require().NoError(poller.Stop())
 	// Ensure that the polling process stops correctly
@@ -490,12 +488,12 @@ func (s *PollerTestSuite) TestPerformCleanup() {
 
 			// Verify remaining entries
 			for _, uri := range tt.expectedRemain {
-				s.Contains(poller.fileCache, uri, "Expected URI %s to remain in cache", uri)
+				s.Containsf(poller.fileCache, uri, "Expected URI %s to remain in cache", uri)
 			}
 
 			// Verify removed entries
 			for _, uri := range tt.expectedRemove {
-				s.NotContains(poller.fileCache, uri, "Expected URI %s to be removed from cache", uri)
+				s.NotContainsf(poller.fileCache, uri, "Expected URI %s to be removed from cache", uri)
 			}
 
 			// Verify lastCleanup was updated
@@ -611,13 +609,13 @@ func (s *PollerTestSuite) TestEnforceMaxFiles() {
 				// Verify the newest files remain
 				newestEntries := entries[len(entries)-tt.maxFiles:]
 				for _, entry := range newestEntries {
-					s.Contains(poller.fileCache, entry.uri, "Expected newest file %s to remain", entry.uri)
+					s.Containsf(poller.fileCache, entry.uri, "Expected newest file %s to remain", entry.uri)
 				}
 
 				// Verify oldest files were removed
 				oldestEntries := entries[:len(entries)-tt.maxFiles]
 				for _, entry := range oldestEntries {
-					s.NotContains(poller.fileCache, entry.uri, "Expected oldest file %s to be removed", entry.uri)
+					s.NotContainsf(poller.fileCache, entry.uri, "Expected oldest file %s to be removed", entry.uri)
 				}
 			}
 		})

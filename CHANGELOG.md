@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Tests
+- Inline test case structs for consistency.
+- Use the correct assertion format overload.
+- Always use testing `Setenv` with automatic cleanup.
+- Makefile target for unit testing all modules.
+- Various assertion consistency improvements.
+- Use context from `testing.T` introduced in Go 1.24.
 
 ## [v7.10.0] - 2025-10-07
 ### Security

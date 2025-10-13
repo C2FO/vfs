@@ -5,12 +5,11 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/fsouza/fake-gcs-server/fakestorage"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v7/utils"
 	"github.com/c2fo/vfs/v7/utils/authority"
-
-	"github.com/fsouza/fake-gcs-server/fakestorage"
 )
 
 type locationTestSuite struct {
@@ -227,7 +226,7 @@ func (lt *locationTestSuite) TestChangeDir() {
 	// test nil Location
 	var nilLoc *Location
 	err := nilLoc.ChangeDir("path/to/")
-	lt.Require().EqualErrorf(err, "non-nil gs.Location pointer is required", "error expected for nil location")
+	lt.Require().EqualError(err, "non-nil gs.Location pointer is required", "error expected for nil location")
 
 	auth, err := authority.NewAuthority("bucket")
 	lt.Require().NoError(err)

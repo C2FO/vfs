@@ -529,15 +529,13 @@ func (s *utilsSuite) TestValidatePrefix() {
 	}
 }
 
-type URITest struct {
-	path     string
-	expected string
-	message  string
-	isRegex  bool
-}
-
 func (s *utilsSuite) TestPathToURI() {
-	tests := []URITest{
+	tests := []struct {
+		path     string
+		expected string
+		message  string
+		isRegex  bool
+	}{
 		{
 			path:     "/absolute/path/",
 			expected: "file:///absolute/path/",

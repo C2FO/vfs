@@ -44,14 +44,6 @@ func (o *optionsSuite) SetupSuite() {
 	o.keyFiles = *keyFiles
 }
 
-type foundFileTest struct {
-	file       string
-	expected   bool
-	hasError   bool
-	errMessage string
-	message    string
-}
-
 func (o *optionsSuite) TestFoundFile() {
 	// test file
 	filename := filepath.Join(o.tmpdir, "some.key")
@@ -62,7 +54,13 @@ func (o *optionsSuite) TestFoundFile() {
 	o.Require().NoError(f.Close(), "closing file for foundfile test")
 	defer func() { o.Require().NoError(os.Remove(filename), "clean up file for foundfile test") }()
 
-	tests := []foundFileTest{
+	tests := []struct {
+		file       string
+		expected   bool
+		hasError   bool
+		errMessage string
+		message    string
+	}{
 		{
 			file:       filename,
 			expected:   true,
@@ -92,17 +90,15 @@ func (o *optionsSuite) TestFoundFile() {
 	}
 }
 
-type getFileTest struct {
-	keyfile    string
-	passphrase string
-	hasError   bool
-	err        error
-	errMessage string
-	message    string
-}
-
 func (o *optionsSuite) TestGetKeyFile() {
-	tests := []getFileTest{
+	tests := []struct {
+		keyfile    string
+		passphrase string
+		hasError   bool
+		err        error
+		errMessage string
+		message    string
+	}{
 		{
 			keyfile:    o.keyFiles.SSHPrivateKey,
 			passphrase: o.keyFiles.passphrase,
@@ -159,14 +155,6 @@ func (o *optionsSuite) TestGetKeyFile() {
 	}
 }
 
-type hostkeyTest struct {
-	options    Options
-	envVars    map[string]string
-	hasError   bool
-	errMessage string
-	message    string
-}
-
 func (o *optionsSuite) TestGetHostKeyCallback() {
 	knownHosts := filepath.Join(o.tmpdir, "known_hosts")
 	f, err := os.Create(knownHosts) //nolint:gosec
@@ -176,7 +164,13 @@ func (o *optionsSuite) TestGetHostKeyCallback() {
 	o.Require().NoError(f.Close(), "closing file for getHostKeyCallback test")
 	defer func() { o.Require().NoError(os.Remove(knownHosts), "clean up file for getHostKeyCallback test") }()
 
-	tests := []hostkeyTest{
+	tests := []struct {
+		options    Options
+		envVars    map[string]string
+		hasError   bool
+		errMessage string
+		message    string
+	}{
 		{
 			options: Options{
 				KnownHostsCallback: ssh.FixedHostKey(o.publicKey),
@@ -229,7 +223,7 @@ func (o *optionsSuite) TestGetHostKeyCallback() {
 			errMessage: "",
 			message:    "Env fallthrough KnownHostsFile",
 		},
-		{ // TODO:  this may be a bad test if a user/system-wide known_hosts file isn't found
+		{ // TODO: this may be a bad test if a user/system-wide known_hosts file isn't found
 			hasError:   false,
 			errMessage: "",
 			message:    "default fallthrough KnownHostsFile",
@@ -239,10 +233,8 @@ func (o *optionsSuite) TestGetHostKeyCallback() {
 	for _, t := range tests { //nolint:gocritic // rangeValCopy
 		o.Run(t.message, func() {
 			// setup env vars, if any
-			tmpMap := make(map[string]string)
 			for k, v := range t.envVars {
-				tmpMap[k] = os.Getenv(k)
-				o.Require().NoError(os.Setenv(k, v))
+				o.T().Setenv(k, v)
 			}
 
 			// apply test
@@ -252,27 +244,20 @@ func (o *optionsSuite) TestGetHostKeyCallback() {
 			} else {
 				o.Require().NoError(err, t.message)
 			}
-
-			// return env vars to original value
-			for k, v := range tmpMap {
-				o.Require().NoError(os.Setenv(k, v))
-			}
 		})
 	}
 }
 
-type authTest struct {
-	options     Options
-	envVars     map[string]string
-	returnCount int
-	hasError    bool
-	errMessage  string
-	err         error
-	message     string
-}
-
 func (o *optionsSuite) TestGetAuthMethods() {
-	tests := []authTest{
+	tests := []struct {
+		options     Options
+		envVars     map[string]string
+		returnCount int
+		hasError    bool
+		errMessage  string
+		err         error
+		message     string
+	}{
 		{
 			options: Options{
 				Password: "somepassword",
@@ -381,10 +366,8 @@ func (o *optionsSuite) TestGetAuthMethods() {
 	for _, t := range tests { //nolint:gocritic // rangeValCopy
 		o.Run(t.message, func() {
 			// setup env vars, if any
-			tmpMap := make(map[string]string)
 			for k, v := range t.envVars {
-				tmpMap[k] = os.Getenv(k)
-				o.Require().NoError(os.Setenv(k, v))
+				o.T().Setenv(k, v)
 			}
 
 			// apply test
@@ -399,22 +382,8 @@ func (o *optionsSuite) TestGetAuthMethods() {
 				o.Require().NoError(err, t.message)
 				o.Len(auth, t.returnCount, "auth count")
 			}
-
-			// return env vars to original value
-			for k, v := range tmpMap {
-				o.Require().NoError(os.Setenv(k, v))
-			}
 		})
 	}
-}
-
-type getClientTest struct {
-	options   Options
-	authority authority.Authority
-	hasError  bool
-	err       error
-	errRegex  string
-	message   string
 }
 
 func (o *optionsSuite) TestGetClient() {
@@ -425,21 +394,16 @@ func (o *optionsSuite) TestGetClient() {
 	o.Require().NoError(err)
 
 	// Set environment variable for testing
-	origEnvUsername := os.Getenv("VFS_SFTP_USERNAME")
-	defer func() {
-		// Reset environment variable after test
-		if origEnvUsername != "" {
-			err := os.Setenv("VFS_SFTP_USERNAME", origEnvUsername)
-			o.Require().NoError(err, "restoring original VFS_SFTP_USERNAME env var")
-		} else {
-			err := os.Unsetenv("VFS_SFTP_USERNAME")
-			o.Require().NoError(err, "unsetting VFS_SFTP_USERNAME env var")
-		}
-	}()
-	err = os.Setenv("VFS_SFTP_USERNAME", "envuser")
-	o.Require().NoError(err)
+	o.T().Setenv("VFS_SFTP_USERNAME", "envuser")
 
-	tests := []getClientTest{
+	tests := []struct {
+		options   Options
+		authority authority.Authority
+		hasError  bool
+		err       error
+		errRegex  string
+		message   string
+	}{
 		{
 			authority: auth,
 			options: Options{
@@ -497,13 +461,12 @@ func (o *optionsSuite) TestGetClient() {
 		o.Run(t.message, func() {
 			_, _, err := GetClient(t.authority, t.options)
 			if t.hasError {
-				if o.Error(err, "error found") {
-					if t.err != nil {
-						o.Require().ErrorIs(err, t.err, t.message)
-					} else {
-						re := regexp.MustCompile(t.errRegex)
-						o.Regexp(re, err.Error(), "error matches")
-					}
+				o.Require().Error(err)
+				if t.err != nil {
+					o.Require().ErrorIs(err, t.err, t.message)
+				} else {
+					re := regexp.MustCompile(t.errRegex)
+					o.Regexp(re, err.Error(), "error matches")
 				}
 			} else {
 				o.Require().NoError(err, t.message)

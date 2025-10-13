@@ -21,9 +21,8 @@ type fileTestSuite struct {
 	suite.Suite
 }
 
-func objectExists(bucket *storage.BucketHandle, objectName string) bool {
+func objectExists(ctx context.Context, bucket *storage.BucketHandle, objectName string) bool {
 	objectHandle := bucket.Object(objectName)
-	ctx := context.Background()
 	_, err := objectHandle.Attrs(ctx)
 	if err != nil {
 		if errors.Is(err, storage.ErrObjectNotExist) {
@@ -34,9 +33,8 @@ func objectExists(bucket *storage.BucketHandle, objectName string) bool {
 	return true
 }
 
-func mustReadObject(bucket *storage.BucketHandle, objectName string) []byte {
+func mustReadObject(ctx context.Context, bucket *storage.BucketHandle, objectName string) []byte {
 	objectHandle := bucket.Object(objectName)
-	ctx := context.Background()
 	reader, err := objectHandle.NewReader(ctx)
 	if err != nil {
 		panic(err)
@@ -140,7 +138,7 @@ func (ts *fileTestSuite) TestDelete() {
 	ts.Require().NoError(err, "Shouldn't fail deleting the file")
 
 	bucket := client.Bucket(bucketName)
-	ts.False(objectExists(bucket, objectName))
+	ts.False(objectExists(ts.T().Context(), bucket, objectName))
 }
 
 func (ts *fileTestSuite) TestDeleteError() {
@@ -204,7 +202,7 @@ func (ts *fileTestSuite) TestDeleteRemoveAllVersions() {
 	ts.Require().NoError(err, "Shouldn't fail deleting the file")
 
 	bucket := client.Bucket(bucketName)
-	ts.False(objectExists(bucket, objectName))
+	ts.False(objectExists(ts.T().Context(), bucket, objectName))
 	handles, err = f.getObjectGenerationHandles()
 	ts.Require().NoError(err, "Shouldn't fail getting object generation handles")
 	ts.Nil(handles)
@@ -235,7 +233,7 @@ func (ts *fileTestSuite) TestWriteWithContentType() {
 	defer server.Stop()
 	client := server.Client()
 	bucket := client.Bucket(bucketName)
-	ctx := context.Background()
+	ctx := ts.T().Context()
 	err := bucket.Create(ctx, "", nil)
 	ts.Require().NoError(err)
 	fs := NewFileSystem(WithClient(client))
@@ -261,7 +259,7 @@ func (ts *fileTestSuite) TestTouchWithContentType() {
 	defer server.Stop()
 	client := server.Client()
 	bucket := client.Bucket(bucketName)
-	ctx := context.Background()
+	ctx := ts.T().Context()
 	err := bucket.Create(ctx, "", nil)
 	ts.Require().NoError(err)
 	fs := NewFileSystem(WithClient(client))
@@ -330,21 +328,16 @@ func (ts *fileTestSuite) TestNotExists() {
 }
 
 func (ts *fileTestSuite) TestMoveAndCopy() {
-	type TestCase struct {
+	testCases := make([]struct {
 		move       bool
 		readFirst  bool
 		sameBucket bool
-	}
-	type TestCases []TestCase
+	}, 1<<3)
 
-	testCases := TestCases{}
-
-	for idx := range 1 << 3 {
-		testCases = append(testCases, TestCase{
-			move:       (idx & (1 << 0)) != 0,
-			readFirst:  (idx & (1 << 1)) != 0,
-			sameBucket: (idx & (1 << 2)) != 0,
-		})
+	for idx := range testCases {
+		testCases[idx].move = (idx & (1 << 0)) != 0
+		testCases[idx].readFirst = (idx & (1 << 1)) != 0
+		testCases[idx].sameBucket = (idx & (1 << 2)) != 0
 	}
 
 	for _, testCase := range testCases {
@@ -386,12 +379,14 @@ func (ts *fileTestSuite) TestMoveAndCopy() {
 			sourceBucket := client.Bucket(sourceBucketName)
 			targetBucket := client.Bucket(targetBucketName)
 
-			ts.True(objectExists(sourceBucket, sourceName), "source should exist")
+			ctx := ts.T().Context()
+
+			ts.True(objectExists(ctx, sourceBucket, sourceName), "source should exist")
 			ts.True(fsFileNameExists(fs, sourceBucketName, sourceName), "source should exist")
-			ts.Equal(content, mustReadObject(sourceBucket, sourceName))
+			ts.Equal(content, mustReadObject(ctx, sourceBucket, sourceName))
 			ts.Equal(content, fsMustReadFileName(fs, sourceBucketName, sourceName))
 
-			ts.False(objectExists(targetBucket, targetName), "target should not exist")
+			ts.False(objectExists(ctx, targetBucket, targetName), "target should not exist")
 			ts.False(fsFileNameExists(fs, sourceBucketName, targetName), "target should not exist")
 
 			sourceFile, err := fs.NewFile(sourceBucketName, "/"+sourceName)
@@ -416,18 +411,18 @@ func (ts *fileTestSuite) TestMoveAndCopy() {
 				ts.Require().NoError(err, "Error shouldn't be returned from successful operation")
 
 				if testCase.move {
-					ts.False(objectExists(sourceBucket, sourceName), "source should not exist")
+					ts.False(objectExists(ctx, sourceBucket, sourceName), "source should not exist")
 					ts.False(fsFileNameExists(fs, sourceBucketName, sourceName), "source should not exist")
 				} else {
-					ts.True(objectExists(sourceBucket, sourceName), "source should exist")
+					ts.True(objectExists(ctx, sourceBucket, sourceName), "source should exist")
 					ts.True(fsFileNameExists(fs, sourceBucketName, sourceName), "source should exist")
-					ts.Equal(content, mustReadObject(sourceBucket, sourceName))
+					ts.Equal(content, mustReadObject(ctx, sourceBucket, sourceName))
 					ts.Equal(content, fsMustReadFileName(fs, sourceBucketName, sourceName))
 				}
 
-				ts.True(objectExists(targetBucket, targetName), "target should exist")
+				ts.True(objectExists(ctx, targetBucket, targetName), "target should exist")
 				ts.True(fsFileNameExists(fs, targetBucketName, targetName), "target should exist")
-				ts.Equal(content, mustReadObject(targetBucket, targetName))
+				ts.Equal(content, mustReadObject(ctx, targetBucket, targetName))
 				ts.Equal(content, fsMustReadFileName(fs, targetBucketName, targetName))
 			}
 		})
@@ -435,20 +430,16 @@ func (ts *fileTestSuite) TestMoveAndCopy() {
 }
 
 func (ts *fileTestSuite) TestMoveAndCopyBuffered() {
-	type TestCase struct {
+	testCases := make([]struct {
 		move       bool
 		readFirst  bool
 		sameBucket bool
-	}
-	type TestCases []TestCase
-	testCases := TestCases{}
+	}, 1<<3)
 
-	for idx := range 1 << 3 {
-		testCases = append(testCases, TestCase{
-			move:       (idx & (1 << 0)) != 0,
-			readFirst:  (idx & (1 << 1)) != 0,
-			sameBucket: (idx & (1 << 2)) != 0,
-		})
+	for idx := range testCases {
+		testCases[idx].move = (idx & (1 << 0)) != 0
+		testCases[idx].readFirst = (idx & (1 << 1)) != 0
+		testCases[idx].sameBucket = (idx & (1 << 2)) != 0
 	}
 
 	for _, testCase := range testCases {
@@ -491,12 +482,14 @@ func (ts *fileTestSuite) TestMoveAndCopyBuffered() {
 			sourceBucket := client.Bucket(sourceBucketName)
 			targetBucket := client.Bucket(targetBucketName)
 
-			ts.True(objectExists(sourceBucket, sourceName), "source should exist")
+			ctx := ts.T().Context()
+
+			ts.True(objectExists(ctx, sourceBucket, sourceName), "source should exist")
 			ts.True(fsFileNameExists(fs, sourceBucketName, sourceName), "source should exist")
-			ts.Equal(content, mustReadObject(sourceBucket, sourceName))
+			ts.Equal(content, mustReadObject(ctx, sourceBucket, sourceName))
 			ts.Equal(content, fsMustReadFileName(fs, sourceBucketName, sourceName))
 
-			ts.False(objectExists(targetBucket, targetName), "target should not exist")
+			ts.False(objectExists(ctx, targetBucket, targetName), "target should not exist")
 			ts.False(fsFileNameExists(fs, sourceBucketName, targetName), "target should not exist")
 
 			sourceFile, err := fs.NewFile(sourceBucketName, "/"+sourceName)
@@ -521,18 +514,18 @@ func (ts *fileTestSuite) TestMoveAndCopyBuffered() {
 				ts.Require().NoError(err, "Error shouldn't be returned from successful operation")
 
 				if testCase.move {
-					ts.False(objectExists(sourceBucket, sourceName), "source should not exist")
+					ts.False(objectExists(ctx, sourceBucket, sourceName), "source should not exist")
 					ts.False(fsFileNameExists(fs, sourceBucketName, sourceName), "source should not exist")
 				} else {
-					ts.True(objectExists(sourceBucket, sourceName), "source should exist")
+					ts.True(objectExists(ctx, sourceBucket, sourceName), "source should exist")
 					ts.True(fsFileNameExists(fs, sourceBucketName, sourceName), "source should exist")
-					ts.Equal(content, mustReadObject(sourceBucket, sourceName))
+					ts.Equal(content, mustReadObject(ctx, sourceBucket, sourceName))
 					ts.Equal(content, fsMustReadFileName(fs, sourceBucketName, sourceName))
 				}
 
-				ts.True(objectExists(targetBucket, targetName), "target should exist")
+				ts.True(objectExists(ctx, targetBucket, targetName), "target should exist")
 				ts.True(fsFileNameExists(fs, targetBucketName, targetName), "target should exist")
-				ts.Equal(content, mustReadObject(targetBucket, targetName))
+				ts.Equal(content, mustReadObject(ctx, targetBucket, targetName))
 				ts.Equal(content, fsMustReadFileName(fs, targetBucketName, targetName))
 			}
 		})

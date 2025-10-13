@@ -1,7 +1,6 @@
 package s3
 
 import (
-	"context"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -24,7 +23,7 @@ type mockClient struct {
 }
 
 func (ts *fileSystemTestSuite) SetupTest() {
-	cfg, err := config.LoadDefaultConfig(context.Background())
+	cfg, err := config.LoadDefaultConfig(ts.T().Context())
 	if err != nil {
 		panic(err)
 	}
