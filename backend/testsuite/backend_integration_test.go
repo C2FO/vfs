@@ -77,7 +77,7 @@ func (s *vfsTestSuite) SetupSuite() {
 	}
 }
 
-// Test File
+// Test Scheme
 func (s *vfsTestSuite) TestScheme() {
 	for scheme, location := range s.testLocations {
 		fmt.Printf("************** TESTING scheme: %s **************\n", scheme)

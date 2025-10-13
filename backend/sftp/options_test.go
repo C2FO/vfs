@@ -223,7 +223,7 @@ func (o *optionsSuite) TestGetHostKeyCallback() {
 			errMessage: "",
 			message:    "Env fallthrough KnownHostsFile",
 		},
-		{ // TODO:  this may be a bad test if a user/system-wide known_hosts file isn't found
+		{ // TODO: this may be a bad test if a user/system-wide known_hosts file isn't found
 			hasError:   false,
 			errMessage: "",
 			message:    "default fallthrough KnownHostsFile",

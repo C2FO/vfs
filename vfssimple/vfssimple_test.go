@@ -370,6 +370,7 @@ type namedS3ClientMock struct {
 // getS3NamedClientMock returns an s3 client that satisfies the interface but we only really care about the name,
 // to introspect in the test return
 func getS3NamedClientMock(t *testing.T, name string) *namedS3ClientMock {
+	t.Helper()
 	return &namedS3ClientMock{
 		Client:  mocks.NewClient(t),
 		RegName: name,

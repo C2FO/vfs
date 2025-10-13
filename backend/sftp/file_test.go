@@ -119,7 +119,7 @@ func (ts *fileTestSuite) TestSeek() {
 	ts.Require().NoError(closeErr, "no error expected")
 }
 
-func (ts *fileTestSuite) Test_openFile() {
+func (ts *fileTestSuite) TestOpenFile() {
 	tests := []struct {
 		name           string
 		flags          int

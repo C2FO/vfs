@@ -51,9 +51,6 @@ func (ts *fileTestSuite) SetupTest() {
 	ts.Require().NoError(err, "Shouldn't return error creating test s3.File instance.")
 }
 
-func (ts *fileTestSuite) TearDownTest() {
-}
-
 func (ts *fileTestSuite) TestRead() {
 	contents := "hello world!"
 
