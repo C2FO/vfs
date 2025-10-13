@@ -500,7 +500,7 @@ eventLoop:
 				txtEventReceived = true
 				fmt.Printf("TEST DEBUG: Marking txtEventReceived = true\n")
 				// Accept both Created and Modified events for .txt files
-				s.True(event.Type == vfsevents.EventCreated || event.Type == vfsevents.EventModified,
+				s.Truef(event.Type == vfsevents.EventCreated || event.Type == vfsevents.EventModified,
 					"Expected Created or Modified event for .txt file, got: %s", event.Type)
 			} else if s.isLogFileEvent(event.URI) {
 				logEventReceived = true

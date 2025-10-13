@@ -279,7 +279,7 @@ func (lt *locationTestSuite) TestChangeDir() {
 	// test nil Location
 	var nilLoc *Location
 	err := nilLoc.ChangeDir("path/to/")
-	lt.Require().EqualErrorf(err, "non-nil sftp.Location pointer receiver is required", "error expected for nil location")
+	lt.Require().EqualError(err, "non-nil sftp.Location pointer receiver is required", "error expected for nil location")
 
 	loc := &Location{fileSystem: lt.sftpfs, path: "/", authority: authority.Authority{}}
 

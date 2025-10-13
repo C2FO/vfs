@@ -798,7 +798,7 @@ func (s *memFileTest) TestSeekBeyondEOF() {
 	// Verify gap is filled with zeros
 	gap := content[len(initialData):100]
 	for i, b := range gap {
-		s.Zero(b, "gap should be filled with zeros at position %d", i)
+		s.Zerof(b, "gap should be filled with zeros at position %d", i)
 	}
 
 	// Verify additional data is at the correct position

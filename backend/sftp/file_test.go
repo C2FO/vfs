@@ -905,14 +905,14 @@ func (ts *fileTestSuite) TestNewFile() {
 	fs := &FileSystem{}
 	// fs is nil
 	_, err := fs.NewFile("user@host.com", "")
-	ts.Require().Errorf(err, "non-nil sftp.FileSystem pointer is required")
+	ts.Require().Error(err, "non-nil sftp.FileSystem pointer is required")
 
 	// authority is ""
 	_, err = fs.NewFile("", "asdf")
-	ts.Require().Errorf(err, "non-empty strings for bucket and key are required")
+	ts.Require().Error(err, "non-empty strings for bucket and key are required")
 	// path is ""
 	_, err = fs.NewFile("user@host.com", "")
-	ts.Require().Errorf(err, "non-empty strings for bucket and key are required")
+	ts.Require().Error(err, "non-empty strings for bucket and key are required")
 
 	authorityStr := "user@host.com"
 	key := "/path/to/file"

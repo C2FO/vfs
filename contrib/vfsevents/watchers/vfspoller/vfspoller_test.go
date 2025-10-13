@@ -490,12 +490,12 @@ func (s *PollerTestSuite) TestPerformCleanup() {
 
 			// Verify remaining entries
 			for _, uri := range tt.expectedRemain {
-				s.Contains(poller.fileCache, uri, "Expected URI %s to remain in cache", uri)
+				s.Containsf(poller.fileCache, uri, "Expected URI %s to remain in cache", uri)
 			}
 
 			// Verify removed entries
 			for _, uri := range tt.expectedRemove {
-				s.NotContains(poller.fileCache, uri, "Expected URI %s to be removed from cache", uri)
+				s.NotContainsf(poller.fileCache, uri, "Expected URI %s to be removed from cache", uri)
 			}
 
 			// Verify lastCleanup was updated
@@ -611,13 +611,13 @@ func (s *PollerTestSuite) TestEnforceMaxFiles() {
 				// Verify the newest files remain
 				newestEntries := entries[len(entries)-tt.maxFiles:]
 				for _, entry := range newestEntries {
-					s.Contains(poller.fileCache, entry.uri, "Expected newest file %s to remain", entry.uri)
+					s.Containsf(poller.fileCache, entry.uri, "Expected newest file %s to remain", entry.uri)
 				}
 
 				// Verify oldest files were removed
 				oldestEntries := entries[:len(entries)-tt.maxFiles]
 				for _, entry := range oldestEntries {
-					s.NotContains(poller.fileCache, entry.uri, "Expected oldest file %s to be removed", entry.uri)
+					s.NotContainsf(poller.fileCache, entry.uri, "Expected oldest file %s to be removed", entry.uri)
 				}
 			}
 		})

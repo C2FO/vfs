@@ -227,7 +227,7 @@ func (lt *locationTestSuite) TestChangeDir() {
 	// test nil Location
 	var nilLoc *Location
 	err := nilLoc.ChangeDir("path/to/")
-	lt.Require().EqualErrorf(err, "non-nil gs.Location pointer is required", "error expected for nil location")
+	lt.Require().EqualError(err, "non-nil gs.Location pointer is required", "error expected for nil location")
 
 	auth, err := authority.NewAuthority("bucket")
 	lt.Require().NoError(err)

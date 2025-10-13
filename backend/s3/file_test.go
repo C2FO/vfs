@@ -704,14 +704,14 @@ func (ts *fileTestSuite) TestNewFile() {
 	fs := &FileSystem{}
 	// fs is nil
 	_, err := fs.NewFile("", "")
-	ts.Require().Errorf(err, "non-nil s3.FileSystem pointer is required")
+	ts.Require().Error(err, "non-nil s3.FileSystem pointer is required")
 
 	// bucket is ""
 	_, err = fs.NewFile("", "asdf")
-	ts.Require().Errorf(err, "non-empty strings for bucket and key are required")
+	ts.Require().Error(err, "non-empty strings for bucket and key are required")
 	// key is ""
 	_, err = fs.NewFile("asdf", "")
-	ts.Require().Errorf(err, "non-empty strings for bucket and key are required")
+	ts.Require().Error(err, "non-empty strings for bucket and key are required")
 
 	//
 	bucket := "mybucket"

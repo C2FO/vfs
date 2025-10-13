@@ -587,7 +587,7 @@ func (s *S3WatcherTestSuite) TestWithReceivedCount() {
 				s.Require().NoError(err)
 			}
 
-			s.Equal(tt.expectMessageProcessed, handlerCalled,
+			s.Equalf(tt.expectMessageProcessed, handlerCalled,
 				"Handler call expectation mismatch for receive count %s with threshold %d",
 				tt.messageReceiveCount, tt.receivedCount)
 		})
