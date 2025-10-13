@@ -2,12 +2,14 @@
 package s3
 
 import (
+	"context"
 	"errors"
 	"path"
 
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/backend"
 	"github.com/c2fo/vfs/v7/options"
+	"github.com/c2fo/vfs/v7/options/newlocation"
 	"github.com/c2fo/vfs/v7/utils"
 	"github.com/c2fo/vfs/v7/utils/authority"
 )
@@ -20,12 +22,14 @@ const name = "AWS S3"
 type FileSystem struct {
 	client  Client
 	options Options
+	ctx     context.Context
 }
 
 // NewFileSystem initializer for FileSystem struct accepts aws-sdk client and returns Filesystem or error.
 func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem {
 	fs := &FileSystem{
 		options: Options{},
+		ctx:     context.Background(),
 	}
 
 	options.ApplyOptions(fs, opts...)
@@ -67,7 +71,7 @@ func (fs *FileSystem) NewFile(authorityStr, name string, opts ...options.NewFile
 }
 
 // NewLocation function returns the s3 implementation of vfs.Location.
-func (fs *FileSystem) NewLocation(authorityStr, name string) (vfs.Location, error) {
+func (fs *FileSystem) NewLocation(authorityStr, name string, opts ...options.NewLocationOption) (vfs.Location, error) {
 	if fs == nil {
 		return nil, errors.New("non-nil s3.FileSystem pointer is required")
 	}
@@ -85,10 +89,20 @@ func (fs *FileSystem) NewLocation(authorityStr, name string) (vfs.Location, erro
 		return nil, err
 	}
 
+	ctx := fs.ctx
+	for _, o := range opts {
+		switch o := o.(type) {
+		case *newlocation.Context:
+			ctx = context.Context(o)
+		default:
+		}
+	}
+
 	return &Location{
 		fileSystem: fs,
 		prefix:     utils.EnsureTrailingSlash(path.Clean(name)),
 		authority:  auth,
+		ctx:        ctx,
 	}, nil
 }
 
@@ -107,7 +121,7 @@ func (fs *FileSystem) Scheme() string {
 func (fs *FileSystem) Client() (Client, error) {
 	if fs.client == nil {
 		var err error
-		fs.client, err = GetClient(fs.options)
+		fs.client, err = GetClient(fs.ctx, fs.options)
 		if err != nil {
 			return nil, err
 		}

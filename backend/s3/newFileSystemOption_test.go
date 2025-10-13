@@ -1,16 +1,15 @@
-package gs
+package s3
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
-	"cloud.google.com/go/storage"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestWithClient(t *testing.T) {
-	client := &storage.Client{}
+	client := &s3.Client{}
 	fs := &FileSystem{}
 
 	opt := WithClient(client)
@@ -37,15 +36,4 @@ func TestWithContext(t *testing.T) {
 	opt.Apply(fs)
 
 	assert.Equal(t, ctx, fs.ctx, "Context should be set correctly")
-}
-
-func TestWithRetryer(t *testing.T) {
-	retryer := func(wrapped func() error) error { return wrapped() }
-	fs := &FileSystem{}
-
-	opt := WithRetryer(retryer)
-	opt.Apply(fs)
-
-	assert.NotNil(t, fs.retryer, "Retryer should not be nil")
-	assert.Equal(t, reflect.ValueOf(retryer).Pointer(), reflect.ValueOf(fs.retryer).Pointer(), "Retryer should be set correctly")
 }

@@ -5,6 +5,7 @@
 package mocks
 
 import (
+	"context"
 	"io"
 
 	"github.com/c2fo/vfs/v7"
@@ -40,16 +41,16 @@ func (_m *Client) EXPECT() *Client_Expecter {
 }
 
 // Copy provides a mock function for the type Client
-func (_mock *Client) Copy(srcFile vfs.File, tgtFile vfs.File) error {
-	ret := _mock.Called(srcFile, tgtFile)
+func (_mock *Client) Copy(ctx context.Context, srcFile vfs.File, tgtFile vfs.File) error {
+	ret := _mock.Called(ctx, srcFile, tgtFile)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Copy")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(vfs.File, vfs.File) error); ok {
-		r0 = returnFunc(srcFile, tgtFile)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, vfs.File, vfs.File) error); ok {
+		r0 = returnFunc(ctx, srcFile, tgtFile)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -62,17 +63,80 @@ type Client_Copy_Call struct {
 }
 
 // Copy is a helper method to define mock.On call
+//   - ctx context.Context
 //   - srcFile vfs.File
 //   - tgtFile vfs.File
-func (_e *Client_Expecter) Copy(srcFile interface{}, tgtFile interface{}) *Client_Copy_Call {
-	return &Client_Copy_Call{Call: _e.mock.On("Copy", srcFile, tgtFile)}
+func (_e *Client_Expecter) Copy(ctx interface{}, srcFile interface{}, tgtFile interface{}) *Client_Copy_Call {
+	return &Client_Copy_Call{Call: _e.mock.On("Copy", ctx, srcFile, tgtFile)}
 }
 
-func (_c *Client_Copy_Call) Run(run func(srcFile vfs.File, tgtFile vfs.File)) *Client_Copy_Call {
+func (_c *Client_Copy_Call) Run(run func(ctx context.Context, srcFile vfs.File, tgtFile vfs.File)) *Client_Copy_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 vfs.File
+		var arg0 context.Context
 		if args[0] != nil {
-			arg0 = args[0].(vfs.File)
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 vfs.File
+		if args[1] != nil {
+			arg1 = args[1].(vfs.File)
+		}
+		var arg2 vfs.File
+		if args[2] != nil {
+			arg2 = args[2].(vfs.File)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *Client_Copy_Call) Return(err error) *Client_Copy_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *Client_Copy_Call) RunAndReturn(run func(ctx context.Context, srcFile vfs.File, tgtFile vfs.File) error) *Client_Copy_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Delete provides a mock function for the type Client
+func (_mock *Client) Delete(ctx context.Context, file vfs.File) error {
+	ret := _mock.Called(ctx, file)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Delete")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, vfs.File) error); ok {
+		r0 = returnFunc(ctx, file)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// Client_Delete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Delete'
+type Client_Delete_Call struct {
+	*mock.Call
+}
+
+// Delete is a helper method to define mock.On call
+//   - ctx context.Context
+//   - file vfs.File
+func (_e *Client_Expecter) Delete(ctx interface{}, file interface{}) *Client_Delete_Call {
+	return &Client_Delete_Call{Call: _e.mock.On("Delete", ctx, file)}
+}
+
+func (_c *Client_Delete_Call) Run(run func(ctx context.Context, file vfs.File)) *Client_Delete_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
 		}
 		var arg1 vfs.File
 		if args[1] != nil {
@@ -86,78 +150,27 @@ func (_c *Client_Copy_Call) Run(run func(srcFile vfs.File, tgtFile vfs.File)) *C
 	return _c
 }
 
-func (_c *Client_Copy_Call) Return(err error) *Client_Copy_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *Client_Copy_Call) RunAndReturn(run func(srcFile vfs.File, tgtFile vfs.File) error) *Client_Copy_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// Delete provides a mock function for the type Client
-func (_mock *Client) Delete(file vfs.File) error {
-	ret := _mock.Called(file)
-
-	if len(ret) == 0 {
-		panic("no return value specified for Delete")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(vfs.File) error); ok {
-		r0 = returnFunc(file)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// Client_Delete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Delete'
-type Client_Delete_Call struct {
-	*mock.Call
-}
-
-// Delete is a helper method to define mock.On call
-//   - file vfs.File
-func (_e *Client_Expecter) Delete(file interface{}) *Client_Delete_Call {
-	return &Client_Delete_Call{Call: _e.mock.On("Delete", file)}
-}
-
-func (_c *Client_Delete_Call) Run(run func(file vfs.File)) *Client_Delete_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 vfs.File
-		if args[0] != nil {
-			arg0 = args[0].(vfs.File)
-		}
-		run(
-			arg0,
-		)
-	})
-	return _c
-}
-
 func (_c *Client_Delete_Call) Return(err error) *Client_Delete_Call {
 	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *Client_Delete_Call) RunAndReturn(run func(file vfs.File) error) *Client_Delete_Call {
+func (_c *Client_Delete_Call) RunAndReturn(run func(ctx context.Context, file vfs.File) error) *Client_Delete_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // DeleteAllVersions provides a mock function for the type Client
-func (_mock *Client) DeleteAllVersions(file vfs.File) error {
-	ret := _mock.Called(file)
+func (_mock *Client) DeleteAllVersions(ctx context.Context, file vfs.File) error {
+	ret := _mock.Called(ctx, file)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DeleteAllVersions")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(vfs.File) error); ok {
-		r0 = returnFunc(file)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, vfs.File) error); ok {
+		r0 = returnFunc(ctx, file)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -170,19 +183,25 @@ type Client_DeleteAllVersions_Call struct {
 }
 
 // DeleteAllVersions is a helper method to define mock.On call
+//   - ctx context.Context
 //   - file vfs.File
-func (_e *Client_Expecter) DeleteAllVersions(file interface{}) *Client_DeleteAllVersions_Call {
-	return &Client_DeleteAllVersions_Call{Call: _e.mock.On("DeleteAllVersions", file)}
+func (_e *Client_Expecter) DeleteAllVersions(ctx interface{}, file interface{}) *Client_DeleteAllVersions_Call {
+	return &Client_DeleteAllVersions_Call{Call: _e.mock.On("DeleteAllVersions", ctx, file)}
 }
 
-func (_c *Client_DeleteAllVersions_Call) Run(run func(file vfs.File)) *Client_DeleteAllVersions_Call {
+func (_c *Client_DeleteAllVersions_Call) Run(run func(ctx context.Context, file vfs.File)) *Client_DeleteAllVersions_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 vfs.File
+		var arg0 context.Context
 		if args[0] != nil {
-			arg0 = args[0].(vfs.File)
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 vfs.File
+		if args[1] != nil {
+			arg1 = args[1].(vfs.File)
 		}
 		run(
 			arg0,
+			arg1,
 		)
 	})
 	return _c
@@ -193,14 +212,14 @@ func (_c *Client_DeleteAllVersions_Call) Return(err error) *Client_DeleteAllVers
 	return _c
 }
 
-func (_c *Client_DeleteAllVersions_Call) RunAndReturn(run func(file vfs.File) error) *Client_DeleteAllVersions_Call {
+func (_c *Client_DeleteAllVersions_Call) RunAndReturn(run func(ctx context.Context, file vfs.File) error) *Client_DeleteAllVersions_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Download provides a mock function for the type Client
-func (_mock *Client) Download(file vfs.File) (io.ReadCloser, error) {
-	ret := _mock.Called(file)
+func (_mock *Client) Download(ctx context.Context, file vfs.File) (io.ReadCloser, error) {
+	ret := _mock.Called(ctx, file)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Download")
@@ -208,18 +227,18 @@ func (_mock *Client) Download(file vfs.File) (io.ReadCloser, error) {
 
 	var r0 io.ReadCloser
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(vfs.File) (io.ReadCloser, error)); ok {
-		return returnFunc(file)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, vfs.File) (io.ReadCloser, error)); ok {
+		return returnFunc(ctx, file)
 	}
-	if returnFunc, ok := ret.Get(0).(func(vfs.File) io.ReadCloser); ok {
-		r0 = returnFunc(file)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, vfs.File) io.ReadCloser); ok {
+		r0 = returnFunc(ctx, file)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(io.ReadCloser)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(vfs.File) error); ok {
-		r1 = returnFunc(file)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, vfs.File) error); ok {
+		r1 = returnFunc(ctx, file)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -232,19 +251,25 @@ type Client_Download_Call struct {
 }
 
 // Download is a helper method to define mock.On call
+//   - ctx context.Context
 //   - file vfs.File
-func (_e *Client_Expecter) Download(file interface{}) *Client_Download_Call {
-	return &Client_Download_Call{Call: _e.mock.On("Download", file)}
+func (_e *Client_Expecter) Download(ctx interface{}, file interface{}) *Client_Download_Call {
+	return &Client_Download_Call{Call: _e.mock.On("Download", ctx, file)}
 }
 
-func (_c *Client_Download_Call) Run(run func(file vfs.File)) *Client_Download_Call {
+func (_c *Client_Download_Call) Run(run func(ctx context.Context, file vfs.File)) *Client_Download_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 vfs.File
+		var arg0 context.Context
 		if args[0] != nil {
-			arg0 = args[0].(vfs.File)
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 vfs.File
+		if args[1] != nil {
+			arg1 = args[1].(vfs.File)
 		}
 		run(
 			arg0,
+			arg1,
 		)
 	})
 	return _c
@@ -255,14 +280,14 @@ func (_c *Client_Download_Call) Return(readCloser io.ReadCloser, err error) *Cli
 	return _c
 }
 
-func (_c *Client_Download_Call) RunAndReturn(run func(file vfs.File) (io.ReadCloser, error)) *Client_Download_Call {
+func (_c *Client_Download_Call) RunAndReturn(run func(ctx context.Context, file vfs.File) (io.ReadCloser, error)) *Client_Download_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // List provides a mock function for the type Client
-func (_mock *Client) List(l vfs.Location) ([]string, error) {
-	ret := _mock.Called(l)
+func (_mock *Client) List(ctx context.Context, l vfs.Location) ([]string, error) {
+	ret := _mock.Called(ctx, l)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
@@ -270,18 +295,18 @@ func (_mock *Client) List(l vfs.Location) ([]string, error) {
 
 	var r0 []string
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(vfs.Location) ([]string, error)); ok {
-		return returnFunc(l)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, vfs.Location) ([]string, error)); ok {
+		return returnFunc(ctx, l)
 	}
-	if returnFunc, ok := ret.Get(0).(func(vfs.Location) []string); ok {
-		r0 = returnFunc(l)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, vfs.Location) []string); ok {
+		r0 = returnFunc(ctx, l)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]string)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(vfs.Location) error); ok {
-		r1 = returnFunc(l)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, vfs.Location) error); ok {
+		r1 = returnFunc(ctx, l)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -294,19 +319,25 @@ type Client_List_Call struct {
 }
 
 // List is a helper method to define mock.On call
+//   - ctx context.Context
 //   - l vfs.Location
-func (_e *Client_Expecter) List(l interface{}) *Client_List_Call {
-	return &Client_List_Call{Call: _e.mock.On("List", l)}
+func (_e *Client_Expecter) List(ctx interface{}, l interface{}) *Client_List_Call {
+	return &Client_List_Call{Call: _e.mock.On("List", ctx, l)}
 }
 
-func (_c *Client_List_Call) Run(run func(l vfs.Location)) *Client_List_Call {
+func (_c *Client_List_Call) Run(run func(ctx context.Context, l vfs.Location)) *Client_List_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 vfs.Location
+		var arg0 context.Context
 		if args[0] != nil {
-			arg0 = args[0].(vfs.Location)
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 vfs.Location
+		if args[1] != nil {
+			arg1 = args[1].(vfs.Location)
 		}
 		run(
 			arg0,
+			arg1,
 		)
 	})
 	return _c
@@ -317,14 +348,14 @@ func (_c *Client_List_Call) Return(strings []string, err error) *Client_List_Cal
 	return _c
 }
 
-func (_c *Client_List_Call) RunAndReturn(run func(l vfs.Location) ([]string, error)) *Client_List_Call {
+func (_c *Client_List_Call) RunAndReturn(run func(ctx context.Context, l vfs.Location) ([]string, error)) *Client_List_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Properties provides a mock function for the type Client
-func (_mock *Client) Properties(locationURI string, filePath string) (*types.BlobProperties, error) {
-	ret := _mock.Called(locationURI, filePath)
+func (_mock *Client) Properties(ctx context.Context, locationURI string, filePath string) (*types.BlobProperties, error) {
+	ret := _mock.Called(ctx, locationURI, filePath)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Properties")
@@ -332,18 +363,18 @@ func (_mock *Client) Properties(locationURI string, filePath string) (*types.Blo
 
 	var r0 *types.BlobProperties
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(string, string) (*types.BlobProperties, error)); ok {
-		return returnFunc(locationURI, filePath)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (*types.BlobProperties, error)); ok {
+		return returnFunc(ctx, locationURI, filePath)
 	}
-	if returnFunc, ok := ret.Get(0).(func(string, string) *types.BlobProperties); ok {
-		r0 = returnFunc(locationURI, filePath)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) *types.BlobProperties); ok {
+		r0 = returnFunc(ctx, locationURI, filePath)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*types.BlobProperties)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(string, string) error); ok {
-		r1 = returnFunc(locationURI, filePath)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = returnFunc(ctx, locationURI, filePath)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -356,136 +387,22 @@ type Client_Properties_Call struct {
 }
 
 // Properties is a helper method to define mock.On call
+//   - ctx context.Context
 //   - locationURI string
 //   - filePath string
-func (_e *Client_Expecter) Properties(locationURI interface{}, filePath interface{}) *Client_Properties_Call {
-	return &Client_Properties_Call{Call: _e.mock.On("Properties", locationURI, filePath)}
+func (_e *Client_Expecter) Properties(ctx interface{}, locationURI interface{}, filePath interface{}) *Client_Properties_Call {
+	return &Client_Properties_Call{Call: _e.mock.On("Properties", ctx, locationURI, filePath)}
 }
 
-func (_c *Client_Properties_Call) Run(run func(locationURI string, filePath string)) *Client_Properties_Call {
+func (_c *Client_Properties_Call) Run(run func(ctx context.Context, locationURI string, filePath string)) *Client_Properties_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 string
+		var arg0 context.Context
 		if args[0] != nil {
-			arg0 = args[0].(string)
+			arg0 = args[0].(context.Context)
 		}
 		var arg1 string
 		if args[1] != nil {
 			arg1 = args[1].(string)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *Client_Properties_Call) Return(blobProperties *types.BlobProperties, err error) *Client_Properties_Call {
-	_c.Call.Return(blobProperties, err)
-	return _c
-}
-
-func (_c *Client_Properties_Call) RunAndReturn(run func(locationURI string, filePath string) (*types.BlobProperties, error)) *Client_Properties_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SetMetadata provides a mock function for the type Client
-func (_mock *Client) SetMetadata(file vfs.File, metadata map[string]*string) error {
-	ret := _mock.Called(file, metadata)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SetMetadata")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(vfs.File, map[string]*string) error); ok {
-		r0 = returnFunc(file, metadata)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// Client_SetMetadata_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetMetadata'
-type Client_SetMetadata_Call struct {
-	*mock.Call
-}
-
-// SetMetadata is a helper method to define mock.On call
-//   - file vfs.File
-//   - metadata map[string]*string
-func (_e *Client_Expecter) SetMetadata(file interface{}, metadata interface{}) *Client_SetMetadata_Call {
-	return &Client_SetMetadata_Call{Call: _e.mock.On("SetMetadata", file, metadata)}
-}
-
-func (_c *Client_SetMetadata_Call) Run(run func(file vfs.File, metadata map[string]*string)) *Client_SetMetadata_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 vfs.File
-		if args[0] != nil {
-			arg0 = args[0].(vfs.File)
-		}
-		var arg1 map[string]*string
-		if args[1] != nil {
-			arg1 = args[1].(map[string]*string)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *Client_SetMetadata_Call) Return(err error) *Client_SetMetadata_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *Client_SetMetadata_Call) RunAndReturn(run func(file vfs.File, metadata map[string]*string) error) *Client_SetMetadata_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// Upload provides a mock function for the type Client
-func (_mock *Client) Upload(file vfs.File, content io.ReadSeeker, contentType string) error {
-	ret := _mock.Called(file, content, contentType)
-
-	if len(ret) == 0 {
-		panic("no return value specified for Upload")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(vfs.File, io.ReadSeeker, string) error); ok {
-		r0 = returnFunc(file, content, contentType)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// Client_Upload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Upload'
-type Client_Upload_Call struct {
-	*mock.Call
-}
-
-// Upload is a helper method to define mock.On call
-//   - file vfs.File
-//   - content io.ReadSeeker
-//   - contentType string
-func (_e *Client_Expecter) Upload(file interface{}, content interface{}, contentType interface{}) *Client_Upload_Call {
-	return &Client_Upload_Call{Call: _e.mock.On("Upload", file, content, contentType)}
-}
-
-func (_c *Client_Upload_Call) Run(run func(file vfs.File, content io.ReadSeeker, contentType string)) *Client_Upload_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 vfs.File
-		if args[0] != nil {
-			arg0 = args[0].(vfs.File)
-		}
-		var arg1 io.ReadSeeker
-		if args[1] != nil {
-			arg1 = args[1].(io.ReadSeeker)
 		}
 		var arg2 string
 		if args[2] != nil {
@@ -500,12 +417,144 @@ func (_c *Client_Upload_Call) Run(run func(file vfs.File, content io.ReadSeeker,
 	return _c
 }
 
+func (_c *Client_Properties_Call) Return(blobProperties *types.BlobProperties, err error) *Client_Properties_Call {
+	_c.Call.Return(blobProperties, err)
+	return _c
+}
+
+func (_c *Client_Properties_Call) RunAndReturn(run func(ctx context.Context, locationURI string, filePath string) (*types.BlobProperties, error)) *Client_Properties_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetMetadata provides a mock function for the type Client
+func (_mock *Client) SetMetadata(ctx context.Context, file vfs.File, metadata map[string]*string) error {
+	ret := _mock.Called(ctx, file, metadata)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetMetadata")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, vfs.File, map[string]*string) error); ok {
+		r0 = returnFunc(ctx, file, metadata)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// Client_SetMetadata_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetMetadata'
+type Client_SetMetadata_Call struct {
+	*mock.Call
+}
+
+// SetMetadata is a helper method to define mock.On call
+//   - ctx context.Context
+//   - file vfs.File
+//   - metadata map[string]*string
+func (_e *Client_Expecter) SetMetadata(ctx interface{}, file interface{}, metadata interface{}) *Client_SetMetadata_Call {
+	return &Client_SetMetadata_Call{Call: _e.mock.On("SetMetadata", ctx, file, metadata)}
+}
+
+func (_c *Client_SetMetadata_Call) Run(run func(ctx context.Context, file vfs.File, metadata map[string]*string)) *Client_SetMetadata_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 vfs.File
+		if args[1] != nil {
+			arg1 = args[1].(vfs.File)
+		}
+		var arg2 map[string]*string
+		if args[2] != nil {
+			arg2 = args[2].(map[string]*string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *Client_SetMetadata_Call) Return(err error) *Client_SetMetadata_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *Client_SetMetadata_Call) RunAndReturn(run func(ctx context.Context, file vfs.File, metadata map[string]*string) error) *Client_SetMetadata_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Upload provides a mock function for the type Client
+func (_mock *Client) Upload(ctx context.Context, file vfs.File, content io.ReadSeeker, contentType string) error {
+	ret := _mock.Called(ctx, file, content, contentType)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Upload")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, vfs.File, io.ReadSeeker, string) error); ok {
+		r0 = returnFunc(ctx, file, content, contentType)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// Client_Upload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Upload'
+type Client_Upload_Call struct {
+	*mock.Call
+}
+
+// Upload is a helper method to define mock.On call
+//   - ctx context.Context
+//   - file vfs.File
+//   - content io.ReadSeeker
+//   - contentType string
+func (_e *Client_Expecter) Upload(ctx interface{}, file interface{}, content interface{}, contentType interface{}) *Client_Upload_Call {
+	return &Client_Upload_Call{Call: _e.mock.On("Upload", ctx, file, content, contentType)}
+}
+
+func (_c *Client_Upload_Call) Run(run func(ctx context.Context, file vfs.File, content io.ReadSeeker, contentType string)) *Client_Upload_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 vfs.File
+		if args[1] != nil {
+			arg1 = args[1].(vfs.File)
+		}
+		var arg2 io.ReadSeeker
+		if args[2] != nil {
+			arg2 = args[2].(io.ReadSeeker)
+		}
+		var arg3 string
+		if args[3] != nil {
+			arg3 = args[3].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
 func (_c *Client_Upload_Call) Return(err error) *Client_Upload_Call {
 	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *Client_Upload_Call) RunAndReturn(run func(file vfs.File, content io.ReadSeeker, contentType string) error) *Client_Upload_Call {
+func (_c *Client_Upload_Call) RunAndReturn(run func(ctx context.Context, file vfs.File, content io.ReadSeeker, contentType string) error) *Client_Upload_Call {
 	_c.Call.Return(run)
 	return _c
 }

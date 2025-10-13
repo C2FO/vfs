@@ -11,6 +11,7 @@ import (
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/backend"
 	"github.com/c2fo/vfs/v7/options"
+	"github.com/c2fo/vfs/v7/options/newlocation"
 	"github.com/c2fo/vfs/v7/utils"
 	"github.com/c2fo/vfs/v7/utils/authority"
 )
@@ -79,7 +80,7 @@ func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.New
 }
 
 // NewLocation function returns the GCS implementation of vfs.Location.
-func (fs *FileSystem) NewLocation(authorityStr, locPath string) (loc vfs.Location, err error) {
+func (fs *FileSystem) NewLocation(authorityStr, locPath string, opts ...options.NewLocationOption) (loc vfs.Location, err error) {
 	if fs == nil {
 		return nil, errors.New("non-nil gs.FileSystem pointer is required")
 	}
@@ -97,10 +98,20 @@ func (fs *FileSystem) NewLocation(authorityStr, locPath string) (loc vfs.Locatio
 		return nil, err
 	}
 
+	ctx := fs.ctx
+	for _, o := range opts {
+		switch o := o.(type) {
+		case *newlocation.Context:
+			ctx = context.Context(o)
+		default:
+		}
+	}
+
 	return &Location{
 		fileSystem: fs,
 		prefix:     utils.EnsureTrailingSlash(path.Clean(locPath)),
 		authority:  auth,
+		ctx:        ctx,
 	}, nil
 }
 

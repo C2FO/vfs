@@ -1,16 +1,14 @@
-package gs
+package azure
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
-	"cloud.google.com/go/storage"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestWithClient(t *testing.T) {
-	client := &storage.Client{}
+	client := &DefaultClient{}
 	fs := &FileSystem{}
 
 	opt := WithClient(client)
@@ -26,7 +24,7 @@ func TestWithOptions(t *testing.T) {
 	opt := WithOptions(options)
 	opt.Apply(fs)
 
-	assert.Equal(t, options, fs.options, "Options should be set correctly")
+	assert.Equal(t, options, *fs.options, "Options should be set correctly")
 }
 
 func TestWithContext(t *testing.T) {
@@ -37,15 +35,4 @@ func TestWithContext(t *testing.T) {
 	opt.Apply(fs)
 
 	assert.Equal(t, ctx, fs.ctx, "Context should be set correctly")
-}
-
-func TestWithRetryer(t *testing.T) {
-	retryer := func(wrapped func() error) error { return wrapped() }
-	fs := &FileSystem{}
-
-	opt := WithRetryer(retryer)
-	opt.Apply(fs)
-
-	assert.NotNil(t, fs.retryer, "Retryer should not be nil")
-	assert.Equal(t, reflect.ValueOf(retryer).Pointer(), reflect.ValueOf(fs.retryer).Pointer(), "Retryer should be set correctly")
 }
