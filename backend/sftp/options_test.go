@@ -461,13 +461,12 @@ func (o *optionsSuite) TestGetClient() {
 		o.Run(t.message, func() {
 			_, _, err := GetClient(t.authority, t.options)
 			if t.hasError {
-				if o.Error(err, "error found") {
-					if t.err != nil {
-						o.Require().ErrorIs(err, t.err, t.message)
-					} else {
-						re := regexp.MustCompile(t.errRegex)
-						o.Regexp(re, err.Error(), "error matches")
-					}
+				o.Require().Error(err)
+				if t.err != nil {
+					o.Require().ErrorIs(err, t.err, t.message)
+				} else {
+					re := regexp.MustCompile(t.errRegex)
+					o.Regexp(re, err.Error(), "error matches")
 				}
 			} else {
 				o.Require().NoError(err, t.message)
