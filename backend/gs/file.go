@@ -559,8 +559,9 @@ func (f *File) updateLastModifiedByAttrUpdate() error {
 	oldMetaData := objAttrs.Metadata
 
 	// setup dummy metadata tag and update object with it
-	var updateAttrs storage.ObjectAttrsToUpdate
-	updateAttrs.Metadata = map[string]string{"updateMe": "true"}
+	updateAttrs := storage.ObjectAttrsToUpdate{
+		Metadata: map[string]string{"updateMe": "true"},
+	}
 
 	obj, err := f.getObjectHandle()
 	if err != nil {

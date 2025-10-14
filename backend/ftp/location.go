@@ -57,7 +57,7 @@ func (l *Location) List() ([]string, error) {
 //   - If the user cares about the distinction between an empty location and a non-existent one, Location.Exists() should
 //     be checked first.
 func (l *Location) ListByPrefix(prefix string) ([]string, error) {
-	var filenames = make([]string, 0)
+	filenames := make([]string, 0)
 
 	// validate prefix
 	if err := utils.ValidatePrefix(prefix); err != nil {

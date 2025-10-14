@@ -57,8 +57,7 @@ func parseURI(uri string) (scheme, authority, path string, err error) {
 	}
 
 	// parse URI
-	var u *url.URL
-	u, err = url.Parse(uri)
+	u, err := url.Parse(uri)
 	if err != nil {
 		err = fmt.Errorf("unknown url.Parse error: %w", err)
 		return

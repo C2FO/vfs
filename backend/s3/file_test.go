@@ -60,7 +60,7 @@ func (ts *fileTestSuite) TestRead() {
 	file, err := fs.NewFile("bucket", "/some/path/file.txt")
 	ts.Require().NoError(err, "Shouldn't fail creating new file")
 
-	var localFile = bytes.NewBuffer([]byte{})
+	localFile := bytes.NewBuffer([]byte{})
 	s3cliMock.
 		On("HeadObject", matchContext, mock.AnythingOfType("*s3.HeadObjectInput")).
 		Return(&s3.HeadObjectOutput{ContentLength: aws.Int64(12)}, nil).

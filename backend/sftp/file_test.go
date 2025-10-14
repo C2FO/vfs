@@ -64,7 +64,7 @@ func (ts *fileTestSuite) TestRead() {
 		sftpfile: &nopWriteCloser{strings.NewReader(contents)},
 	}
 	// perform test
-	var localFile = bytes.NewBuffer([]byte{})
+	localFile := bytes.NewBuffer([]byte{})
 
 	buffer := make([]byte, utils.TouchCopyMinBufferSize)
 	b, copyErr := io.CopyBuffer(localFile, sftpfile, buffer)
@@ -98,7 +98,7 @@ func (ts *fileTestSuite) TestSeek() {
 	_, seekErr := sftpfile.Seek(6, 0)
 	ts.Require().NoError(seekErr, "no error expected")
 
-	var localFile = bytes.NewBuffer([]byte{})
+	localFile := bytes.NewBuffer([]byte{})
 
 	buffer := make([]byte, utils.TouchCopyMinBufferSize)
 	_, copyErr := io.CopyBuffer(localFile, sftpfile, buffer)
