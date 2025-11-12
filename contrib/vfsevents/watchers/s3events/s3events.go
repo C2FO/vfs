@@ -333,28 +333,28 @@ func (w *S3Watcher) processMessage(
 // mapS3EventType maps an S3 event name to a vfsevents.EventType with semantic accuracy
 func (w *S3Watcher) mapS3EventType(eventName string) vfsevents.EventType {
 	switch eventName {
-	case "s3:ObjectCreated:Put", "s3:ObjectCreated:Post":
+	case "ObjectCreated:Put", "ObjectCreated:Post":
 		// Direct uploads are typically new file creations
 		return vfsevents.EventCreated
-	case "s3:ObjectCreated:Copy":
+	case "ObjectCreated:Copy":
 		// Copy operations are more likely to be overwrites or modifications
 		return vfsevents.EventModified
-	case "s3:ObjectCreated:CompleteMultipartUpload":
+	case "ObjectCreated:CompleteMultipartUpload":
 		// Large uploads could be either, but often represent significant changes
 		return vfsevents.EventModified
-	case "s3:ObjectCreated:*":
+	case "ObjectCreated:*":
 		// Wildcard - default to created for broad compatibility
 		return vfsevents.EventCreated
-	case "s3:ObjectRestore:Post":
+	case "ObjectRestore:Post":
 		// Restore initiation - modification-like operation
 		return vfsevents.EventModified
-	case "s3:ObjectRestore:Completed":
+	case "ObjectRestore:Completed":
 		// Restore completion - object is now available (modification)
 		return vfsevents.EventModified
-	case "s3:ObjectRestore:Delete":
+	case "ObjectRestore:Delete":
 		// Temporary restored copy expires - deletion
 		return vfsevents.EventDeleted
-	case "s3:ObjectRemoved:*", "s3:ObjectRemoved:Delete", "s3:ObjectRemoved:DeleteMarkerCreated":
+	case "ObjectRemoved:*", "ObjectRemoved:Delete", "ObjectRemoved:DeleteMarkerCreated":
 		return vfsevents.EventDeleted
 	default:
 		return vfsevents.EventUnknown
