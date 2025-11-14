@@ -255,7 +255,7 @@ type Options any
 //
 // Ex:
 //
-//	var retrier Retry = func(wrapped func() error) error {
+//	retrier := func(wrapped func() error) error {
 //	  var ret error
 //	  for range 5 {
 //	     if err := wrapped(); err != nil { ret = err; continue }

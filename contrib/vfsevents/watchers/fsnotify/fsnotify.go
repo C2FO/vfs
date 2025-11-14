@@ -173,9 +173,10 @@ func (w *FSNotifyWatcher) Start(
 	w.cancel = cancel
 
 	// Status tracking
-	var status vfsevents.WatcherStatus
-	status.Running = true
-	status.StartTime = time.Now()
+	status := vfsevents.WatcherStatus{
+		Running:   true,
+		StartTime: time.Now(),
+	}
 
 	// Send initial status if callback is configured
 	if config.StatusCallback != nil {
