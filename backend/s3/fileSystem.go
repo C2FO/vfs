@@ -148,7 +148,7 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 // instead of:
 //
 //	fs := s3.NewFileSystem().WithClient(client)
-func (fs *FileSystem) WithClient(client interface{}) *FileSystem {
+func (fs *FileSystem) WithClient(client any) *FileSystem {
 	if c, ok := client.(Client); ok {
 		fs.client = c
 		fs.options = Options{}

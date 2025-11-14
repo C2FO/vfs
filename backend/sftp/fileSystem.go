@@ -192,7 +192,7 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 // instead of:
 //
 //	fs := sftp.NewFileSystem().WithClient(client)
-func (fs *FileSystem) WithClient(client interface{}) *FileSystem {
+func (fs *FileSystem) WithClient(client any) *FileSystem {
 	switch client.(type) {
 	case Client, *ssh.Client:
 		fs.sftpclient = client.(Client)

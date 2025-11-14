@@ -101,7 +101,7 @@ func (ts *fileTestSuite) TestRead() {
 	file, err := fs.NewFile(bucketName, "/"+objectName)
 	ts.Require().NoError(err, "Shouldn't fail creating new file")
 
-	var localFile = bytes.NewBuffer([]byte{})
+	localFile := bytes.NewBuffer([]byte{})
 
 	buffer := make([]byte, utils.TouchCopyMinBufferSize)
 	_, copyErr := io.CopyBuffer(localFile, file, buffer)
