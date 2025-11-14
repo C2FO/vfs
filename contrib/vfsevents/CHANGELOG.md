@@ -8,12 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Style
 - Use walrus assignment where possible.
 
+## [contrib/vfsevents/v1.1.1] - 2025-11-13
+### Fixed
+- Updated logic to correctly evaluate the S3 event name to determine the event type
+
 ## [contrib/vfsevents/v1.1.0] - 2025-10-07
 ### Security
 - Updated to go 1.24.7
 - Updated dependcies
 ### Fixed
-- Fixed lint issues where t.Context() shoudl be used and pubsub v1 is deprecated, so updated.
+- Fixed lint issues where t.Context() should be used and pubsub v1 is deprecated, so updated.
 
 ## [contrib/vfsevents/v1.0.2] - 2025-09-16
 ### Fixed
