@@ -36,7 +36,7 @@ func (lt *locationTestSuite) TestList() {
 	prefix := "dir1/"
 	delimiter := "/"
 	isTruncated := false
-	lt.s3cliMock.On("ListObjects", matchContext, &s3.ListObjectsInput{
+	lt.s3cliMock.EXPECT().ListObjects(matchContext, &s3.ListObjectsInput{
 		Bucket:    &bucket,
 		Prefix:    &prefix,
 		Delimiter: &delimiter,
@@ -67,7 +67,7 @@ func (lt *locationTestSuite) TestList_pagedCall() {
 	delimiter := "/"
 	isTruncatedTrue := true
 	isTruncatedFalse := false
-	lt.s3cliMock.On("ListObjects", matchContext, &s3.ListObjectsInput{
+	lt.s3cliMock.EXPECT().ListObjects(matchContext, &s3.ListObjectsInput{
 		Bucket:    &bucket,
 		Prefix:    &prefix,
 		Delimiter: &delimiter,
@@ -78,7 +78,7 @@ func (lt *locationTestSuite) TestList_pagedCall() {
 		Prefix:      &prefix,
 	}, nil).Once()
 
-	lt.s3cliMock.On("ListObjects", matchContext, &s3.ListObjectsInput{
+	lt.s3cliMock.EXPECT().ListObjects(matchContext, &s3.ListObjectsInput{
 		Bucket:    &bucket,
 		Prefix:    &prefix,
 		Delimiter: &delimiter,
@@ -108,7 +108,7 @@ func (lt *locationTestSuite) TestListByPrefix() {
 	apiCallPrefix := utils.RemoveLeadingSlash(path.Join(locPath, prefix))
 	delimiter := "/"
 	isTruncated := false
-	lt.s3cliMock.On("ListObjects", matchContext, &s3.ListObjectsInput{
+	lt.s3cliMock.EXPECT().ListObjects(matchContext, &s3.ListObjectsInput{
 		Bucket:    &bucket,
 		Prefix:    &apiCallPrefix,
 		Delimiter: &delimiter,
@@ -135,7 +135,7 @@ func (lt *locationTestSuite) TestListByRegex() {
 	prefix := "blah/"
 	delimiter := "/"
 	isTruncated := false
-	lt.s3cliMock.On("ListObjects", matchContext, &s3.ListObjectsInput{
+	lt.s3cliMock.EXPECT().ListObjects(matchContext, &s3.ListObjectsInput{
 		Bucket:    &bucket,
 		Prefix:    &prefix,
 		Delimiter: &delimiter,
@@ -220,7 +220,7 @@ func (lt *locationTestSuite) TestNewFile() {
 
 func (lt *locationTestSuite) TestExists_true() {
 	bucket := "foo"
-	lt.s3cliMock.On("HeadBucket", matchContext, &s3.HeadBucketInput{
+	lt.s3cliMock.EXPECT().HeadBucket(matchContext, &s3.HeadBucketInput{
 		Bucket: &bucket,
 	}).Return(&s3.HeadBucketOutput{}, nil).Once()
 	loc, err := lt.fs.NewLocation(bucket, "/")
@@ -232,7 +232,7 @@ func (lt *locationTestSuite) TestExists_true() {
 
 func (lt *locationTestSuite) TestExists_false() {
 	bucket := "foo"
-	lt.s3cliMock.On("HeadBucket", matchContext, &s3.HeadBucketInput{
+	lt.s3cliMock.EXPECT().HeadBucket(matchContext, &s3.HeadBucketInput{
 		Bucket: &bucket,
 	}).Return(nil, &types.NotFound{}).Once()
 	loc, err := lt.fs.NewLocation(bucket, "/")
@@ -307,7 +307,7 @@ func (lt *locationTestSuite) TestStringURI() {
 }
 
 func (lt *locationTestSuite) TestDeleteFile() {
-	lt.s3cliMock.On("DeleteObject", matchContext, mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil)
+	lt.s3cliMock.EXPECT().DeleteObject(matchContext, mock.IsType((*s3.DeleteObjectInput)(nil))).Return(&s3.DeleteObjectOutput{}, nil)
 	loc, err := lt.fs.NewLocation("bucket", "/old/")
 	lt.Require().NoError(err)
 
@@ -322,8 +322,8 @@ func (lt *locationTestSuite) TestDeleteFileWithAllVersionsOption() {
 			{VersionId: utils.Ptr("ver2")},
 		},
 	}
-	lt.s3cliMock.On("ListObjectVersions", matchContext, mock.AnythingOfType("*s3.ListObjectVersionsInput")).Return(&versOutput, nil)
-	lt.s3cliMock.On("DeleteObject", matchContext, mock.AnythingOfType("*s3.DeleteObjectInput")).Return(&s3.DeleteObjectOutput{}, nil).Times(3)
+	lt.s3cliMock.EXPECT().ListObjectVersions(matchContext, mock.IsType((*s3.ListObjectVersionsInput)(nil))).Return(&versOutput, nil)
+	lt.s3cliMock.EXPECT().DeleteObject(matchContext, mock.IsType((*s3.DeleteObjectInput)(nil))).Return(&s3.DeleteObjectOutput{}, nil).Times(3)
 	loc, err := lt.fs.NewLocation("bucket", "/old/")
 	lt.Require().NoError(err)
 
