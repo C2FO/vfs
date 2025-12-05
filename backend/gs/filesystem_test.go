@@ -6,9 +6,10 @@ import (
 	"testing"
 
 	"cloud.google.com/go/storage"
-	"github.com/c2fo/vfs/v7/utils"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/api/option"
+
+	"github.com/c2fo/vfs/v7/utils"
 )
 
 type fileSystemSuite struct {

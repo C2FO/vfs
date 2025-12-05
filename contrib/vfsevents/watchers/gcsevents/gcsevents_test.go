@@ -518,7 +518,6 @@ func (s *GCSWatcherTestSuite) TestRetryBackoffTiming() {
 
 	ctx := s.T().Context()
 
-
 	s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
 		Run(func(_ context.Context, handler func(context.Context, *pubsub.Message)) {
 			// Send OBJECT_FINALIZE event (should generate EventModified)
