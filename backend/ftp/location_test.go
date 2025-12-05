@@ -51,7 +51,7 @@ func (lt *locationTestSuite) TestList() {
 	}
 	authorityStr := "host.com"
 	locPath := "/dir1/"
-	lt.client.On("List", locPath).Return(entries, nil).Once()
+	lt.client.EXPECT().List(locPath).Return(entries, nil).Once()
 
 	loc, err := lt.ftpfs.NewLocation(authorityStr, locPath)
 	lt.Require().NoError(err)
@@ -63,13 +63,13 @@ func (lt *locationTestSuite) TestList() {
 	}
 
 	// file not found (location doesn't exist)
-	lt.client.On("List", locPath).Return([]*_ftp.Entry{}, errors.New("some error")).Once()
+	lt.client.EXPECT().List(locPath).Return([]*_ftp.Entry{}, errors.New("some error")).Once()
 	fileList, err = loc.List()
 	lt.Require().Error(err, "should return error")
 	lt.Empty(fileList, "Should return no files on error")
 
 	// file not found (location doesn't exist)
-	lt.client.On("List", locPath).Return([]*_ftp.Entry{}, errors.New("550")).Once()
+	lt.client.EXPECT().List(locPath).Return([]*_ftp.Entry{}, errors.New("550")).Once()
 	fileList, err = loc.List()
 	lt.Require().NoError(err, "Shouldn't return an error on file not found.")
 	lt.Empty(fileList, "Should return no files on file not found")
@@ -225,7 +225,7 @@ func (lt *locationTestSuite) TestListByPrefix() {
 	badprefix := ""
 	fileList, err = loc.ListByPrefix(badprefix)
 	lt.Require().Error(err, "error expected")
-	lt.Require().ErrorContains(err, utils.ErrBadPrefix, "err should be correct type")
+	lt.Require().ErrorIs(err, utils.ErrBadPrefix, "err should be correct type")
 	lt.Equal(expectedEmptyStringSlice, fileList, "fileList should be empty string slice")
 
 	// error getting client
@@ -287,7 +287,7 @@ func (lt *locationTestSuite) TestListByRegex() {
 	}
 	authorityStr := "host.com"
 	locPath := "/dir1/"
-	lt.client.On("List", locPath).Return(entries, nil).Once()
+	lt.client.EXPECT().List(locPath).Return(entries, nil).Once()
 	loc, err := lt.ftpfs.NewLocation(authorityStr, locPath)
 	lt.Require().NoError(err)
 
@@ -301,7 +301,7 @@ func (lt *locationTestSuite) TestListByRegex() {
 
 	// ListByRegex Returns List error
 	listErr := errors.New("some list error")
-	lt.client.On("List", locPath).Return(nil, listErr).Once()
+	lt.client.EXPECT().List(locPath).Return(nil, listErr).Once()
 	fileList, err = loc.ListByRegex(fileTypeRegex)
 	lt.Require().Error(err, "error is expected")
 	lt.Require().ErrorIs(err, listErr, "error is right kind of error")
@@ -382,11 +382,11 @@ func (lt *locationTestSuite) TestNewFile() {
 
 	// test empty path error
 	_, err = loc.NewFile("")
-	lt.Require().EqualError(err, utils.ErrBadRelFilePath, "errors returned by NewFile")
+	lt.Require().ErrorIs(err, utils.ErrBadRelFilePath, "errors returned by NewFile")
 
 	// test validation error
 	_, err = loc.NewFile("/absolute/path/to/file.txt")
-	lt.Require().EqualError(err, utils.ErrBadRelFilePath, "errors returned by NewLocation")
+	lt.Require().ErrorIs(err, utils.ErrBadRelFilePath, "errors returned by NewLocation")
 
 	// new tests for location update
 	lt.Run("new file with relative path updates location", func() {
@@ -423,7 +423,7 @@ func (lt *locationTestSuite) TestExists() {
 			Time:   time.Now().UTC(),
 		},
 	}
-	lt.client.On("List", locPath).Return(entries, nil).Once()
+	lt.client.EXPECT().List(locPath).Return(entries, nil).Once()
 	loc, err := lt.ftpfs.NewLocation(authorityStr, locPath)
 	lt.Require().NoError(err)
 	exists, err := loc.Exists()
@@ -440,7 +440,7 @@ func (lt *locationTestSuite) TestExists() {
 			Time:   time.Now().UTC(),
 		},
 	}
-	lt.client.On("List", "/my/").Return(entries, nil).Once()
+	lt.client.EXPECT().List("/my/").Return(entries, nil).Once()
 	loc, err = lt.ftpfs.NewLocation(authorityStr, locPath)
 	lt.Require().NoError(err)
 	exists, err = loc.Exists()
@@ -448,7 +448,7 @@ func (lt *locationTestSuite) TestExists() {
 	lt.False(exists, "Call to Exists expected to return false.")
 
 	// some error calling list
-	lt.client.On("List", "/my/").Return(entries, errors.New("some error")).Once()
+	lt.client.EXPECT().List("/my/").Return(entries, errors.New("some error")).Once()
 	loc, err = lt.ftpfs.NewLocation(authorityStr, locPath)
 	lt.Require().NoError(err)
 	exists, err = loc.Exists()
@@ -470,7 +470,7 @@ func (lt *locationTestSuite) TestExists() {
 			Time:   time.Now().UTC(),
 		},
 	}
-	lt.client.On("List", "/my/").Return(entries, nil).Once()
+	lt.client.EXPECT().List("/my/").Return(entries, nil).Once()
 	loc, err = lt.ftpfs.NewLocation(authorityStr, locPath)
 	lt.Require().NoError(err)
 	exists, err = loc.Exists()
@@ -525,11 +525,11 @@ func (lt *locationTestSuite) TestNewLocation() {
 
 	// test empty path error
 	_, err = loc.NewLocation("")
-	lt.Require().EqualError(err, utils.ErrBadRelLocationPath, "errors returned by NewLocation")
+	lt.Require().ErrorIs(err, utils.ErrBadRelLocationPath, "errors returned by NewLocation")
 
 	// test validation error
 	_, err = loc.NewLocation("/absolute/path/to/")
-	lt.Require().EqualError(err, utils.ErrBadRelLocationPath, "errors returned by NewLocation")
+	lt.Require().ErrorIs(err, utils.ErrBadRelLocationPath, "errors returned by NewLocation")
 }
 
 func (lt *locationTestSuite) TestDeleteFile() {
@@ -543,7 +543,7 @@ func (lt *locationTestSuite) TestDeleteFile() {
 	// error deleting
 	dataConnGetterFunc = getDataConn
 	loc.(*Location).fileSystem.dataconn = nil
-	lt.client.On("Delete", "/old/filename.txt").Return(os.ErrNotExist).Once()
+	lt.client.EXPECT().Delete("/old/filename.txt").Return(os.ErrNotExist).Once()
 	err = loc.DeleteFile("filename.txt")
 	lt.Require().Error(err, "failed delete")
 	lt.Require().ErrorIs(err, os.ErrNotExist, "error should be right kind of error")
@@ -551,7 +551,7 @@ func (lt *locationTestSuite) TestDeleteFile() {
 	// getting NewFile
 	err = loc.DeleteFile("")
 	lt.Require().Error(err, "failed delete")
-	lt.Require().ErrorContains(err, utils.ErrBadRelFilePath, "failed delete")
+	lt.Require().ErrorIs(err, utils.ErrBadRelFilePath, "failed delete")
 }
 
 func TestLocation(t *testing.T) {

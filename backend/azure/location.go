@@ -12,7 +12,7 @@ import (
 	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
-const errNilLocationReceiver = "azure.Location receiver pointer must be non-nil"
+var errLocationRequired = errors.New("azure.Location receiver pointer must be non-nil")
 
 // Location is the azure implementation of vfs.Location
 type Location struct {
@@ -140,7 +140,7 @@ func (l *Location) Exists() (bool, error) {
 // NewLocation creates a new location instance relative to the current location's path.
 func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
 	if l == nil {
-		return nil, errors.New(errNilLocationReceiver)
+		return nil, errLocationRequired
 	}
 
 	if err := utils.ValidateRelativeLocationPath(relLocPath); err != nil {
@@ -161,7 +161,7 @@ func (l *Location) NewLocation(relLocPath string) (vfs.Location, error) {
 //	loc, err := loc.NewLocation("../../")
 func (l *Location) ChangeDir(relLocPath string) error {
 	if l == nil {
-		return errors.New(errNilLocationReceiver)
+		return errLocationRequired
 	}
 
 	err := utils.ValidateRelativeLocationPath(relLocPath)
@@ -186,7 +186,7 @@ func (l *Location) FileSystem() vfs.FileSystem {
 // NewFile returns a new file instance at the given path, relative to the current location.
 func (l *Location) NewFile(relFilePath string, opts ...options.NewFileOption) (vfs.File, error) {
 	if l == nil {
-		return nil, errors.New(errNilLocationReceiver)
+		return nil, errLocationRequired
 	}
 
 	if err := utils.ValidateRelativeFilePath(relFilePath); err != nil {

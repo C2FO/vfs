@@ -16,6 +16,11 @@ import (
 const Scheme = "s3"
 const name = "AWS S3"
 
+var (
+	errFileSystemRequired       = errors.New("non-nil s3.FileSystem pointer is required")
+	errAuthorityAndNameRequired = errors.New("non-empty strings for authority and name are required")
+)
+
 // FileSystem implements vfs.FileSystem for the S3 file system.
 type FileSystem struct {
 	client  Client
@@ -44,11 +49,11 @@ func (fs *FileSystem) Retry() vfs.Retry {
 // NewFile function returns the s3 implementation of vfs.File.
 func (fs *FileSystem) NewFile(authorityStr, name string, opts ...options.NewFileOption) (vfs.File, error) {
 	if fs == nil {
-		return nil, errors.New("non-nil s3.FileSystem pointer is required")
+		return nil, errFileSystemRequired
 	}
 
 	if authorityStr == "" || name == "" {
-		return nil, errors.New("non-empty strings for bucket and key are required")
+		return nil, errAuthorityAndNameRequired
 	}
 
 	if err := utils.ValidateAbsoluteFilePath(name); err != nil {
@@ -69,11 +74,11 @@ func (fs *FileSystem) NewFile(authorityStr, name string, opts ...options.NewFile
 // NewLocation function returns the s3 implementation of vfs.Location.
 func (fs *FileSystem) NewLocation(authorityStr, name string) (vfs.Location, error) {
 	if fs == nil {
-		return nil, errors.New("non-nil s3.FileSystem pointer is required")
+		return nil, errFileSystemRequired
 	}
 
 	if authorityStr == "" || name == "" {
-		return nil, errors.New("non-empty strings for bucket and key are required")
+		return nil, errAuthorityAndNameRequired
 	}
 
 	if err := utils.ValidateAbsoluteLocationPath(name); err != nil {
@@ -148,7 +153,7 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 // instead of:
 //
 //	fs := s3.NewFileSystem().WithClient(client)
-func (fs *FileSystem) WithClient(client interface{}) *FileSystem {
+func (fs *FileSystem) WithClient(client any) *FileSystem {
 	if c, ok := client.(Client); ok {
 		fs.client = c
 		fs.options = Options{}

@@ -20,6 +20,11 @@ const name = "File Transfer Protocol"
 var dataConnGetterFunc func(context.Context, authority.Authority, *FileSystem, *File, types.OpenType) (types.DataConn, error)
 var defaultClientGetter func(context.Context, authority.Authority, Options) (client types.Client, err error)
 
+var (
+	errFileSystemRequired       = errors.New("non-nil gs.FileSystem pointer is required")
+	errAuthorityAndPathRequired = errors.New("non-empty strings for authority and path are required")
+)
+
 // FileSystem implements vfs.FileSystem for the FTP filesystem.
 type FileSystem struct {
 	options   Options
@@ -51,11 +56,11 @@ func (fs *FileSystem) Retry() vfs.Retry {
 // NewFile function returns the FTP implementation of vfs.File.
 func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.NewFileOption) (vfs.File, error) {
 	if fs == nil {
-		return nil, errors.New("non-nil ftp.FileSystem pointer is required")
+		return nil, errFileSystemRequired
 	}
 
 	if authorityStr == "" || filePath == "" {
-		return nil, errors.New("non-empty string for authority and path is required")
+		return nil, errAuthorityAndPathRequired
 	}
 
 	if err := utils.ValidateAbsoluteFilePath(filePath); err != nil {
@@ -75,11 +80,11 @@ func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.New
 // NewLocation function returns the FTP implementation of vfs.Location.
 func (fs *FileSystem) NewLocation(authorityStr, locPath string) (vfs.Location, error) {
 	if fs == nil {
-		return nil, errors.New("non-nil ftp.FileSystem pointer is required")
+		return nil, errFileSystemRequired
 	}
 
 	if authorityStr == "" || locPath == "" {
-		return nil, errors.New("non-empty string for authority and path is required")
+		return nil, errAuthorityAndPathRequired
 	}
 
 	if err := utils.ValidateAbsoluteLocationPath(locPath); err != nil {

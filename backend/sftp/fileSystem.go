@@ -26,6 +26,11 @@ const defaultAutoDisconnectDuration = 10
 
 var defaultClientGetter func(authority.Authority, Options) (Client, io.Closer, error)
 
+var (
+	errFileSystemRequired       = errors.New("non-nil sftp.FileSystem pointer is required")
+	errAuthorityAndPathRequired = errors.New("non-empty string for authority and path are required")
+)
+
 // FileSystem implements vfs.FileSystem for the SFTP filesystem.
 type FileSystem struct {
 	options    Options
@@ -56,11 +61,11 @@ func (fs *FileSystem) Retry() vfs.Retry {
 // NewFile function returns the SFTP implementation of vfs.File.
 func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.NewFileOption) (vfs.File, error) {
 	if fs == nil {
-		return nil, errors.New("non-nil sftp.FileSystem pointer is required")
+		return nil, errFileSystemRequired
 	}
 
 	if authorityStr == "" || filePath == "" {
-		return nil, errors.New("non-empty string for authority and path are required")
+		return nil, errAuthorityAndPathRequired
 	}
 
 	if err := utils.ValidateAbsoluteFilePath(filePath); err != nil {
@@ -81,11 +86,11 @@ func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.New
 // NewLocation function returns the SFTP implementation of vfs.Location.
 func (fs *FileSystem) NewLocation(authorityStr, locPath string) (vfs.Location, error) {
 	if fs == nil {
-		return nil, errors.New("non-nil sftp.FileSystem pointer is required")
+		return nil, errFileSystemRequired
 	}
 
-	if authorityStr == "" {
-		return nil, errors.New("non-empty string for authority is required")
+	if authorityStr == "" || locPath == "" {
+		return nil, errAuthorityAndPathRequired
 	}
 
 	if err := utils.ValidateAbsoluteLocationPath(locPath); err != nil {
@@ -192,7 +197,7 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 // instead of:
 //
 //	fs := sftp.NewFileSystem().WithClient(client)
-func (fs *FileSystem) WithClient(client interface{}) *FileSystem {
+func (fs *FileSystem) WithClient(client any) *FileSystem {
 	switch client.(type) {
 	case Client, *ssh.Client:
 		fs.sftpclient = client.(Client)

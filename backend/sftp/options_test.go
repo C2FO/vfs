@@ -480,7 +480,7 @@ func (o *optionsSuite) TestMarshalOptions() {
 	pw := "secret1234"
 	kh := "/path/to/known_hosts"
 
-	opts := map[string]interface{}{
+	opts := map[string]any{
 		"password":    pw,
 		"keyFilePath": kh,
 	}

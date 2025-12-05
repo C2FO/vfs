@@ -50,11 +50,11 @@ func (ts *fileSystemTestSuite) TestNewFile_Error() {
 	// test nil pointer
 	var nilsftpfs *FileSystem
 	_, err := nilsftpfs.NewFile("host.com", "/path/to/file.txt")
-	ts.Require().EqualError(err, "non-nil sftp.FileSystem pointer is required", "errors returned by NewFile")
+	ts.Require().ErrorIs(err, errFileSystemRequired, "errors returned by NewFile")
 
 	// test validation error
 	file, err := ts.sftpfs.NewFile("host.com", "relative/path/to/file.txt")
-	ts.Require().EqualError(err, utils.ErrBadAbsFilePath, "errors returned by NewFile")
+	ts.Require().ErrorIs(err, utils.ErrBadAbsFilePath, "errors returned by NewFile")
 	ts.Nil(file, "NewFile shouldn't return a file")
 
 	filePath := ""
@@ -64,7 +64,7 @@ func (ts *fileSystemTestSuite) TestNewFile_Error() {
 
 	filePath = "/some/file.txt"
 	file, err = ts.sftpfs.NewFile("", filePath)
-	ts.Require().EqualError(err, "non-empty string for authority and path are required", "bad authority")
+	ts.Require().ErrorIs(err, errAuthorityAndPathRequired, "bad authority")
 	ts.Nil(file, "NewFile(%s) shouldn't return a file", filePath)
 }
 
@@ -79,21 +79,21 @@ func (ts *fileSystemTestSuite) TestNewLocation_Error() {
 	// test nil pointer
 	var nilsftpfs *FileSystem
 	_, err := nilsftpfs.NewLocation("somehost.com", "/path/to/")
-	ts.Require().EqualError(err, "non-nil sftp.FileSystem pointer is required", "errors returned by NewLocation")
+	ts.Require().ErrorIs(err, errFileSystemRequired, "errors returned by NewLocation")
 
 	// test validation error
 	file, err := ts.sftpfs.NewLocation("host.com", "relative/path/to/")
-	ts.Require().EqualError(err, utils.ErrBadAbsLocationPath, "errors returned by NewLocation")
+	ts.Require().ErrorIs(err, utils.ErrBadAbsLocationPath, "errors returned by NewLocation")
 	ts.Nil(file, "NewFile shouldn't return a file")
 
 	locPath := ""
 	file, err = ts.sftpfs.NewLocation("host.com", locPath)
-	ts.Require().EqualError(err, "absolute location path is invalid - must include leading and trailing slashes", "NewLocation(%s)", locPath)
+	ts.Require().ErrorIs(err, errAuthorityAndPathRequired, "NewLocation(%s)", locPath)
 	ts.Nil(file, "NewLocation(%s) shouldn't return a file", locPath)
 
 	locPath = "/path/"
 	file, err = ts.sftpfs.NewLocation("", locPath)
-	ts.Require().EqualError(err, "non-empty string for authority is required", "NewLocation(%s)", locPath)
+	ts.Require().ErrorIs(err, errAuthorityAndPathRequired, "NewLocation(%s)", locPath)
 	ts.Nil(file, "NewLocation(%s) shouldn't return a file", locPath)
 }
 
@@ -129,8 +129,8 @@ func (ts *fileSystemTestSuite) TestClient() {
 func (ts *fileSystemTestSuite) TestClientWithAutoDisconnect() {
 	getClientCount := 0
 	client := mocks.NewClient(ts.T())
-	client.On("ReadDir", "/").Return([]os.FileInfo{}, nil).Times(3)
-	client.On("Close").Return(nil).Once()
+	client.EXPECT().ReadDir("/").Return([]os.FileInfo{}, nil).Times(3)
+	client.EXPECT().Close().Return(nil).Once()
 	defaultClientGetter = func(authority.Authority, Options) (Client, io.Closer, error) {
 		getClientCount++
 		return client, nil, nil

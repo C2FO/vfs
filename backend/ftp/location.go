@@ -17,6 +17,8 @@ import (
 	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
+var errLocationRequired = errors.New("non-nil ftp.Location pointer is required")
+
 // Location implements the vfs.Location interface specific to ftp fs.
 type Location struct {
 	fileSystem *FileSystem
@@ -57,7 +59,7 @@ func (l *Location) List() ([]string, error) {
 //   - If the user cares about the distinction between an empty location and a non-existent one, Location.Exists() should
 //     be checked first.
 func (l *Location) ListByPrefix(prefix string) ([]string, error) {
-	var filenames = make([]string, 0)
+	filenames := make([]string, 0)
 
 	// validate prefix
 	if err := utils.ValidatePrefix(prefix); err != nil {
@@ -182,7 +184,7 @@ func (l *Location) Exists() (bool, error) {
 // ChangeDir, which, for the FTP implementation doesn't ever result in an error.
 func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
 	if l == nil {
-		return nil, errors.New("non-nil ftp.Location pointer is required")
+		return nil, errLocationRequired
 	}
 
 	if err := utils.ValidateRelativeLocationPath(relativePath); err != nil {
@@ -221,7 +223,7 @@ func (l *Location) ChangeDir(relativePath string) error {
 // argument is expected to be a relative path to the location's current path.
 func (l *Location) NewFile(relFilePath string, opts ...options.NewFileOption) (vfs.File, error) {
 	if l == nil {
-		return nil, errors.New("non-nil ftp.Location pointer is required")
+		return nil, errLocationRequired
 	}
 
 	if err := utils.ValidateRelativeFilePath(relFilePath); err != nil {

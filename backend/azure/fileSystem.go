@@ -17,7 +17,10 @@ const Scheme = "az"
 // Name defines the name for the azure implementation
 const Name = "azure"
 
-const errNilFileSystemReceiver = "azure.FileSystem receiver pointer must be non-nil"
+var (
+	errFileSystemRequired       = errors.New("azure.FileSystem receiver pointer must be non-nil")
+	errContainerAndPathRequired = errors.New("non-empty strings for container and path are required")
+)
 
 // FileSystem implements the vfs.FileSystem interface for Azure Blob Storage
 type FileSystem struct {
@@ -82,11 +85,11 @@ func (fs *FileSystem) Client() (Client, error) {
 // NewFile returns the azure implementation of vfs.File
 func (fs *FileSystem) NewFile(container, absFilePath string, opts ...options.NewFileOption) (vfs.File, error) {
 	if fs == nil {
-		return nil, errors.New(errNilFileSystemReceiver)
+		return nil, errFileSystemRequired
 	}
 
 	if container == "" || absFilePath == "" {
-		return nil, errors.New("non-empty strings for container and path are required")
+		return nil, errContainerAndPathRequired
 	}
 
 	if err := utils.ValidateAbsoluteFilePath(absFilePath); err != nil {
@@ -106,11 +109,11 @@ func (fs *FileSystem) NewFile(container, absFilePath string, opts ...options.New
 // NewLocation returns the azure implementation of vfs.Location
 func (fs *FileSystem) NewLocation(container, absLocPath string) (vfs.Location, error) {
 	if fs == nil {
-		return nil, errors.New(errNilFileSystemReceiver)
+		return nil, errFileSystemRequired
 	}
 
 	if container == "" || absLocPath == "" {
-		return nil, errors.New("non-empty strings for container and path are required")
+		return nil, errContainerAndPathRequired
 	}
 
 	if err := utils.ValidateAbsoluteLocationPath(absLocPath); err != nil {

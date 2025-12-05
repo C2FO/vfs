@@ -54,11 +54,11 @@ func (ts *fileSystemTestSuite) TestNewFile_Error() {
 	// test nil pointer
 	var nils3fs *FileSystem
 	_, err := nils3fs.NewFile("", "/path/to/file.txt")
-	ts.Require().EqualError(err, "non-nil s3.FileSystem pointer is required", "errors returned by NewFile")
+	ts.Require().ErrorIs(err, errFileSystemRequired, "errors returned by NewFile")
 
 	// test validation error
 	file, err := s3fs.NewFile("bucketName", "relative/path/to/file.txt")
-	ts.Require().EqualError(err, utils.ErrBadAbsFilePath, "errors returned by NewFile")
+	ts.Require().ErrorIs(err, utils.ErrBadAbsFilePath, "errors returned by NewFile")
 	ts.Nil(file, "NewFile shouldn't return a file")
 
 	filePath := ""
@@ -78,16 +78,16 @@ func (ts *fileSystemTestSuite) TestNewLocation_Error() {
 	// test nil pointer
 	var nils3fs *FileSystem
 	_, err := nils3fs.NewLocation("", "/path/to/")
-	ts.Require().EqualError(err, "non-nil s3.FileSystem pointer is required", "errors returned by NewLocation")
+	ts.Require().ErrorIs(err, errFileSystemRequired, "errors returned by NewLocation")
 
 	// test validation error
 	file, err := s3fs.NewLocation("bucketName", "relative/path/to/")
-	ts.Require().EqualError(err, utils.ErrBadAbsLocationPath, "errors returned by NewLocation")
+	ts.Require().ErrorIs(err, utils.ErrBadAbsLocationPath, "errors returned by NewLocation")
 	ts.Nil(file, "NewFile shouldn't return a file")
 
 	locPath := ""
 	file, err = s3fs.NewLocation("", locPath)
-	ts.Require().EqualError(err, "non-empty strings for bucket and key are required", "NewLocation(%s)", locPath)
+	ts.Require().ErrorIs(err, errAuthorityAndNameRequired, "NewLocation(%s)", locPath)
 	ts.Nil(file, "NewLocation(%s) shouldn't return a file", locPath)
 }
 

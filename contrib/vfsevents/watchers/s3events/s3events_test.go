@@ -30,6 +30,7 @@ type S3WatcherTestSuite struct {
 
 func (s *S3WatcherTestSuite) SetupTest() {
 	s.sqsClient = mocks.NewSqsClient(s.T())
+	s.sqsClient = mocks.NewSqsClient(s.T())
 	s.watcher, _ = NewS3Watcher("https://sqs.us-east-1.amazonaws.com/123456789012/my-queue", WithSqsClient(s.sqsClient))
 }
 
@@ -108,7 +109,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 					Records: []S3Record{
 						{
 							EventTime: time.Now().Format(time.RFC3339Nano),
-							EventName: "s3:ObjectCreated:Put",
+							EventName: "ObjectCreated:Put",
 							S3: S3Entity{
 								Bucket: S3Bucket{
 									Name: "bucket-name",
@@ -121,7 +122,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 					},
 				}
 				body, _ := json.Marshal(event)
-				s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+				s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 					QueueUrl:                    aws.String(s.watcher.queueURL),
 					MaxNumberOfMessages:         10,
 					WaitTimeSeconds:             20,
@@ -137,7 +138,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 						},
 					},
 				}, nil).Once()
-				s.sqsClient.On("DeleteMessage", mock.Anything, &sqs.DeleteMessageInput{
+				s.sqsClient.EXPECT().DeleteMessage(mock.Anything, &sqs.DeleteMessageInput{
 					QueueUrl:      aws.String(s.watcher.queueURL),
 					ReceiptHandle: aws.String("receipt-handle"),
 				}).Return(&sqs.DeleteMessageOutput{}, nil).Once()
@@ -151,7 +152,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 					Records: []S3Record{
 						{
 							EventTime: time.Now().Format(time.RFC3339Nano),
-							EventName: "s3:ObjectRemoved:Delete",
+							EventName: "ObjectRemoved:Delete",
 							S3: S3Entity{
 								Bucket: S3Bucket{
 									Name: "bucket-name",
@@ -164,7 +165,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 					},
 				}
 				body, _ := json.Marshal(event)
-				s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+				s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 					QueueUrl:                    aws.String(s.watcher.queueURL),
 					MaxNumberOfMessages:         10,
 					WaitTimeSeconds:             20,
@@ -180,7 +181,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 						},
 					},
 				}, nil).Once()
-				s.sqsClient.On("DeleteMessage", mock.Anything, &sqs.DeleteMessageInput{
+				s.sqsClient.EXPECT().DeleteMessage(mock.Anything, &sqs.DeleteMessageInput{
 					QueueUrl:      aws.String(s.watcher.queueURL),
 					ReceiptHandle: aws.String("receipt-handle"),
 				}).Return(&sqs.DeleteMessageOutput{}, nil).Once()
@@ -194,7 +195,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 					Records: []S3Record{
 						{
 							EventTime: time.Now().Format(time.RFC3339Nano),
-							EventName: "s3:ObjectAccessed:Get",
+							EventName: "ObjectAccessed:Get",
 							S3: S3Entity{
 								Bucket: S3Bucket{
 									Name: "bucket-name",
@@ -207,7 +208,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 					},
 				}
 				body, _ := json.Marshal(event)
-				s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+				s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 					QueueUrl:                    aws.String(s.watcher.queueURL),
 					MaxNumberOfMessages:         10,
 					WaitTimeSeconds:             20,
@@ -223,7 +224,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 						},
 					},
 				}, nil).Once()
-				s.sqsClient.On("DeleteMessage", mock.Anything, &sqs.DeleteMessageInput{
+				s.sqsClient.EXPECT().DeleteMessage(mock.Anything, &sqs.DeleteMessageInput{
 					QueueUrl:      aws.String(s.watcher.queueURL),
 					ReceiptHandle: aws.String("receipt-handle"),
 				}).Return(&sqs.DeleteMessageOutput{}, nil).Once()
@@ -237,7 +238,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 					Records: []S3Record{
 						{
 							EventTime: time.Now().Format(time.RFC3339Nano),
-							EventName: "s3:ObjectCreated:Put",
+							EventName: "ObjectCreated:Put",
 							S3: S3Entity{
 								Bucket: S3Bucket{
 									Name: "bucket-name",
@@ -250,7 +251,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 					},
 				}
 				body, _ := json.Marshal(event)
-				s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+				s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 					QueueUrl:                    aws.String(s.watcher.queueURL),
 					MaxNumberOfMessages:         10,
 					WaitTimeSeconds:             20,
@@ -276,7 +277,7 @@ func (s *S3WatcherTestSuite) TestPoll() {
 		{
 			name: "ReceiveMessage error",
 			setupMocks: func() {
-				s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+				s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 					QueueUrl:                    aws.String(s.watcher.queueURL),
 					MaxNumberOfMessages:         10,
 					WaitTimeSeconds:             20,
@@ -328,7 +329,7 @@ func (s *S3WatcherTestSuite) TestPollWithRetry() {
 				s3Event := S3Event{
 					Records: []S3Record{
 						{
-							EventName: "s3:ObjectCreated:Put",
+							EventName: "ObjectCreated:Put",
 							S3: S3Entity{
 								Bucket: S3Bucket{Name: "test-bucket"},
 								Object: S3Object{Key: "test-object"},
@@ -338,7 +339,7 @@ func (s *S3WatcherTestSuite) TestPollWithRetry() {
 				}
 				body, _ := json.Marshal(s3Event)
 				// First successful call
-				s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+				s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 					QueueUrl:                    aws.String(s.watcher.queueURL),
 					MaxNumberOfMessages:         10,
 					WaitTimeSeconds:             20,
@@ -354,12 +355,12 @@ func (s *S3WatcherTestSuite) TestPollWithRetry() {
 						},
 					},
 				}, nil).Once()
-				s.sqsClient.On("DeleteMessage", mock.Anything, &sqs.DeleteMessageInput{
+				s.sqsClient.EXPECT().DeleteMessage(mock.Anything, &sqs.DeleteMessageInput{
 					QueueUrl:      aws.String(s.watcher.queueURL),
 					ReceiptHandle: aws.String("receipt-handle"),
 				}).Return(&sqs.DeleteMessageOutput{}, nil).Once()
 				// Subsequent calls return empty to avoid infinite loop
-				s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+				s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 					QueueUrl:                    aws.String(s.watcher.queueURL),
 					MaxNumberOfMessages:         10,
 					WaitTimeSeconds:             20,
@@ -376,7 +377,7 @@ func (s *S3WatcherTestSuite) TestPollWithRetry() {
 			},
 			setupMocks: func() {
 				// S3 poll continues even with errors - they're handled by error handler
-				s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+				s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 					QueueUrl:                    aws.String(s.watcher.queueURL),
 					MaxNumberOfMessages:         10,
 					WaitTimeSeconds:             20,
@@ -397,7 +398,7 @@ func (s *S3WatcherTestSuite) TestPollWithRetry() {
 			},
 			setupMocks: func() {
 				// Any response is fine - context will cancel
-				s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+				s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 					QueueUrl:                    aws.String(s.watcher.queueURL),
 					MaxNumberOfMessages:         10,
 					WaitTimeSeconds:             20,
@@ -532,7 +533,7 @@ func (s *S3WatcherTestSuite) TestWithReceivedCount() {
 				Records: []S3Record{
 					{
 						EventTime: time.Now().Format(time.RFC3339Nano),
-						EventName: "s3:ObjectCreated:Put",
+						EventName: "ObjectCreated:Put",
 						S3: S3Entity{
 							Bucket: S3Bucket{Name: "test-bucket"},
 							Object: S3Object{Key: "test-object"},
@@ -543,7 +544,7 @@ func (s *S3WatcherTestSuite) TestWithReceivedCount() {
 			body, _ := json.Marshal(event)
 
 			// Setup mock expectations
-			s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+			s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 				QueueUrl:                    aws.String(watcher.queueURL),
 				MaxNumberOfMessages:         10,
 				WaitTimeSeconds:             20,
@@ -604,7 +605,7 @@ func (s *S3WatcherTestSuite) TestWithReceivedCountNoAttributes() {
 		Records: []S3Record{
 			{
 				EventTime: time.Now().Format(time.RFC3339Nano),
-				EventName: "s3:ObjectCreated:Put",
+				EventName: "ObjectCreated:Put",
 				S3: S3Entity{
 					Bucket: S3Bucket{Name: "test-bucket"},
 					Object: S3Object{Key: "test-object"},
@@ -614,7 +615,7 @@ func (s *S3WatcherTestSuite) TestWithReceivedCountNoAttributes() {
 	}
 	body, _ := json.Marshal(event)
 
-	s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+	s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 		QueueUrl:                    aws.String(watcher.queueURL),
 		MaxNumberOfMessages:         10,
 		WaitTimeSeconds:             20,
@@ -658,7 +659,7 @@ func (s *S3WatcherTestSuite) TestWithReceivedCountMissingAttribute() {
 		Records: []S3Record{
 			{
 				EventTime: time.Now().Format(time.RFC3339Nano),
-				EventName: "s3:ObjectCreated:Put",
+				EventName: "ObjectCreated:Put",
 				S3: S3Entity{
 					Bucket: S3Bucket{Name: "test-bucket"},
 					Object: S3Object{Key: "test-object"},
@@ -668,7 +669,7 @@ func (s *S3WatcherTestSuite) TestWithReceivedCountMissingAttribute() {
 	}
 	body, _ := json.Marshal(event)
 
-	s.sqsClient.On("ReceiveMessage", mock.Anything, &sqs.ReceiveMessageInput{
+	s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, &sqs.ReceiveMessageInput{
 		QueueUrl:                    aws.String(watcher.queueURL),
 		MaxNumberOfMessages:         10,
 		WaitTimeSeconds:             20,
@@ -756,62 +757,62 @@ func (s *S3WatcherTestSuite) TestMapS3EventType() {
 	}{
 		{
 			name:      "ObjectCreated:Put - direct upload",
-			eventName: "s3:ObjectCreated:Put",
+			eventName: "ObjectCreated:Put",
 			expected:  vfsevents.EventCreated,
 		},
 		{
 			name:      "ObjectCreated:Post - form upload",
-			eventName: "s3:ObjectCreated:Post",
+			eventName: "ObjectCreated:Post",
 			expected:  vfsevents.EventCreated,
 		},
 		{
 			name:      "ObjectCreated:Copy - copy operation",
-			eventName: "s3:ObjectCreated:Copy",
+			eventName: "ObjectCreated:Copy",
 			expected:  vfsevents.EventModified,
 		},
 		{
 			name:      "ObjectCreated:CompleteMultipartUpload - large upload",
-			eventName: "s3:ObjectCreated:CompleteMultipartUpload",
+			eventName: "ObjectCreated:CompleteMultipartUpload",
 			expected:  vfsevents.EventModified,
 		},
 		{
 			name:      "ObjectCreated:* - wildcard",
-			eventName: "s3:ObjectCreated:*",
+			eventName: "ObjectCreated:*",
 			expected:  vfsevents.EventCreated,
 		},
 		{
 			name:      "ObjectRestore:Post - restore initiation",
-			eventName: "s3:ObjectRestore:Post",
+			eventName: "ObjectRestore:Post",
 			expected:  vfsevents.EventModified,
 		},
 		{
 			name:      "ObjectRestore:Completed - restore completion",
-			eventName: "s3:ObjectRestore:Completed",
+			eventName: "ObjectRestore:Completed",
 			expected:  vfsevents.EventModified,
 		},
 		{
 			name:      "ObjectRestore:Delete - restored copy expires",
-			eventName: "s3:ObjectRestore:Delete",
+			eventName: "ObjectRestore:Delete",
 			expected:  vfsevents.EventDeleted,
 		},
 		{
 			name:      "ObjectRemoved:Delete - object deletion",
-			eventName: "s3:ObjectRemoved:Delete",
+			eventName: "ObjectRemoved:Delete",
 			expected:  vfsevents.EventDeleted,
 		},
 		{
 			name:      "ObjectRemoved:DeleteMarkerCreated - versioned deletion",
-			eventName: "s3:ObjectRemoved:DeleteMarkerCreated",
+			eventName: "ObjectRemoved:DeleteMarkerCreated",
 			expected:  vfsevents.EventDeleted,
 		},
 		{
 			name:      "ObjectRemoved:* - wildcard deletion",
-			eventName: "s3:ObjectRemoved:*",
+			eventName: "ObjectRemoved:*",
 			expected:  vfsevents.EventDeleted,
 		},
 		{
 			name:      "Unknown event type",
-			eventName: "s3:ObjectTagging:Put",
+			eventName: "ObjectTagging:Put",
 			expected:  vfsevents.EventUnknown,
 		},
 	}
@@ -832,37 +833,37 @@ func (s *S3WatcherTestSuite) TestGetOperationType() {
 	}{
 		{
 			name:      "Put operation",
-			eventName: "s3:ObjectCreated:Put",
+			eventName: "ObjectCreated:Put",
 			expected:  "put",
 		},
 		{
 			name:      "Post operation",
-			eventName: "s3:ObjectCreated:Post",
+			eventName: "ObjectCreated:Post",
 			expected:  "post",
 		},
 		{
 			name:      "Copy operation",
-			eventName: "s3:ObjectCreated:Copy",
+			eventName: "ObjectCreated:Copy",
 			expected:  "copy",
 		},
 		{
 			name:      "Multipart operation",
-			eventName: "s3:ObjectCreated:CompleteMultipartUpload",
+			eventName: "ObjectCreated:CompleteMultipartUpload",
 			expected:  "multipart",
 		},
 		{
 			name:      "Restore operation",
-			eventName: "s3:ObjectRestore:Completed",
+			eventName: "ObjectRestore:Completed",
 			expected:  "restore",
 		},
 		{
 			name:      "Delete operation",
-			eventName: "s3:ObjectRemoved:Delete",
+			eventName: "ObjectRemoved:Delete",
 			expected:  "delete",
 		},
 		{
 			name:      "Unknown operation",
-			eventName: "s3:ObjectTagging:Put",
+			eventName: "ObjectTagging:Put",
 			expected:  "unknown",
 		},
 	}
@@ -888,7 +889,7 @@ func (s *S3WatcherTestSuite) TestEnhancedMetadata() {
 		Records: []S3Record{
 			{
 				EventTime: "2023-01-01T12:00:00.000Z",
-				EventName: "s3:ObjectCreated:Copy",
+				EventName: "ObjectCreated:Copy",
 				AwsRegion: "us-east-1",
 				S3: S3Entity{
 					Bucket: S3Bucket{
@@ -911,13 +912,13 @@ func (s *S3WatcherTestSuite) TestEnhancedMetadata() {
 		Body: aws.String(string(body)),
 	}
 
-	s.sqsClient.On("ReceiveMessage", mock.Anything, mock.Anything).
+	s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, mock.Anything).
 		Return(&sqs.ReceiveMessageOutput{
 			Messages: []types.Message{message},
 		}, nil).
 		Once()
 
-	s.sqsClient.On("DeleteMessage", mock.Anything, mock.Anything).
+	s.sqsClient.EXPECT().DeleteMessage(mock.Anything, mock.Anything).
 		Return(&sqs.DeleteMessageOutput{}, nil).
 		Once()
 
@@ -949,7 +950,7 @@ func (s *S3WatcherTestSuite) TestEnhancedMetadata() {
 	// Verify enhanced metadata
 	s.Equal("test-bucket", receivedEvent.Metadata["bucketName"])
 	s.Equal("test-file.txt", receivedEvent.Metadata["key"])
-	s.Equal("s3:ObjectCreated:Copy", receivedEvent.Metadata["eventName"])
+	s.Equal("ObjectCreated:Copy", receivedEvent.Metadata["eventName"])
 	s.Equal("us-east-1", receivedEvent.Metadata["region"])
 	s.Equal("2023-01-01T12:00:00.000Z", receivedEvent.Metadata["eventTime"])
 	s.Equal("copy", receivedEvent.Metadata["operation"])
@@ -972,7 +973,7 @@ func (s *S3WatcherTestSuite) TestNonVersionedBucketMetadata() {
 		Records: []S3Record{
 			{
 				EventTime: "2023-01-01T12:00:00.000Z",
-				EventName: "s3:ObjectCreated:Put",
+				EventName: "ObjectCreated:Put",
 				AwsRegion: "us-west-2",
 				S3: S3Entity{
 					Bucket: S3Bucket{
@@ -995,13 +996,13 @@ func (s *S3WatcherTestSuite) TestNonVersionedBucketMetadata() {
 		Body: aws.String(string(body)),
 	}
 
-	s.sqsClient.On("ReceiveMessage", mock.Anything, mock.Anything).
+	s.sqsClient.EXPECT().ReceiveMessage(mock.Anything, mock.Anything).
 		Return(&sqs.ReceiveMessageOutput{
 			Messages: []types.Message{message},
 		}, nil).
 		Once()
 
-	s.sqsClient.On("DeleteMessage", mock.Anything, mock.Anything).
+	s.sqsClient.EXPECT().DeleteMessage(mock.Anything, mock.Anything).
 		Return(&sqs.DeleteMessageOutput{}, nil).
 		Once()
 

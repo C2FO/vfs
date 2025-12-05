@@ -38,11 +38,11 @@ func (lt *locationTestSuite) TestList() {
 		On("Name").Return("file2.txt").
 		On("IsDir").Return(false)
 	subdir1 := mocks.NewFileInfo(lt.T())
-	subdir1.On("IsDir").Return(true)
+	subdir1.EXPECT().IsDir().Return(true)
 	keyListFromAPI := []*mocks.FileInfo{subdir1, file1, file2}
 	authorityStr := "host.com"
 	locPath := "/dir1/"
-	lt.client.On("ReadDir", locPath).Return(sliceImplementationToInterface(keyListFromAPI), nil).Once()
+	lt.client.EXPECT().ReadDir(locPath).Return(sliceImplementationToInterface(keyListFromAPI), nil).Once()
 
 	loc, err := lt.sftpfs.NewLocation(authorityStr, locPath)
 	lt.Require().NoError(err)
@@ -54,13 +54,13 @@ func (lt *locationTestSuite) TestList() {
 	}
 
 	// file not found (location doesn't exist)
-	lt.client.On("ReadDir", locPath).Return(make([]os.FileInfo, 0), errors.New("some error")).Once()
+	lt.client.EXPECT().ReadDir(locPath).Return(make([]os.FileInfo, 0), errors.New("some error")).Once()
 	fileList, err = loc.List()
 	lt.Require().Error(err, "should return error")
 	lt.Empty(fileList, "Should return no files on error")
 
 	// file not found (location doesn't exist)
-	lt.client.On("ReadDir", locPath).Return(make([]os.FileInfo, 0), os.ErrNotExist).Once()
+	lt.client.EXPECT().ReadDir(locPath).Return(make([]os.FileInfo, 0), os.ErrNotExist).Once()
 	fileList, err = loc.List()
 	lt.Require().NoError(err, "Shouldn't return an error on file not found.")
 	lt.Empty(fileList, "Should return no files on file not found")
@@ -82,11 +82,11 @@ func (lt *locationTestSuite) TestListByPrefix() {
 		On("Name").Return("my_file.txt").
 		On("IsDir").Return(false)
 	subdir1 := mocks.NewFileInfo(lt.T())
-	subdir1.On("IsDir").Return(true)
+	subdir1.EXPECT().IsDir().Return(true)
 	keyListFromAPI := []*mocks.FileInfo{subdir1, file1, file2, file3}
 	authorityStr := "host.com"
 	locPath := "/dir1/"
-	lt.client.On("ReadDir", locPath).Return(sliceImplementationToInterface(keyListFromAPI), nil).Once()
+	lt.client.EXPECT().ReadDir(locPath).Return(sliceImplementationToInterface(keyListFromAPI), nil).Once()
 	loc, err := lt.sftpfs.NewLocation(authorityStr, locPath)
 	lt.Require().NoError(err)
 	prefix := "fil"
@@ -114,11 +114,11 @@ func (lt *locationTestSuite) TestListByRegex() {
 		On("Name").Return("stuff.txt").
 		On("IsDir").Return(false)
 	subdir1 := mocks.NewFileInfo(lt.T())
-	subdir1.On("IsDir").Return(true)
+	subdir1.EXPECT().IsDir().Return(true)
 	keyListFromAPI := []*mocks.FileInfo{subdir1, file1, file2, file4}
 	authorityStr := "host.com"
 	locPath := "/dir1/"
-	lt.client.On("ReadDir", locPath).Return(sliceImplementationToInterface(keyListFromAPI), nil).Once()
+	lt.client.EXPECT().ReadDir(locPath).Return(sliceImplementationToInterface(keyListFromAPI), nil).Once()
 	loc, err := lt.sftpfs.NewLocation(authorityStr, locPath)
 	lt.Require().NoError(err)
 	fileTypeRegex := regexp.MustCompile("txt$")
@@ -206,15 +206,15 @@ func (lt *locationTestSuite) TestNewFile() {
 	// test nil pointer
 	var nilLoc *Location
 	_, err = nilLoc.NewFile("/path/to/file.txt")
-	lt.Require().EqualError(err, "non-nil sftp.Location pointer receiver is required", "errors returned by NewFile")
+	lt.Require().ErrorIs(err, errLocationRequired, "errors returned by NewFile")
 
 	// test empty path error
 	_, err = loc.NewFile("")
-	lt.Require().EqualError(err, "non-empty string filePath is required", "errors returned by NewFile")
+	lt.Require().ErrorIs(err, errPathRequired, "errors returned by NewFile")
 
 	// test validation error
 	_, err = loc.NewFile("/absolute/path/to/file.txt")
-	lt.Require().EqualError(err, utils.ErrBadRelFilePath, "errors returned by NewLocation")
+	lt.Require().ErrorIs(err, utils.ErrBadRelFilePath, "errors returned by NewLocation")
 
 	// new tests for location update
 	lt.Run("new file with relative path updates location", func() {
@@ -238,8 +238,8 @@ func (lt *locationTestSuite) TestExists() {
 	// location exists
 	locPath := "/"
 	dir1 := mocks.NewFileInfo(lt.T())
-	dir1.On("IsDir").Return(true)
-	lt.client.On("Stat", locPath).Return(dir1, nil).Once()
+	dir1.EXPECT().IsDir().Return(true)
+	lt.client.EXPECT().Stat(locPath).Return(dir1, nil).Once()
 	loc, err := lt.sftpfs.NewLocation(authorityStr, locPath)
 	lt.Require().NoError(err)
 	exists, err := loc.Exists()
@@ -249,7 +249,7 @@ func (lt *locationTestSuite) TestExists() {
 	// locations does not exist
 	locPath = "/my/dir/"
 	dir1 = mocks.NewFileInfo(lt.T())
-	lt.client.On("Stat", locPath).Return(dir1, os.ErrNotExist).Once()
+	lt.client.EXPECT().Stat(locPath).Return(dir1, os.ErrNotExist).Once()
 	loc, err = lt.sftpfs.NewLocation(authorityStr, locPath)
 	lt.Require().NoError(err)
 	exists, err = loc.Exists()
@@ -257,7 +257,7 @@ func (lt *locationTestSuite) TestExists() {
 	lt.False(exists, "Call to Exists expected to return false.")
 
 	// some error calling stat
-	lt.client.On("Stat", locPath).Return(dir1, errors.New("some error")).Once()
+	lt.client.EXPECT().Stat(locPath).Return(dir1, errors.New("some error")).Once()
 	loc, err = lt.sftpfs.NewLocation(authorityStr, locPath)
 	lt.Require().NoError(err)
 	exists, err = loc.Exists()
@@ -266,8 +266,8 @@ func (lt *locationTestSuite) TestExists() {
 
 	// check for not dir -- this shouldn't be possible since NewLocation won't accept non-absolute directories
 	dir1 = mocks.NewFileInfo(lt.T())
-	dir1.On("IsDir").Return(false) // set isdir false
-	lt.client.On("Stat", locPath).Return(dir1, nil).Once()
+	dir1.EXPECT().IsDir().Return(false) // set isdir false
+	lt.client.EXPECT().Stat(locPath).Return(dir1, nil).Once()
 	loc, err = lt.sftpfs.NewLocation(authorityStr, locPath)
 	lt.Require().NoError(err)
 	exists, err = loc.Exists()
@@ -279,7 +279,7 @@ func (lt *locationTestSuite) TestChangeDir() {
 	// test nil Location
 	var nilLoc *Location
 	err := nilLoc.ChangeDir("path/to/")
-	lt.Require().EqualError(err, "non-nil sftp.Location pointer receiver is required", "error expected for nil location")
+	lt.Require().ErrorIs(err, errLocationRequired, "error expected for nil location")
 
 	loc := &Location{fileSystem: lt.sftpfs, path: "/", authority: authority.Authority{}}
 
@@ -319,19 +319,19 @@ func (lt *locationTestSuite) TestNewLocation() {
 	// test nil pointer
 	var nilLoc *Location
 	_, err = nilLoc.NewLocation("/path/to/")
-	lt.Require().EqualError(err, "non-nil sftp.Location pointer receiver is required", "errors returned by NewLocation")
+	lt.Require().ErrorIs(err, errLocationRequired, "errors returned by NewLocation")
 
 	// test empty path error
 	_, err = loc.NewLocation("")
-	lt.Require().EqualError(err, "non-empty string relativePath is required", "errors returned by NewLocation")
+	lt.Require().ErrorIs(err, errPathRequired, "errors returned by NewLocation")
 
 	// test validation error
 	_, err = loc.NewLocation("/absolute/path/to/")
-	lt.Require().EqualError(err, utils.ErrBadRelLocationPath, "errors returned by NewLocation")
+	lt.Require().ErrorIs(err, utils.ErrBadRelLocationPath, "errors returned by NewLocation")
 }
 
 func (lt *locationTestSuite) TestDeleteFile() {
-	lt.client.On("Remove", "/old/filename.txt").Return(nil).Once()
+	lt.client.EXPECT().Remove("/old/filename.txt").Return(nil).Once()
 	loc, err := lt.sftpfs.NewLocation("bucket", "/old/")
 	lt.Require().NoError(err)
 
@@ -339,7 +339,7 @@ func (lt *locationTestSuite) TestDeleteFile() {
 	lt.Require().NoError(err, "Successful delete should not return an error.")
 
 	// error deleting
-	lt.client.On("Remove", "/old/filename.txt").Return(os.ErrNotExist).Once()
+	lt.client.EXPECT().Remove("/old/filename.txt").Return(os.ErrNotExist).Once()
 	err = loc.DeleteFile("filename.txt")
 	lt.Require().Error(err, "failed delete")
 }
