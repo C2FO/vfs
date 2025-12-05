@@ -5,12 +5,12 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/c2fo/vfs/v7/utils"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/backend/azure/mocks"
+	"github.com/c2fo/vfs/v7/utils"
 )
 
 type LocationTestSuite struct {

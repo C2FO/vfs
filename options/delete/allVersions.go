@@ -20,6 +20,7 @@ func (w AllVersions) DeleteOptionName() string {
 }
 
 // WithDeleteAllVersions returns DeleteAllVersions implementation of options.DeleteOption
+//
 // Deprecated: use WithAllVersions instead
 func WithDeleteAllVersions() options.DeleteOption {
 	return DeleteAllVersions{}
@@ -27,6 +28,7 @@ func WithDeleteAllVersions() options.DeleteOption {
 
 // DeleteAllVersions represents the DeleteOption that is used to remove all versions of files when deleted.
 // This will remove all versions of files for the filesystems that support file versioning.
+//
 // Deprecated: use AllVersions instead
 type DeleteAllVersions struct{}
 

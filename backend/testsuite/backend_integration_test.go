@@ -3,7 +3,6 @@
 package testsuite
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -77,7 +76,7 @@ func (s *vfsTestSuite) SetupSuite() {
 	}
 }
 
-// Test File
+// Test Scheme
 func (s *vfsTestSuite) TestScheme() {
 	for scheme, location := range s.testLocations {
 		fmt.Printf("************** TESTING scheme: %s **************\n", scheme)
@@ -624,7 +623,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 			// should now exist
 			exists, err = copyFile1.Exists()
 			s.Require().NoError(err)
-			s.True(exists, "%s should now exist locally", copyFile1)
+			s.Truef(exists, "%s should now exist locally", copyFile1)
 			err = copyFile1.Close()
 			s.Require().NoError(err)
 		} else {
@@ -739,10 +738,9 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 		s.Require().NoError(err)
 
 		// ensure that MoveToFile() works for files with spaces
-		type moveSpaceTest struct {
+		tests := []struct {
 			Path, Filename string
-		}
-		tests := []moveSpaceTest{
+		}{
 			{Path: "file/", Filename: "has space.txt"},
 			{Path: "file/", Filename: "has%20encodedSpace.txt"},
 			{Path: "path has/", Filename: "space.txt"},
@@ -804,17 +802,17 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 	defer func() { _ = touchedFile.Delete() }()
 	exists, err = touchedFile.Exists()
 	s.Require().NoError(err)
-	s.False(exists, "%s shouldn't yet exist", touchedFile)
+	s.Falsef(exists, "%s shouldn't yet exist", touchedFile)
 
 	err = touchedFile.Touch()
 	s.Require().NoError(err)
 	exists, err = touchedFile.Exists()
 	s.Require().NoError(err)
-	s.True(exists, "%s now exists", touchedFile)
+	s.Truef(exists, "%s now exists", touchedFile)
 
 	size, err := touchedFile.Size()
 	s.Require().NoError(err)
-	s.Zero(size, "%s should be empty", touchedFile)
+	s.Zerof(size, "%s should be empty", touchedFile)
 
 	// capture last modified
 	modified, err := touchedFile.LastModified()
@@ -827,7 +825,7 @@ func (s *vfsTestSuite) File(baseLoc vfs.Location) {
 	newModified, err := touchedFile.LastModified()
 
 	s.Require().NoError(err)
-	s.Greater(*newModified, modifiedDeRef, "touch updated modified date for %s", touchedFile)
+	s.Greaterf(*newModified, modifiedDeRef, "touch updated modified date for %s", touchedFile)
 
 	/*
 		Delete unlinks the File on the file system.
@@ -893,7 +891,7 @@ func (s *vfsTestSuite) gsList(baseLoc vfs.Location) {
 		Bucket("enterprise-test").
 		Object(utils.RemoveLeadingSlash(baseLoc.Path() + "myfolder/"))
 
-	ctx := context.Background()
+	ctx := s.T().Context()
 
 	// write zero length object
 	writer := objHandle.NewWriter(ctx)

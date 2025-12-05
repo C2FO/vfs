@@ -36,9 +36,7 @@ func (s *osLocationTest) SetupSuite() {
 
 func (s *osLocationTest) SetupTest() {
 	file, err := s.tmploc.NewFile("test_files/test.txt")
-	if err != nil {
-		s.Fail("No file was opened")
-	}
+	s.Require().NoError(err, "No file was opened")
 	s.testFile = file
 }
 

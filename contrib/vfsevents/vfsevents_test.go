@@ -424,7 +424,7 @@ func (s *VfseventsTestSuite) TestCalculateBackoff() {
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			backoff := CalculateBackoff(tt.attempt, tt.config)
-			s.True(backoff >= tt.minTime && backoff <= tt.maxTime,
+			s.Truef(backoff >= tt.minTime && backoff <= tt.maxTime,
 				"Expected backoff between %v and %v, got %v", tt.minTime, tt.maxTime, backoff)
 		})
 	}

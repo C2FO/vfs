@@ -118,6 +118,8 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 	s.watcher, err = NewFSNotifyWatcher(location)
 	s.Require().NoError(err)
 
+	ctx := s.T().Context()
+
 	s.Run("Valid start", func() {
 		events := make(chan vfsevents.Event, 10)
 		errors := make(chan error, 10)
@@ -132,7 +134,7 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 			errors <- err
 		}
 
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
 		err := s.watcher.Start(ctx, eventHandler, errorHandler)
@@ -176,8 +178,6 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 			errors <- err
 		}
 
-		ctx := context.Background()
-
 		// Start first time
 		err := s.watcher.Start(ctx, eventHandler, errorHandler)
 		s.Require().NoError(err)
@@ -213,7 +213,7 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 		errors <- err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.T().Context())
 	defer cancel()
 
 	err = s.watcher.Start(ctx, eventHandler, errorHandler)
@@ -367,7 +367,7 @@ func (s *FSNotifyWatcherTestSuite) TestRecursiveWatching() {
 		errors <- err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.T().Context())
 	defer cancel()
 
 	err = s.watcher.Start(ctx, eventHandler, errorHandler)
@@ -431,7 +431,7 @@ func (s *FSNotifyWatcherTestSuite) TestEventFiltering() {
 		errors <- err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.T().Context())
 	defer cancel()
 
 	// Start with event filter - only .txt files
@@ -500,7 +500,7 @@ eventLoop:
 				txtEventReceived = true
 				fmt.Printf("TEST DEBUG: Marking txtEventReceived = true\n")
 				// Accept both Created and Modified events for .txt files
-				s.True(event.Type == vfsevents.EventCreated || event.Type == vfsevents.EventModified,
+				s.Truef(event.Type == vfsevents.EventCreated || event.Type == vfsevents.EventModified,
 					"Expected Created or Modified event for .txt file, got: %s", event.Type)
 			} else if s.isLogFileEvent(event.URI) {
 				logEventReceived = true
@@ -581,7 +581,7 @@ func (s *FSNotifyWatcherTestSuite) TestStatusCallback() {
 		statuses <- status
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.T().Context())
 	defer cancel()
 
 	err = s.watcher.Start(ctx, eventHandler, errorHandler,

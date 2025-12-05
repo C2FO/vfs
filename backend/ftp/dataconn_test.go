@@ -53,7 +53,7 @@ func (s *dataConnSuite) TestGetDataConn_alreadyExists() {
 		mode: types.OpenRead,
 	}
 	dc, err := getDataConn(
-		context.Background(),
+		s.T().Context(),
 		authority.Authority{},
 		s.ftpFile.Location().FileSystem().(*FileSystem),
 		s.ftpFile,
@@ -70,7 +70,7 @@ func (s *dataConnSuite) TestGetDataConn_openForRead() {
 		Return(&_ftp.Response{}, nil).
 		Once()
 	dc, err := getDataConn(
-		context.Background(),
+		s.T().Context(),
 		authority.Authority{},
 		s.ftpFile.Location().FileSystem().(*FileSystem),
 		s.ftpFile,
@@ -85,7 +85,7 @@ func (s *dataConnSuite) TestGetDataConn_errorClientSetup() {
 	defaultClientGetter = clientGetterReturnsError
 	s.ftpFile.Location().FileSystem().(*FileSystem).ftpclient = nil
 	dc, err := getDataConn(
-		context.Background(),
+		s.T().Context(),
 		authority.Authority{},
 		s.ftpFile.Location().FileSystem().(*FileSystem),
 		s.ftpFile,
@@ -108,7 +108,7 @@ func (s *dataConnSuite) TestGetDataConn_ReadError() {
 		Return(nil, someErr).
 		Once()
 	dc, err := getDataConn(
-		context.Background(),
+		s.T().Context(),
 		authority.Authority{},
 		s.ftpFile.Location().FileSystem().(*FileSystem),
 		s.ftpFile,
@@ -134,7 +134,7 @@ func (s *dataConnSuite) TestGetDataConn_WriteLocationNotExists() {
 		Return(nil).
 		Once()
 	_, err := getDataConn(
-		context.Background(),
+		s.T().Context(),
 		authority.Authority{},
 		s.ftpFile.Location().FileSystem().(*FileSystem),
 		s.ftpFile,
@@ -158,7 +158,7 @@ func (s *dataConnSuite) TestGetDataConn_WriteLocationNotExistsFails() {
 		Return(someerr).
 		Once()
 	_, err := getDataConn(
-		context.Background(),
+		s.T().Context(),
 		authority.Authority{},
 		s.ftpFile.Location().FileSystem().(*FileSystem),
 		s.ftpFile,
@@ -187,7 +187,7 @@ func (s *dataConnSuite) TestGetDataConn_errorWriting() {
 		Return(someErr).
 		Once()
 	dc, err := getDataConn(
-		context.Background(),
+		s.T().Context(),
 		authority.Authority{},
 		s.ftpFile.Location().FileSystem().(*FileSystem),
 		s.ftpFile,
@@ -215,7 +215,7 @@ func (s *dataConnSuite) TestGetDataConn_writeSuccess() {
 		Return(nil).
 		Once()
 	dc, err := getDataConn(
-		context.Background(),
+		s.T().Context(),
 		authority.Authority{},
 		s.ftpFile.Location().FileSystem().(*FileSystem),
 		s.ftpFile,
@@ -235,7 +235,7 @@ func (s *dataConnSuite) TestGetDataConn_readAfterWriteError() {
 	fakedconn.AssertCloseErr(closeErr)
 	s.ftpFile.Location().FileSystem().(*FileSystem).dataconn = fakedconn
 	dc, err := getDataConn(
-		context.Background(),
+		s.T().Context(),
 		authority.Authority{},
 		s.ftpFile.Location().FileSystem().(*FileSystem),
 		s.ftpFile,
@@ -265,7 +265,7 @@ func (s *dataConnSuite) TestGetDataConn_writeAfterReadSuccess() {
 		Return(nil).
 		Once()
 	dc, err := getDataConn(
-		context.Background(),
+		s.T().Context(),
 		authority.Authority{},
 		s.ftpFile.Location().FileSystem().(*FileSystem),
 		s.ftpFile,

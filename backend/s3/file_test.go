@@ -51,9 +51,6 @@ func (ts *fileTestSuite) SetupTest() {
 	ts.Require().NoError(err, "Shouldn't return error creating test s3.File instance.")
 }
 
-func (ts *fileTestSuite) TearDownTest() {
-}
-
 func (ts *fileTestSuite) TestRead() {
 	contents := "hello world!"
 
@@ -304,10 +301,9 @@ func (ts *fileTestSuite) TestMoveToFile() {
 }
 
 func (ts *fileTestSuite) TestGetCopyObject() {
-	type getCopyObjectTest struct {
+	tests := []struct {
 		key, expectedCopySource string
-	}
-	tests := []getCopyObjectTest{
+	}{
 		{
 			key:                "/path/to/nospace.txt",
 			expectedCopySource: "%2Fpath%2Fto%2Fnospace.txt",
@@ -710,6 +706,7 @@ func (ts *fileTestSuite) TestNewFile() {
 	fs = &FileSystem{}
 	// bucket is ""
 	_, err = fs.NewFile("", "asdf")
+
 	ts.Require().ErrorIs(err, errAuthorityAndNameRequired)
 	// key is ""
 	_, err = fs.NewFile("asdf", "")
@@ -759,15 +756,6 @@ func (ts *fileTestSuite) TestCloseWithWrite() {
 	ts.Require().Error(err, "file doesn't exists, retired 5 times")
 }
 
-type fileTestCase struct {
-	name             string
-	setup            func(*mocks.Client) *File // Function to set up each test case
-	actions          []func(*File) error       // Actions to perform on the file (Write, Seek, etc.)
-	wantErr          bool
-	validate         func(*File) error // Additional validations if needed
-	expectedContents string
-}
-
 func (ts *fileTestSuite) TestWriteOperations() {
 	var contents *string
 	setup := func(s3Mock *mocks.Client) {
@@ -785,7 +773,14 @@ func (ts *fileTestSuite) TestWriteOperations() {
 	auth, err := authority.NewAuthority("newBucket")
 	ts.Require().NoError(err, "Shouldn't fail creating new authority")
 
-	testCases := []fileTestCase{
+	testCases := []struct {
+		name             string
+		setup            func(*mocks.Client) *File // Function to set up each test case
+		actions          []func(*File) error       // Actions to perform on the file (Write, Seek, etc.)
+		wantErr          bool
+		validate         func(*File) error // Additional validations if needed
+		expectedContents string
+	}{
 		{
 			name: "Write and Close - Close failure",
 			setup: func(s3Mock *mocks.Client) *File {

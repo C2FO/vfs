@@ -96,7 +96,6 @@ func (s *GCSWatcherTestSuite) TestStart() {
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			tt.setupMocks()
-			ctx := context.Background()
 			handler := func(event vfsevents.Event) {}
 			errHandler := func(err error) {
 				if tt.wantErr {
@@ -105,7 +104,7 @@ func (s *GCSWatcherTestSuite) TestStart() {
 					s.Require().NoError(err)
 				}
 			}
-			err := s.watcher.Start(ctx, handler, errHandler)
+			err := s.watcher.Start(s.T().Context(), handler, errHandler)
 			s.Require().NoError(err)
 			s.Require().NoError(s.watcher.Stop())
 		})
@@ -113,6 +112,7 @@ func (s *GCSWatcherTestSuite) TestStart() {
 }
 
 func (s *GCSWatcherTestSuite) TestPoll() {
+	ctx := s.T().Context()
 	tests := []struct {
 		name       string
 		setupMocks func()
@@ -127,9 +127,10 @@ func (s *GCSWatcherTestSuite) TestPoll() {
 					TimeCreated: JSONTime(time.Now()),
 				}
 				body, _ := json.Marshal(event)
+
 				s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
 					Run(func(_ context.Context, handler func(context.Context, *pubsub.Message)) {
-						handler(context.TODO(), &pubsub.Message{
+						handler(ctx, &pubsub.Message{
 							Data: body,
 							Attributes: map[string]string{
 								"eventType": EventObjectFinalize,
@@ -151,9 +152,10 @@ func (s *GCSWatcherTestSuite) TestPoll() {
 					TimeCreated: JSONTime(time.Now()),
 				}
 				body, _ := json.Marshal(event)
+
 				s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
 					Run(func(_ context.Context, handler func(context.Context, *pubsub.Message)) {
-						handler(context.TODO(), &pubsub.Message{
+						handler(ctx, &pubsub.Message{
 							Data: body,
 							Attributes: map[string]string{
 								"eventType": EventObjectDelete,
@@ -175,9 +177,10 @@ func (s *GCSWatcherTestSuite) TestPoll() {
 					TimeCreated: JSONTime(time.Now()),
 				}
 				body, _ := json.Marshal(event)
+
 				s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
 					Run(func(_ context.Context, handler func(context.Context, *pubsub.Message)) {
-						handler(context.TODO(), &pubsub.Message{
+						handler(ctx, &pubsub.Message{
 							Data: body,
 							Attributes: map[string]string{
 								"eventType": EventObjectMetadataUpdate,
@@ -206,7 +209,7 @@ func (s *GCSWatcherTestSuite) TestPoll() {
 		s.Run(tt.name, func() {
 			tt.setupMocks()
 
-			_ = s.watcher.Start(context.TODO(), func(event vfsevents.Event) {}, func(err error) {
+			_ = s.watcher.Start(ctx, func(event vfsevents.Event) {}, func(err error) {
 				if tt.wantErr {
 					s.Require().Error(err)
 				} else {
@@ -219,6 +222,7 @@ func (s *GCSWatcherTestSuite) TestPoll() {
 }
 
 func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
+	ctx := s.T().Context()
 	tests := []struct {
 		name           string
 		retryConfig    vfsevents.RetryConfig
@@ -244,9 +248,10 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 					TimeCreated: JSONTime(time.Now()),
 				}
 				body, _ := json.Marshal(event)
+
 				s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
 					Run(func(_ context.Context, handler func(context.Context, *pubsub.Message)) {
-						handler(context.TODO(), &pubsub.Message{
+						handler(ctx, &pubsub.Message{
 							Data: body,
 							Attributes: map[string]string{
 								"eventType": EventObjectFinalize,
@@ -298,9 +303,10 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 					TimeCreated: JSONTime(time.Now()),
 				}
 				body, _ := json.Marshal(event)
+
 				s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
 					Run(func(_ context.Context, handler func(context.Context, *pubsub.Message)) {
-						handler(context.TODO(), &pubsub.Message{
+						handler(ctx, &pubsub.Message{
 							Data: body,
 							Attributes: map[string]string{
 								"eventType": EventObjectFinalize,
@@ -394,9 +400,10 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 					TimeCreated: JSONTime(time.Now()),
 				}
 				body, _ := json.Marshal(event)
+
 				s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
 					Run(func(_ context.Context, handler func(context.Context, *pubsub.Message)) {
-						handler(context.TODO(), &pubsub.Message{
+						handler(ctx, &pubsub.Message{
 							Data: body,
 							Attributes: map[string]string{
 								"eventType": EventObjectFinalize,
@@ -434,7 +441,7 @@ func (s *GCSWatcherTestSuite) TestReceiveWithRetry() {
 			status := &vfsevents.WatcherStatus{}
 
 			// Create context with timeout for cancellation test
-			ctx := context.Background()
+			ctx := s.T().Context()
 			if tt.name == "Context cancellation during retry" {
 				var cancel context.CancelFunc
 				ctx, cancel = context.WithTimeout(ctx, 50*time.Millisecond)
@@ -509,10 +516,12 @@ func (s *GCSWatcherTestSuite) TestRetryBackoffTiming() {
 		"overwrittenByGeneration": "1111111111",
 	}
 
+	ctx := s.T().Context()
+
 	s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
 		Run(func(_ context.Context, handler func(context.Context, *pubsub.Message)) {
 			// Send OBJECT_FINALIZE event (should generate EventModified)
-			handler(context.TODO(), &pubsub.Message{
+			handler(ctx, &pubsub.Message{
 				Data:       body,
 				Attributes: attributes,
 			})
@@ -520,7 +529,7 @@ func (s *GCSWatcherTestSuite) TestRetryBackoffTiming() {
 		Return(nil).
 		Once()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
 	defer cancel()
 
 	config := &vfsevents.StartConfig{}
@@ -685,9 +694,11 @@ func (s *GCSWatcherTestSuite) TestEnhancedMetadata() {
 		s.Require().NoError(err)
 	}
 
+	ctx := s.T().Context()
+
 	s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
 		Run(func(_ context.Context, handler func(context.Context, *pubsub.Message)) {
-			handler(context.TODO(), &pubsub.Message{
+			handler(ctx, &pubsub.Message{
 				Data:       body,
 				Attributes: attributes,
 			})
@@ -695,7 +706,7 @@ func (s *GCSWatcherTestSuite) TestEnhancedMetadata() {
 		Return(nil).
 		Once()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
 	defer cancel()
 
 	config := &vfsevents.StartConfig{}
@@ -756,16 +767,18 @@ func (s *GCSWatcherTestSuite) TestOverwriteEventSuppression() {
 		"eventTime":               "2023-01-01T12:00:01Z",
 	}
 
+	ctx := s.T().Context()
+
 	s.pubsubClient.EXPECT().Receive(mock.Anything, mock.Anything).
 		Run(func(_ context.Context, handler func(context.Context, *pubsub.Message)) {
 			// Send OBJECT_FINALIZE event (should generate EventModified)
-			handler(context.TODO(), &pubsub.Message{
+			handler(ctx, &pubsub.Message{
 				Data:       body,
 				Attributes: finalizeAttributes,
 			})
 
 			// Send OBJECT_DELETE event (should be suppressed)
-			handler(context.TODO(), &pubsub.Message{
+			handler(ctx, &pubsub.Message{
 				Data:       body,
 				Attributes: deleteAttributes,
 			})
@@ -773,7 +786,7 @@ func (s *GCSWatcherTestSuite) TestOverwriteEventSuppression() {
 		Return(nil).
 		Once()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
 	defer cancel()
 
 	config := &vfsevents.StartConfig{}

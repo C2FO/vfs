@@ -212,18 +212,16 @@ func (s *ioTestSuite) TestFileOperations() {
 	}
 }
 
-type TestCase struct {
-	description       string
-	sequence          string
-	fileAlreadyExists bool
-	expectFailure     bool
-	expectedResults   string
-}
-
 // unless seek or read is called first, writes should replace a file (not edit)
 
 func (s *ioTestSuite) testFileOperations(testPath string) {
-	testCases := []TestCase{
+	testCases := []struct {
+		description       string
+		sequence          string
+		fileAlreadyExists bool
+		expectFailure     bool
+		expectedResults   string
+	}{
 		// Read, Close file
 		{
 			"Read, Close, file exists",

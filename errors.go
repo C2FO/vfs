@@ -11,6 +11,7 @@ const (
 	ErrCopyToNotPossible = Error("current cursor offset is not 0 as required for this operation")
 
 	// CopyToNotPossible - CopyTo/MoveTo operations are only possible when seek position is 0,0
+	//
 	// Deprecated: Use ErrCopyToNotPossible instead
 	CopyToNotPossible = ErrCopyToNotPossible //nolint:errname
 

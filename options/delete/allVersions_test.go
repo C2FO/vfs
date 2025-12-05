@@ -2,32 +2,26 @@ package delete
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestWithAllVersions(t *testing.T) {
 	opt := WithAllVersions()
-	if opt.DeleteOptionName() != "deleteAllVersions" {
-		t.Errorf("expected `deleteAllVersions`, got %s", opt.DeleteOptionName())
-	}
+	assert.Equal(t, optionNameDeleteAllVersions, opt.DeleteOptionName())
 }
 
 func TestAllVersionsName(t *testing.T) {
 	var opt AllVersions
-	if opt.DeleteOptionName() != "deleteAllVersions" {
-		t.Errorf("expected `deleteAllVersions`, got %s", opt.DeleteOptionName())
-	}
+	assert.Equal(t, optionNameDeleteAllVersions, opt.DeleteOptionName())
 }
 
 func TestWithDeleteAllVersions(t *testing.T) {
 	opt := WithDeleteAllVersions()
-	if opt.DeleteOptionName() != "deleteAllVersions" {
-		t.Errorf("expected `deleteAllVersions`, got %s", opt.DeleteOptionName())
-	}
+	assert.Equal(t, optionNameDeleteAllVersions, opt.DeleteOptionName())
 }
 
 func TestDeleteAllVersionsName(t *testing.T) {
 	var opt DeleteAllVersions
-	if opt.DeleteOptionName() != "deleteAllVersions" {
-		t.Errorf("expected `deleteAllVersions`, got %s", opt.DeleteOptionName())
-	}
+	assert.Equal(t, optionNameDeleteAllVersions, opt.DeleteOptionName())
 }

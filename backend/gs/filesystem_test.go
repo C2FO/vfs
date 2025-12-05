@@ -6,9 +6,10 @@ import (
 	"testing"
 
 	"cloud.google.com/go/storage"
-	"github.com/c2fo/vfs/v7/utils"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/api/option"
+
+	"github.com/c2fo/vfs/v7/utils"
 )
 
 type fileSystemSuite struct {
@@ -222,7 +223,7 @@ func (s *fileSystemSuite) TestClient() {
 
 func (s *fileSystemSuite) TestWithContext() {
 	fs := &FileSystem{}
-	ctx := context.Background()
+	ctx := s.T().Context()
 	fs = fs.WithContext(ctx)
 	s.Equal(ctx, fs.ctx)
 }

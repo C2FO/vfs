@@ -5,12 +5,11 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/fsouza/fake-gcs-server/fakestorage"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v7/utils"
 	"github.com/c2fo/vfs/v7/utils/authority"
-
-	"github.com/fsouza/fake-gcs-server/fakestorage"
 )
 
 type locationTestSuite struct {
