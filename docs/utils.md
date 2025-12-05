@@ -6,22 +6,29 @@
     import "github.com/c2fo/vfs/v7/utils"
 ```
 
+#### Error Variables
+
+```go
+var (
+    // ErrBadAbsFilePath is returned when a file path is not absolute
+    ErrBadAbsFilePath = errors.New("absolute file path is invalid - must include leading slash and may not include trailing slash")
+    // ErrBadRelFilePath is returned when a file path is not relative
+    ErrBadRelFilePath = errors.New("relative file path is invalid - may not include leading or trailing slashes")
+    // ErrBadAbsLocationPath is returned when a file path is not absolute
+    ErrBadAbsLocationPath = errors.New("absolute location path is invalid - must include leading and trailing slashes")
+    // ErrBadRelLocationPath is returned when a file path is not relative
+    ErrBadRelLocationPath = errors.New("relative location path is invalid - may not include leading slash but must include trailing slash")
+    // ErrBadPrefix is returned when a prefix is not relative or ends in / or is empty
+    ErrBadPrefix = errors.New("prefix is invalid - may not include leading or trailing slashes and may not be empty")
+)
+```
+
 #### Error Constants
 
 ```go
 const (
-	// ErrBadAbsFilePath constant is returned when a file path is not absolute
-	ErrBadAbsFilePath = "absolute file path is invalid - must include leading slash and may not include trailing slash"
-	// ErrBadRelFilePath constant is returned when a file path is not relative
-	ErrBadRelFilePath = "relative file path is invalid - may not include leading or trailing slashes"
-	// ErrBadAbsLocationPath constant is returned when a file path is not absolute
-	ErrBadAbsLocationPath = "absolute location path is invalid - must include leading and trailing slashes"
-	// ErrBadRelLocationPath constant is returned when a file path is not relative
-	ErrBadRelLocationPath = "relative location path is invalid - may not include leading slash but must include trailing slash"
-	// TouchCopyMinBufferSize min buffer size used in TouchCopyBuffered in bytes
-	ErrBadPrefix = "prefix is invalid - may not include leading or trailing slashes and may not be empty"
-	// TouchCopyMinBufferSize min buffer size used in TouchCopyBuffered in bytes
-	TouchCopyMinBufferSize = 262144
+    // TouchCopyMinBufferSize min buffer size used in TouchCopyBuffered in bytes
+    TouchCopyMinBufferSize = 262144
 )
 ```
 

@@ -48,9 +48,7 @@ type File struct {
 	seekCalled      bool
 }
 
-func nilReference() error {
-	return errors.New("the target file passed in was nil")
-}
+var errNilReference = errors.New("the target file passed in was nil")
 
 // Close imitates io.Closer by resetting the cursor and setting a boolean
 func (f *File) Close() error {
@@ -300,7 +298,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 // after this is called, f's cursor will reset as if it had been closed.
 func (f *File) CopyToFile(target vfs.File) (err error) {
 	if f == nil || target == nil {
-		return nilReference()
+		return errNilReference
 	}
 	// Close file (f) reader regardless of an error
 	defer func() {
@@ -348,7 +346,7 @@ func (f *File) CopyToFile(target vfs.File) (err error) {
 // creating a copy of 'f' in "location".  'f' is subsequently  deleted
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	if f == nil || location == nil {
-		return nil, nilReference()
+		return nil, errNilReference
 	}
 
 	if exists, err := f.Exists(); !exists {
@@ -407,7 +405,7 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 // The receiver is always deleted (since it's being "moved")
 func (f *File) MoveToFile(file vfs.File) error {
 	if f == nil {
-		return nilReference()
+		return errNilReference
 	}
 
 	if exists, err := f.Exists(); !exists {

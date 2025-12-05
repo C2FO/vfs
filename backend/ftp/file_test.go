@@ -558,7 +558,7 @@ func (ts *fileTestSuite) TestCopyToLocation() {
 	newFile, err = sourceFile.CopyToLocation(targetLocation)
 	ts.Require().Error(err, "error is expected")
 	ts.Nil(newFile, "newFile is nil")
-	ts.Require().ErrorContains(err, utils.ErrBadRelFilePath, "error is correct type")
+	ts.Require().ErrorIs(err, utils.ErrBadRelFilePath, "error is correct type")
 }
 
 func (ts *fileTestSuite) TestMoveToFile_differentAuthority() {
@@ -745,7 +745,7 @@ func (ts *fileTestSuite) TestMoveToLocation() {
 	sourceFile.path = ""
 	newFile, err = sourceFile.MoveToLocation(targetLocation)
 	ts.Require().Error(err, "error is expected")
-	ts.Require().ErrorContains(err, utils.ErrBadRelFilePath, "error is the right type of error")
+	ts.Require().ErrorIs(err, utils.ErrBadRelFilePath, "error is the right type of error")
 	ts.Nil(newFile, "newFile should be nil on error")
 }
 
@@ -1132,17 +1132,18 @@ func (ts *fileTestSuite) TestStringer() {
 }
 
 func (ts *fileTestSuite) TestNewFile() {
-	ftpFS := &FileSystem{}
+	var ftpFS *FileSystem
 	// ftpFS is nil
 	_, err := ftpFS.NewFile("user@host.com", "")
-	ts.Require().Error(err, "non-nil ftp.FileSystem pointer is required")
+	ts.Require().ErrorIs(err, errFileSystemRequired)
 
+	ftpFS = &FileSystem{}
 	// authority is ""
 	_, err = ftpFS.NewFile("", "asdf")
-	ts.Require().Error(err, "non-empty strings for bucket and key are required")
+	ts.Require().ErrorIs(err, errAuthorityAndPathRequired)
 	// path is ""
 	_, err = ftpFS.NewFile("user@host.com", "")
-	ts.Require().Error(err, "non-empty strings for bucket and key are required")
+	ts.Require().ErrorIs(err, errAuthorityAndPathRequired)
 
 	authorityStr := "user@host.com"
 	key := "/path/to/file"

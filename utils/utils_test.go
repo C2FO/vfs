@@ -233,7 +233,7 @@ func (s *utilsSuite) TestValidateAbsFilePath() {
 		s.Run(validationTest.message, func() {
 			err := utils.ValidateAbsoluteFilePath(validationTest.path)
 			if !validationTest.passExpected {
-				s.Require().EqualError(err, utils.ErrBadAbsFilePath, validationTest.message)
+				s.Require().ErrorIs(err, utils.ErrBadAbsFilePath, validationTest.message)
 			} else {
 				s.Require().NoError(err, validationTest.message)
 			}
@@ -299,7 +299,7 @@ func (s *utilsSuite) TestValidateAbsLocationPath() {
 		s.Run(validationTest.message, func() {
 			err := utils.ValidateAbsoluteLocationPath(validationTest.path)
 			if !validationTest.passExpected {
-				s.Require().EqualError(err, utils.ErrBadAbsLocationPath, validationTest.message)
+				s.Require().ErrorIs(err, utils.ErrBadAbsLocationPath, validationTest.message)
 			} else {
 				s.Require().NoError(err, validationTest.message)
 			}
@@ -365,7 +365,7 @@ func (s *utilsSuite) TestValidateRelFilePath() {
 		s.Run(validationTest.message, func() {
 			err := utils.ValidateRelativeFilePath(validationTest.path)
 			if !validationTest.passExpected {
-				s.Require().EqualError(err, utils.ErrBadRelFilePath, validationTest.message)
+				s.Require().ErrorIs(err, utils.ErrBadRelFilePath, validationTest.message)
 			} else {
 				s.Require().NoError(err, validationTest.message)
 			}
@@ -431,7 +431,7 @@ func (s *utilsSuite) TestValidateRelLocationPath() {
 		s.Run(validationTest.message, func() {
 			err := utils.ValidateRelativeLocationPath(validationTest.path)
 			if !validationTest.passExpected {
-				s.Require().EqualError(err, utils.ErrBadRelLocationPath, validationTest.message)
+				s.Require().ErrorIs(err, utils.ErrBadRelLocationPath, validationTest.message)
 			} else {
 				s.Require().NoError(err, validationTest.message)
 			}
@@ -521,7 +521,7 @@ func (s *utilsSuite) TestValidatePrefix() {
 		s.Run(validationTest.message, func() {
 			err := utils.ValidatePrefix(validationTest.prefix)
 			if !validationTest.passExpected {
-				s.Require().EqualError(err, utils.ErrBadPrefix, validationTest.message)
+				s.Require().ErrorIs(err, utils.ErrBadPrefix, validationTest.message)
 			} else {
 				s.Require().NoError(err, validationTest.message)
 			}
