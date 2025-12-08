@@ -32,12 +32,12 @@ type fileOpener func(c Client, p string, f int) (ReadWriteSeekCloser, error)
 
 // LastModified returns the LastModified property of sftp file.
 func (f *File) LastModified() (*time.Time, error) {
-	client, err := f.Location().FileSystem().(*FileSystem).Client(f.Location().Authority())
+	client, err := f.location.fileSystem.Client(f.Location().Authority())
 	if err != nil {
 		return nil, utils.WrapLastModifiedError(err)
 	}
 	// start timer once action is completed
-	defer f.Location().FileSystem().(*FileSystem).connTimerStart()
+	defer f.location.fileSystem.connTimerStart()
 
 	userinfo, err := client.Stat(f.Path())
 	if err != nil {
@@ -58,12 +58,12 @@ func (f *File) Path() string {
 
 // Exists returns a boolean of whether the file exists on the sftp server
 func (f *File) Exists() (bool, error) {
-	client, err := f.Location().FileSystem().(*FileSystem).Client(f.Location().Authority())
+	client, err := f.location.fileSystem.Client(f.Location().Authority())
 	if err != nil {
 		return false, utils.WrapExistsError(err)
 	}
 	// start timer once action is completed
-	defer f.Location().FileSystem().(*FileSystem).connTimerStart()
+	defer f.location.fileSystem.connTimerStart()
 
 	_, err = client.Stat(f.Path())
 	if err != nil && errors.Is(err, os.ErrNotExist) {
@@ -79,8 +79,8 @@ func (f *File) Exists() (bool, error) {
 // Returns error if unable to touch File.
 func (f *File) Touch() error {
 	// restart timer once action is completed
-	f.Location().FileSystem().(*FileSystem).connTimerStop()
-	defer f.Location().FileSystem().(*FileSystem).connTimerStart()
+	f.location.fileSystem.connTimerStop()
+	defer f.location.fileSystem.connTimerStart()
 
 	exists, err := f.Exists()
 	if err != nil {
@@ -96,13 +96,13 @@ func (f *File) Touch() error {
 		return f.Close()
 	}
 
-	client, err := f.Location().FileSystem().(*FileSystem).Client(f.Location().Authority())
+	client, err := f.location.fileSystem.Client(f.Location().Authority())
 	if err != nil {
 		return utils.WrapTouchError(err)
 	}
 
 	// set permissions if default permissions are set
-	err = f.setPermissions(client, f.Location().FileSystem().(*FileSystem).options)
+	err = f.setPermissions(client, f.location.fileSystem.options)
 	if err != nil {
 		return utils.WrapTouchError(err)
 	}
@@ -114,12 +114,12 @@ func (f *File) Touch() error {
 
 // Size returns the size of the remote file.
 func (f *File) Size() (uint64, error) {
-	client, err := f.Location().FileSystem().(*FileSystem).Client(f.Location().Authority())
+	client, err := f.location.fileSystem.Client(f.Location().Authority())
 	if err != nil {
 		return 0, utils.WrapSizeError(err)
 	}
 	// start timer once action is completed
-	defer f.Location().FileSystem().(*FileSystem).connTimerStart()
+	defer f.location.fileSystem.connTimerStart()
 
 	userinfo, err := client.Stat(f.Path())
 	if err != nil {
@@ -144,8 +144,8 @@ func (f *File) Location() vfs.Location {
 func (f *File) MoveToFile(t vfs.File) error {
 	// sftp rename if vfs is sftp and for the same user/host
 	if f.Location().FileSystem().Scheme() == t.Location().FileSystem().Scheme() &&
-		f.Location().Authority().UserInfo().Username() == t.(*File).Location().Authority().UserInfo().Username() &&
-		f.Location().Authority().HostPortStr() == t.(*File).Location().Authority().HostPortStr() {
+		f.Location().Authority().UserInfo().Username() == t.Location().Authority().UserInfo().Username() &&
+		f.Location().Authority().HostPortStr() == t.Location().Authority().HostPortStr() {
 		// ensure destination exists before moving
 		exists, err := t.Location().Exists()
 		if err != nil {
@@ -153,12 +153,12 @@ func (f *File) MoveToFile(t vfs.File) error {
 		}
 		if !exists {
 			// it doesn't matter which client we use since they are effectively the same
-			client, err := f.Location().FileSystem().(*FileSystem).Client(f.Location().Authority())
+			client, err := f.location.fileSystem.Client(f.Location().Authority())
 			if err != nil {
 				return utils.WrapMoveToFileError(err)
 			}
 			// start timer once action is completed
-			defer f.Location().FileSystem().(*FileSystem).connTimerStart()
+			defer f.location.fileSystem.connTimerStart()
 
 			err = client.MkdirAll(t.Location().Path())
 			if err != nil {
@@ -218,8 +218,8 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 
 	fileBufferSize := 0
 
-	if f.Location().FileSystem().(*FileSystem).options.FileBufferSize > 0 {
-		fileBufferSize = f.Location().FileSystem().(*FileSystem).options.FileBufferSize
+	if f.location.fileSystem.options.FileBufferSize > 0 {
+		fileBufferSize = f.location.fileSystem.options.FileBufferSize
 	}
 
 	if err := utils.TouchCopyBuffered(file, f, fileBufferSize); err != nil {
@@ -249,12 +249,12 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 // Delete removes the remote file.  Error is returned, if any.
 func (f *File) Delete(_ ...options.DeleteOption) error {
-	client, err := f.Location().FileSystem().(*FileSystem).Client(f.Location().Authority())
+	client, err := f.location.fileSystem.Client(f.Location().Authority())
 	if err != nil {
 		return utils.WrapDeleteError(err)
 	}
 	// start timer once action is completed
-	defer f.Location().FileSystem().(*FileSystem).connTimerStart()
+	defer f.location.fileSystem.connTimerStart()
 
 	return client.Remove(f.Path())
 }
@@ -262,8 +262,8 @@ func (f *File) Delete(_ ...options.DeleteOption) error {
 // Close calls the underlying sftp.File Close, if opened, and clears the internal pointer
 func (f *File) Close() error {
 	// restart timer once action is completed
-	f.Location().FileSystem().(*FileSystem).connTimerStop()
-	defer f.Location().FileSystem().(*FileSystem).connTimerStart()
+	f.location.fileSystem.connTimerStop()
+	defer f.location.fileSystem.connTimerStart()
 
 	f.seekCalled = false
 	f.readCalled = false
@@ -283,8 +283,8 @@ func (f *File) Close() error {
 // Read calls the underlying sftp.File Read.
 func (f *File) Read(p []byte) (n int, err error) {
 	// restart timer once action is completed
-	f.Location().FileSystem().(*FileSystem).connTimerStop()
-	defer f.Location().FileSystem().(*FileSystem).connTimerStart()
+	f.location.fileSystem.connTimerStop()
+	defer f.location.fileSystem.connTimerStart()
 
 	sftpfile, err := f.openFile(os.O_RDONLY)
 	if err != nil {
@@ -310,8 +310,8 @@ func (f *File) Read(p []byte) (n int, err error) {
 // Seek calls the underlying sftp.File Seek.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
 	// restart timer once action is completed
-	f.Location().FileSystem().(*FileSystem).connTimerStop()
-	defer f.Location().FileSystem().(*FileSystem).connTimerStart()
+	f.location.fileSystem.connTimerStop()
+	defer f.location.fileSystem.connTimerStart()
 
 	sftpfile, err := f.openFile(os.O_RDONLY)
 	if err != nil {
@@ -330,8 +330,8 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 // Write calls the underlying sftp.File Write.
 func (f *File) Write(data []byte) (res int, err error) {
 	// restart timer once action is completed
-	f.Location().FileSystem().(*FileSystem).connTimerStop()
-	defer f.Location().FileSystem().(*FileSystem).connTimerStart()
+	f.location.fileSystem.connTimerStop()
+	defer f.location.fileSystem.connTimerStart()
 
 	// unless seek or read is called first, writes should replace a file (not edit)
 	// writes should edit a file if seek or read is called first
@@ -354,11 +354,10 @@ func (f *File) Write(data []byte) (res int, err error) {
 
 // URI returns the File's URI as a string.
 func (f *File) URI() string {
-	loc := f.Location().(*Location)
 	return utils.EncodeURI(
 		f.Location().FileSystem().Scheme(),
-		loc.Authority().UserInfo().Username(),
-		loc.Authority().HostPortStr(),
+		f.location.Authority().UserInfo().Username(),
+		f.location.Authority().HostPortStr(),
 		f.Path(),
 	)
 }
@@ -456,7 +455,7 @@ func (f *File) openFile(flags int) (ReadWriteSeekCloser, error) { //nolint:gocyc
 }
 
 func (f *File) _open(flags int) (ReadWriteSeekCloser, error) {
-	client, err := f.Location().FileSystem().(*FileSystem).Client(f.Location().Authority())
+	client, err := f.location.fileSystem.Client(f.Location().Authority())
 	if err != nil {
 		return nil, err
 	}
@@ -484,7 +483,7 @@ func (f *File) _open(flags int) (ReadWriteSeekCloser, error) {
 
 	// chmod file if default permissions are set and opening for write
 	if flags&os.O_WRONLY != 0 {
-		err = f.setPermissions(client, f.Location().FileSystem().(*FileSystem).options)
+		err = f.setPermissions(client, f.location.fileSystem.options)
 		if err != nil {
 			return nil, err
 		}
@@ -522,12 +521,12 @@ func defaultOpenFile(c Client, p string, f int) (ReadWriteSeekCloser, error) {
 }
 
 func (f *File) sftpRename(target *File) error {
-	client, err := f.Location().FileSystem().(*FileSystem).Client(f.Location().Authority())
+	client, err := f.location.fileSystem.Client(f.Location().Authority())
 	if err != nil {
 		return err
 	}
 	// start timer once action is completed
-	defer f.Location().FileSystem().(*FileSystem).connTimerStart()
+	defer f.location.fileSystem.connTimerStart()
 
 	if err := client.Rename(f.Path(), target.Path()); err != nil {
 		return err

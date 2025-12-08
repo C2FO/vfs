@@ -228,17 +228,19 @@ func (lt *locationTestSuite) TestListByPrefix() {
 	lt.Require().ErrorIs(err, utils.ErrBadPrefix, "err should be correct type")
 	lt.Equal(expectedEmptyStringSlice, fileList, "fileList should be empty string slice")
 
+	ftpLoc := loc.(*Location)
+
 	// error getting client
 	defaultClientGetter = clientGetterReturnsError
-	loc.(*Location).fileSystem.WithClient(nil)
-	loc.(*Location).fileSystem.dataconn = nil
+	ftpLoc.fileSystem.WithClient(nil)
+	ftpLoc.fileSystem.dataconn = nil
 	fileList, err = loc.ListByPrefix(prefix)
 	lt.Require().Error(err, "error expected")
 	lt.Require().ErrorIs(err, errClientGetter, "err should be correct type")
 	lt.Equal(expectedEmptyStringSlice, fileList, "fileList should be empty string slice")
 
 	// error calling client.List()
-	loc.(*Location).fileSystem.WithClient(lt.client)
+	ftpLoc.fileSystem.WithClient(lt.client)
 	listErr := errors.New("some error")
 	lt.client.EXPECT().
 		List(locPath).
