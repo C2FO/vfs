@@ -2,7 +2,6 @@ package s3
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -65,34 +64,22 @@ func GetClient(opt Options) (*s3.Client, error) {
 		}
 
 		if opt.AccessKeyID != "" && opt.SecretAccessKey != "" {
-
+			staticCreds := credentials.NewStaticCredentialsProvider(
+				opt.AccessKeyID,
+				opt.SecretAccessKey,
+				opt.SessionToken,
+			)
 			if opt.RoleARN != "" {
-				awsConfigFromOptions, err := config.LoadDefaultConfig(context.Background(),
-					config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-						opt.AccessKeyID,
-						opt.SecretAccessKey,
-						opt.SessionToken,
-					)),
-				)
-				// Only use the new config if there were no errors loading it, otherwise try with default config
-				if err == nil {
-					awsConfig = awsConfigFromOptions
-				}
-				creds1 := stscreds.NewAssumeRoleProvider(sts.NewFromConfig(awsConfig), opt.RoleARN)
-				opts.Credentials = aws.NewCredentialsCache(creds1)
-				credsValue, err := opts.Credentials.Retrieve(context.Background())
-				if err != nil {
-					fmt.Println("Credentials not retrieved:", err)
-
-				}
-				fmt.Println("Credentials retrieved:", credsValue)
+				// Use static credentials to assume the specified role
+				stsClient := sts.New(sts.Options{
+					Region:      opt.Region,
+					Credentials: staticCreds,
+				})
+				opts.Credentials = aws.NewCredentialsCache(stscreds.NewAssumeRoleProvider(stsClient, opt.RoleARN))
 
 			} else {
-				opts.Credentials = credentials.NewStaticCredentialsProvider(
-					opt.AccessKeyID,
-					opt.SecretAccessKey,
-					opt.SessionToken,
-				)
+				// Use static credentials directly
+				opts.Credentials = staticCreds
 			}
 		} else if opt.RoleARN != "" {
 			// For a provided role with no Secret and Key provided, attempt to assume the role using the default config
