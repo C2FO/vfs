@@ -76,7 +76,6 @@ func GetClient(opt Options) (*s3.Client, error) {
 					Credentials: staticCreds,
 				})
 				opts.Credentials = aws.NewCredentialsCache(stscreds.NewAssumeRoleProvider(stsClient, opt.RoleARN))
-
 			} else {
 				// Use static credentials directly
 				opts.Credentials = staticCreds

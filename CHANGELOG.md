@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- AWS S3 role based auth for non-default profiles
+- AWS S3 role based auth for non-default profiles. Fixes #308.
 - Inline test case structs for consistency.
 - Use the correct assertion format overload.
 - Always use testing `Setenv` with automatic cleanup.
