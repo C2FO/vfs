@@ -619,7 +619,9 @@ func (f *File) isSameAuth(targetFile *File) (bool, types.ObjectCannedACL) {
 
 	// since access key and session token are mutually exclusive, one will be nil
 	// if both are the same, we're using the same credentials
-	isSameAccount := (fileOptions.AccessKeyID == targetOptions.AccessKeyID) && (fileOptions.SessionToken == targetOptions.SessionToken)
+	isSameAccount := (fileOptions.AccessKeyID == targetOptions.AccessKeyID) &&
+		(fileOptions.RoleARN == targetOptions.RoleARN) &&
+		(fileOptions.SessionToken == targetOptions.SessionToken)
 
 	return isSameAccount, ACL
 }

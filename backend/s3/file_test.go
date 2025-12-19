@@ -920,6 +920,68 @@ func (ts *fileTestSuite) TestWriteOperations() {
 	}
 }
 
+func (ts *fileTestSuite) TestIsSameAuth() {
+	tests := []struct {
+		name          string
+		sourceOptions Options
+		targetOptions Options
+		expectedSame  bool
+	}{
+		{
+			name:          "same AccessKeyID - same auth",
+			sourceOptions: Options{AccessKeyID: "key1"},
+			targetOptions: Options{AccessKeyID: "key1"},
+			expectedSame:  true,
+		},
+		{
+			name:          "different AccessKeyID - different auth",
+			sourceOptions: Options{AccessKeyID: "key1"},
+			targetOptions: Options{AccessKeyID: "key2"},
+			expectedSame:  false,
+		},
+		{
+			name:          "same SessionToken - same auth",
+			sourceOptions: Options{AccessKeyID: "key1", SessionToken: "token1"},
+			targetOptions: Options{AccessKeyID: "key1", SessionToken: "token2"},
+			expectedSame:  false,
+		},
+		{
+			name:          "all credentials match - same auth",
+			sourceOptions: Options{AccessKeyID: "key1", RoleARN: "arn:aws:iam::123456789:role/MyRole", SessionToken: "token1"},
+			targetOptions: Options{AccessKeyID: "key1", RoleARN: "arn:aws:iam::123456789:role/MyRole", SessionToken: "token1"},
+			expectedSame:  true,
+		},
+		{
+			name:          "same key, different roles",
+			sourceOptions: Options{AccessKeyID: "key1", RoleARN: ""},
+			targetOptions: Options{AccessKeyID: "key1", RoleARN: "arn:aws:iam::123456789:role/MyRole"},
+			expectedSame:  false,
+		},
+	}
+	for _, tt := range tests { //nolint:gocritic //rangeValCopy
+		ts.Run(tt.name, func() {
+			auth, err := authority.NewAuthority(bucket)
+			ts.Require().NoError(err)
+			sourceFile := &File{
+				location: &Location{
+					fileSystem: &FileSystem{options: tt.sourceOptions},
+					authority:  auth,
+				},
+				key: "/source/file.txt",
+			}
+			targetFile := &File{
+				location: &Location{
+					fileSystem: &FileSystem{options: tt.targetOptions},
+					authority:  auth,
+				},
+				key: "/target/file.txt",
+			}
+			isSame, _ := sourceFile.isSameAuth(targetFile)
+			ts.Equal(tt.expectedSame, isSame, "isSameAuth result mismatch")
+		})
+	}
+}
+
 func TestFile(t *testing.T) {
 	suite.Run(t, new(fileTestSuite))
 }
