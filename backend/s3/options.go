@@ -64,12 +64,24 @@ func GetClient(opt Options) (*s3.Client, error) {
 		}
 
 		if opt.AccessKeyID != "" && opt.SecretAccessKey != "" {
-			opts.Credentials = credentials.NewStaticCredentialsProvider(
+			staticCreds := credentials.NewStaticCredentialsProvider(
 				opt.AccessKeyID,
 				opt.SecretAccessKey,
 				opt.SessionToken,
 			)
+			if opt.RoleARN != "" {
+				// Use static credentials to assume the specified role
+				stsClient := sts.New(sts.Options{
+					Region:      opt.Region,
+					Credentials: staticCreds,
+				})
+				opts.Credentials = aws.NewCredentialsCache(stscreds.NewAssumeRoleProvider(stsClient, opt.RoleARN))
+			} else {
+				// Use static credentials directly
+				opts.Credentials = staticCreds
+			}
 		} else if opt.RoleARN != "" {
+			// For a provided role with no Secret and Key provided, attempt to assume the role using the default config
 			opts.Credentials = aws.NewCredentialsCache(stscreds.NewAssumeRoleProvider(sts.NewFromConfig(awsConfig), opt.RoleARN))
 		}
 

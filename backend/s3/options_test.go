@@ -67,10 +67,25 @@ func (o *optionsTestSuite) TestGetClient() {
 			},
 		},
 		{
-			name: "role ARN set",
+			name: "role ARN set using default config",
 			opts: Options{
 				AccessKeyID:     "",
 				SecretAccessKey: "",
+				Region:          "some-region",
+				RoleARN:         "arn:aws:iam::123456789012:role/my-role",
+			},
+			expected: func(o *optionsTestSuite, client *s3.Client, err error) {
+				o.Require().NoError(err)
+				o.NotNil(client, "client is set")
+				o.Equal("some-region", client.Options().Region, "region is set")
+				o.NotNil(client.Options().Credentials, "credentials are set")
+			},
+		},
+		{
+			name: "role ARN set using key and secret passed in options",
+			opts: Options{
+				AccessKeyID:     "AKIAIOSFODNN7EXAMPLE",
+				SecretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
 				Region:          "some-region",
 				RoleARN:         "arn:aws:iam::123456789012:role/my-role",
 			},

@@ -98,7 +98,7 @@ Additional configuration options available through s3.Options:
 - SecretAccessKey: AWS secret access key
 - SessionToken: AWS session token (required for temporary credentials)
 - Region: AWS region (e.g., "us-west-2")
-- RoleARN: IAM role ARN for cross-account access
+- RoleARN: IAM role ARN for cross-account access (can be combined with static credentials)
 - Endpoint: Custom S3 endpoint (useful for testing with S3-compatible storage)
 - ACL: Canned ACL for objects (e.g., "private", "public-read")
 - ForcePathStyle: Use path-style addressing (required for some S3-compatible services)
@@ -109,6 +109,40 @@ Additional configuration options available through s3.Options:
 - FileBufferSize: Buffer size in bytes for file operations
 - DownloadPartitionSize: Partition size in bytes for multipart downloads
 - UploadPartitionSize: Partition size in bytes for multipart uploads
+
+# Cross-Account Access with IAM Role Assumption
+
+The S3 backend supports assuming an IAM role for cross-account access. This is useful when a service
+account in one AWS organization needs to access S3 buckets in a different organization's account.
+
+There are two ways to use role assumption:
+
+1. With explicit static credentials (recommended for cross-org access):
+
+	opts := s3.Options{
+	    AccessKeyID:     "AKIAIOSFODNN7EXAMPLE",      // Service account credentials
+	    SecretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+	    Region:          "us-west-2",
+	    RoleARN:         "arn:aws:iam::EXTERNAL_ACCOUNT:role/cross-account-role",
+	}
+	client, err := s3.GetClient(opts)
+
+This creates an STS client using the static credentials, then assumes the specified role.
+
+2. With default credential chain (for same-org or instance profile scenarios):
+
+	opts := s3.Options{
+	    Region:  "us-west-2",
+	    RoleARN: "arn:aws:iam::123456789012:role/MyRole",
+	}
+	client, err := s3.GetClient(opts)
+
+This uses credentials from environment variables, shared credentials file, or instance profile
+to assume the specified role.
+
+Prerequisites:
+  - The source IAM user/role must have sts:AssumeRole permission for the target role
+  - The target role's trust policy must allow assumption from the source identity
 
 # AWS SDK
 
