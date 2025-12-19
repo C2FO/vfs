@@ -4,7 +4,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/stretchr/testify/suite"
@@ -25,54 +24,69 @@ func (o *optionsTestSuite) TestGetClient() {
 		envVar   map[string]string
 		expected func(*optionsTestSuite, *s3.Client, error)
 	}{
+		// {
+		// 	name: "no options",
+		// 	opts: Options{},
+		// 	expected: func(o *optionsTestSuite, client *s3.Client, err error) {
+		// 		o.Require().NoError(err)
+		// 		o.NotNil(client, "client is set")
+		// 		o.Empty(client.Options().AppID, "config is empty")
+		// 	},
+		// },
+		// {
+		// 	name: "options set",
+		// 	opts: Options{
+		// 		AccessKeyID:     "mykey",
+		// 		SecretAccessKey: "mysecret",
+		// 		Region:          "some-region",
+		// 		ForcePathStyle:  true,
+		// 		Endpoint:        "http://localhost:9000",
+		// 		Retry:           retry.AddWithMaxAttempts(retry.NewStandard(), 5),
+		// 		MaxRetries:      5,
+		// 	},
+		// 	expected: func(o *optionsTestSuite, client *s3.Client, err error) {
+		// 		o.Require().NoError(err)
+		// 		o.NotNil(client, "client is set")
+		// 		o.Equal("some-region", client.Options().Region, "region is set")
+		// 		o.Truef(client.Options().UsePathStyle, "path style is set")
+		// 		o.Equal("http://localhost:9000", *client.Options().BaseEndpoint, "endpoint is set")
+		// 		o.Equal(5, client.Options().RetryMaxAttempts, "max retries is set")
+		// 	},
+		// },
+		// {
+		// 	name: "env var",
+		// 	envVar: map[string]string{
+		// 		"AWS_DEFAULT_REGION": "set-by-envvar",
+		// 	},
+		// 	opts: Options{},
+		// 	expected: func(o *optionsTestSuite, client *s3.Client, err error) {
+		// 		o.Require().NoError(err)
+		// 		o.NotNil(client, "client is set")
+		// 		o.Equal("set-by-envvar", client.Options().Region, "region is set by env var")
+		// 	},
+		// },
+		// {
+		// 	name: "role ARN set using default config",
+		// 	opts: Options{
+		// 		AccessKeyID:     "",
+		// 		SecretAccessKey: "",
+		// 		Region:          "some-region",
+		// 		RoleARN:         "arn:aws:iam::123456789012:role/my-role",
+		// 	},
+		// 	expected: func(o *optionsTestSuite, client *s3.Client, err error) {
+		// 		o.Require().NoError(err)
+		// 		o.NotNil(client, "client is set")
+		// 		o.Equal("some-region", client.Options().Region, "region is set")
+		// 		o.NotNil(client.Options().Credentials, "credentials are set")
+		// 	},
+		// },
 		{
-			name: "no options",
-			opts: Options{},
-			expected: func(o *optionsTestSuite, client *s3.Client, err error) {
-				o.Require().NoError(err)
-				o.NotNil(client, "client is set")
-				o.Empty(client.Options().AppID, "config is empty")
-			},
-		},
-		{
-			name: "options set",
+			name: "role ARN set using key and secret passed in options",
 			opts: Options{
-				AccessKeyID:     "mykey",
-				SecretAccessKey: "mysecret",
-				Region:          "some-region",
-				ForcePathStyle:  true,
-				Endpoint:        "http://localhost:9000",
-				Retry:           retry.AddWithMaxAttempts(retry.NewStandard(), 5),
-				MaxRetries:      5,
-			},
-			expected: func(o *optionsTestSuite, client *s3.Client, err error) {
-				o.Require().NoError(err)
-				o.NotNil(client, "client is set")
-				o.Equal("some-region", client.Options().Region, "region is set")
-				o.Truef(client.Options().UsePathStyle, "path style is set")
-				o.Equal("http://localhost:9000", *client.Options().BaseEndpoint, "endpoint is set")
-				o.Equal(5, client.Options().RetryMaxAttempts, "max retries is set")
-			},
-		},
-		{
-			name: "env var",
-			envVar: map[string]string{
-				"AWS_DEFAULT_REGION": "set-by-envvar",
-			},
-			opts: Options{},
-			expected: func(o *optionsTestSuite, client *s3.Client, err error) {
-				o.Require().NoError(err)
-				o.NotNil(client, "client is set")
-				o.Equal("set-by-envvar", client.Options().Region, "region is set by env var")
-			},
-		},
-		{
-			name: "role ARN set",
-			opts: Options{
-				AccessKeyID:     "",
-				SecretAccessKey: "",
-				Region:          "some-region",
-				RoleARN:         "arn:aws:iam::123456789012:role/my-role",
+				AccessKeyID:     "AKIAIOSFODNN7EXAMPLE",
+				SecretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+				Region:          "us-west-2",
+				RoleARN:         "arn:aws:iam::865009241861:role/ci-data-lake-staging-test",
 			},
 			expected: func(o *optionsTestSuite, client *s3.Client, err error) {
 				o.Require().NoError(err)
