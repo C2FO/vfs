@@ -1,11 +1,11 @@
 package gs
 
 import (
+	"context"
 	"errors"
 	"path"
 
 	"cloud.google.com/go/storage"
-	"golang.org/x/net/context"
 	"google.golang.org/api/option"
 
 	"github.com/c2fo/vfs/v7"
