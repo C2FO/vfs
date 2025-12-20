@@ -39,7 +39,7 @@ func (f *File) Close() error {
 			f.isDirty = false
 		}()
 
-		client, err := f.Location().FileSystem().(*FileSystem).Client()
+		client, err := f.location.fileSystem.Client()
 		if err != nil {
 			return utils.WrapCloseError(err)
 		}
@@ -125,7 +125,7 @@ func (f *File) String() string {
 
 // Exists returns true/false if the file exists/does not exist on Azure
 func (f *File) Exists() (bool, error) {
-	client, err := f.Location().FileSystem().(*FileSystem).Client()
+	client, err := f.location.fileSystem.Client()
 	if err != nil {
 		return false, utils.WrapExistsError(err)
 	}
@@ -186,7 +186,7 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 	azFile, ok := file.(*File)
 	if ok {
 		if f.isSameAuth(azFile) {
-			client, err := f.Location().FileSystem().(*FileSystem).Client()
+			client, err := f.location.fileSystem.Client()
 			if err != nil {
 				return utils.WrapCopyToFileError(err)
 			}
@@ -197,8 +197,8 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 	// Otherwise, use TouchCopyBuffered using io.CopyBuffer
 	fileBufferSize := 0
 
-	if fs, ok := f.Location().FileSystem().(*FileSystem); ok {
-		fileBufferSize = fs.options.FileBufferSize
+	if f.location.fileSystem.options.FileBufferSize > 0 {
+		fileBufferSize = f.location.fileSystem.options.FileBufferSize
 	}
 
 	if terr := utils.TouchCopyBuffered(file, f, fileBufferSize); terr != nil {
@@ -240,7 +240,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		return utils.WrapDeleteError(err)
 	}
 
-	client, err := f.Location().FileSystem().(*FileSystem).Client()
+	client, err := f.location.fileSystem.Client()
 	if err != nil {
 		return utils.WrapDeleteError(err)
 	}
@@ -267,7 +267,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 
 // LastModified returns the last modified time as a time.Time
 func (f *File) LastModified() (*time.Time, error) {
-	client, err := f.Location().FileSystem().(*FileSystem).Client()
+	client, err := f.location.fileSystem.Client()
 	if err != nil {
 		return nil, utils.WrapLastModifiedError(err)
 	}
@@ -280,7 +280,7 @@ func (f *File) LastModified() (*time.Time, error) {
 
 // Size returns the size of the blob
 func (f *File) Size() (uint64, error) {
-	client, err := f.Location().FileSystem().(*FileSystem).Client()
+	client, err := f.location.fileSystem.Client()
 	if err != nil {
 		return 0, utils.WrapSizeError(err)
 	}
@@ -309,7 +309,7 @@ func (f *File) Touch() error {
 		return utils.WrapTouchError(err)
 	}
 
-	client, err := f.Location().FileSystem().(*FileSystem).Client()
+	client, err := f.location.fileSystem.Client()
 	if err != nil {
 		return utils.WrapTouchError(err)
 	}
@@ -352,7 +352,7 @@ func (f *File) URI() string {
 
 func (f *File) checkTempFile() error {
 	if f.tempFile == nil {
-		client, err := f.Location().FileSystem().(*FileSystem).Client()
+		client, err := f.location.fileSystem.Client()
 		if err != nil {
 			return err
 		}
@@ -394,7 +394,7 @@ func (f *File) checkTempFile() error {
 }
 
 func (f *File) isSameAuth(target *File) bool {
-	sourceOptions := f.Location().FileSystem().(*FileSystem).options
-	targetOptions := target.Location().FileSystem().(*FileSystem).options
+	sourceOptions := f.location.fileSystem.options
+	targetOptions := target.location.fileSystem.options
 	return sourceOptions.AccountKey == targetOptions.AccountKey
 }

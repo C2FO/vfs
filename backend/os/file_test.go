@@ -145,19 +145,21 @@ func (s *osFileTest) TestRead() {
 	// setup file for err out of opening
 	f, err = s.tmploc.NewFile("test_files/readFileFail.txt")
 	s.Require().NoError(err)
-	f.(*File).useTempFile = true
-	f.(*File).fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("bad opener") }
+	osFile := f.(*File)
+
+	osFile.useTempFile = true
+	osFile.fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("bad opener") }
 	data = make([]byte, 4)
 	b, err = f.Read(data)
 	s.Require().Error(err)
 	s.Zero(b)
 
-	f.(*File).fileOpener = nil
+	osFile.fileOpener = nil
 	b, err = f.Write([]byte("blah"))
 	s.Require().NoError(err)
 	s.Equal(4, b)
 	s.Require().NoError(f.Close())
-	f.(*File).fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("bad opener") }
+	osFile.fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("bad opener") }
 	data = make([]byte, 4)
 	b, err = f.Read(data)
 	s.Require().Error(err)
@@ -206,7 +208,7 @@ func (s *osFileTest) TestCopyToFile() {
 	otherFile.EXPECT().Write([]uint8(expectedText)).Return(len(expectedText), nil)
 	otherFile.EXPECT().Close().Return(nil)
 	otherFile.EXPECT().Name().Return("other.txt")
-	otherFile.EXPECT().Location().Return(vfs.Location(&location))
+	otherFile.EXPECT().Location().Return(&location)
 
 	otherFs.EXPECT().NewFile("", "/some/path/other.txt").Return(otherFile, nil)
 
@@ -225,7 +227,7 @@ func (s *osFileTest) TestEmptyCopyToFile() {
 	otherFile.EXPECT().Write([]uint8(expectedText)).Return(len(expectedText), nil)
 	otherFile.EXPECT().Close().Return(nil)
 	otherFile.EXPECT().Name().Return("other.txt")
-	otherFile.EXPECT().Location().Return(vfs.Location(&location))
+	otherFile.EXPECT().Location().Return(&location)
 
 	otherFs.EXPECT().NewFile("", "/some/path/other.txt").Return(otherFile, nil)
 
@@ -492,35 +494,37 @@ func (s *osFileTest) TestCursor() {
 	s.Equal(24, write)
 	s.Require().NoError(file.Close())
 
+	osFile := file.(*File)
+
 	_, serr := file.Seek(5, 0) // cursor 5 - opens fd to orig file
-	s.Equal(int64(5), file.(*File).cursorPos)
+	s.Equal(int64(5), osFile.cursorPos)
 	s.Require().NoError(serr)
 
 	data := make([]byte, 3)
 	sz, rerr := file.Read(data) // cursor 8 - orig file - data: "had"
 	s.Require().NoError(rerr)
-	s.Equal(int64(8), file.(*File).cursorPos)
+	s.Equal(int64(8), osFile.cursorPos)
 	s.Equal("had", string(data)) // orig file contents = "had"
 
 	negsz := int64(-sz)
 	_, serr2 := file.Seek(negsz, 1) // cursor 5 - orig file
-	s.Equal(int64(5), file.(*File).cursorPos)
+	s.Equal(int64(5), osFile.cursorPos)
 	s.Require().NoError(serr2)
 
 	// because seek and/or read were called before write, write is now in in-place edit mode (not truncate-write)
 	sz, werr = file.Write([]byte("has")) // cursor 8 - tempfile copy of orig - write on tempfile has occurred
 	s.Require().NoError(werr)
-	s.Equal(int64(8), file.(*File).cursorPos)
+	s.Equal(int64(8), osFile.cursorPos)
 	s.Equal(3, sz)
 
 	_, serr = file.Seek(5, 0) // cursor 5 - in temp file
-	s.Equal(int64(5), file.(*File).cursorPos)
+	s.Equal(int64(5), osFile.cursorPos)
 	s.Require().NoError(serr)
 
 	data = make([]byte, 3)
 	sz, rerr = file.Read(data)
 	s.Require().NoError(rerr)
-	s.Equal(int64(8), file.(*File).cursorPos)
+	s.Equal(int64(8), osFile.cursorPos)
 	s.Equal("has", string(data)) // tempFile contents = "has"
 	s.Equal(3, sz)
 
@@ -538,6 +542,8 @@ func (s *osFileTest) TestCursor() {
 	file, err = s.tmploc.NewFile("test_files/someFile.txt")
 	s.Require().NoError(err)
 
+	osFile = file.(*File)
+
 	expectedText = "the quick brown"
 	write, werr = file.Write([]byte(expectedText))
 	s.Require().NoError(werr, "write error not expected")
@@ -547,7 +553,7 @@ func (s *osFileTest) TestCursor() {
 
 	overwrite, err := file.Write([]byte("hello")) // cursor 5 of tempfile
 	s.Require().NoError(err)
-	s.Equal(int64(5), file.(*File).cursorPos)
+	s.Equal(int64(5), osFile.cursorPos)
 	s.Equal(5, overwrite)
 
 	data = make([]byte, 5)
@@ -567,7 +573,7 @@ func (s *osFileTest) TestCursor() {
 	s.Require().NoError(rerr)
 	s.Equal(3, rd)
 	s.Equal("llo", string(data))
-	s.Equal(int64(5), file.(*File).cursorPos)
+	s.Equal(int64(5), osFile.cursorPos)
 
 	_, serr = file.Seek(0, 0)
 	s.Require().NoError(serr)
@@ -594,12 +600,13 @@ func (s *osFileTest) TestCursorErrs() {
 	s.Require().Error(err)
 	s.Require().NoError(noFile.Close())
 
-	noFile.(*File).fileOpener = nil
-	noFile.(*File).useTempFile = false
+	osFile := noFile.(*File)
+	osFile.fileOpener = nil
+	osFile.useTempFile = false
 	b, err := noFile.Write([]byte("blah"))
 	s.Require().NoError(err)
 	s.Equal(4, b)
-	noFile.(*File).fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("bad opener") }
+	osFile.fileOpener = func(filePath string) (*os.File, error) { return nil, errors.New("bad opener") }
 	s.Require().Error(noFile.Close())
 }
 

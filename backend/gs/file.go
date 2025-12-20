@@ -102,7 +102,7 @@ func (f *File) tempToGCS() error {
 		return err
 	}
 
-	w := handle.NewWriter(f.Location().FileSystem().(*FileSystem).ctx)
+	w := handle.NewWriter(f.location.fileSystem.ctx)
 	defer func() { _ = w.Close() }()
 
 	for _, o := range f.opts {
@@ -183,7 +183,7 @@ func (f *File) getReader() (io.ReadCloser, error) {
 			}
 
 			// get range reader (from current cursor position to end of file)
-			reader, err := h.NewRangeReader(f.Location().FileSystem().(*FileSystem).ctx, f.cursorPos, -1)
+			reader, err := h.NewRangeReader(f.location.fileSystem.ctx, f.cursorPos, -1)
 			if err != nil {
 				return nil, err
 			}
@@ -319,7 +319,7 @@ func (f *File) initWriters() error {
 	if f.gcsWriter == nil {
 		if !f.seekCalled && !f.readCalled {
 			// setup cancelable context
-			ctx, cancel := context.WithCancel(f.Location().FileSystem().(*FileSystem).ctx)
+			ctx, cancel := context.WithCancel(f.location.fileSystem.ctx)
 			f.cancelFunc = cancel
 
 			// get object handle
@@ -425,7 +425,7 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 			tf.opts = f.opts
 		}
 
-		if f.isSameAuth(&f.Location().FileSystem().(*FileSystem).options) {
+		if f.isSameAuth(&f.location.fileSystem.options) {
 			return f.copyWithinGCSToFile(tf)
 		}
 	}
@@ -433,8 +433,8 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 	// Otherwise, use TouchCopyBuffered using io.CopyBuffer
 	fileBufferSize := 0
 
-	if f.Location().FileSystem().(*FileSystem).options.FileBufferSize > 0 {
-		fileBufferSize = f.Location().FileSystem().(*FileSystem).options.FileBufferSize
+	if f.location.fileSystem.options.FileBufferSize > 0 {
+		fileBufferSize = f.location.fileSystem.options.FileBufferSize
 	}
 
 	if err := utils.TouchCopyBuffered(file, f, fileBufferSize); err != nil {
@@ -495,7 +495,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 	if err != nil {
 		return utils.WrapDeleteError(err)
 	}
-	err = handle.Delete(f.Location().FileSystem().(*FileSystem).ctx)
+	err = handle.Delete(f.location.fileSystem.ctx)
 	if err != nil {
 		return utils.WrapDeleteError(err)
 	}
@@ -506,7 +506,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 			return utils.WrapDeleteError(err)
 		}
 		for _, handle := range handles {
-			err := handle.Delete(f.Location().FileSystem().(*FileSystem).ctx)
+			err := handle.Delete(f.location.fileSystem.ctx)
 			if err != nil {
 				return utils.WrapDeleteError(err)
 			}
@@ -568,7 +568,7 @@ func (f *File) updateLastModifiedByAttrUpdate() error {
 		return err
 	}
 
-	cctx, cancel := context.WithCancel(f.Location().FileSystem().(*FileSystem).ctx)
+	cctx, cancel := context.WithCancel(f.location.fileSystem.ctx)
 	defer cancel()
 
 	_, err = obj.Update(cctx, updateAttrs)
@@ -587,11 +587,11 @@ func (f *File) updateLastModifiedByAttrUpdate() error {
 }
 
 func (f *File) isBucketVersioningEnabled() (bool, error) {
-	client, err := f.Location().FileSystem().(*FileSystem).Client()
+	client, err := f.location.fileSystem.Client()
 	if err != nil {
 		return false, err
 	}
-	cctx, cancel := context.WithCancel(f.Location().FileSystem().(*FileSystem).ctx)
+	cctx, cancel := context.WithCancel(f.location.fileSystem.ctx)
 	defer cancel()
 	attrs, err := client.Bucket(f.Location().Authority().String()).Attrs(cctx)
 	if err != nil {
@@ -607,7 +607,7 @@ func (f *File) createEmptyFile() error {
 	}
 
 	// write zero length file.
-	ctx, cancel := context.WithCancel(f.Location().FileSystem().(*FileSystem).ctx)
+	ctx, cancel := context.WithCancel(f.location.fileSystem.ctx)
 	defer cancel()
 
 	w := handle.NewWriter(ctx)
@@ -630,7 +630,7 @@ func (f *File) createEmptyFile() error {
 }
 
 func (f *File) isSameAuth(opts *Options) bool {
-	fOptions := f.Location().FileSystem().(*FileSystem).options
+	fOptions := f.location.fileSystem.options
 
 	// If options are nil on both sides, assume Google's default context is used in both cases.
 	if opts == nil && reflect.DeepEqual(fOptions, Options{}) {
@@ -678,7 +678,7 @@ func (f *File) Name() string {
 
 // URI returns a full GCS URI string of the file.
 func (f *File) URI() string {
-	return utils.GetFileURI(vfs.File(f))
+	return utils.GetFileURI(f)
 }
 
 func (f *File) copyToLocalTempReader(tmpFile *os.File) error {
@@ -687,7 +687,7 @@ func (f *File) copyToLocalTempReader(tmpFile *os.File) error {
 		return err
 	}
 
-	outputReader, err := handle.NewReader(f.Location().FileSystem().(*FileSystem).ctx)
+	outputReader, err := handle.NewReader(f.location.fileSystem.ctx)
 	if err != nil {
 		return err
 	}
@@ -714,24 +714,24 @@ func (f *File) copyToLocalTempReader(tmpFile *os.File) error {
 
 // getObjectHandle returns cached Object struct for file
 func (f *File) getObjectHandle() (ObjectHandleCopier, error) {
-	client, err := f.Location().FileSystem().(*FileSystem).Client()
+	client, err := f.location.fileSystem.Client()
 	if err != nil {
 		return nil, err
 	}
 
 	handler := client.Bucket(f.Location().Authority().String()).Object(utils.RemoveLeadingSlash(f.key))
-	return &RetryObjectHandler{Retry: f.Location().FileSystem().(*FileSystem).retryer, handler: handler}, nil
+	return &RetryObjectHandler{Retry: f.location.fileSystem.retryer, handler: handler}, nil
 }
 
 // getObjectGenerationHandles returns Object generation structs for file
 func (f *File) getObjectGenerationHandles() ([]*storage.ObjectHandle, error) {
-	client, err := f.Location().FileSystem().(*FileSystem).Client()
+	client, err := f.location.fileSystem.Client()
 	var handles []*storage.ObjectHandle
 	if err != nil {
 		return nil, err
 	}
 	it := client.Bucket(f.Location().Authority().String()).
-		Objects(f.Location().FileSystem().(*FileSystem).ctx, &storage.Query{Versions: true, Prefix: utils.RemoveLeadingSlash(f.key)})
+		Objects(f.location.fileSystem.ctx, &storage.Query{Versions: true, Prefix: utils.RemoveLeadingSlash(f.key)})
 
 	for {
 		attrs, err := it.Next()
@@ -753,7 +753,7 @@ func (f *File) getObjectAttrs() (*storage.ObjectAttrs, error) {
 	if err != nil {
 		return nil, err
 	}
-	return handle.Attrs(f.Location().FileSystem().(*FileSystem).ctx)
+	return handle.Attrs(f.location.fileSystem.ctx)
 }
 
 func (f *File) copyWithinGCSToFile(targetFile *File) error {
@@ -774,6 +774,6 @@ func (f *File) copyWithinGCSToFile(targetFile *File) error {
 	copier.ContentType(attrs.ContentType)
 
 	// Just copy content.
-	_, cerr := copier.Run(f.Location().FileSystem().(*FileSystem).ctx)
+	_, cerr := copier.Run(f.location.fileSystem.ctx)
 	return cerr
 }

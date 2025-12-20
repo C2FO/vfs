@@ -128,7 +128,7 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 		input := f.getCopyObjectInput(tf)
 		// if input is not nil, use it to natively copy object
 		if input != nil {
-			client, err := f.Location().FileSystem().(*FileSystem).Client()
+			client, err := f.location.fileSystem.Client()
 			if err != nil {
 				return utils.WrapCopyToFileError(err)
 			}
@@ -141,7 +141,7 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 	}
 
 	// Otherwise, use TouchCopyBuffered using io.CopyBuffer
-	fileBufferSize := f.Location().FileSystem().(*FileSystem).options.FileBufferSize
+	fileBufferSize := f.location.fileSystem.options.FileBufferSize
 
 	if err := utils.TouchCopyBuffered(file, f, fileBufferSize); err != nil {
 		return utils.WrapCopyToFileError(err)
@@ -202,7 +202,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		return utils.WrapDeleteError(err)
 	}
 
-	client, err := f.Location().FileSystem().(*FileSystem).Client()
+	client, err := f.location.fileSystem.Client()
 	if err != nil {
 		return utils.WrapDeleteError(err)
 	}
@@ -328,7 +328,7 @@ func (f *File) tempToS3() error {
 	}
 
 	// write tempFileWriter to s3
-	client, err := f.Location().FileSystem().(*FileSystem).Client()
+	client, err := f.location.fileSystem.Client()
 	if err != nil {
 		return err
 	}
@@ -546,7 +546,7 @@ func (f *File) getHeadObject() (*s3.HeadObjectOutput, error) {
 		Key:    aws.String(f.key),
 		Bucket: aws.String(bucket),
 	}
-	client, err := f.Location().FileSystem().(*FileSystem).Client()
+	client, err := f.location.fileSystem.Client()
 	if err != nil {
 		return nil, err
 	}
@@ -594,7 +594,7 @@ func (f *File) getCopyObjectInput(targetFile *File) *s3.CopyObjectInput {
 		copyInput.ContentType = aws.String(contentType)
 	}
 
-	if f.Location().FileSystem().(*FileSystem).options.DisableServerSideEncryption {
+	if f.location.fileSystem.options.DisableServerSideEncryption {
 		copyInput.ServerSideEncryption = ""
 	}
 
@@ -602,8 +602,8 @@ func (f *File) getCopyObjectInput(targetFile *File) *s3.CopyObjectInput {
 }
 
 func (f *File) isSameAuth(targetFile *File) (bool, types.ObjectCannedACL) {
-	fileOptions := f.Location().FileSystem().(*FileSystem).options
-	targetOptions := targetFile.Location().FileSystem().(*FileSystem).options
+	fileOptions := f.location.fileSystem.options
+	targetOptions := targetFile.location.fileSystem.options
 
 	if (fileOptions == Options{}) && (targetOptions == Options{}) {
 		// if both opts are nil, we must be using the default credentials
@@ -627,7 +627,7 @@ func (f *File) isSameAuth(targetFile *File) (bool, types.ObjectCannedACL) {
 }
 
 func (f *File) copyS3ToLocalTempReader(tmpFile *os.File) error {
-	client, err := f.Location().FileSystem().(*FileSystem).Client()
+	client, err := f.location.fileSystem.Client()
 	if err != nil {
 		return err
 	}
@@ -653,11 +653,11 @@ func uploadInput(f *File) *s3.PutObjectInput {
 		ServerSideEncryption: types.ServerSideEncryptionAes256,
 	}
 
-	if f.Location().FileSystem().(*FileSystem).options.DisableServerSideEncryption {
+	if f.location.fileSystem.options.DisableServerSideEncryption {
 		input.ServerSideEncryption = ""
 	}
 
-	opts := f.Location().FileSystem().(*FileSystem).options
+	opts := f.location.fileSystem.options
 	if opts.ACL != "" {
 		input.ACL = opts.ACL
 	}
@@ -730,7 +730,7 @@ func (f *File) getReader() (io.ReadCloser, error) {
 				}
 
 				// Get the client
-				client, err := f.Location().FileSystem().(*FileSystem).Client()
+				client, err := f.location.fileSystem.Client()
 				if err != nil {
 					return nil, err
 				}
@@ -802,7 +802,7 @@ func (f *File) getS3Writer() (*io.PipeWriter, error) {
 	f.s3WriterCompleteCh = make(chan error, 1)
 	pr, pw := io.Pipe()
 
-	client, err := f.Location().FileSystem().(*FileSystem).Client()
+	client, err := f.location.fileSystem.Client()
 	if err != nil {
 		return nil, err
 	}
@@ -826,7 +826,7 @@ func (f *File) getS3Writer() (*io.PipeWriter, error) {
 
 func (f *File) getUploadPartitionSize() int64 {
 	partSize := defaultPartitionSize
-	opts := f.Location().FileSystem().(*FileSystem).options
+	opts := f.location.fileSystem.options
 	if opts.UploadPartitionSize != 0 {
 		partSize = opts.UploadPartitionSize
 	}
@@ -836,7 +836,7 @@ func (f *File) getUploadPartitionSize() int64 {
 
 func (f *File) getDownloadPartitionSize() int64 {
 	partSize := defaultPartitionSize
-	opts := f.Location().FileSystem().(*FileSystem).options
+	opts := f.location.fileSystem.options
 	if opts.DownloadPartitionSize != 0 {
 		partSize = opts.DownloadPartitionSize
 	}

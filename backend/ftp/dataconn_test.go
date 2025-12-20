@@ -49,13 +49,13 @@ func (s *dataConnSuite) SetupTest() {
 
 func (s *dataConnSuite) TestGetDataConn_alreadyExists() {
 	// dataconn already exists
-	s.ftpFile.Location().FileSystem().(*FileSystem).dataconn = &dataConn{
+	s.ftpFile.location.fileSystem.dataconn = &dataConn{
 		mode: types.OpenRead,
 	}
 	dc, err := getDataConn(
 		s.T().Context(),
 		authority.Authority{},
-		s.ftpFile.Location().FileSystem().(*FileSystem),
+		s.ftpFile.location.fileSystem,
 		s.ftpFile,
 		types.OpenRead,
 	)
@@ -72,7 +72,7 @@ func (s *dataConnSuite) TestGetDataConn_openForRead() {
 	dc, err := getDataConn(
 		s.T().Context(),
 		authority.Authority{},
-		s.ftpFile.Location().FileSystem().(*FileSystem),
+		s.ftpFile.location.fileSystem,
 		s.ftpFile,
 		types.OpenRead,
 	)
@@ -83,11 +83,11 @@ func (s *dataConnSuite) TestGetDataConn_openForRead() {
 func (s *dataConnSuite) TestGetDataConn_errorClientSetup() {
 	// dataconn is nil - error getting client
 	defaultClientGetter = clientGetterReturnsError
-	s.ftpFile.Location().FileSystem().(*FileSystem).ftpclient = nil
+	s.ftpFile.location.fileSystem.ftpclient = nil
 	dc, err := getDataConn(
 		s.T().Context(),
 		authority.Authority{},
-		s.ftpFile.Location().FileSystem().(*FileSystem),
+		s.ftpFile.location.fileSystem,
 		s.ftpFile,
 		types.OpenRead,
 	)
@@ -110,7 +110,7 @@ func (s *dataConnSuite) TestGetDataConn_ReadError() {
 	dc, err := getDataConn(
 		s.T().Context(),
 		authority.Authority{},
-		s.ftpFile.Location().FileSystem().(*FileSystem),
+		s.ftpFile.location.fileSystem,
 		s.ftpFile,
 		types.OpenRead,
 	)
@@ -136,7 +136,7 @@ func (s *dataConnSuite) TestGetDataConn_WriteLocationNotExists() {
 	_, err := getDataConn(
 		s.T().Context(),
 		authority.Authority{},
-		s.ftpFile.Location().FileSystem().(*FileSystem),
+		s.ftpFile.location.fileSystem,
 		s.ftpFile,
 		types.OpenWrite,
 	)
@@ -160,7 +160,7 @@ func (s *dataConnSuite) TestGetDataConn_WriteLocationNotExistsFails() {
 	_, err := getDataConn(
 		s.T().Context(),
 		authority.Authority{},
-		s.ftpFile.Location().FileSystem().(*FileSystem),
+		s.ftpFile.location.fileSystem,
 		s.ftpFile,
 		types.OpenWrite,
 	)
@@ -189,7 +189,7 @@ func (s *dataConnSuite) TestGetDataConn_errorWriting() {
 	dc, err := getDataConn(
 		s.T().Context(),
 		authority.Authority{},
-		s.ftpFile.Location().FileSystem().(*FileSystem),
+		s.ftpFile.location.fileSystem,
 		s.ftpFile,
 		types.OpenWrite,
 	)
@@ -217,7 +217,7 @@ func (s *dataConnSuite) TestGetDataConn_writeSuccess() {
 	dc, err := getDataConn(
 		s.T().Context(),
 		authority.Authority{},
-		s.ftpFile.Location().FileSystem().(*FileSystem),
+		s.ftpFile.location.fileSystem,
 		s.ftpFile,
 		types.OpenWrite,
 	)
@@ -233,11 +233,11 @@ func (s *dataConnSuite) TestGetDataConn_readAfterWriteError() {
 	fakedconn := NewFakeDataConn(types.OpenWrite)
 	closeErr := errors.New("some close err")
 	fakedconn.AssertCloseErr(closeErr)
-	s.ftpFile.Location().FileSystem().(*FileSystem).dataconn = fakedconn
+	s.ftpFile.location.fileSystem.dataconn = fakedconn
 	dc, err := getDataConn(
 		s.T().Context(),
 		authority.Authority{},
-		s.ftpFile.Location().FileSystem().(*FileSystem),
+		s.ftpFile.location.fileSystem,
 		s.ftpFile,
 		types.OpenRead,
 	)
@@ -252,7 +252,7 @@ func (s *dataConnSuite) TestGetDataConn_writeAfterReadSuccess() {
 		Name: "some",
 		Type: _ftp.EntryTypeFolder,
 	}}
-	s.ftpFile.Location().FileSystem().(*FileSystem).dataconn = &dataConn{
+	s.ftpFile.location.fileSystem.dataconn = &dataConn{
 		mode: types.OpenRead,
 		R:    io.NopCloser(strings.NewReader("")),
 	}
@@ -267,7 +267,7 @@ func (s *dataConnSuite) TestGetDataConn_writeAfterReadSuccess() {
 	dc, err := getDataConn(
 		s.T().Context(),
 		authority.Authority{},
-		s.ftpFile.Location().FileSystem().(*FileSystem),
+		s.ftpFile.location.fileSystem,
 		s.ftpFile,
 		types.OpenWrite,
 	)
