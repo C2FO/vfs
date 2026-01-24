@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v7.12.0] - 2025-01-24
+### Security
 - Updated golang.org/x/crypto for security vulnerabilities.
 
 ## [v7.11.1] - 2025-12-19
