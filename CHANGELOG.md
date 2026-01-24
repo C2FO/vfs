@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- Exported conformance test functions from `backend/testsuite` package for use by any backend implementation.
+- Exported conformance test functions from `backend/testsuite` package for use by any backend implementation. Fixes #311.
 - Added `conformance_test.go` to each core backend (s3, gs, azure, os, mem, sftp, ftp) for running conformance tests independently.
 - Added `docs/conformance_tests.md` documentation for backend developers.
 - Updated `backend/testsuite/doc.go` with comprehensive usage documentation.
