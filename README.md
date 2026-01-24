@@ -80,6 +80,7 @@ This snippet shows the basic setup: an osFile is created from a URI and written 
     * [sftp backend](docs/sftp.md)
     * [ftp backend](docs/ftp.md)
     * [azure backend](docs/azure.md)
+    * [conformance tests](docs/conformance_tests.md)
 * [utils](docs/utils.md)
 
 ## Additional Tools

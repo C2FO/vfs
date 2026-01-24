@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Exported conformance test functions from `backend/testsuite` package for use by any backend implementation.
+- Added `conformance_test.go` to each core backend (s3, gs, azure, os, mem, sftp, ftp) for running conformance tests independently.
+- Added `docs/conformance_tests.md` documentation for backend developers.
+- Updated `backend/testsuite/doc.go` with comprehensive usage documentation.
+### Security
+- Updated all dependencies. Limit github.com/google/renameio/v2 to 2.0.1 because 2.0.2 requires go 1.25.
 ### Fixed
 - Avoid type assert and type convert where possible. (https://github.com/C2FO/vfs/pull/303)
 - Remove unnecessary S3 `mockClient` type. (https://github.com/C2FO/vfs/pull/305)

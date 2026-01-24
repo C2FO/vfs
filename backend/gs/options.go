@@ -19,6 +19,7 @@ func parseClientOptions(opts Options) []option.ClientOption {
 	case opts.APIKey != "":
 		googleClientOpts = append(googleClientOpts, option.WithAPIKey(opts.APIKey))
 	case opts.CredentialFile != "":
+		//nolint:staticcheck // Deprecated but functional
 		googleClientOpts = append(googleClientOpts, option.WithCredentialsFile(opts.CredentialFile))
 	case opts.Endpoint != "":
 		googleClientOpts = append(googleClientOpts, option.WithEndpoint(opts.Endpoint))
