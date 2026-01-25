@@ -200,11 +200,11 @@ Example:
 		loc, err := fs.NewLocation("myuser@server.com:22", "/some/path/")
 		file1, _ := loc.NewFile("file1.txt")
 		file2, _ := loc.NewFile("file2.txt")
-		file1.Touch()                               // "touches" file and starts disconnect timer (default: 10sec)
-		_, _ := loc.List()                          // stops timer, does location listing, resets timer to 10 seconds
-		file2.Touch()                               // stops timer, "touches" file2, resets timer to 10 seconds
-		time.Sleep(time.Duration(15) * time.Second) // pause for 15 seconds, disconnects for server after 10 seconds
-		_, _ := loc.List()                          // reconnects, does location listing, starts new disconnect timer
+		file1.Touch()                // "touches" file and starts disconnect timer (default: 10sec)
+		_, _ := loc.List()           // stops timer, does location listing, resets timer to 10 seconds
+		file2.Touch()                // stops timer, "touches" file2, resets timer to 10 seconds
+		time.Sleep(15 * time.Second) // pause for 15 seconds, disconnects for server after 10 seconds
+		_, _ := loc.List()           // reconnects, does location listing, starts new disconnect timer
 		return
 	}
 

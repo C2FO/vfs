@@ -163,7 +163,7 @@ func (s *LocationTestSuite) TestNewLocation_NilReceiver() {
 func (s *LocationTestSuite) TestChangeDir() {
 	l, err := NewFileSystem().NewLocation("test-container", "/")
 	s.Require().NoError(err)
-	l = l.(*Location)
+
 	err = l.ChangeDir("some-dir/")
 	s.Require().NoError(err)
 	s.Equal("/some-dir/", l.Path())
@@ -174,21 +174,21 @@ func (s *LocationTestSuite) TestChangeDir() {
 
 	l, err = NewFileSystem().NewLocation("test-container", "/")
 	s.Require().NoError(err)
-	l = l.(*Location)
+
 	err = l.ChangeDir("/test-dir/")
 	s.Require().ErrorIs(err, utils.ErrBadRelLocationPath,
 		"The path begins with a slash and therefore is not a relative path so this should return an error")
 
 	l, err = NewFileSystem().NewLocation("test-container", "/")
 	s.Require().NoError(err)
-	l = l.(*Location)
+
 	err = l.ChangeDir("test-dir")
 	s.Require().ErrorIs(err, utils.ErrBadRelLocationPath,
 		"The path does not end with a slash and therefore is not a relative path so this should return an error")
 
 	l, err = NewFileSystem().NewLocation("test-container", "/")
 	s.Require().NoError(err)
-	l = l.(*Location)
+
 	err = l.ChangeDir("")
 	s.Require().ErrorIs(err, utils.ErrBadRelLocationPath,
 		"An empty relative path does not end with a slash and therefore is not a valid relative path so this should return an error")
