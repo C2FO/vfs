@@ -1,10 +1,7 @@
 package testsuite
 
 import (
-	"errors"
 	"io"
-	"os"
-	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -15,102 +12,6 @@ import (
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/options"
 )
-
-// OSWrapper wraps os.File to implement ReadWriteSeekCloseURINamer for baseline testing
-type OSWrapper struct {
-	filename   string
-	file       *os.File
-	exists     bool
-	seekCalled bool
-}
-
-// NewOSWrapper creates a new OSWrapper for the given absolute path
-func NewOSWrapper(absPath string) *OSWrapper {
-	exists := fileExists(absPath)
-	return &OSWrapper{
-		filename: absPath,
-		exists:   exists,
-	}
-}
-
-func fileExists(filename string) bool {
-	info, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return !info.IsDir()
-}
-
-func (o *OSWrapper) Read(b []byte) (int, error) {
-	if !o.exists {
-		return 0, errors.New("file not found")
-	}
-	if o.file == nil {
-		file, err := os.OpenFile(o.filename, os.O_RDWR, 0600)
-		if err != nil {
-			return 0, err
-		}
-		o.file = file
-	}
-	return o.file.Read(b)
-}
-
-func (o *OSWrapper) Write(b []byte) (int, error) {
-	if o.file == nil {
-		flags := os.O_RDWR | os.O_CREATE | os.O_TRUNC
-		if o.seekCalled {
-			flags = os.O_RDWR | os.O_CREATE
-		}
-		file, err := os.OpenFile(o.filename, flags, 0600)
-		if err != nil {
-			return 0, err
-		}
-		o.file = file
-		o.exists = true
-	}
-
-	return o.file.Write(b)
-}
-
-func (o *OSWrapper) Seek(offset int64, whence int) (int64, error) {
-	if !o.exists {
-		return 0, errors.New("file not found")
-	}
-
-	if o.file == nil {
-		file, err := os.OpenFile(o.filename, os.O_RDWR, 0600)
-		if err != nil {
-			return 0, err
-		}
-		o.file = file
-	}
-	o.seekCalled = true
-	return o.file.Seek(offset, whence)
-}
-
-func (o *OSWrapper) Close() error {
-	if !o.exists {
-		return nil
-	}
-	err := o.file.Close()
-	if err != nil {
-		return err
-	}
-	o.file = nil
-	return nil
-}
-
-func (o *OSWrapper) Name() string {
-	return path.Base(o.filename)
-}
-
-func (o *OSWrapper) URI() string {
-	return o.filename
-}
-
-func (o *OSWrapper) Delete(_ ...options.DeleteOption) error {
-	return os.Remove(o.URI())
-}
 
 // ReadWriteSeekCloseURINamer interface for IO testing
 type ReadWriteSeekCloseURINamer interface {
@@ -285,60 +186,6 @@ func RunIOTests(t *testing.T, location vfs.Location) {
 	runIOTestsWithCases(t, location.URI(), location, DefaultIOTestCases())
 }
 
-// RunIOTestsWithLocalBaseline runs IO tests with a local filesystem baseline for comparison
-func RunIOTestsWithLocalBaseline(t *testing.T, localDir string, location vfs.Location) {
-	t.Helper()
-	testCases := DefaultIOTestCases()
-
-	if localDir != "" {
-		t.Run("local_baseline", func(t *testing.T) {
-			runIOTestsLocal(t, localDir, testCases)
-		})
-	}
-
-	t.Run(location.FileSystem().Scheme(), func(t *testing.T) {
-		runIOTestsWithCases(t, location.URI(), location, testCases)
-	})
-}
-
-func runIOTestsLocal(t *testing.T, localDir string, testCases []IOTestCase) {
-	t.Helper()
-	defer func() {
-		_ = os.RemoveAll(localDir)
-	}()
-
-	for _, tc := range testCases {
-		t.Run(tc.Description, func(t *testing.T) {
-			testFileName := "testfile.txt"
-			file := NewOSWrapper(localDir + testFileName)
-			defer func() {
-				_ = file.Close()
-				_ = file.Delete()
-			}()
-
-			if tc.FileAlreadyExists {
-				_, err := file.Write([]byte("some text"))
-				require.NoError(t, err)
-				require.NoError(t, file.Close())
-			}
-
-			actualContents, err := ExecuteSequence(t, file, tc.Sequence)
-
-			if tc.ExpectFailure && err == nil {
-				t.Fatalf("%s: expected failure but got success", tc.Description)
-			}
-
-			if err != nil && !tc.ExpectFailure {
-				t.Fatalf("%s: expected success but got failure: %v", tc.Description, err)
-			}
-
-			if tc.ExpectedResults != actualContents {
-				t.Fatalf("%s: expected results %s but got %s", tc.Description, tc.ExpectedResults, actualContents)
-			}
-		})
-	}
-}
-
 func runIOTestsWithCases(t *testing.T, testPath string, location vfs.Location, testCases []IOTestCase) {
 	t.Helper()
 	defer teardownTestLocation(t, testPath, location)
@@ -472,21 +319,13 @@ SEQ:
 		return "", commandErr
 	}
 
-	var f io.ReadCloser
-
-	switch assertedFile := file.(type) {
-	case *OSWrapper:
-		var err error
-		f, err = os.Open(assertedFile.URI())
-		if err != nil {
-			t.Fatalf("error opening file: %s", err.Error())
-		}
-	case vfs.File:
-		var err error
-		f, err = assertedFile.Location().NewFile(assertedFile.Name())
-		if err != nil {
-			t.Fatalf("error opening file: %s", err.Error())
-		}
+	vfsFile, ok := file.(vfs.File)
+	if !ok {
+		t.Fatalf("file must implement vfs.File")
+	}
+	f, err := vfsFile.Location().NewFile(vfsFile.Name())
+	if err != nil {
+		t.Fatalf("error opening file: %s", err.Error())
 	}
 	defer func() { _ = f.Close() }()
 
