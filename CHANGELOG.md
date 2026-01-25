@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated `backend/testsuite/doc.go` with comprehensive usage documentation.
 ### Security
 - Updated all dependencies. Limit github.com/google/renameio/v2 to 2.0.1 because 2.0.2 requires go 1.25.
+- Fixed codeql security vulnerablity issue in mem backend: Incorrect conversion of a signed 64-bit integer from strconv.ParseInt
+  to a lower bit size type int without an upper bound check.
 ### Fixed
 - Avoid type assert and type convert where possible. (https://github.com/C2FO/vfs/pull/303)
 - Remove unnecessary S3 `mockClient` type. (https://github.com/C2FO/vfs/pull/305)
