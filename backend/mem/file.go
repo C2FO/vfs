@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"math"
 	"path"
 	"sync"
 	"time"
@@ -177,6 +178,11 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	pos, err := f.readWriteSeeker.Seek(offset, whence)
 	if err != nil {
 		return 0, utils.WrapSeekError(err)
+	}
+
+	// validate position fits in int
+	if pos > math.MaxInt {
+		return 0, utils.WrapSeekError(vfs.ErrSeekInvalidOffset)
 	}
 
 	// update open file's state
