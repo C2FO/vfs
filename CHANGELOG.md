@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use context from `testing.T` introduced in Go 1.24.
 - Define more sentinel errors for more ergonomic error checking.
 - Use typed expectations consistently for added type safety.
+- Remove unnecessary S3 `mockClient` type.
 ### Fixed
 - Use walrus assignment where possible.
 - Use the `any` keyword where possible.
