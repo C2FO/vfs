@@ -5,7 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
 - Avoid type assert and type convert where possible. (https://github.com/C2FO/vfs/pull/303)
+- Remove unnecessary S3 `mockClient` type. (https://github.com/C2FO/vfs/pull/305)
 
 ## [v7.12.0] - 2025-01-24
 ### Security
@@ -26,7 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use context from `testing.T` introduced in Go 1.24.
 - Define more sentinel errors for more ergonomic error checking.
 - Use typed expectations consistently for added type safety.
-- Remove unnecessary S3 `mockClient` type.
 ### Fixed
 - Use walrus assignment where possible.
 - Use the `any` keyword where possible.
