@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v7.13.0] - 2025-01-26
 ### Added
 - Exported conformance test functions from `backend/testsuite` package for use by any backend implementation. Fixes #311.
 - Added `conformance_test.go` to each core backend (s3, gs, azure, os, mem, sftp, ftp) for running conformance tests independently.
