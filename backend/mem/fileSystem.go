@@ -132,7 +132,7 @@ func init() {
 
 // getKeys is used to get a list of absolute paths on a specified volume. These paths are a mixture of files and locations
 func (o objMap) getKeys() []string {
-	keyList := make([]string, 0)
+	keyList := make([]string, 0, len(o))
 	for i := range o {
 		keyList = append(keyList, i)
 	}

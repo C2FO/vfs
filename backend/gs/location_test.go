@@ -56,7 +56,7 @@ func (lt *locationTestSuite) TestList() {
 	lt.T().Logf("objectPrefixes = %s", objectPrefixes)
 	lt.T().Logf("objectBaseNameSet = %v", objectBaseNameSet)
 
-	objectBaseNames := []string{}
+	objectBaseNames := make([]string, 0, len(objectBaseNameSet))
 	for name := range objectBaseNameSet {
 		objectBaseNames = append(objectBaseNames, name)
 	}

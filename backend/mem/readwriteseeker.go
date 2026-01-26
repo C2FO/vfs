@@ -2,6 +2,7 @@ package mem
 
 import (
 	"io"
+	"math"
 
 	"github.com/c2fo/vfs/v7"
 )
@@ -72,7 +73,7 @@ func (rws *ReadWriteSeeker) Seek(offset int64, whence int) (int64, error) {
 		return 0, vfs.ErrSeekInvalidWhence
 	}
 
-	if position < 0 {
+	if position < 0 || position > math.MaxInt {
 		return 0, vfs.ErrSeekInvalidOffset
 	}
 

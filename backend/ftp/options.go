@@ -176,7 +176,8 @@ func fetchTLSConfig(auth authority.Authority, opts Options) *tls.Config {
 	}
 
 	if opts.IncludeInsecureCiphers {
-		var suites []uint16
+		// preallocate suites slice
+		suites := make([]uint16, 0, len(tls.CipherSuites())+len(tls.InsecureCipherSuites()))
 
 		// get default cipher suites
 		for _, suite := range tls.CipherSuites() {

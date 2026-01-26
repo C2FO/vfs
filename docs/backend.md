@@ -87,6 +87,39 @@ Then do use it in some other package do
 
 That's it. Simple.
 
+### Testing Your Backend
+
+To verify your backend implementation is correct, use the conformance test suite provided by
+`backend/testsuite`. See [Conformance Tests](conformance_tests.md) for detailed instructions.
+
+Quick example:
+
+```go
+//go:build vfsintegration
+
+package myexoticfilesystem
+
+import (
+    "os"
+    "testing"
+    "github.com/c2fo/vfs/v7/backend/testsuite"
+)
+
+func TestConformance(t *testing.T) {
+    fs := NewFileSystem(/* options */)
+    location, _ := fs.NewLocation("", "/test-path/")
+    testsuite.RunConformanceTests(t, location)
+}
+
+func TestIOConformance(t *testing.T) {
+    fs := NewFileSystem(/* options */)
+    location, _ := fs.NewLocation("", "/test-path/")
+    testsuite.RunIOTests(t, location)
+}
+```
+
+Run with: `go test -v -tags=vfsintegration ./...`
+
 ## Usage
 
 #### func  Backend

@@ -41,6 +41,8 @@ exclude:
     - mocks/    # exclude package mock
     - main\.go
     - vfscp/
+    - backend/testsuite/conformance\.go      # test helper functions, not testable code
+    - backend/testsuite/io_conformance\.go   # test helper functions, not testable code
 
 # File name of go-test-coverage breakdown file, which can be used to
 # analyze coverage difference.
