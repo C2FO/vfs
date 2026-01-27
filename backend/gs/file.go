@@ -27,6 +27,7 @@ type File struct {
 	//	bucket     string
 	key  string
 	opts []options.NewFileOption
+	ctx  context.Context
 
 	// seek-related fields
 	cursorPos  int64
@@ -102,7 +103,7 @@ func (f *File) tempToGCS() error {
 		return err
 	}
 
-	w := handle.NewWriter(f.location.fileSystem.ctx)
+	w := handle.NewWriter(f.ctx)
 	defer func() { _ = w.Close() }()
 
 	for _, o := range f.opts {
@@ -183,7 +184,7 @@ func (f *File) getReader() (io.ReadCloser, error) {
 			}
 
 			// get range reader (from current cursor position to end of file)
-			reader, err := h.NewRangeReader(f.location.fileSystem.ctx, f.cursorPos, -1)
+			reader, err := h.NewRangeReader(f.ctx, f.cursorPos, -1)
 			if err != nil {
 				return nil, err
 			}
@@ -319,7 +320,7 @@ func (f *File) initWriters() error {
 	if f.gcsWriter == nil {
 		if !f.seekCalled && !f.readCalled {
 			// setup cancelable context
-			ctx, cancel := context.WithCancel(f.location.fileSystem.ctx)
+			ctx, cancel := context.WithCancel(f.ctx)
 			f.cancelFunc = cancel
 
 			// get object handle
@@ -495,7 +496,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 	if err != nil {
 		return utils.WrapDeleteError(err)
 	}
-	err = handle.Delete(f.location.fileSystem.ctx)
+	err = handle.Delete(f.ctx)
 	if err != nil {
 		return utils.WrapDeleteError(err)
 	}
@@ -506,7 +507,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 			return utils.WrapDeleteError(err)
 		}
 		for _, handle := range handles {
-			err := handle.Delete(f.location.fileSystem.ctx)
+			err := handle.Delete(f.ctx)
 			if err != nil {
 				return utils.WrapDeleteError(err)
 			}
@@ -568,7 +569,7 @@ func (f *File) updateLastModifiedByAttrUpdate() error {
 		return err
 	}
 
-	cctx, cancel := context.WithCancel(f.location.fileSystem.ctx)
+	cctx, cancel := context.WithCancel(f.ctx)
 	defer cancel()
 
 	_, err = obj.Update(cctx, updateAttrs)
@@ -591,7 +592,7 @@ func (f *File) isBucketVersioningEnabled() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	cctx, cancel := context.WithCancel(f.location.fileSystem.ctx)
+	cctx, cancel := context.WithCancel(f.ctx)
 	defer cancel()
 	attrs, err := client.Bucket(f.Location().Authority().String()).Attrs(cctx)
 	if err != nil {
@@ -607,7 +608,7 @@ func (f *File) createEmptyFile() error {
 	}
 
 	// write zero length file.
-	ctx, cancel := context.WithCancel(f.location.fileSystem.ctx)
+	ctx, cancel := context.WithCancel(f.ctx)
 	defer cancel()
 
 	w := handle.NewWriter(ctx)
@@ -687,7 +688,7 @@ func (f *File) copyToLocalTempReader(tmpFile *os.File) error {
 		return err
 	}
 
-	outputReader, err := handle.NewReader(f.location.fileSystem.ctx)
+	outputReader, err := handle.NewReader(f.ctx)
 	if err != nil {
 		return err
 	}
@@ -731,7 +732,7 @@ func (f *File) getObjectGenerationHandles() ([]*storage.ObjectHandle, error) {
 		return nil, err
 	}
 	it := client.Bucket(f.Location().Authority().String()).
-		Objects(f.location.fileSystem.ctx, &storage.Query{Versions: true, Prefix: utils.RemoveLeadingSlash(f.key)})
+		Objects(f.ctx, &storage.Query{Versions: true, Prefix: utils.RemoveLeadingSlash(f.key)})
 
 	for {
 		attrs, err := it.Next()
@@ -753,7 +754,7 @@ func (f *File) getObjectAttrs() (*storage.ObjectAttrs, error) {
 	if err != nil {
 		return nil, err
 	}
-	return handle.Attrs(f.location.fileSystem.ctx)
+	return handle.Attrs(f.ctx)
 }
 
 func (f *File) copyWithinGCSToFile(targetFile *File) error {
@@ -774,6 +775,6 @@ func (f *File) copyWithinGCSToFile(targetFile *File) error {
 	copier.ContentType(attrs.ContentType)
 
 	// Just copy content.
-	_, cerr := copier.Run(f.location.fileSystem.ctx)
+	_, cerr := copier.Run(f.ctx)
 	return cerr
 }

@@ -103,7 +103,7 @@ func (o *optionsTestSuite) TestGetClient() {
 			for k, v := range tt.envVar {
 				o.T().Setenv(k, v)
 			}
-			client, err := GetClient(tt.opts)
+			client, err := GetClient(o.T().Context(), tt.opts)
 			tt.expected(o, client, err)
 			for k := range tt.envVar {
 				_ = os.Unsetenv(k)

@@ -34,9 +34,9 @@ type Options struct {
 }
 
 // GetClient setup S3 client
-func GetClient(opt Options) (*s3.Client, error) {
+func GetClient(ctx context.Context, opt Options) (*s3.Client, error) {
 	// setup default config
-	awsConfig, err := config.LoadDefaultConfig(context.Background())
+	awsConfig, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return nil, err
 	}

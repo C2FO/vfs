@@ -30,6 +30,7 @@ type File struct {
 	location *Location
 	key      string
 	opts     []options.NewFileOption
+	ctx      context.Context
 
 	// seek-related fields
 	cursorPos  int64
@@ -132,7 +133,7 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 			if err != nil {
 				return utils.WrapCopyToFileError(err)
 			}
-			_, err = client.CopyObject(context.Background(), input)
+			_, err = client.CopyObject(f.ctx, input)
 			if err != nil {
 				return utils.WrapCopyToFileError(err)
 			}
@@ -217,7 +218,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 	}
 
 	bucket := f.Location().Authority().String()
-	_, err = client.DeleteObject(context.Background(), &s3.DeleteObjectInput{
+	_, err = client.DeleteObject(f.ctx, &s3.DeleteObjectInput{
 		Key:    &f.key,
 		Bucket: &bucket,
 	})
@@ -232,7 +233,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 		}
 
 		for idx := range objectVersions.Versions {
-			if _, err = client.DeleteObject(context.Background(), &s3.DeleteObjectInput{
+			if _, err = client.DeleteObject(f.ctx, &s3.DeleteObjectInput{
 				Key:       &f.key,
 				Bucket:    &bucket,
 				VersionId: objectVersions.Versions[idx].VersionId,
@@ -337,7 +338,7 @@ func (f *File) tempToS3() error {
 	uploadInput := uploadInput(f)
 	uploadInput.Body = f.tempFileWriter
 
-	_, err = uploader.Upload(context.Background(), uploadInput)
+	_, err = uploader.Upload(f.ctx, uploadInput)
 	if err != nil {
 		return err
 	}
@@ -533,7 +534,7 @@ Private helper functions
 func (f *File) getAllObjectVersions(client Client) (*s3.ListObjectVersionsOutput, error) {
 	prefix := utils.RemoveLeadingSlash(f.key)
 	bucket := f.Location().Authority().String()
-	objVers, err := client.ListObjectVersions(context.Background(), &s3.ListObjectVersionsInput{
+	objVers, err := client.ListObjectVersions(f.ctx, &s3.ListObjectVersionsInput{
 		Bucket: &bucket,
 		Prefix: &prefix,
 	})
@@ -551,7 +552,7 @@ func (f *File) getHeadObject() (*s3.HeadObjectOutput, error) {
 		return nil, err
 	}
 
-	head, err := client.HeadObject(context.Background(), headObjectInput)
+	head, err := client.HeadObject(f.ctx, headObjectInput)
 
 	return head, handleExistsError(err)
 }
@@ -639,7 +640,7 @@ func (f *File) copyS3ToLocalTempReader(tmpFile *os.File) error {
 	}
 	opt := withDownloadPartitionSize(f.getDownloadPartitionSize())
 	_, err = manager.NewDownloader(client, opt).
-		Download(context.Background(), tmpFile, input)
+		Download(f.ctx, tmpFile, input)
 
 	return err
 }
@@ -736,7 +737,7 @@ func (f *File) getReader() (io.ReadCloser, error) {
 				}
 
 				// Request the object
-				result, err := client.GetObject(context.Background(), input)
+				result, err := client.GetObject(f.ctx, input)
 				if err != nil {
 					return nil, err
 				}
@@ -807,7 +808,7 @@ func (f *File) getS3Writer() (*io.PipeWriter, error) {
 		return nil, err
 	}
 	uploader := manager.NewUploader(client, withUploadPartitionSize(f.getUploadPartitionSize()))
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(f.ctx)
 	f.cancelFunc = cancel
 	uploadInput := uploadInput(f)
 	uploadInput.Body = pr

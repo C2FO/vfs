@@ -96,7 +96,7 @@ func (fs *FileSystem) NewFile(volume, absFilePath string, opts ...options.NewFil
 // NewLocation function returns the in-memory implementation of vfs.Location.
 // A location always exists. If a file is created on a location that has not yet
 // been made in the fsMap, then the location will be created with the file
-func (fs *FileSystem) NewLocation(volume, absLocPath string) (vfs.Location, error) {
+func (fs *FileSystem) NewLocation(volume, absLocPath string, _ ...options.NewLocationOption) (vfs.Location, error) {
 	err := utils.ValidateAbsoluteLocationPath(absLocPath)
 	if err != nil {
 		return nil, err
