@@ -31,8 +31,12 @@ func (s *vfsTestSuite) SetupSuite() {
 	}
 	uris := make([]string, len(registers))
 	var wg sync.WaitGroup
+	wg.Add(len(registers))
 	for i := range registers {
-		wg.Go(func() { uris[i] = registers[i](s.T()) })
+		go func() {
+			uris[i] = registers[i](s.T())
+			wg.Done()
+		}()
 	}
 	wg.Wait()
 
