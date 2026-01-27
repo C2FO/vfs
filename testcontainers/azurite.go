@@ -21,6 +21,7 @@ func registerAzurite(t *testing.T) string {
 	ctr, err := azurite.Run(ctx, "mcr.microsoft.com/azure-storage/azurite:latest",
 		testcontainers.WithName("vfs-azurite"),
 		azurite.WithEnabledServices(azurite.BlobService),
+		testcontainers.WithCmdArgs("--skipApiVersionCheck"),
 	)
 	testcontainers.CleanupContainer(t, ctr)
 	is.NoError(err)
