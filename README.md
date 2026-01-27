@@ -83,6 +83,14 @@ This snippet shows the basic setup: an osFile is created from a URI and written 
     * [conformance tests](docs/conformance_tests.md)
 * [utils](docs/utils.md)
 
+### Community Contributed Backends
+
+These backends are maintained in `contrib/backend/` as separate Go modules:
+
+* [Dropbox backend](contrib/backend/dropbox/README.md) - Dropbox cloud storage
+
+See [contrib/backend/README.md](contrib/backend/README.md) for guidelines on contributing new backends.
+
 ## Additional Tools
 
 *   [lockfile](contrib/lockfile/README.md): Provides distributed locking mechanisms using vfs backends.
