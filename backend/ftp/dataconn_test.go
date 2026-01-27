@@ -230,9 +230,10 @@ func (s *dataConnSuite) TestGetDataConn_writeSuccess() {
 
 func (s *dataConnSuite) TestGetDataConn_readAfterWriteError() {
 	// open dataconn for read after dataconn for write exists - error on dataconn.Close
-	fakedconn := NewFakeDataConn(types.OpenWrite)
+	fakedconn := mocks.NewDataConn(s.T())
+	fakedconn.EXPECT().Mode().Return(types.OpenWrite)
 	closeErr := errors.New("some close err")
-	fakedconn.AssertCloseErr(closeErr)
+	fakedconn.EXPECT().Close().Return(closeErr).Once()
 	s.ftpFile.location.fileSystem.dataconn = fakedconn
 	dc, err := getDataConn(
 		s.T().Context(),
