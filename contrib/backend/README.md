@@ -61,7 +61,7 @@ module github.com/c2fo/vfs/contrib/backend/yourbackend
 go 1.24
 
 require (
-    github.com/c2fo/vfs/v7 v7.9.0  // Depend on core VFS
+    github.com/c2fo/vfs/v7 v7.13.0  // Depend on core VFS
     // ... your backend's dependencies
 )
 ```
