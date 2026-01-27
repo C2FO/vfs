@@ -24,6 +24,7 @@ package testcontainers
 import (
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path"
 	"regexp"
@@ -555,10 +556,10 @@ func RunFileTests(t *testing.T, baseLoc vfs.Location, opts ConformanceOptions) {
 			exists, err = srcSpaces.Exists()
 			require.NoError(t, err)
 			assert.False(t, exists, "srcSpaces should no longer exist")
-			assert.True(t,
-				strings.HasSuffix(dstSpaces.URI(), path.Join(test.Path, test.Filename)),
-				"destination file %s ends with source string for %s", dstSpaces.URI(), path.Join(test.Path, test.Filename),
-			)
+			// HACK: ftp and sftp are the only backends that encode special characters
+			hasSuffix := strings.HasSuffix(dstSpaces.URI(), path.Join(test.Path, test.Filename)) ||
+				strings.HasSuffix(dstSpaces.URI(), strings.ReplaceAll(url.PathEscape(path.Join(test.Path, test.Filename)), "%2F", "/"))
+			assert.True(t, hasSuffix, "destination file %s ends with source string for %s", dstSpaces.URI(), path.Join(test.Path, test.Filename))
 
 			newSrcSpaces, err := dstSpaces.MoveToLocation(srcSpaces.Location())
 			require.NoError(t, err)
@@ -568,7 +569,9 @@ func RunFileTests(t *testing.T, baseLoc vfs.Location, opts ConformanceOptions) {
 			exists, err = dstSpaces.Exists()
 			require.NoError(t, err)
 			assert.False(t, exists, "dstSpaces should no longer exist")
-			hasSuffix := strings.HasSuffix(newSrcSpaces.URI(), path.Join(test.Path, test.Filename))
+			// HACK: ftp and sftp are the only backends that encode special characters
+			hasSuffix = strings.HasSuffix(newSrcSpaces.URI(), path.Join(test.Path, test.Filename)) ||
+				strings.HasSuffix(newSrcSpaces.URI(), strings.ReplaceAll(url.PathEscape(path.Join(test.Path, test.Filename)), "%2F", "/"))
 			assert.True(t, hasSuffix, "destination file %s ends with source string for %s", dstSpaces.URI(), path.Join(test.Path, test.Filename))
 
 			require.NoError(t, newSrcSpaces.Delete())

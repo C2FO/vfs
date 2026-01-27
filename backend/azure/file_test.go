@@ -91,7 +91,6 @@ func (s *FileTestSuite) TestWrite() {
 	s.NotNil(f)
 	s.Require().NoError(err)
 	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
-	client.EXPECT().Download(mock.Anything).Return(io.NopCloser(strings.NewReader("Hello World!")), nil)
 	n, err := f.Write([]byte(" Aaaaand, Goodbye!"))
 	s.Require().NoError(err)
 	s.Equal(18, n)
@@ -375,7 +374,7 @@ func (s *FileTestSuite) TestCheckTempFile() {
 	s.Nil(azureFile.tempFile, "No calls to checkTempFile have occurred so we expect tempFile to be nil")
 	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
 	client.EXPECT().Download(mock.Anything).Return(io.NopCloser(strings.NewReader("Hello World!")), nil)
-	err = azureFile.checkTempFile()
+	err = azureFile.checkTempFile(false)
 	s.Require().NoError(err, "Check temp file should create a local temp file so no error is expected")
 	s.NotNil(azureFile.tempFile, "After the call to checkTempFile we should have a non-nil tempFile")
 
@@ -397,7 +396,7 @@ func (s *FileTestSuite) TestCheckTempFile_FileDoesNotExist() {
 
 	s.Nil(azureFile.tempFile, "No calls to checkTempFile have occurred so we expect tempFile to be nil")
 	client.EXPECT().Properties("test-container", "/foo.txt").Return(nil, errBlobNotFound)
-	err = azureFile.checkTempFile()
+	err = azureFile.checkTempFile(true)
 	s.Require().NoError(err, "Check temp file should create a local temp file so no error is expected")
 	s.NotNil(azureFile.tempFile, "After the call to checkTempFile we should have a non-nil tempFile")
 
@@ -420,7 +419,7 @@ func (s *FileTestSuite) TestCheckTempFile_DownloadError() {
 	s.Nil(azureFile.tempFile, "No calls to checkTempFile have occurred so we expect tempFile to be nil")
 	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
 	client.EXPECT().Download(mock.Anything).Return(nil, errors.New("i always error"))
-	err = azureFile.checkTempFile()
+	err = azureFile.checkTempFile(false)
 	s.Require().Error(err, "The call to client.Download() errors so we expect to get an error")
 }
 

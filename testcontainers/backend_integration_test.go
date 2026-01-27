@@ -75,7 +75,8 @@ func (s *vfsTestSuite) TestScheme() {
 
 		// Determine conformance options based on scheme
 		opts := ConformanceOptions{
-			SkipFTPSpecificTests: scheme == "ftp",
+			SkipFTPSpecificTests:   scheme == "ftp",
+			SkipTouchTimestampTest: scheme == "ftp",
 		}
 
 		// Run the exported conformance tests

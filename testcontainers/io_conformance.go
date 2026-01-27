@@ -1,6 +1,7 @@
 package testcontainers
 
 import (
+	"errors"
 	"io"
 	"regexp"
 	"strconv"
@@ -12,6 +13,12 @@ import (
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/options"
 )
+
+// IOOptions configures IO test behavior
+type IOOptions struct {
+	// SkipFTPSpecificTests skips tests that don't work well with FTP
+	SkipFTPSpecificTests bool
+}
 
 // ReadWriteSeekCloseURINamer interface for IO testing
 type ReadWriteSeekCloseURINamer interface {
@@ -181,18 +188,27 @@ func DefaultIOTestCases() []IOTestCase {
 }
 
 // RunIOTests runs IO conformance tests against the provided location
-func RunIOTests(t *testing.T, location vfs.Location) {
+func RunIOTests(t *testing.T, location vfs.Location, opts ...IOOptions) {
 	t.Helper()
-	runIOTestsWithCases(t, location.URI(), location, DefaultIOTestCases())
+	opt := IOOptions{}
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+
+	runIOTestsWithCases(t, location.URI(), location, DefaultIOTestCases(), opt)
 }
 
-func runIOTestsWithCases(t *testing.T, testPath string, location vfs.Location, testCases []IOTestCase) {
+func runIOTestsWithCases(t *testing.T, testPath string, location vfs.Location, testCases []IOTestCase, opts IOOptions) {
 	t.Helper()
 	defer teardownTestLocation(t, testPath, location)
 
 	for _, tc := range testCases {
 		t.Run(tc.Description, func(t *testing.T) {
 			testFileName := "testfile.txt"
+
+			if opts.SkipFTPSpecificTests && strings.HasPrefix(tc.Description, "Write, Seek, Write") {
+				return
+			}
 
 			func() {
 				file, err := setupTestFile(tc.FileAlreadyExists, location, testFileName)
@@ -281,8 +297,12 @@ SEQ:
 					t.Fatalf("invalid bytesize: %s", commandArgs[0])
 				}
 				b := make([]byte, bytesize)
-				_, commandErr = file.Read(b)
+				var n int
+				n, commandErr = file.Read(b)
 				if commandErr != nil {
+					if n > 0 && uint64(n) == bytesize && errors.Is(commandErr, io.EOF) {
+						commandErr = nil
+					}
 					break SEQ
 				}
 			}

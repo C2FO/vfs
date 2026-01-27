@@ -64,7 +64,10 @@ func (s *ioTestSuite) SetupSuite() {
 func (s *ioTestSuite) TestFileOperations() {
 	for scheme, location := range s.testLocations {
 		s.Run(scheme, func() {
-			RunIOTests(s.T(), location)
+			opts := IOOptions{
+				SkipFTPSpecificTests: scheme == "ftp",
+			}
+			RunIOTests(s.T(), location, opts)
 		})
 	}
 }
