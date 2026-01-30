@@ -17,7 +17,6 @@ func (s *OptionsTestSuite) TestNewOptions() {
 
 		s.Equal(int64(4*1024*1024), opts.ChunkSize)
 		s.Equal(os.TempDir(), opts.TempDir)
-		s.Equal(3, opts.RetryCount)
 		s.Empty(opts.AccessToken)
 	})
 }
@@ -62,31 +61,18 @@ func (s *OptionsTestSuite) TestOptionsFields() {
 			},
 		},
 		{
-			name: "Custom retry count",
-			setupOptions: func() Options {
-				opts := NewOptions()
-				opts.RetryCount = 5
-				return opts
-			},
-			validate: func(s *OptionsTestSuite, opts Options) {
-				s.Equal(5, opts.RetryCount)
-			},
-		},
-		{
 			name: "All custom values",
 			setupOptions: func() Options {
 				return Options{
 					AccessToken: "custom-token",
 					ChunkSize:   10 * 1024 * 1024,
 					TempDir:     "/tmp/custom",
-					RetryCount:  10,
 				}
 			},
 			validate: func(s *OptionsTestSuite, opts Options) {
 				s.Equal("custom-token", opts.AccessToken)
 				s.Equal(int64(10*1024*1024), opts.ChunkSize)
 				s.Equal("/tmp/custom", opts.TempDir)
-				s.Equal(10, opts.RetryCount)
 			},
 		},
 	}

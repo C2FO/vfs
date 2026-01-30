@@ -45,7 +45,6 @@ func (s *FileSystemTestSuite) TestNewFileSystem() {
 			opts: []any{
 				WithAccessToken("test-token"),
 				WithChunkSize(8 * 1024 * 1024),
-				WithRetryCount(5),
 			},
 		},
 	}

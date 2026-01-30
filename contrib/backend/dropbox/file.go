@@ -16,11 +16,6 @@ import (
 	"github.com/c2fo/vfs/v7/utils"
 )
 
-const (
-	// maxSimpleUploadSize is Dropbox's limit for simple uploads (150MB)
-	maxSimpleUploadSize = 150 * 1024 * 1024
-)
-
 // File implements vfs.File for Dropbox.
 type File struct {
 	location *Location
@@ -40,7 +35,6 @@ type File struct {
 
 	// Write buffering
 	tempFileWrite *os.File
-	uploadSession *string
 }
 
 // Info Functions
@@ -383,7 +377,6 @@ func (f *File) Close() error {
 	f.writeCalled = false
 	f.readEOFSeen = false
 	f.reader = nil
-	f.uploadSession = nil
 
 	if uploadErr != nil {
 		return utils.WrapCloseError(uploadErr)
@@ -410,8 +403,8 @@ func (f *File) uploadToDropbox() error {
 		return err
 	}
 
-	// Use simple upload for files <= 150MB
-	if stat.Size() <= maxSimpleUploadSize {
+	// Use simple upload for files <= MaxSimpleUploadSize (default 150MB)
+	if stat.Size() <= f.location.fileSystem.options.MaxSimpleUploadSize {
 		uploadArg := files.NewUploadArg(f.path)
 		uploadArg.Mode = &files.WriteMode{Tagged: dropbox.Tagged{Tag: "overwrite"}}
 		_, err := client.Upload(uploadArg, f.tempFileWrite)
@@ -542,7 +535,7 @@ func (f *File) Touch() error {
 	uploadArg.Mode = &files.WriteMode{Tagged: dropbox.Tagged{Tag: "overwrite"}}
 	uploadArg.ClientModified = &now // Explicitly set client_modified to current time
 
-	if stat.Size() <= maxSimpleUploadSize {
+	if stat.Size() <= f.location.fileSystem.options.MaxSimpleUploadSize {
 		_, err = client.Upload(uploadArg, f.tempFileRead)
 		return utils.WrapTouchError(err)
 	}

@@ -156,7 +156,7 @@ func (l *Location) Path() string {
 func (l *Location) Exists() (bool, error) {
 	client, err := l.fileSystem.Client()
 	if err != nil {
-		return false, err
+		return false, utils.WrapExistsError(err)
 	}
 
 	// Try to get metadata for the path
@@ -174,7 +174,7 @@ func (l *Location) Exists() (bool, error) {
 		if isNotFoundError(err) {
 			return false, nil
 		}
-		return false, err
+		return false, utils.WrapExistsError(err)
 	}
 
 	return true, nil

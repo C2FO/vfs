@@ -329,17 +329,6 @@ fs := dropbox.NewFileSystem(
 )
 ```
 
-### WithRetryCount
-
-Sets the number of retry attempts for transient errors. Default is 3.
-
-```go
-fs := dropbox.NewFileSystem(
-    dropbox.WithAccessToken(token),
-    dropbox.WithRetryCount(5),
-)
-```
-
 ### WithClient
 
 Provides a custom Dropbox client. Useful for testing.

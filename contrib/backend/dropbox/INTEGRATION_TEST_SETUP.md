@@ -153,8 +153,8 @@ Error: too_many_requests
 ```
 
 **Solution**: 
-- Wait a moment and retry
-- The Dropbox backend has built-in retry logic for transient errors
+- Wait a moment and retry manually
+- Consider implementing application-level retry logic for rate-limited requests
 
 ### Temp Directory Issues
 

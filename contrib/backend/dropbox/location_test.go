@@ -136,40 +136,112 @@ func (s *LocationTestSuite) TestList() {
 }
 
 func (s *LocationTestSuite) TestListByPrefix() {
-	s.Run("Success - filters by prefix", func() {
-		s.mockClient.EXPECT().
-			ListFolder(mock.Anything).
-			Return(&files.ListFolderResult{
-				Entries: []files.IsMetadata{
-					&files.FileMetadata{
-						Metadata: files.Metadata{
-							Name:        "test_file1.txt",
-							PathDisplay: "/test/path/test_file1.txt",
+	tests := []struct {
+		name          string
+		prefix        string
+		setupMock     func()
+		expectedFiles []string
+		expectedError bool
+	}{
+		{
+			name:   "Success - filters by prefix",
+			prefix: "test_",
+			setupMock: func() {
+				s.mockClient.EXPECT().
+					ListFolder(mock.Anything).
+					Return(&files.ListFolderResult{
+						Entries: []files.IsMetadata{
+							&files.FileMetadata{
+								Metadata: files.Metadata{Name: "test_file1.txt", PathDisplay: "/test/path/test_file1.txt"},
+							},
+							&files.FileMetadata{
+								Metadata: files.Metadata{Name: "test_file2.txt", PathDisplay: "/test/path/test_file2.txt"},
+							},
+							&files.FileMetadata{
+								Metadata: files.Metadata{Name: "other.txt", PathDisplay: "/test/path/other.txt"},
+							},
 						},
-					},
-					&files.FileMetadata{
-						Metadata: files.Metadata{
-							Name:        "test_file2.txt",
-							PathDisplay: "/test/path/test_file2.txt",
+						HasMore: false,
+					}, nil).
+					Once()
+			},
+			expectedFiles: []string{"test_file1.txt", "test_file2.txt"},
+		},
+		{
+			name:   "Success - relative path prefix",
+			prefix: "subdir/file_",
+			setupMock: func() {
+				s.mockClient.EXPECT().
+					ListFolder(mock.MatchedBy(func(arg *files.ListFolderArg) bool {
+						return arg.Path == "/test/path/subdir"
+					})).
+					Return(&files.ListFolderResult{
+						Entries: []files.IsMetadata{
+							&files.FileMetadata{
+								Metadata: files.Metadata{Name: "file_1.txt", PathDisplay: "/test/path/subdir/file_1.txt"},
+							},
+							&files.FileMetadata{
+								Metadata: files.Metadata{Name: "file_2.txt", PathDisplay: "/test/path/subdir/file_2.txt"},
+							},
+							&files.FileMetadata{
+								Metadata: files.Metadata{Name: "other.txt", PathDisplay: "/test/path/subdir/other.txt"},
+							},
 						},
-					},
-					&files.FileMetadata{
-						Metadata: files.Metadata{
-							Name:        "other.txt",
-							PathDisplay: "/test/path/other.txt",
+						HasMore: false,
+					}, nil).
+					Once()
+			},
+			expectedFiles: []string{"file_1.txt", "file_2.txt"},
+		},
+		{
+			name:   "Success - empty result",
+			prefix: "nomatch_",
+			setupMock: func() {
+				s.mockClient.EXPECT().
+					ListFolder(mock.Anything).
+					Return(&files.ListFolderResult{
+						Entries: []files.IsMetadata{
+							&files.FileMetadata{
+								Metadata: files.Metadata{Name: "other.txt", PathDisplay: "/test/path/other.txt"},
+							},
 						},
-					},
-				},
-				HasMore: false,
-			}, nil).
-			Once()
+						HasMore: false,
+					}, nil).
+					Once()
+			},
+			expectedFiles: []string{},
+		},
+		{
+			name:   "Error - list fails",
+			prefix: "test_",
+			setupMock: func() {
+				s.mockClient.EXPECT().
+					ListFolder(mock.Anything).
+					Return(nil, errors.New("list error")).
+					Once()
+			},
+			expectedError: true,
+		},
+	}
 
-		result, err := s.location.ListByPrefix("test_")
-		s.Require().NoError(err)
-		s.Len(result, 2)
-		s.Contains(result, "test_file1.txt")
-		s.Contains(result, "test_file2.txt")
-	})
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			tt.setupMock()
+
+			result, err := s.location.ListByPrefix(tt.prefix)
+
+			if tt.expectedError {
+				s.Require().Error(err)
+				s.Nil(result)
+			} else {
+				s.Require().NoError(err)
+				s.Len(result, len(tt.expectedFiles))
+				for _, expected := range tt.expectedFiles {
+					s.Contains(result, expected)
+				}
+			}
+		})
+	}
 }
 
 func (s *LocationTestSuite) TestListByRegex() {
@@ -346,6 +418,263 @@ func (s *LocationTestSuite) TestURI() {
 func (s *LocationTestSuite) TestFileSystem() {
 	fs := s.location.FileSystem()
 	s.Equal(s.fs, fs)
+}
+
+func (s *LocationTestSuite) TestVolume() {
+	s.Empty(s.location.Volume())
+}
+
+func (s *LocationTestSuite) TestString() {
+	str := s.location.String()
+	s.Contains(str, "dbx://")
+	s.Contains(str, "/test/path/")
+}
+
+func (s *LocationTestSuite) TestChangeDir() {
+	s.Run("Success - changes directory", func() {
+		loc := &Location{
+			fileSystem: s.fs,
+			path:       "/test/path/",
+			authority:  s.location.authority,
+		}
+
+		err := loc.ChangeDir("subdir/")
+		s.Require().NoError(err)
+		s.Contains(loc.Path(), "/test/path/subdir")
+	})
+
+	s.Run("Error - nil location", func() {
+		var loc *Location
+		err := loc.ChangeDir("subdir/")
+		s.Require().Error(err)
+		s.Contains(err.Error(), "non-nil")
+	})
+
+	s.Run("Error - empty path", func() {
+		loc := &Location{
+			fileSystem: s.fs,
+			path:       "/test/path/",
+		}
+		err := loc.ChangeDir("")
+		s.Require().Error(err)
+		s.Contains(err.Error(), "non-empty")
+	})
+
+	s.Run("Error - absolute path", func() {
+		loc := &Location{
+			fileSystem: s.fs,
+			path:       "/test/path/",
+		}
+		err := loc.ChangeDir("/absolute/path/")
+		s.Require().Error(err)
+		s.Contains(err.Error(), "relative")
+	})
+}
+
+func (s *LocationTestSuite) TestListErrors() {
+	tests := []struct {
+		name        string
+		setupMock   func()
+		operation   func() (interface{}, error)
+		expectError bool
+		expectEmpty bool
+	}{
+		{
+			name: "ListByPrefix - client error",
+			setupMock: func() {
+				s.mockClient.EXPECT().
+					ListFolder(mock.Anything).
+					Return(nil, errors.New("client error")).
+					Once()
+			},
+			operation: func() (interface{}, error) {
+				return s.location.ListByPrefix("test_")
+			},
+			expectError: true,
+		},
+		{
+			name: "ListByPrefix - no matches",
+			setupMock: func() {
+				s.mockClient.EXPECT().
+					ListFolder(mock.Anything).
+					Return(&files.ListFolderResult{
+						Entries: []files.IsMetadata{
+							&files.FileMetadata{
+								Metadata: files.Metadata{Name: "other.txt", PathDisplay: "/test/path/other.txt"},
+							},
+						},
+						HasMore: false,
+					}, nil).
+					Once()
+			},
+			operation: func() (interface{}, error) {
+				return s.location.ListByPrefix("nomatch_")
+			},
+			expectError: false,
+			expectEmpty: true,
+		},
+		{
+			name: "ListByRegex - client error",
+			setupMock: func() {
+				s.mockClient.EXPECT().
+					ListFolder(mock.Anything).
+					Return(nil, errors.New("client error")).
+					Once()
+			},
+			operation: func() (interface{}, error) {
+				return s.location.ListByRegex(regexp.MustCompile(`\.txt$`))
+			},
+			expectError: true,
+		},
+		{
+			name: "Exists - non-not-found error",
+			setupMock: func() {
+				s.mockClient.EXPECT().
+					GetMetadata(mock.Anything).
+					Return(nil, errors.New("internal server error")).
+					Once()
+			},
+			operation: func() (interface{}, error) {
+				return s.location.Exists()
+			},
+			expectError: true,
+		},
+		{
+			name: "DeleteFile - client error",
+			setupMock: func() {
+				s.mockClient.EXPECT().
+					DeleteV2(mock.Anything).
+					Return(nil, errors.New("delete failed")).
+					Once()
+			},
+			operation: func() (interface{}, error) {
+				return nil, s.location.DeleteFile("file.txt")
+			},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			tt.setupMock()
+			result, err := tt.operation()
+			if tt.expectError {
+				s.Require().Error(err)
+			} else {
+				s.Require().NoError(err)
+				if tt.expectEmpty {
+					s.Empty(result)
+				}
+			}
+		})
+	}
+}
+
+func (s *LocationTestSuite) TestClientRetrievalErrors() {
+	fsNoClient := &FileSystem{options: NewOptions()}
+	loc := &Location{fileSystem: fsNoClient, path: "/test/path/"}
+
+	tests := []struct {
+		name      string
+		operation func() error
+	}{
+		{
+			name: "Exists fails without client",
+			operation: func() error {
+				_, err := loc.Exists()
+				return err
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			err := tt.operation()
+			s.Require().Error(err)
+		})
+	}
+}
+
+func (s *LocationTestSuite) TestNilLocationErrors() {
+	var loc *Location
+
+	tests := []struct {
+		name      string
+		operation func() error
+	}{
+		{
+			name: "NewLocation fails on nil",
+			operation: func() error {
+				_, err := loc.NewLocation("subdir/")
+				return err
+			},
+		},
+		{
+			name: "NewFile fails on nil",
+			operation: func() error {
+				_, err := loc.NewFile("test.txt")
+				return err
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			err := tt.operation()
+			s.Require().Error(err)
+			s.Contains(err.Error(), "non-nil")
+		})
+	}
+}
+
+func (s *LocationTestSuite) TestAuthority() {
+	auth := s.location.Authority()
+	s.NotNil(auth)
+}
+
+func (s *LocationTestSuite) TestDeleteFileSuccess() {
+	s.Run("Success - deletes file", func() {
+		s.mockClient.EXPECT().
+			DeleteV2(mock.MatchedBy(func(arg *files.DeleteArg) bool {
+				return arg.Path == "/test/path/delete.txt"
+			})).
+			Return(&files.DeleteResult{}, nil).
+			Once()
+
+		err := s.location.DeleteFile("delete.txt")
+		s.Require().NoError(err)
+	})
+}
+
+func (s *LocationTestSuite) TestDeleteFileClientError() {
+	s.Run("Error - client retrieval fails", func() {
+		fsNoClient := &FileSystem{options: NewOptions()}
+		loc := &Location{fileSystem: fsNoClient, path: "/test/path/"}
+
+		err := loc.DeleteFile("file.txt")
+		s.Require().Error(err)
+	})
+}
+
+func (s *LocationTestSuite) TestIsNotFoundError() {
+	s.Run("Returns true for path/not_found error", func() {
+		err := errors.New("path/not_found")
+		s.True(isNotFoundError(err))
+	})
+
+	s.Run("Returns true for path/not_found/ error", func() {
+		err := errors.New("path/not_found/")
+		s.True(isNotFoundError(err))
+	})
+
+	s.Run("Returns false for other errors", func() {
+		err := errors.New("some other error")
+		s.False(isNotFoundError(err))
+	})
+
+	s.Run("Returns false for nil error", func() {
+		s.False(isNotFoundError(nil))
+	})
 }
 
 func TestLocationTestSuite(t *testing.T) {
