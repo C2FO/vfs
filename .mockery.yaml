@@ -22,6 +22,9 @@ packages:
     interfaces:
       Client: {}
       ReadWriteSeekCloser: {}
+  github.com/c2fo/vfs/v7/contrib/backend/dropbox:
+    interfaces:
+      Client: {}
   io/fs:
     config:
       dir: backend/sftp/mocks
