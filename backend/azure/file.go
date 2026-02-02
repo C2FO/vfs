@@ -70,7 +70,7 @@ func (f *File) Close() error {
 // the file is created and read operations are performed against that.  The temp file is closed and flushed to Azure
 // when f.Close() is called.
 func (f *File) Read(p []byte) (n int, err error) {
-	if err := f.checkTempFile(); err != nil {
+	if err := f.checkTempFile(false); err != nil {
 		return 0, utils.WrapReadError(err)
 	}
 	read, err := f.tempFile.Read(p)
@@ -91,7 +91,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 // the file is created and operations are performed against that.  The temp file is closed and flushed to Azure
 // when f.Close() is called.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
-	if err := f.checkTempFile(); err != nil {
+	if err := f.checkTempFile(false); err != nil {
 		return 0, utils.WrapSeekError(err)
 	}
 	pos, err := f.tempFile.Seek(offset, whence)
@@ -104,7 +104,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 // Write implements the io.Writer interface.  Writes are performed against a temporary local file.  The temp file is
 // closed and flushed to Azure with f.Close() is called.
 func (f *File) Write(p []byte) (int, error) {
-	if err := f.checkTempFile(); err != nil {
+	if err := f.checkTempFile(true); err != nil {
 		return 0, utils.WrapWriteError(err)
 	}
 
@@ -350,7 +350,7 @@ func (f *File) URI() string {
 	return utils.GetFileURI(f)
 }
 
-func (f *File) checkTempFile() error {
+func (f *File) checkTempFile(isWrite bool) error {
 	if f.tempFile == nil {
 		client, err := f.location.fileSystem.Client()
 		if err != nil {
@@ -361,21 +361,21 @@ func (f *File) checkTempFile() error {
 		if err != nil {
 			return err
 		}
-		if !exists {
-			tf, tfErr := os.CreateTemp("", fmt.Sprintf("%s.%d", path.Base(f.Name()), time.Now().UnixNano()))
-			if tfErr != nil {
-				return tfErr
+
+		tf, tfErr := os.CreateTemp("", fmt.Sprintf("%s.%d", path.Base(f.Name()), time.Now().UnixNano()))
+		if tfErr != nil {
+			return tfErr
+		}
+		f.tempFile = tf
+
+		if !isWrite {
+			if !exists {
+				return os.ErrNotExist
 			}
-			f.tempFile = tf
-		} else {
+
 			reader, dlErr := client.Download(f)
 			if dlErr != nil {
 				return dlErr
-			}
-
-			tf, tfErr := os.CreateTemp("", fmt.Sprintf("%s.%d", path.Base(f.Name()), time.Now().UnixNano()))
-			if tfErr != nil {
-				return tfErr
 			}
 
 			buffer := make([]byte, utils.TouchCopyMinBufferSize)
@@ -386,8 +386,6 @@ func (f *File) checkTempFile() error {
 			if _, err := tf.Seek(0, 0); err != nil {
 				return err
 			}
-
-			f.tempFile = tf
 		}
 	}
 	return nil
