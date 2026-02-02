@@ -101,7 +101,7 @@ func (ts *fileSystemTestSuite) TestClient() {
 	ts.Require().NoError(err, "no error")
 	ts.Equal(s3fs.client, client, "client was already set")
 
-	s3fs = &FileSystem{}
+	s3fs = &FileSystem{ctx: ts.T().Context()}
 	client, err = s3fs.Client()
 	ts.Require().NoError(err, "no error")
 	ts.NotNil(client, "client was set")

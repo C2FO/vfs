@@ -167,7 +167,7 @@ func (l *Location) String() string {
 // NewLocation makes a copy of the underlying Location, then modifies its path by calling ChangeDir with the
 // relativePath argument, returning the resulting location. The only possible errors come from the call to
 // ChangeDir.
-func (l *Location) NewLocation(relativePath string) (vfs.Location, error) {
+func (l *Location) NewLocation(relativePath string, _ ...options.NewLocationOption) (vfs.Location, error) {
 	if l == nil {
 		return nil, errLocationRequired
 	}

@@ -1,10 +1,15 @@
 package azure
 
-import "github.com/c2fo/vfs/v7/options"
+import (
+	"context"
+
+	"github.com/c2fo/vfs/v7/options"
+)
 
 const (
 	optionNameClient  = "client"
 	optionNameOptions = "options"
+	optionNameContext = "context"
 )
 
 // WithClient returns clientSetter implementation of NewFileOption
@@ -53,4 +58,28 @@ func (o *optionsOpt) Apply(fs *FileSystem) {
 // NewFileSystemOptionName returns the name of the option
 func (o *optionsOpt) NewFileSystemOptionName() string {
 	return optionNameOptions
+}
+
+// WithContext returns a context option implementation of NewFileOption
+//
+// WithContext is used to specify a context for the filesystem.
+// The context is used to control the lifecycle of the filesystem.
+func WithContext(ctx context.Context) options.NewFileSystemOption[FileSystem] {
+	return &contextOpt{
+		ctx: ctx,
+	}
+}
+
+type contextOpt struct {
+	ctx context.Context
+}
+
+// Apply applies the context to the filesystem
+func (c *contextOpt) Apply(fs *FileSystem) {
+	fs.ctx = c.ctx
+}
+
+// NewFileSystemOptionName returns the name of the option
+func (c *contextOpt) NewFileSystemOptionName() string {
+	return optionNameContext
 }

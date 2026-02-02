@@ -9,6 +9,7 @@ import (
 	"github.com/c2fo/vfs/v7/backend"
 	"github.com/c2fo/vfs/v7/backend/ftp/types"
 	"github.com/c2fo/vfs/v7/options"
+	"github.com/c2fo/vfs/v7/options/newlocation"
 	"github.com/c2fo/vfs/v7/utils"
 	"github.com/c2fo/vfs/v7/utils/authority"
 )
@@ -28,6 +29,7 @@ var (
 // FileSystem implements vfs.FileSystem for the FTP filesystem.
 type FileSystem struct {
 	options   Options
+	ctx       context.Context
 	ftpclient types.Client
 	dataconn  types.DataConn
 	resetConn bool
@@ -37,6 +39,7 @@ type FileSystem struct {
 func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem {
 	fs := &FileSystem{
 		options: Options{},
+		ctx:     context.Background(),
 	}
 
 	// apply options
@@ -78,7 +81,7 @@ func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.New
 }
 
 // NewLocation function returns the FTP implementation of vfs.Location.
-func (fs *FileSystem) NewLocation(authorityStr, locPath string) (vfs.Location, error) {
+func (fs *FileSystem) NewLocation(authorityStr, locPath string, opts ...options.NewLocationOption) (vfs.Location, error) {
 	if fs == nil {
 		return nil, errFileSystemRequired
 	}
@@ -96,10 +99,20 @@ func (fs *FileSystem) NewLocation(authorityStr, locPath string) (vfs.Location, e
 		return nil, err
 	}
 
+	ctx := fs.ctx
+	for _, o := range opts {
+		switch o := o.(type) {
+		case *newlocation.Context:
+			ctx = context.Context(o)
+		default:
+		}
+	}
+
 	return &Location{
 		fileSystem: fs,
 		path:       utils.EnsureTrailingSlash(path.Clean(locPath)),
 		authority:  auth,
+		ctx:        ctx,
 	}, nil
 }
 

@@ -32,7 +32,7 @@ type FileSystem interface {
 	//   * On error, nil is returned for the location.
 	//
 	// See NewFile for note on authority.
-	NewLocation(authority string, absLocPath string) (Location, error)
+	NewLocation(authority string, absLocPath string, opts ...options.NewLocationOption) (Location, error)
 
 	// Name returns the name of the FileSystem ie: Amazon S3, os, Google Cloud Storage, etc.
 	Name() string
@@ -112,7 +112,7 @@ type Location interface {
 	//     s3://mybucket/some/
 	//
 	//   * Accepts a relative location path.
-	NewLocation(relLocPath string) (Location, error)
+	NewLocation(relLocPath string, opts ...options.NewLocationOption) (Location, error)
 
 	// ChangeDir updates the existing Location's path to the provided relative location path.
 	//
