@@ -30,7 +30,6 @@ type FileSystem struct {
 	options   Options
 	ftpclient types.Client
 	dataconn  types.DataConn
-	resetConn bool
 }
 
 // NewFileSystem initializer for fileSystem struct.

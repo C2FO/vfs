@@ -1,6 +1,7 @@
 package ftp
 
 import (
+	"context"
 	"errors"
 	"os"
 	"regexp"
@@ -11,6 +12,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v7/backend/ftp/mocks"
+	"github.com/c2fo/vfs/v7/backend/ftp/types"
 	"github.com/c2fo/vfs/v7/utils"
 	"github.com/c2fo/vfs/v7/utils/authority"
 )
@@ -535,7 +537,11 @@ func (lt *locationTestSuite) TestNewLocation() {
 }
 
 func (lt *locationTestSuite) TestDeleteFile() {
-	dataConnGetterFunc = getFakeDataConn
+	mockDataConn := mocks.NewDataConn(lt.T())
+	mockDataConn.EXPECT().Delete("/old/filename.txt").Return(nil).Once()
+	dataConnGetterFunc = func(context.Context, authority.Authority, *FileSystem, *File, types.OpenType) (types.DataConn, error) {
+		return mockDataConn, nil
+	}
 	loc, err := lt.ftpfs.NewLocation("ftp.host.com:21", "/old/")
 	lt.Require().NoError(err)
 
