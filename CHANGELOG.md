@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v7.15.0] - 2026-03-06
 ### Added
 - Added AGENTS.md with comprehensive guidelines for AI agents, including development standards, testing requirements, CHANGELOG/PR process, Go version policy, GitHub Actions maintenance, and module management.
 - Added `.windsurf/rules/standards.md`, `.cursor/rules`, and `.claude/CLAUDE.md` files to reference AGENTS.md guidelines for AI coding assistants.
@@ -22,12 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `github/codeql-action` from v4.32.0 to v4.32.4
 - Updated test matrix in go.yml to test Go 1.25 and 1.26 (latest-1 and latest minor versions) per VFS compatibility policy.
 
-## [v7.14.0] - 2025-01-30
+## [v7.14.0] - 2026-01-30
 ### Added
 - Updated .mockery.yml with contrib/backend entry
 - Generated missing mocks/Options.go.
 
-## [v7.13.0] - 2025-01-26
+## [v7.13.0] - 2026-01-26
 ### Added
 - Exported conformance test functions from `backend/testsuite` package for use by any backend implementation. Fixes #311.
 - Added `conformance_test.go` to each core backend (s3, gs, azure, os, mem, sftp, ftp) for running conformance tests independently.
@@ -42,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Avoid type assert and type convert where possible. (https://github.com/C2FO/vfs/pull/303)
 - Remove unnecessary S3 `mockClient` type. (https://github.com/C2FO/vfs/pull/305)
 
-## [v7.12.0] - 2025-01-24
+## [v7.12.0] - 2026-01-24
 ### Security
 - Updated golang.org/x/crypto for security vulnerabilities.
 
