@@ -1,6 +1,6 @@
 module github.com/c2fo/vfs/v7
 
-go 1.25.8
+go 1.25.7
 
 require (
 	cloud.google.com/go/storage v1.60.0
