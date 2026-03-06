@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [contrib/vfsevents/v1.1.3] - 2026-03-06
 ### Security
 - Updated to Go 1.25.7
 - Updated core VFS dependency to v7.15.0
