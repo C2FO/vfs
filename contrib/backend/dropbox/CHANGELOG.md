@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Updated to Go 1.25.7
+- Updated core VFS dependency to v7.15.0
+- Updated dependencies
+
 ## [contrib/backend/dropbox/v1.0.0] - 2025-01-30
 ### Added
 - Initial commit of dropbox community-contributed backend.

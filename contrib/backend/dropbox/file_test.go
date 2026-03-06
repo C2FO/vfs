@@ -611,6 +611,7 @@ func (s *FileTestSuite) TestClose() {
 
 		// Verify temp file is cleaned up
 		s.Nil(s.file.tempFileRead)
+		//nolint:gosec // G703: False positive - checking temp file was deleted
 		_, err = os.Stat(tempFileName)
 		s.True(os.IsNotExist(err))
 	})
