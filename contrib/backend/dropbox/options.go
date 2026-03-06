@@ -7,7 +7,6 @@ import (
 // Options holds configuration options for the Dropbox FileSystem.
 type Options struct {
 	// AccessToken is the OAuth2 access token for Dropbox API authentication (required).
-	//nolint:gosec // G117: False positive - legitimate field name for OAuth token
 	AccessToken string
 
 	// ChunkSize is the size of chunks for uploading large files (default: 4MB).

@@ -205,7 +205,6 @@ func (f *File) ensureTempFileRead() error {
 	// Copy content to temp file
 	if _, err := io.Copy(f.tempFileRead, reader); err != nil {
 		_ = f.tempFileRead.Close()
-		//nolint:gosec // G703: False positive - removing temp file created by os.CreateTemp
 		_ = os.Remove(f.tempFileRead.Name())
 		f.tempFileRead = nil
 		return err
@@ -214,7 +213,6 @@ func (f *File) ensureTempFileRead() error {
 	// Seek to cursor position
 	if _, err := f.tempFileRead.Seek(f.cursorPos, io.SeekStart); err != nil {
 		_ = f.tempFileRead.Close()
-		//nolint:gosec // G703: False positive - removing temp file created by os.CreateTemp
 		_ = os.Remove(f.tempFileRead.Name())
 		f.tempFileRead = nil
 		return err
@@ -279,7 +277,6 @@ func (f *File) ensureTempFileWrite() error {
 	if f.cursorPos > 0 {
 		if _, err := f.tempFileWrite.Seek(f.cursorPos, io.SeekStart); err != nil {
 			_ = f.tempFileWrite.Close()
-			//nolint:gosec // G703: False positive - removing temp file created by os.CreateTemp
 			_ = os.Remove(f.tempFileWrite.Name())
 			f.tempFileWrite = nil
 			return err
@@ -363,14 +360,12 @@ func (f *File) Close() error {
 	// Clean up temp files
 	if f.tempFileRead != nil {
 		_ = f.tempFileRead.Close()
-		//nolint:gosec // G703: False positive - removing temp file created by os.CreateTemp
 		_ = os.Remove(f.tempFileRead.Name())
 		f.tempFileRead = nil
 	}
 
 	if f.tempFileWrite != nil {
 		_ = f.tempFileWrite.Close()
-		//nolint:gosec // G703: False positive - removing temp file created by os.CreateTemp
 		_ = os.Remove(f.tempFileWrite.Name())
 		f.tempFileWrite = nil
 	}
