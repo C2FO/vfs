@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Updated to Go 1.25.7
+- Updated core VFS dependency to v7.15.0
+- Updated dependencies
+
 ## [contrib/lockfile/v1.1.0] - 2025-10-07
 ### Security
 - Update go form 1.23 to 1.24
