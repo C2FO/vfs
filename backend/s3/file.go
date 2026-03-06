@@ -333,10 +333,12 @@ func (f *File) tempToS3() error {
 		return err
 	}
 
+	//nolint:staticcheck // SA1019: AWS SDK v2 manager API deprecated, migration to transfermanager tracked separately
 	uploader := manager.NewUploader(client, withUploadPartitionSize(f.getUploadPartitionSize()))
 	uploadInput := uploadInput(f)
 	uploadInput.Body = f.tempFileWriter
 
+	//nolint:staticcheck // SA1019: AWS SDK v2 manager API deprecated, migration to transfermanager tracked separately
 	_, err = uploader.Upload(context.Background(), uploadInput)
 	if err != nil {
 		return err
@@ -638,6 +640,7 @@ func (f *File) copyS3ToLocalTempReader(tmpFile *os.File) error {
 		Key:    aws.String(f.key),
 	}
 	opt := withDownloadPartitionSize(f.getDownloadPartitionSize())
+	//nolint:staticcheck // SA1019: AWS SDK v2 manager API deprecated, migration to transfermanager tracked separately
 	_, err = manager.NewDownloader(client, opt).
 		Download(context.Background(), tmpFile, input)
 
@@ -806,6 +809,7 @@ func (f *File) getS3Writer() (*io.PipeWriter, error) {
 	if err != nil {
 		return nil, err
 	}
+	//nolint:staticcheck // SA1019: AWS SDK v2 manager API deprecated, migration to transfermanager tracked separately
 	uploader := manager.NewUploader(client, withUploadPartitionSize(f.getUploadPartitionSize()))
 	ctx, cancel := context.WithCancel(context.Background())
 	f.cancelFunc = cancel
@@ -814,6 +818,7 @@ func (f *File) getS3Writer() (*io.PipeWriter, error) {
 
 	go func(input *s3.PutObjectInput) {
 		defer cancel()
+		//nolint:staticcheck // SA1019: AWS SDK v2 manager API deprecated, migration to transfermanager tracked separately
 		_, err := uploader.Upload(ctx, input)
 		if err != nil {
 			_ = pw.CloseWithError(err)
@@ -844,13 +849,17 @@ func (f *File) getDownloadPartitionSize() int64 {
 	return partSize
 }
 
+//nolint:staticcheck // SA1019: AWS SDK v2 manager API deprecated, migration to transfermanager tracked separately
 func withDownloadPartitionSize(partSize int64) func(*manager.Downloader) {
+	//nolint:staticcheck // SA1019: AWS SDK v2 manager API deprecated, migration to transfermanager tracked separately
 	return func(d *manager.Downloader) {
 		d.PartSize = partSize
 	}
 }
 
+//nolint:staticcheck // SA1019: AWS SDK v2 manager API deprecated, migration to transfermanager tracked separately
 func withUploadPartitionSize(partSize int64) func(*manager.Uploader) {
+	//nolint:staticcheck // SA1019: AWS SDK v2 manager API deprecated, migration to transfermanager tracked separately
 	return func(u *manager.Uploader) {
 		u.PartSize = partSize
 	}

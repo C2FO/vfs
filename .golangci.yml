@@ -1,6 +1,6 @@
 version: "2"
 run:
-  go: "1.24"
+  go: "1.25"
   issues-exit-code: 1
   tests: true
   allow-parallel-runners: false
@@ -80,7 +80,11 @@ linters:
       min-complexity: 15
     gosec:
       excludes:
-        - G115
+        - G115  # Integer overflow conversion - too many false positives
+        - G117  # Exported field names matching secret patterns (false positives for Options structs)
+        - G101  # Hardcoded credentials detection (false positives in test files with example data)
+        - G703  # Path traversal taint analysis (false positives for legitimate file operations)
+        - G705  # XSS taint analysis (false positives for stdout/stderr output)
     lll:
       line-length: 140
       tab-width: 1
