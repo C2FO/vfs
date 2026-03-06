@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added nolint directives with explanations for AWS SDK v2 deprecation warnings in `backend/s3/file.go` (migration to transfermanager tracked separately).
 
 ### Security
-- Updated Go version references from 1.24 to 1.25 in `.golangci.yml`, GitHub Actions workflows (golangci-lint.yml, codeql.yml).
+- Updated Go version references from 1.24 to 1.25 in `.golangci.yml`, GitHub Actions workflows (golangci-lint.yml, codeql.yml, go-test-coverage.yml).
 - Updated GitHub Actions dependencies:
   - `actions/setup-go` from v6.2.0 to v6.3.0
   - `github/codeql-action` from v4.32.0 to v4.32.4
