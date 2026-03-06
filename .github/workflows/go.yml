@@ -35,14 +35,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go-version: [ 1.24, 1.25 ]
+        go-version: [ 1.25, 1.26 ]
         os: [ ubuntu-latest, macos-latest, windows-latest ]
         module: ${{ fromJson(needs.get_modules.outputs.modules) }}
     runs-on: ${{ matrix.os }}
     name: Test ${{ matrix.module }} (Go ${{ matrix.go-version }}, ${{ matrix.os }})
     steps:
       - name: Install Go
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: ${{ matrix.go-version }}
           cache: false

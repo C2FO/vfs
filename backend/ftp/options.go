@@ -40,7 +40,7 @@ const (
 
 	envDisableEPSV = "VFS_FTP_DISABLE_EPSV"
 	envProtocol    = "VFS_FTP_PROTOCOL"
-	envPassword    = "VFS_FTP_PASSWORD" //nolint:gosec
+	envPassword    = "VFS_FTP_PASSWORD"
 	envUsername    = "VFS_FTP_USERNAME"
 )
 

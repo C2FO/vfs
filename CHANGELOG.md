@@ -6,6 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added AGENTS.md with comprehensive guidelines for AI agents, including development standards, testing requirements, CHANGELOG/PR process, Go version policy, GitHub Actions maintenance, and module management.
+- Added `.windsurf/rules/standards.md`, `.cursor/rules`, and `.claude/CLAUDE.md` files to reference AGENTS.md guidelines for AI coding assistants.
+
+### Fixed
+- Updated `.golangci.yml` to exclude gosec false positives (G117, G101, G703, G705) for legitimate code patterns.
+- Removed unused nolint directive in `backend/ftp/options.go`.
+- Added nolint directives with explanations for AWS SDK v2 deprecation warnings in `backend/s3/file.go` (migration to transfermanager tracked separately).
+
+### Security
+- Updated Go version references from 1.24 to 1.25 in `.golangci.yml`, GitHub Actions workflows (golangci-lint.yml, codeql.yml, go-test-coverage.yml).
+- Updated GitHub Actions dependencies:
+  - `actions/setup-go` from v6.2.0 to v6.3.0
+  - `github/codeql-action` from v4.32.0 to v4.32.4
+- Updated test matrix in go.yml to test Go 1.25 and 1.26 (latest-1 and latest minor versions) per VFS compatibility policy.
+
 ## [v7.14.0] - 2025-01-30
 ### Added
 - Updated .mockery.yml with contrib/backend entry
