@@ -152,6 +152,10 @@ func (l *Location) Path() string {
 
 // Exists returns true if the remote FTP directory exists.
 func (l *Location) Exists() (bool, error) {
+	if l.path == "/" {
+		return true, nil
+	}
+
 	dc, err := l.fileSystem.DataConn(context.TODO(), l.Authority(), types.SingleOp, nil)
 	if err != nil {
 		return false, err
