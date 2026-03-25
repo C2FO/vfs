@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Update deps
+
 ## [v7.16.0] - 2026-03-25
 ### Added
 - `backend/os.WithTempDir` option to specify a custom directory for intermediate temporary files during OS write operations, providing a reliable way to resolve cross-device rename issues (#122).

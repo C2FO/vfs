@@ -126,7 +126,7 @@ func (p *Poller) Start(
 		opt(config)
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(ctx) //nolint:gosec // G118: cancel is properly called in Stop() method
 	p.cancel = cancel
 
 	p.wg.Add(1)

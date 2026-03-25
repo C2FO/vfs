@@ -144,7 +144,7 @@ func (w *GCSWatcher) Start(
 		opt(config)
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(ctx) //nolint:gosec // G118: cancel is properly called in Stop() method
 	w.cancel = cancel
 
 	// Create a wrapped handler that applies filtering if configured

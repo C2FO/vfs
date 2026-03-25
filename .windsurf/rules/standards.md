@@ -1,3 +1,9 @@
+---
+trigger: always_on
+description: 
+globs: 
+---
+
 # VFS Development Standards
 
 All development on this repository MUST follow the comprehensive guidelines documented in `AGENTS.md` at the repository root.

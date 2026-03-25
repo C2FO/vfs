@@ -362,16 +362,17 @@ func (ts *fileTestSuite) TestMoveAndCopy() {
 						ContentEncoding: "utf8",
 					},
 					Content: content,
-				}}
-			fakeObjects = append(fakeObjects, fakestorage.Object{
-				ObjectAttrs: fakestorage.ObjectAttrs{
-					BucketName:      targetBucketName,
-					Name:            "place.holder",
-					ContentType:     "text/plain",
-					ContentEncoding: "utf8",
 				},
-				Content: []byte{},
-			})
+				fakestorage.Object{
+					ObjectAttrs: fakestorage.ObjectAttrs{
+						BucketName:      targetBucketName,
+						Name:            "place.holder",
+						ContentType:     "text/plain",
+						ContentEncoding: "utf8",
+					},
+					Content: []byte{},
+				},
+			}
 			server := fakestorage.NewServer(fakeObjects)
 			defer server.Stop()
 			client := server.Client()
@@ -464,16 +465,17 @@ func (ts *fileTestSuite) TestMoveAndCopyBuffered() {
 						ContentEncoding: "utf8",
 					},
 					Content: content,
-				}}
-			fakeObjects = append(fakeObjects, fakestorage.Object{
-				ObjectAttrs: fakestorage.ObjectAttrs{
-					BucketName:      targetBucketName,
-					Name:            "place.holder",
-					ContentType:     "text/plain",
-					ContentEncoding: "utf8",
 				},
-				Content: []byte{},
-			})
+				fakestorage.Object{
+					ObjectAttrs: fakestorage.ObjectAttrs{
+						BucketName:      targetBucketName,
+						Name:            "place.holder",
+						ContentType:     "text/plain",
+						ContentEncoding: "utf8",
+					},
+					Content: []byte{},
+				},
+			}
 			server := fakestorage.NewServer(fakeObjects)
 			defer server.Stop()
 			client := server.Client()

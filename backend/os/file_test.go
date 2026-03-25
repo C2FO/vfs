@@ -701,7 +701,7 @@ func (s *osFileTest) TestWithTempDir() {
 	// Verify temp file was created in the custom directory
 	osFile := file.(*File)
 	s.Require().NotNil(osFile.tempFile, "temp file should exist during write")
-	s.Assert().Equal(customTempDir, filepath.Dir(osFile.tempFile.Name()),
+	s.Equal(customTempDir, filepath.Dir(osFile.tempFile.Name()),
 		"temp file should be in the custom temp directory")
 
 	s.Require().NoError(file.Close())
