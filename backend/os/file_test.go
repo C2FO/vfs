@@ -663,16 +663,14 @@ func (s *osFileTest) TestPath() {
 func (s *osFileTest) TestURI() {
 	file, err := s.tmploc.NewFile("some/file/test.txt")
 	s.Require().NoError(err)
-	expected := fmt.Sprintf("file://%s",
-		filepath.ToSlash(filepath.Join(utils.EnsureLeadingSlash(s.tmploc.Path()), "some", "file", "test.txt")))
+	expected := fmt.Sprintf("%s://%s/%s", file.Location().FileSystem().Scheme(), file.Location().Authority().String(), utils.RemoveLeadingSlash(file.Path()))
 	s.Equal(expected, file.URI(), "%s does not match %s", file.URI(), expected)
 }
 
 func (s *osFileTest) TestStringer() {
 	file, err := s.tmploc.NewFile("some/file/test.txt")
 	s.Require().NoError(err)
-	expected := fmt.Sprintf("file://%s",
-		filepath.ToSlash(filepath.Join(utils.EnsureLeadingSlash(s.tmploc.Path()), "some", "file", "test.txt")))
+	expected := fmt.Sprintf("%s://%s/%s", file.Location().FileSystem().Scheme(), file.Location().Authority().String(), utils.RemoveLeadingSlash(file.Path()))
 	s.Equal(expected, file.String())
 }
 

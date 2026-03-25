@@ -2,6 +2,7 @@ package vfssimple
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -181,10 +182,11 @@ func (s *vfsSimpleSuite) TestParseURI() {
 				s.Require().NoError(err, test.message)
 				s.Equal(test.scheme, scheme, test.message)
 				s.Equal(test.authority, authority, test.message)
-				if utils.IsWindowsVolume(utils.RemoveLeadingSlash(test.path)) {
-					s.Equal(utils.RemoveLeadingSlash(test.path), path, test.message)
+				wantPath := test.path
+				if trimmed := strings.TrimPrefix(test.path, "/"); utils.IsWindowsVolume(trimmed) {
+					wantPath = trimmed
 				}
-				s.Equal(test.path, path, test.message)
+				s.Equal(wantPath, path, test.message)
 			}
 		})
 	}
