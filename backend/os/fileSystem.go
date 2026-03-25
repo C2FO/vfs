@@ -3,7 +3,6 @@ package os
 import (
 	"path"
 	"path/filepath"
-	"runtime"
 
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/backend"
@@ -17,7 +16,9 @@ const Scheme = "file"
 const name = "os"
 
 // FileSystem implements vfs.FileSystem for the OS file system.
-type FileSystem struct{}
+type FileSystem struct {
+	tempDir string
+}
 
 // NewFileSystem creates a new instance of the OS file system.
 func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem {
@@ -38,14 +39,7 @@ func (fs *FileSystem) Retry() vfs.Retry {
 
 // NewFile function returns the os implementation of vfs.File.
 func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.NewFileOption) (vfs.File, error) {
-	if runtime.GOOS == "windows" && filepath.IsAbs(filePath) {
-		if v := filepath.VolumeName(filePath); v != "" {
-			authorityStr = v
-			filePath = filePath[len(v):]
-		}
-	}
-
-	filePath = filepath.ToSlash(filePath)
+	filePath = normalizeOSPath(filePath)
 	err := utils.ValidateAbsoluteFilePath(filePath)
 	if err != nil {
 		return nil, err
@@ -60,19 +54,13 @@ func (fs *FileSystem) NewFile(authorityStr, filePath string, opts ...options.New
 		name:     filePath,
 		location: loc.(*Location),
 		opts:     opts,
+		tempDir:  fs.tempDir,
 	}, nil
 }
 
 // NewLocation function returns the os implementation of vfs.Location.
 func (fs *FileSystem) NewLocation(authorityStr, locPath string) (vfs.Location, error) {
-	if runtime.GOOS == "windows" && filepath.IsAbs(locPath) {
-		if v := filepath.VolumeName(locPath); v != "" {
-			authorityStr = v
-			locPath = locPath[len(v):]
-		}
-	}
-
-	locPath = filepath.ToSlash(locPath)
+	locPath = normalizeOSPath(locPath)
 	err := utils.ValidateAbsoluteLocationPath(locPath)
 	if err != nil {
 		return nil, err
@@ -102,4 +90,20 @@ func (fs *FileSystem) Scheme() string {
 
 func init() {
 	backend.Register(Scheme, &FileSystem{})
+}
+
+// normalizeOSPath converts a native OS path to the canonical forward-slash form
+// used internally. On Windows, drive-letter paths like "C:\foo" become "/C:/foo"
+// so the drive letter stays in the path (not the URI authority).
+// UNC paths like "\\server\share\path" become "//server/share/path" via
+// filepath.ToSlash and already satisfy the leading-slash requirement.
+func normalizeOSPath(p string) string {
+	if p == "" {
+		return ""
+	}
+	p = filepath.ToSlash(p)
+	if len(p) >= 2 && p[1] == ':' && ((p[0] >= 'A' && p[0] <= 'Z') || (p[0] >= 'a' && p[0] <= 'z')) {
+		p = "/" + p
+	}
+	return p
 }

@@ -74,6 +74,21 @@ func (o *osFileSystemTest) TestNewFileSystem() {
 	o.IsType((*FileSystem)(nil), fs)
 }
 
+func (o *osFileSystemTest) TestWithTempDirOption() {
+	opt := WithTempDir{TempDir: "/custom/temp"}
+
+	o.Equal("WithTempDir", opt.NewFileSystemOptionName())
+
+	fs := &FileSystem{}
+	opt.Apply(fs)
+	o.Equal("/custom/temp", fs.tempDir)
+}
+
+func (o *osFileSystemTest) TestNewFileSystemWithTempDir() {
+	fs := NewFileSystem(WithTempDir{TempDir: "/my/temp"})
+	o.Equal("/my/temp", fs.tempDir)
+}
+
 func TestOSFileSystem(t *testing.T) {
 	suite.Run(t, new(osFileSystemTest))
 }

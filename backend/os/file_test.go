@@ -365,10 +365,7 @@ func (s *osFileTest) TestOsCopy() {
 	s.Require().NoError(err)
 
 	s.Require().NoError(
-		osCopy(
-			path.Join(file1.Location().Authority().String(), file1.Path()),
-			path.Join(file2.Location().Authority().String(), file2.Path()),
-		),
+		osCopy(osFilePath(file1), osFilePath(file2)),
 		"test osCopy")
 
 	b, err := io.ReadAll(file2)
@@ -662,14 +659,17 @@ func (s *osFileTest) TestPath() {
 func (s *osFileTest) TestURI() {
 	file, err := s.tmploc.NewFile("some/file/test.txt")
 	s.Require().NoError(err)
-	expected := "file://" + filepath.ToSlash(filepath.Join(osLocationPath(s.tmploc), "some", "file", "test.txt"))
+	// path.Join (not filepath.Join) is intentional: URIs always use forward slashes,
+	// and VFS Path() returns forward-slash paths on all platforms.
+	expected := "file://" + path.Join(s.tmploc.Path(), "some/file/test.txt")
 	s.Equal(expected, file.URI(), "%s does not match %s", file.URI(), expected)
 }
 
 func (s *osFileTest) TestStringer() {
 	file, err := s.tmploc.NewFile("some/file/test.txt")
 	s.Require().NoError(err)
-	s.Equal("file://"+filepath.ToSlash(filepath.Join(osLocationPath(s.tmploc), "some", "file", "test.txt")), file.String())
+	expected := "file://" + path.Join(s.tmploc.Path(), "some/file/test.txt")
+	s.Equal(expected, file.String())
 }
 
 //nolint:staticcheck // deprecated method test
@@ -683,6 +683,80 @@ func (s *osFileTest) TestLocationRightAfterChangeDir() {
 	err = loc.ChangeDir(chDir)
 	s.Require().NoError(err)
 	s.Contains(loc.Path(), "someDir/", "location now should contain 'someDir/'")
+}
+
+func (s *osFileTest) TestWithTempDir() {
+	customTempDir := filepath.Join(s.T().TempDir(), "custom_temp")
+
+	fs := NewFileSystem(WithTempDir{TempDir: customTempDir})
+	dir := s.T().TempDir()
+	dir = utils.EnsureTrailingSlash(dir)
+
+	file, err := fs.NewFile("", filepath.Join(dir, "tempdir_test.txt"))
+	s.Require().NoError(err)
+
+	_, err = file.Write([]byte("test content"))
+	s.Require().NoError(err)
+
+	// Verify temp file was created in the custom directory
+	osFile := file.(*File)
+	s.Require().NotNil(osFile.tempFile, "temp file should exist during write")
+	s.Assert().Equal(customTempDir, filepath.Dir(osFile.tempFile.Name()),
+		"temp file should be in the custom temp directory")
+
+	s.Require().NoError(file.Close())
+
+	data := make([]byte, 12)
+	_, err = file.Read(data)
+	s.Require().NoError(err)
+	s.Equal("test content", string(data))
+	s.Require().NoError(file.Close())
+}
+
+func (s *osFileTest) TestSelectTempDir_DefaultSameDevice() {
+	dir := s.T().TempDir()
+	file, err := s.fileSystem.NewFile("", filepath.Join(dir, "test.txt"))
+	s.Require().NoError(err)
+
+	osFile := file.(*File)
+	tempDir, err := osFile.selectTempDir(osFilePath(file))
+	s.Require().NoError(err)
+
+	// Should pick os.TempDir() since it's on the same device as the test dir
+	same, err := areSameVolumeOrDevice(tempDir, dir)
+	s.Require().NoError(err)
+	s.True(same, "selected temp dir should be on the same device as the target")
+}
+
+func (s *osFileTest) TestSelectTempDir_CustomOverridesDefault() {
+	customDir := filepath.Join(s.T().TempDir(), "override")
+
+	file, err := s.fileSystem.NewFile("", filepath.Join(s.T().TempDir(), "test.txt"))
+	s.Require().NoError(err)
+
+	osFile := file.(*File)
+	osFile.tempDir = customDir
+
+	tempDir, err := osFile.selectTempDir(osFilePath(file))
+	s.Require().NoError(err)
+	s.Equal(customDir, tempDir)
+
+	info, err := os.Stat(customDir)
+	s.Require().NoError(err)
+	s.True(info.IsDir(), "custom temp dir should have been created")
+}
+
+func (s *osFileTest) TestAreSameVolumeOrDevice() {
+	dir1 := s.T().TempDir()
+	dir2 := s.T().TempDir()
+
+	same, err := areSameVolumeOrDevice(dir1, dir2)
+	s.Require().NoError(err)
+	s.True(same, "two temp dirs should be on the same device")
+
+	same, err = areSameVolumeOrDevice(dir1, dir1)
+	s.Require().NoError(err)
+	s.True(same, "same path should be same device")
 }
 
 func TestOSFile(t *testing.T) {
@@ -714,7 +788,7 @@ func setupTestFiles(baseLoc vfs.Location) {
 }
 
 func createDir(baseLoc vfs.Location, dirname string) {
-	dir := path.Join(baseLoc.Path(), dirname)
+	dir := filepath.Join(osLocationPath(baseLoc), filepath.FromSlash(dirname))
 	perm := os.FileMode(0755)
 	err := os.Mkdir(dir, perm)
 	if err != nil {
@@ -723,7 +797,7 @@ func createDir(baseLoc vfs.Location, dirname string) {
 }
 
 func writeStringFile(baseLoc vfs.Location, filename, data string) {
-	file := path.Join(baseLoc.Path(), filename)
+	file := filepath.Join(osLocationPath(baseLoc), filepath.FromSlash(filename))
 	f, err := os.Create(file) //nolint:gosec
 	if err != nil {
 		panic(err)
