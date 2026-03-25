@@ -384,19 +384,20 @@ func isNetworkError(err error) bool {
 func isTemporaryCloudError(err error) bool {
 	errStr := strings.ToLower(err.Error())
 
-	// AWS temporary errors
-	temporaryAWSErrors := []string{
-		"throttling", "rate exceeded", "service unavailable",
-		"internal error", "temporary failure", "503", "502", "500",
-		"slowdown", "request timeout", "provisioned throughput exceeded",
-	}
-
 	// GCP temporary errors
 	temporaryGCPErrors := []string{
 		"unavailable", "deadline exceeded", "resource exhausted",
 		"internal", "temporary failure", "quota exceeded",
 		"rate limited", "service temporarily unavailable",
 	}
+
+	// AWS temporary errors (preallocate with capacity)
+	temporaryAWSErrors := make([]string, 0, 11+len(temporaryGCPErrors))
+	temporaryAWSErrors = append(temporaryAWSErrors,
+		"throttling", "rate exceeded", "service unavailable",
+		"internal error", "temporary failure", "503", "502", "500",
+		"slowdown", "request timeout", "provisioned throughput exceeded",
+	)
 
 	//nolint:gocritic // appendAssign: append result not assigned to the same slice
 	allTemporaryErrors := append(temporaryAWSErrors, temporaryGCPErrors...)

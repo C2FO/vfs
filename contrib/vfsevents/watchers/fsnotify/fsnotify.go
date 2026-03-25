@@ -169,7 +169,7 @@ func (w *FSNotifyWatcher) Start(
 		}
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(ctx) //nolint:gosec // G118: cancel is properly called in Stop() method
 	w.cancel = cancel
 
 	// Status tracking
