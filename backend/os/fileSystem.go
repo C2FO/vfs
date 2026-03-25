@@ -95,7 +95,12 @@ func init() {
 // normalizeOSPath converts a native OS path to the canonical forward-slash form
 // used internally. On Windows, drive-letter paths like "C:\foo" become "/C:/foo"
 // so the drive letter stays in the path (not the URI authority).
+// UNC paths like "\\server\share\path" become "//server/share/path" via
+// filepath.ToSlash and already satisfy the leading-slash requirement.
 func normalizeOSPath(p string) string {
+	if p == "" {
+		return ""
+	}
 	p = filepath.ToSlash(p)
 	if len(p) >= 2 && p[1] == ':' && ((p[0] >= 'A' && p[0] <= 'Z') || (p[0] >= 'a' && p[0] <= 'z')) {
 		p = "/" + p

@@ -570,6 +570,9 @@ func osFilePath(f vfs.File) string {
 // toNativeOSPath converts an internal forward-slash path to a native OS path.
 // On Windows, strips the leading "/" before a drive letter and converts slashes.
 func toNativeOSPath(p string) string {
+	if p == "" {
+		return ""
+	}
 	if runtime.GOOS == "windows" && len(p) >= 3 && p[0] == '/' && p[2] == ':' {
 		p = p[1:]
 	}

@@ -659,6 +659,8 @@ func (s *osFileTest) TestPath() {
 func (s *osFileTest) TestURI() {
 	file, err := s.tmploc.NewFile("some/file/test.txt")
 	s.Require().NoError(err)
+	// path.Join (not filepath.Join) is intentional: URIs always use forward slashes,
+	// and VFS Path() returns forward-slash paths on all platforms.
 	expected := "file://" + path.Join(s.tmploc.Path(), "some/file/test.txt")
 	s.Equal(expected, file.URI(), "%s does not match %s", file.URI(), expected)
 }

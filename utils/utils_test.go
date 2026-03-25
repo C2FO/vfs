@@ -939,6 +939,9 @@ func TestUtils(t *testing.T) {
 
 // nativeOSPath converts a VFS path (e.g. /C:/foo/bar) to a native OS path.
 func nativeOSPath(vfsPath string) string {
+	if vfsPath == "" {
+		return ""
+	}
 	if runtime.GOOS == "windows" && len(vfsPath) >= 3 && vfsPath[0] == '/' && vfsPath[2] == ':' {
 		vfsPath = vfsPath[1:]
 	}
