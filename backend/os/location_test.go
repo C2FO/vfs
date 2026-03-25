@@ -25,11 +25,11 @@ type osLocationTest struct {
 }
 
 func (s *osLocationTest) SetupSuite() {
-	fs := &FileSystem{}
+	s.fileSystem = NewFileSystem()
 	dir := s.T().TempDir()
 	dir = utils.EnsureTrailingSlash(dir)
 	var err error
-	s.tmploc, err = fs.NewLocation("", dir)
+	s.tmploc, err = s.fileSystem.NewLocation("", dir)
 	s.Require().NoError(err)
 	setupTestFiles(s.tmploc)
 }

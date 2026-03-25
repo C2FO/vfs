@@ -32,6 +32,7 @@ type File struct {
 	fileOpener  opener
 	seekCalled  bool
 	readCalled  bool
+	tempDir     string
 }
 
 // Delete unlinks the file returning any error or nil.
@@ -461,15 +462,26 @@ func (f *File) getInternalFile() (*os.File, error) {
 }
 
 func (f *File) copyToLocalTempReader() (*os.File, error) {
-	tmpFile, err := os.CreateTemp("", fmt.Sprintf("%s.%d", f.Name(), time.Now().UnixNano()))
+	filePath := osFilePath(f)
+
+	tempDir, err := f.selectTempDir(filePath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to select temp directory for %s: %w", filePath, err)
 	}
 
-	exists, err := f.Exists()
+	tmpFile, err := os.CreateTemp(tempDir, ".vfs-*.tmp")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create temp file for %s: %w", filePath, err)
 	}
+
+	// Clean up temp file on any error after this point
+	ok := false
+	defer func() {
+		if !ok {
+			_ = tmpFile.Close()
+			_ = os.Remove(tmpFile.Name())
+		}
+	}()
 
 	// If file exists AND we've called Seek or Read first, any subsequent writes should edit the file (temp),
 	// so we copy the original file to the temp file then set the cursor position on the temp file to the current position.
@@ -478,13 +490,17 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 	// So imagine we have a file with content "hello world" and we call Seek(6, 0) and then Write([]byte("there")), the
 	// temp file should have "hello there" and not "there".  Then finally when Close is called, the temp file is renamed
 	// to the original file.  This code ensures that scenario works as expected.
+	exists, err := f.Exists()
+	if err != nil {
+		return nil, err
+	}
 	if exists && (f.seekCalled || f.readCalled) {
 		openFunc := openOSFile
 		if f.fileOpener != nil {
 			openFunc = f.fileOpener
 		}
 
-		actualFile, err := openFunc(osFilePath(f))
+		actualFile, err := openFunc(filePath)
 		if err != nil {
 			return nil, err
 		}
@@ -494,19 +510,68 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 		}
 
 		if f.cursorPos > 0 {
-			// match cursor position in tmep file
 			if _, err := tmpFile.Seek(f.cursorPos, 0); err != nil {
 				return nil, err
 			}
 		}
 	}
 
+	ok = true
 	return tmpFile, nil
 }
 
-func osFilePath(f vfs.File) string {
-	if runtime.GOOS == "windows" {
-		return f.Location().Authority().String() + filepath.FromSlash(f.Path())
+// selectTempDir determines the best directory for creating a temporary file.
+// Priority:
+//  1. User-specified tempDir (via WithTempDir option)
+//  2. System temp dir, if on the same device/volume as the target file
+//  3. Target file's parent directory (last resort; may be visible to file watchers)
+func (f *File) selectTempDir(targetPath string) (string, error) {
+	if f.tempDir != "" {
+		if err := os.MkdirAll(f.tempDir, 0750); err != nil {
+			return "", fmt.Errorf("cannot create specified temp dir %s: %w", f.tempDir, err)
+		}
+		return f.tempDir, nil
 	}
-	return f.Path()
+
+	osTempDir := os.TempDir()
+	same, err := areSameVolumeOrDevice(targetPath, osTempDir)
+	if err == nil && same {
+		return osTempDir, nil
+	}
+
+	// Fall back to target's parent directory — guaranteed same device
+	targetDir := filepath.Dir(targetPath)
+	if err := os.MkdirAll(targetDir, 0750); err != nil {
+		return "", fmt.Errorf("cannot create target directory %s: %w", targetDir, err)
+	}
+	return targetDir, nil
+}
+
+// areSameVolumeOrDevice checks if two paths reside on the same volume (Windows)
+// or device (Unix).
+func areSameVolumeOrDevice(path1, path2 string) (bool, error) {
+	vol1, err := getVolumeOrDevice(path1)
+	if err != nil {
+		return false, err
+	}
+	vol2, err := getVolumeOrDevice(path2)
+	if err != nil {
+		return false, err
+	}
+	return vol1 == vol2, nil
+}
+
+// osFilePath converts a VFS file path back to a native OS path.
+// On Windows, the internal path /C:/foo/bar.txt becomes C:\foo\bar.txt.
+func osFilePath(f vfs.File) string {
+	return toNativeOSPath(f.Path())
+}
+
+// toNativeOSPath converts an internal forward-slash path to a native OS path.
+// On Windows, strips the leading "/" before a drive letter and converts slashes.
+func toNativeOSPath(p string) string {
+	if runtime.GOOS == "windows" && len(p) >= 3 && p[0] == '/' && p[2] == ':' {
+		p = p[1:]
+	}
+	return filepath.FromSlash(p)
 }

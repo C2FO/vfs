@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -684,7 +686,7 @@ func (s *utilsSuite) TestTouchCopy() {
 	s.Zero(byteCount, "should be no content")
 
 	// writer file should not exist
-	_, err = os.Stat(writer.Path())
+	_, err = os.Stat(nativeOSPath(writer.Path()))
 	s.Require().Error(err, "should have failed stat")
 	s.Require().ErrorIs(err, os.ErrNotExist, "should be not exists")
 
@@ -702,7 +704,7 @@ func (s *utilsSuite) TestTouchCopy() {
 	s.Require().NoError(writer.Close())
 
 	// writer file should exist
-	fi, err := os.Stat(writer.Path())
+	fi, err := os.Stat(nativeOSPath(writer.Path()))
 	s.Require().NoError(err, "file should exist, so no error")
 	if fi != nil {
 		s.Zero(fi.Size(), "file should be zero length")
@@ -716,7 +718,7 @@ func (s *utilsSuite) TestTouchCopy() {
 
 	err = utils.TouchCopyBuffered(writer, reader, 0)
 	s.Require().NoError(err, "unexpected error running TouchCopy()")
-	fi, err = os.Stat(writer.Path())
+	fi, err = os.Stat(nativeOSPath(writer.Path()))
 	s.Require().NoError(err, "file should exist, so no error")
 	s.NotZero(fi, "file should have a non-zero byte size")
 
@@ -761,7 +763,7 @@ func (s *utilsSuite) TestTouchCopyBufferedDefaultBufferSize() {
 	s.Zero(byteCount, "should be no content")
 
 	// writer file should not exist
-	_, err = os.Stat(writer.Path())
+	_, err = os.Stat(nativeOSPath(writer.Path()))
 	s.Require().Error(err, "should have failed stat")
 	s.Require().ErrorIs(err, os.ErrNotExist, "should be not exists")
 
@@ -779,7 +781,7 @@ func (s *utilsSuite) TestTouchCopyBufferedDefaultBufferSize() {
 	s.Require().NoError(writer.Close())
 
 	// writer file should exist
-	fi, err := os.Stat(writer.Path())
+	fi, err := os.Stat(nativeOSPath(writer.Path()))
 	s.Require().NoError(err, "file should exist, so no error")
 	if fi != nil {
 		s.Zero(fi.Size(), "file should be zero length")
@@ -793,7 +795,7 @@ func (s *utilsSuite) TestTouchCopyBufferedDefaultBufferSize() {
 
 	err = utils.TouchCopyBuffered(writer, reader, 0)
 	s.Require().NoError(err, "unexpected error running TouchCopyBuffered()")
-	fi, err = os.Stat(writer.Path())
+	fi, err = os.Stat(nativeOSPath(writer.Path()))
 	s.Require().NoError(err, "file should exist, so no error")
 	s.NotZero(fi, "file should have a non-zero byte size")
 
@@ -838,7 +840,7 @@ func (s *utilsSuite) TestTouchCopyBufferedNonDefaultBufferSize() {
 	s.Zero(byteCount, "should be no content")
 
 	// writer file should not exist
-	_, err = os.Stat(writer.Path())
+	_, err = os.Stat(nativeOSPath(writer.Path()))
 	s.Require().Error(err, "should have failed stat")
 	s.Require().ErrorIs(err, os.ErrNotExist, "should be not exists")
 
@@ -856,7 +858,7 @@ func (s *utilsSuite) TestTouchCopyBufferedNonDefaultBufferSize() {
 	s.Require().NoError(writer.Close())
 
 	// writer file should exist
-	fi, err := os.Stat(writer.Path())
+	fi, err := os.Stat(nativeOSPath(writer.Path()))
 	s.Require().NoError(err, "file should exist, so no error")
 	if fi != nil {
 		s.Zero(fi.Size(), "file should be zero length")
@@ -870,7 +872,7 @@ func (s *utilsSuite) TestTouchCopyBufferedNonDefaultBufferSize() {
 
 	err = utils.TouchCopyBuffered(writer, reader, 1048576)
 	s.Require().NoError(err, "unexpected error running TouchCopyBuffered()")
-	fi, err = os.Stat(writer.Path())
+	fi, err = os.Stat(nativeOSPath(writer.Path()))
 	s.Require().NoError(err, "file should exist, so no error")
 	s.NotZero(fi, "file should have a non-zero byte size")
 
@@ -933,4 +935,12 @@ func (s *utilsSuite) TestSeekTo() {
 
 func TestUtils(t *testing.T) {
 	suite.Run(t, new(utilsSuite))
+}
+
+// nativeOSPath converts a VFS path (e.g. /C:/foo/bar) to a native OS path.
+func nativeOSPath(vfsPath string) string {
+	if runtime.GOOS == "windows" && len(vfsPath) >= 3 && vfsPath[0] == '/' && vfsPath[2] == ':' {
+		vfsPath = vfsPath[1:]
+	}
+	return filepath.FromSlash(vfsPath)
 }

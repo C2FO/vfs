@@ -6,7 +6,6 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 
 	"github.com/c2fo/vfs/v7"
@@ -106,7 +105,7 @@ func (l *Location) fileList(testEval fileTest) ([]string, error) {
 	// systems. If the user cares about the distinction between directories that are empty, vs non-existent then
 	// Location.Exists() should be used first.
 	if exists {
-		entries, err := os.ReadDir(l.Path())
+		entries, err := os.ReadDir(osLocationPath(l))
 		if err != nil {
 			return files, err
 		}
@@ -127,7 +126,11 @@ func (l *Location) fileList(testEval fileTest) ([]string, error) {
 //
 //	authStr := loc.Authority().String()
 func (l *Location) Volume() string {
-	return l.Authority().String()
+	p := l.Path()
+	if len(p) >= 3 && p[0] == '/' && p[2] == ':' {
+		return p[1:3]
+	}
+	return ""
 }
 
 // Authority returns the location's authority as a string.
@@ -220,8 +223,5 @@ func (l *Location) FileSystem() vfs.FileSystem {
 }
 
 func osLocationPath(l vfs.Location) string {
-	if runtime.GOOS == "windows" {
-		return l.Authority().String() + filepath.FromSlash(l.Path())
-	}
-	return l.Path()
+	return toNativeOSPath(l.Path())
 }
