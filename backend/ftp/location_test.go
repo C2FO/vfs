@@ -411,21 +411,6 @@ func (lt *locationTestSuite) TestExists() {
 
 	// location exists
 	locPath := "/"
-	entries := []*_ftp.Entry{
-		{
-			Name:   "file.txt",
-			Target: "",
-			Type:   _ftp.EntryTypeFile,
-			Time:   time.Now().UTC(),
-		},
-		{
-			Name:   locPath,
-			Target: "",
-			Type:   _ftp.EntryTypeFolder,
-			Time:   time.Now().UTC(),
-		},
-	}
-	lt.client.EXPECT().List(locPath).Return(entries, nil).Once()
 	loc, err := lt.ftpfs.NewLocation(authorityStr, locPath)
 	lt.Require().NoError(err)
 	exists, err := loc.Exists()
@@ -434,7 +419,7 @@ func (lt *locationTestSuite) TestExists() {
 
 	// locations does not exist
 	locPath = "/my/dir/"
-	entries = []*_ftp.Entry{
+	entries := []*_ftp.Entry{
 		{
 			Name:   "file.txt",
 			Target: "",
