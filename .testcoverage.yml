@@ -43,6 +43,8 @@ exclude:
     - vfscp/
     - backend/testsuite/conformance\.go      # test helper functions, not testable code
     - backend/testsuite/io_conformance\.go   # test helper functions, not testable code
+    - v8/backend/testsuite/conformance\.go
+    - v8/backend/testsuite/io_conformance\.go
 
 # File name of go-test-coverage breakdown file, which can be used to
 # analyze coverage difference.

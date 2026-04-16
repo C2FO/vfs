@@ -29,6 +29,10 @@ for hybrid or evolving storage requirements.
 go get -u github.com/c2fo/vfs/v7
 ```
 
+## VFS v8 (preview)
+
+The **v8** module (`github.com/c2fo/vfs/v8`) defines the next generation of composable vfs interfaces (iterator-based listing, optional seek/ranged I/O, `io/fs` interop), with backends under **[v8/backend](v8/backend/README.md)**—including **[mem](v8/backend/mem/README.md)**, **[os](v8/backend/os/README.md)**, **[s3](v8/backend/s3/README.md)**, **[gs](v8/backend/gs/README.md)**, **[azure](v8/backend/azure/README.md)**, **[ftp](v8/backend/ftp/README.md)**, **[sftp](v8/backend/sftp/README.md)**, and the shared **[testsuite](v8/backend/testsuite/README.md)**—plus a **[v7adapter](v8/v7adapter/README.md)** for incremental migration. First-party storage backends are still implemented against **v7**; see **[v8/README.md](v8/README.md)** for scope, package layout, and links to **[options](v8/options/README.md)**, **[backend](v8/backend/README.md)**, **[v7adapter](v8/v7adapter/README.md)**, and the **[v7 → v8 migration guide](v8/MIGRATION.md)**.
+
 ## Quick Start
 
 ```go

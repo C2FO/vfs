@@ -27,7 +27,28 @@ The package exports the following test functions:
 
 ## Using Conformance Tests
 
-### For New Backend Developers
+### VFS v8 (`github.com/c2fo/vfs/v8`)
+
+The v8 testsuite package is [`github.com/c2fo/vfs/v8/backend/testsuite`](https://pkg.go.dev/github.com/c2fo/vfs/v8/backend/testsuite). Add a file such as `conformance_test.go` in your backend with `//go:build vfsintegration`, construct a [`vfs.Location`](https://pkg.go.dev/github.com/c2fo/vfs/v8#Location) pointing at a dedicated test prefix, then call [`RunConformanceTests`](https://pkg.go.dev/github.com/c2fo/vfs/v8/backend/testsuite#RunConformanceTests) and optionally [`RunIOTests`](https://pkg.go.dev/github.com/c2fo/vfs/v8/backend/testsuite#RunIOTests).
+
+Examples in this repository: `v8/backend/mem`, `v8/backend/os`, `v8/backend/s3`, `v8/backend/gs`.
+
+Run from the `v8` module (adjust packages as needed):
+
+```bash
+cd v8
+go test -tags=vfsintegration ./backend/mem/... -run 'Conformance|IOConformance'
+
+export VFS_S3_BUCKET=your-bucket
+go test -tags=vfsintegration ./backend/s3/... -run 'Conformance|IOConformance'
+
+export VFS_GS_BUCKET=your-bucket
+go test -tags=vfsintegration ./backend/gs/... -run 'Conformance|IOConformance'
+```
+
+Object-store tests use the same environment variable names as the v7 `backend/s3` and `backend/gs` conformance tests (`VFS_S3_BUCKET`, `VFS_GS_BUCKET`, optional `VFS_*_TEST_PATH`).
+
+### For New Backend Developers (v7)
 
 Create an integration test file in your backend package:
 
