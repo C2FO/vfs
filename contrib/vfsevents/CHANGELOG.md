@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
+- Update github.com/go-jose/go-jose/v4 to v4.1.4
+
+### Security
 - Update go.opentelemetry.io/otel/sdk to v1.43.0
 
 ## [contrib/vfsevents/v1.1.4] - 2026-03-25
