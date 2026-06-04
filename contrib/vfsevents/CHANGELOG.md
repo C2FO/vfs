@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `TestS3WatcherTestSuite/TestStart`: add `Maybe()` mock expectations for `ReceiveMessage` to prevent a race-induced unexpected-call panic on Windows, where the poll goroutine can fire before `Stop()` cancels the context.
+
 ### Security
 - Update github.com/go-jose/go-jose/v4 to v4.1.4
 
