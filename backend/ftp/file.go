@@ -306,9 +306,14 @@ func (f *File) Delete(_ ...options.DeleteOption) error {
 // Close calls the underlying ftp.Response Close, if opened, and clears the internal pointer
 func (f *File) Close() error {
 	if f.location.fileSystem.dataconn != nil {
-		err := f.location.fileSystem.dataconn.Close()
-		if err != nil {
-			return utils.WrapCloseError(err)
+		closeErr := f.location.fileSystem.dataconn.Close()
+		// Always clear the dataconn reference regardless of close error.
+		// A zombie dataconn (W==nil after a failed write) causes the next
+		// Write call to nil-pointer panic instead of returning a retryable error.
+		f.location.fileSystem.dataconn = nil
+		if closeErr != nil {
+			f.offset = 0
+			return utils.WrapCloseError(closeErr)
 		}
 		f.location.fileSystem.resetConn = true
 	}

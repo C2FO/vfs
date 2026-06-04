@@ -105,6 +105,9 @@ func (dc *dataConn) Write(data []byte) (int, error) {
 	if dc.mode != types.OpenWrite {
 		return 0, errDataconnWriteInvalid
 	}
+	if dc.W == nil {
+		return 0, errors.New("write connection is closed")
+	}
 	return dc.W.Write(data)
 }
 
@@ -140,11 +143,12 @@ func getDataConn(ctx context.Context, a authority.Authority, fs *FileSystem, f *
 		return nil, errors.New("can not get a dataconn for a nil fileset")
 	}
 	if fs.dataconn != nil && fs.dataconn.Mode() != t {
-		// wrong session type ... close current session and unset it (ps so we can set a new one after)
-		if err := fs.dataconn.Close(); err != nil {
-			return nil, err
+		// wrong session type ... close current session and unset it (so we can set a new one after)
+		closeErr := fs.dataconn.Close()
+		fs.dataconn = nil // always clear; a failed close is still a dead connection
+		if closeErr != nil {
+			return nil, closeErr
 		}
-		fs.dataconn = nil
 	}
 
 	if fs.dataconn == nil || fs.resetConn {

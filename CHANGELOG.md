@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- FTP backend: `File.Close()` now always clears `fs.dataconn` even when `dataConn.Close()` returns an error, preventing a zombie connection (W==nil) from causing a nil-pointer panic on the next write retry.
+- FTP backend: `getDataConn()` mode-mismatch branch now clears `fs.dataconn` before returning a close error, applying the same zombie-prevention fix.
+- FTP backend: `dataConn.Write()` now returns an error instead of panicking when the internal writer `W` is nil (defense-in-depth guard).
 
 ## [v7.14.0] - 2025-01-30
 ### Added
