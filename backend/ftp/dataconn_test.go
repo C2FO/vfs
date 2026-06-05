@@ -298,6 +298,37 @@ func (s *dataConnSuite) TestRead() {
 	s.Equal(contents, w.String(), "read contents equals original contents")
 }
 
+func (s *dataConnSuite) TestWrite_nilWriter_returnsError() {
+	dc := &dataConn{
+		mode: types.OpenWrite,
+		W:    nil,
+	}
+	n, err := dc.Write([]byte("data"))
+	s.Require().ErrorIs(err, errDataconnWriterNil, "expected sentinel error when W is nil")
+	s.Zero(n, "zero bytes written when W is nil")
+}
+
+func (s *dataConnSuite) TestGetDataConn_modeMismatch_clearsDataconnOnCloseError() {
+	// Verifies that a failed close during mode-mismatch still clears fs.dataconn,
+	// preventing a zombie connection from being reused on the next call.
+	closeErr := errors.New("close failed")
+	fakedconn := NewFakeDataConn(types.OpenWrite)
+	fakedconn.AssertCloseErr(closeErr)
+	s.ftpFile.location.fileSystem.dataconn = fakedconn
+
+	dc, err := getDataConn(
+		s.T().Context(),
+		authority.Authority{},
+		s.ftpFile.location.fileSystem,
+		s.ftpFile,
+		types.OpenRead,
+	)
+	s.Require().Error(err, "error is expected from failed close")
+	s.Require().ErrorIs(err, closeErr, "error is the close error")
+	s.Nil(dc, "dataconn return value should be nil on error")
+	s.Nil(s.ftpFile.location.fileSystem.dataconn, "fs.dataconn must be nil after failed mode-mismatch close")
+}
+
 type writeNopCloser struct {
 	io.Writer
 }

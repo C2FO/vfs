@@ -66,21 +66,40 @@ func (s *S3WatcherTestSuite) TestNewS3Watcher() {
 
 func (s *S3WatcherTestSuite) TestStart() {
 	tests := []struct {
-		name    string
-		wantErr bool
+		name       string
+		setupMocks func()
+		wantErr    bool
 	}{
 		{
-			name:    "Valid start",
+			name: "Valid start",
+			setupMocks: func() {
+				// The poll goroutine may call ReceiveMessage before Stop() cancels the
+				// context (observed on Windows). Allow any number of calls returning
+				// empty results so the goroutine doesn't trigger an unexpected-call panic.
+				s.sqsClient.EXPECT().
+					ReceiveMessage(mock.Anything, mock.Anything).
+					Return(&sqs.ReceiveMessageOutput{}, nil).
+					Maybe()
+			},
 			wantErr: false,
 		},
 		{
-			name:    "ReceiveMessage error",
+			name: "ReceiveMessage error",
+			setupMocks: func() {
+				// Same race: allow the poll goroutine to fire with an error, which
+				// exercises the errHandler path, or not fire at all if Stop() wins.
+				s.sqsClient.EXPECT().
+					ReceiveMessage(mock.Anything, mock.Anything).
+					Return(nil, errors.New("receive error")).
+					Maybe()
+			},
 			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
+			tt.setupMocks()
 			handler := func(event vfsevents.Event) {}
 			errHandler := func(err error) {
 				if tt.wantErr {
