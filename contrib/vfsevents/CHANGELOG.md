@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+##[contrib/vfsevents/v1.1.5] - 2026-06-06
 ### Fixed
 - `TestS3WatcherTestSuite/TestStart`: add `Maybe()` mock expectations for `ReceiveMessage` to prevent a race-induced unexpected-call panic on Windows, where the poll goroutine can fire before `Stop()` cancels the context.
 
