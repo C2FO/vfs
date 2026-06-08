@@ -564,7 +564,10 @@ func (ts *fileTestSuite) TestCopyToFileDifferentAuth() {
 	targetBucketName := "bucket-target"
 	content := []byte("cross-account copy content")
 
-	server := fakestorage.NewServer(Objects{
+	// Use separate fake GCS servers so a mistaken server-side copy cannot read the
+	// source object from the destination backend. Buffered copy reads via the source
+	// client and writes via the target client, which is the only path that can succeed.
+	sourceServer := fakestorage.NewServer(Objects{
 		fakestorage.Object{
 			ObjectAttrs: fakestorage.ObjectAttrs{
 				BucketName:  sourceBucketName,
@@ -573,6 +576,10 @@ func (ts *fileTestSuite) TestCopyToFileDifferentAuth() {
 			},
 			Content: content,
 		},
+	})
+	defer sourceServer.Stop()
+
+	targetServer := fakestorage.NewServer(Objects{
 		fakestorage.Object{
 			ObjectAttrs: fakestorage.ObjectAttrs{
 				BucketName:  targetBucketName,
@@ -582,21 +589,23 @@ func (ts *fileTestSuite) TestCopyToFileDifferentAuth() {
 			Content: []byte{},
 		},
 	})
-	defer server.Stop()
-	client := server.Client()
+	defer targetServer.Stop()
+
+	sourceClient := sourceServer.Client()
+	targetClient := targetServer.Client()
 
 	sourceFs := NewFileSystem(
 		WithOptions(Options{CredentialFile: "/path/to/source-creds.json"}),
-		WithClient(client),
+		WithClient(sourceClient),
 	)
 	targetFs := NewFileSystem(
 		WithOptions(Options{CredentialFile: "/path/to/target-creds.json"}),
-		WithClient(client),
+		WithClient(targetClient),
 	)
 
 	ctx := ts.T().Context()
-	sourceBucket := client.Bucket(sourceBucketName)
-	targetBucket := client.Bucket(targetBucketName)
+	sourceBucket := sourceClient.Bucket(sourceBucketName)
+	targetBucket := targetClient.Bucket(targetBucketName)
 
 	sourceFile, err := sourceFs.NewFile(sourceBucketName, "/"+sourceName)
 	ts.Require().NoError(err)
