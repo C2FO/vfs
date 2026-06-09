@@ -534,6 +534,90 @@ func (ts *fileTestSuite) TestMoveAndCopyBuffered() {
 	}
 }
 
+func (ts *fileTestSuite) TestIsSameAuth_SameCredentialFile() {
+	fs := NewFileSystem(WithOptions(Options{CredentialFile: "/path/to/creds.json"}))
+
+	src, err := fs.NewFile("bucket-a", "/source.txt")
+	ts.Require().NoError(err)
+	tgt, err := fs.NewFile("bucket-b", "/target.txt")
+	ts.Require().NoError(err)
+
+	ts.True(src.(*File).isSameAuth(&tgt.(*File).location.fileSystem.options))
+}
+
+func (ts *fileTestSuite) TestIsSameAuth_DifferentCredentialFile() {
+	sourceFs := NewFileSystem(WithOptions(Options{CredentialFile: "/path/to/source-creds.json"}))
+	targetFs := NewFileSystem(WithOptions(Options{CredentialFile: "/path/to/target-creds.json"}))
+
+	src, err := sourceFs.NewFile("bucket-a", "/source.txt")
+	ts.Require().NoError(err)
+	tgt, err := targetFs.NewFile("bucket-b", "/target.txt")
+	ts.Require().NoError(err)
+
+	ts.False(src.(*File).isSameAuth(&tgt.(*File).location.fileSystem.options))
+}
+
+func (ts *fileTestSuite) TestCopyToFileDifferentAuth() {
+	sourceName := "source.txt"
+	targetName := "target.txt"
+	sourceBucketName := "bucket-source"
+	targetBucketName := "bucket-target"
+	content := []byte("cross-account copy content")
+
+	// Use separate fake GCS servers so a mistaken server-side copy cannot read the
+	// source object from the destination backend. Buffered copy reads via the source
+	// client and writes via the target client, which is the only path that can succeed.
+	sourceServer := fakestorage.NewServer(Objects{
+		fakestorage.Object{
+			ObjectAttrs: fakestorage.ObjectAttrs{
+				BucketName:  sourceBucketName,
+				Name:        sourceName,
+				ContentType: "text/plain",
+			},
+			Content: content,
+		},
+	})
+	defer sourceServer.Stop()
+
+	targetServer := fakestorage.NewServer(Objects{
+		fakestorage.Object{
+			ObjectAttrs: fakestorage.ObjectAttrs{
+				BucketName:  targetBucketName,
+				Name:        "place.holder",
+				ContentType: "text/plain",
+			},
+			Content: []byte{},
+		},
+	})
+	defer targetServer.Stop()
+
+	sourceClient := sourceServer.Client()
+	targetClient := targetServer.Client()
+
+	sourceFs := NewFileSystem(
+		WithOptions(Options{CredentialFile: "/path/to/source-creds.json"}),
+		WithClient(sourceClient),
+	)
+	targetFs := NewFileSystem(
+		WithOptions(Options{CredentialFile: "/path/to/target-creds.json"}),
+		WithClient(targetClient),
+	)
+
+	ctx := ts.T().Context()
+	sourceBucket := sourceClient.Bucket(sourceBucketName)
+	targetBucket := targetClient.Bucket(targetBucketName)
+
+	sourceFile, err := sourceFs.NewFile(sourceBucketName, "/"+sourceName)
+	ts.Require().NoError(err)
+	targetFile, err := targetFs.NewFile(targetBucketName, "/"+targetName)
+	ts.Require().NoError(err)
+
+	ts.Require().NoError(sourceFile.CopyToFile(targetFile))
+	ts.True(objectExists(ctx, targetBucket, targetName))
+	ts.Equal(content, mustReadObject(ctx, targetBucket, targetName))
+	ts.True(objectExists(ctx, sourceBucket, sourceName))
+}
+
 func TestFile(t *testing.T) {
 	suite.Run(t, new(fileTestSuite))
 }
