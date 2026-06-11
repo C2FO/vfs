@@ -1,0 +1,23 @@
+# Prenup v2 configuration. See https://github.com/C2FO/ep-tools/tree/main/prenup for docs.
+version: 2
+module_markers:
+  - go.mod
+exclude:
+  - .github
+  - '*.yaml'
+  - '*.yml'
+output: auto
+tasks:
+  - name: Run tests
+    default_selected: true
+    command: go test ./...
+    per_module: true
+    working_dir: '{{.module_root}}'
+  - name: Run golangci-lint
+    default_selected: true
+    command: golangci-lint run --max-same-issues 0 --build-tags=vfsintegration ./...
+    per_module: true
+    working_dir: '{{.module_root}}'
+  - name: Check for changes in CHANGELOG.md
+    default_selected: true
+    command: /bin/bash {{.repo_root}}/.github/workflows/scripts/changelog.sh
