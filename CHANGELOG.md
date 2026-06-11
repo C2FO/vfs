@@ -5,12 +5,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- CI: Added `Release by Changelog` GitHub Actions workflow (`.github/workflows/releasegen.yml`) to automate versioning and release creation from `CHANGELOG.md` files using ReleaseGen.
+### Fixed
+- Corrected release dates for `v7.17.0` (2026-06-06) and `v7.18.0` (2026-06-09) in this changelog.
+- Migrated prenup config to v2
+- Ensure latest go is used setup-go
+### Security
+- updated dependencies
 
-## [v7.18.0]
+## [v7.18.0] - 2026-06-09
 ### Fixed
 - Fixed GCS `CopyToFile` to compare source and target credentials before using native server-side copy; cross-account GCS copies now read with source auth and write with target auth.
 
-## [v7.17.0]
+## [v7.17.0] - 2026-06-06
 ### Fixed
 - FTP backend: `File.Close()` now always clears `fs.dataconn` even when `dataConn.Close()` returns an error, preventing a zombie connection (W==nil) from causing a nil-pointer panic on the next write retry.
 - FTP backend: `getDataConn()` mode-mismatch branch now clears `fs.dataconn` before returning a close error, applying the same zombie-prevention fix.

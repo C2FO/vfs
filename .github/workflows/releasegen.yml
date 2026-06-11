@@ -1,0 +1,66 @@
+name: Release by Changelog
+
+on:
+  push:
+    branches:
+      - main
+      - v6
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to create a release from'
+        required: true
+        default: 'main'
+      version:
+        description: 'Specify the semantic version for the release (vX.Y.Z)'
+        required: true
+      reason:
+        description: 'Reason for the manual release'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: ReleaseGen
+    runs-on: arc-scale-set
+
+    steps:
+      - name: Generate GitHub App token
+        id: generate-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 #v2.2.2
+        with:
+          app-id: ${{ secrets.RELEASEGEN_APP_ID }}
+          private-key: ${{ secrets.RELEASEGEN_APP_PRIVATE_KEY }}
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref_name }}
+          fetch-depth: 0
+          token: ${{ steps.generate-token.outputs.token }}
+
+      - name: Run ReleaseGen
+        env:
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_REF_NAME: ${{ github.event.inputs.branch || github.ref_name }}
+          MANUAL_VERSION: ${{ github.event.inputs.version || '' }}
+          REASON: ${{ github.event.inputs.reason || '' }}
+          CUSTOM_CHANGE_TYPES: |
+            documentation:patch
+            performance:minor
+        run: |
+          docker run --rm \
+            -e GITHUB_TOKEN \
+            -e GITHUB_REPOSITORY \
+            -e GITHUB_ACTOR \
+            -e GITHUB_REF_NAME \
+            -e MANUAL_VERSION \
+            -e REASON \
+            -e CUSTOM_CHANGE_TYPES \
+            -v "$(pwd):/workspace" \
+            harbor-us-west-2.c2fo.com/c2fo/releasegen:v2 \
+            --repo-root /workspace
