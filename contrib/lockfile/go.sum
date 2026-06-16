@@ -1,5 +1,5 @@
-github.com/c2fo/vfs/v7 v7.15.0 h1:0xzz96i5AN4DoNlm/Y570WRsp4fqxBRB+k27Ge1BIlY=
-github.com/c2fo/vfs/v7 v7.15.0/go.mod h1:F80+2FnZXWjVVtVIXKweEHN1KNS4unWOUPxvA+VcJrw=
+github.com/c2fo/vfs/v7 v7.18.0 h1:Fdt59D123jYD+NxcVoY9RJ2NpNfGUb585nE7oa+nVw0=
+github.com/c2fo/vfs/v7 v7.18.0/go.mod h1:CjW2kAVGmUQa76IvlRcHwSskOXPWPcWsvaLO2/jZHmk=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
