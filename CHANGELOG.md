@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Bump core VFS dependency to v7.18.0 in contrib modules (lockfile, vfsevents, dropbox)
+
 ### Added
 - CI: Added `Release by Changelog` GitHub Actions workflow (`.github/workflows/releasegen.yml`) to automate versioning and release creation from `CHANGELOG.md` files using ReleaseGen.
 ### Fixed
