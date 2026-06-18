@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [[v7.19.0](https://github.com/C2FO/vfs/releases/tag/v7.19.0)] - 2026-06-18
 ### Added
 - CI: Added `Release by Changelog` GitHub Actions workflow (`.github/workflows/releasegen.yml`) to automate versioning and release creation from `CHANGELOG.md` files using ReleaseGen.
 ### Fixed
