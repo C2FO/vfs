@@ -1,9 +1,9 @@
 module github.com/c2fo/vfs/contrib/backend/dropbox
 
-go 1.25.7
+go 1.25.11
 
 require (
-	github.com/c2fo/vfs/v7 v7.18.0
+	github.com/c2fo/vfs/v7 v7.19.0
 	github.com/dropbox/dropbox-sdk-go-unofficial/v6 v6.0.5
 	github.com/stretchr/testify v1.11.1
 )
