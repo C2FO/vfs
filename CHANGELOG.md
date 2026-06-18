@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected release dates for `v7.17.0` (2026-06-06) and `v7.18.0` (2026-06-09) in this changelog.
 - Migrated prenup config to v2
 - Ensure latest go is used setup-go
+- Use open source releasegen container
 ### Security
 - updated dependencies
 

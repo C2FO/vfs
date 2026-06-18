@@ -24,7 +24,7 @@ permissions:
 jobs:
   release:
     name: ReleaseGen
-    runs-on: arc-scale-set
+    runs-on: ubuntu-latest
 
     steps:
       - name: Generate GitHub App token
@@ -62,5 +62,5 @@ jobs:
             -e REASON \
             -e CUSTOM_CHANGE_TYPES \
             -v "$(pwd):/workspace" \
-            harbor-us-west-2.c2fo.com/c2fo/releasegen:v2 \
+            ghcr.io/c2fo/releasegen:v1 \
             --repo-root /workspace
