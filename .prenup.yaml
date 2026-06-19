@@ -18,6 +18,17 @@ tasks:
     command: golangci-lint run --max-same-issues 0 --build-tags=vfsintegration ./...
     per_module: true
     working_dir: '{{.module_root}}'
-  - name: Check for changes in CHANGELOG.md
+  - name: Validate CHANGELOG.md
     default_selected: true
-    command: /bin/bash {{.repo_root}}/.github/workflows/scripts/changelog.sh
+    # Runs the same image and subcommand the validate workflow uses in CI,
+    # reading custom_change_types from .releasegen.yaml. Replaces the
+    # legacy changelog.sh "did the changelog change?" guard.
+    #
+    # --pull=always forces Docker to check GHCR for the current digest of
+    # the `v1` moving tag before each run, so we stay automatically in
+    # sync with the latest v1.x release that CI uses. Without this flag
+    # Docker uses its default --pull=missing behavior and will keep
+    # running whatever was first cached locally, even after newer v1.x
+    # images ship. Cost is one HTTP HEAD per invocation; layers stay
+    # cached so re-downloads only happen on a real version bump.
+    command: docker run --rm --pull=always -v "{{.repo_root}}:/workspace" ghcr.io/c2fo/releasegen:v1 validate --repo-root /workspace
