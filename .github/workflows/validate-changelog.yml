@@ -1,0 +1,34 @@
+name: Validate Changelog
+
+# Lightweight PR-time check that parses every CHANGELOG.md's [Unreleased]
+# section and reports malformed headings (e.g. ### Changed without the
+# BREAKING CHANGE marker, or an unknown heading not declared in
+# .releasegen.yaml's custom_change_types). No token, no commits, no side
+# effects. Pairs with the release-by-changelog workflow that runs on merge
+# to main / v6.
+
+on:
+  pull_request:
+    branches:
+      - main
+      - v6
+
+permissions:
+  contents: read
+
+jobs:
+  validate-changelog:
+    name: Validate CHANGELOG.md
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Run releasegen validate
+        run: |
+          docker run --rm \
+            -v "$(pwd):/workspace" \
+            ghcr.io/c2fo/releasegen:v1 \
+            validate --repo-root /workspace

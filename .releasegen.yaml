@@ -1,0 +1,21 @@
+# ReleaseGen configuration shared by the release and validate workflows.
+# Per-invocation values (GITHUB_TOKEN, MANUAL_VERSION, etc.) stay in the
+# workflow env / CLI flags; repo-shape settings live here.
+#
+# Keep keys in lower-case; releasegen matches headings case-insensitively
+# but the canonical on-disk form is lower-cased.
+
+custom_change_types:
+  documentation: patch
+  performance: minor
+
+validate:
+  # Fail any PR whose non-CHANGELOG files changed vs the base ref but whose
+  # [Unreleased] section gained no new lines. Modules are scoped by where
+  # CHANGELOG.md lives; the root changelog catches everything not claimed
+  # by a submodule changelog. Replaces the legacy ensure_changelog.sh
+  # presence check and folds it into the same batched validate report.
+  require_changelog_entry: true
+  # base_ref defaults to origin/$GITHUB_BASE_REF on PR runs, else origin/main.
+  # Override here if you need to validate against a different revision.
+  # base_ref: origin/main
