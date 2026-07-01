@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- S3 backend: `isSameAuth` now also compares `Region`, so same-credential copies across different regions fall back to client-side `TouchCopyBuffered` instead of a server-side `CopyObject` call that AWS rejects with `PermanentRedirect`.
 
 ## [[v7.20.1](https://github.com/C2FO/vfs/releases/tag/v7.20.1)] - 2026-06-22
 ### Documentation

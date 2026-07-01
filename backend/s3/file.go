@@ -621,9 +621,12 @@ func (f *File) isSameAuth(targetFile *File) (bool, types.ObjectCannedACL) {
 
 	// since access key and session token are mutually exclusive, one will be nil
 	// if both are the same, we're using the same credentials
+	// Region must also match since CopyObject is invoked via the source region's endpoint,
+	// which AWS rejects with PermanentRedirect for cross-region targets.
 	isSameAccount := (fileOptions.AccessKeyID == targetOptions.AccessKeyID) &&
 		(fileOptions.RoleARN == targetOptions.RoleARN) &&
-		(fileOptions.SessionToken == targetOptions.SessionToken)
+		(fileOptions.SessionToken == targetOptions.SessionToken) &&
+		(fileOptions.Region == targetOptions.Region)
 
 	return isSameAccount, ACL
 }
