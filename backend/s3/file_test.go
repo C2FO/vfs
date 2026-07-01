@@ -957,6 +957,18 @@ func (ts *fileTestSuite) TestIsSameAuth() {
 			targetOptions: Options{AccessKeyID: "key1", RoleARN: "arn:aws:iam::123456789:role/MyRole"},
 			expectedSame:  false,
 		},
+		{
+			name:          "same credentials, different regions - different auth",
+			sourceOptions: Options{AccessKeyID: "key1", Region: "us-west-2"},
+			targetOptions: Options{AccessKeyID: "key1", Region: "ap-south-1"},
+			expectedSame:  false,
+		},
+		{
+			name:          "same credentials, same region - same auth",
+			sourceOptions: Options{AccessKeyID: "key1", Region: "us-west-2"},
+			targetOptions: Options{AccessKeyID: "key1", Region: "us-west-2"},
+			expectedSame:  true,
+		},
 	}
 	for _, tt := range tests { //nolint:gocritic //rangeValCopy
 		ts.Run(tt.name, func() {
