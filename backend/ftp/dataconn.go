@@ -151,7 +151,7 @@ func getDataConn(ctx context.Context, a authority.Authority, fs *FileSystem, f *
 		}
 	}
 
-	if fs.dataconn == nil || fs.resetConn {
+	if fs.dataconn == nil {
 		client, err := fs.Client(ctx, a)
 		if err != nil {
 			return nil, err
@@ -179,10 +179,6 @@ func getDataConn(ctx context.Context, a authority.Authority, fs *FileSystem, f *
 				mode: t,
 				c:    client,
 			}
-		}
-		// ensure resetConn is false since we've opened/reopened the file
-		if f != nil {
-			fs.resetConn = false
 		}
 	}
 
