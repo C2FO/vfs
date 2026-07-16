@@ -174,26 +174,41 @@ func (fs *FileSystem) connTimerStart() {
 	timer = time.AfterFunc(time.Duration(aliveSec)*time.Second, func() {
 		// The timer fires asynchronously on its own goroutine, so we must hold the
 		// same mutex used by connTimerStart/connTimerStop/Client to safely
-		// read/mutate fs.sftpclient and fs.sshConn.
-		fs.timerMutex.Lock()
-		defer fs.timerMutex.Unlock()
+		// read/mutate fs.sftpclient and fs.sshConn. We only hold it long enough to
+		// capture and nil out the fields, though: Close() can block on network
+		// I/O, and doing that under timerMutex would needlessly stall concurrent
+		// Client()/connTimerStart()/connTimerStop() calls on unrelated goroutines.
+		client, sshConn := func() (Client, io.Closer) {
+			fs.timerMutex.Lock()
+			defer fs.timerMutex.Unlock()
 
-		// If this is no longer the active timer, it was stopped or superseded
-		// while already firing; do nothing so we don't close an in-use client.
-		if fs.connTimer != timer {
-			return
+			// If this is no longer the active timer, it was stopped or superseded
+			// while already firing; do nothing so we don't close an in-use client.
+			if fs.connTimer != timer {
+				return nil, nil
+			}
+
+			// nil-ify client/conn to force lazy reconnect. Only capture-and-close if
+			// we have a valid, non-nil client (not a typed-nil).
+			var c Client
+			if fs.sftpclient != nil && reflect.ValueOf(fs.sftpclient).IsValid() && !reflect.ValueOf(fs.sftpclient).IsNil() {
+				c = fs.sftpclient
+				fs.sftpclient = nil
+			}
+
+			var conn io.Closer
+			if fs.sshConn != nil && reflect.ValueOf(fs.sshConn).IsValid() && !reflect.ValueOf(fs.sshConn).IsNil() {
+				conn = fs.sshConn
+				fs.sshConn = nil
+			}
+			return c, conn
+		}()
+
+		if client != nil {
+			_ = client.Close()
 		}
-
-		// close connection and nil-ify client to force lazy reconnect
-		// Only close if we have a valid, non-nil client (not a typed-nil)
-		if fs.sftpclient != nil && reflect.ValueOf(fs.sftpclient).IsValid() && !reflect.ValueOf(fs.sftpclient).IsNil() {
-			_ = fs.sftpclient.Close()
-			fs.sftpclient = nil
-		}
-
-		if fs.sshConn != nil && reflect.ValueOf(fs.sshConn).IsValid() && !reflect.ValueOf(fs.sshConn).IsNil() {
-			_ = fs.sshConn.Close()
-			fs.sshConn = nil
+		if sshConn != nil {
+			_ = sshConn.Close()
 		}
 	})
 	fs.connTimer = timer
