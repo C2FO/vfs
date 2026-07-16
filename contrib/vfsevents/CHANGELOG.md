@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [[contrib/vfsevents/v1.2.2](https://github.com/C2FO/vfs/releases/tag/contrib%2Fvfsevents%2Fv1.2.2)] - 2026-07-16
 ### Fixed
 - `TestGCSWatcherTestSuite/TestEnhancedMetadata`, `TestGCSWatcherTestSuite/TestOverwriteEventSuppression`, and `TestGCSWatcherTestSuite/TestRetryBackoffTiming`: replaced fixed `time.Sleep` waits with synchronization on the `receiveWithRetry` goroutine's completion (via an error channel), so these tests no longer race with the goroutine's writes to shared test state. See [#340](https://github.com/C2FO/vfs/issues/340).
 - `TestS3WatcherTestSuite/TestEnhancedMetadata`: fixed a CI-observed flake where the test could finish (and its mock-expectation teardown could run) before the background `pollOnce` goroutine's `DeleteMessage` call happened, since the test only synchronized on the event handler firing rather than on `pollOnce` fully returning. Now uses the same completion-based synchronization as `TestNonVersionedBucketMetadata` (extracted into a shared `waitForPoll` helper), which also proactively avoids the un-stopped `time.After` timer issue raised in review of this PR.
