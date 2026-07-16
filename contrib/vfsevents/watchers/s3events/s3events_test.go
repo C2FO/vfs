@@ -30,7 +30,6 @@ type S3WatcherTestSuite struct {
 
 func (s *S3WatcherTestSuite) SetupTest() {
 	s.sqsClient = mocks.NewSqsClient(s.T())
-	s.sqsClient = mocks.NewSqsClient(s.T())
 	s.watcher, _ = NewS3Watcher("https://sqs.us-east-1.amazonaws.com/123456789012/my-queue", WithSqsClient(s.sqsClient))
 }
 
@@ -1025,17 +1024,39 @@ func (s *S3WatcherTestSuite) TestNonVersionedBucketMetadata() {
 		Return(&sqs.DeleteMessageOutput{}, nil).
 		Once()
 
-	ctx, cancel := context.WithTimeout(s.T().Context(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(s.T().Context(), 5*time.Second)
 	defer cancel()
 
 	config := &vfsevents.StartConfig{}
 	status := &vfsevents.WatcherStatus{}
 
+	// Wait for pollOnce to fully return (handler call + DeleteMessage) instead
+	// of sleeping or only waiting for the handler to fire, so the goroutine's
+	// write to receivedEvent is synchronized with this goroutine's read below
+	// and the DeleteMessage expectation is guaranteed to be satisfied before
+	// this subtest (and its mock assertions) complete.
+	done := make(chan error, 1)
 	go func() {
-		_ = s.watcher.pollOnce(ctx, handler, status, config)
+		done <- s.watcher.pollOnce(ctx, handler, status, config)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
+	select {
+	case err := <-done:
+		s.Require().NoError(err, "pollOnce should process the message without error")
+	case <-time.After(2 * time.Second):
+		// Cancel immediately (rather than relying on the deferred cancel, which
+		// only fires once this function returns) and give the goroutine a
+		// short, bounded window to exit before we return. Otherwise it could
+		// keep running and hit the mock after this subtest has already failed,
+		// triggering a confusing secondary unexpected-call panic.
+		cancel()
+		select {
+		case <-done:
+		case <-time.After(500 * time.Millisecond):
+		}
+		s.Fail("Timeout waiting for S3 event to be processed")
+		return
+	}
 
 	// Verify the event was processed
 	s.Equal(vfsevents.EventCreated, receivedEvent.Type, "Put operation should be mapped to EventCreated")
