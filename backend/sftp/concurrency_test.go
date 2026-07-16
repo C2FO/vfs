@@ -3,16 +3,15 @@ package sftp
 import (
 	"fmt"
 	"io"
-	"os"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
 
-	_sftp "github.com/pkg/sftp"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/ssh"
 
+	"github.com/c2fo/vfs/v7/backend/sftp/mocks"
 	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
@@ -272,9 +271,9 @@ func (s *SFTPConcurrencyTestSuite) TestConnectTimeout() {
 func (s *SFTPConcurrencyTestSuite) TestTimerLogicValidation() {
 	s.Run("Timer closes valid client", func() {
 		// Create a mock client that tracks Close() calls
-		mockClient := &mockClosableClient{
-			closeCalled: make(chan bool, 1),
-		}
+		mockClient := mocks.NewClient(s.T())
+		closeCalled := make(chan bool, 1)
+		mockClient.EXPECT().Close().Run(func() { closeCalled <- true }).Return(nil).Once()
 		mockConn := &mockCloser{closeCalled: make(chan bool, 1)}
 
 		fs := &FileSystem{
@@ -294,7 +293,7 @@ func (s *SFTPConcurrencyTestSuite) TestTimerLogicValidation() {
 
 		// Wait for timer to fire and Close to be called
 		select {
-		case <-mockClient.closeCalled:
+		case <-closeCalled:
 			// Success - Close was called on valid client
 		case <-time.After(2 * time.Second):
 			s.Fail("Timer should have closed the valid client")
@@ -317,7 +316,7 @@ func (s *SFTPConcurrencyTestSuite) TestTimerLogicValidation() {
 
 	s.Run("Timer handles typed-nil client safely", func() {
 		// Create a typed-nil client (this is what happens when client creation fails)
-		var typedNilClient Client = (*mockClosableClient)(nil)
+		var typedNilClient Client = (*mocks.Client)(nil)
 
 		fs := &FileSystem{
 			sftpclient: typedNilClient,
@@ -352,10 +351,7 @@ func (s *SFTPConcurrencyTestSuite) TestTimerLogicValidation() {
 	s.Run("Timer does not call Close on typed-nil client", func() {
 		// This test validates that Close() is NOT called on typed-nil
 		// (which would panic since the receiver is nil)
-		closableNil := &mockClosableClient{
-			closeCalled: make(chan bool, 1),
-		}
-		var typedNilClient Client = (*mockClosableClient)(nil)
+		var typedNilClient Client = (*mocks.Client)(nil)
 
 		fs := &FileSystem{
 			sftpclient: typedNilClient,
@@ -390,42 +386,8 @@ func (s *SFTPConcurrencyTestSuite) TestTimerLogicValidation() {
 
 		// The key validation: no panic should have occurred
 		s.False(panicOccurred, "Timer should handle typed-nil without panic")
-
-		// Verify Close was never called (channel should be empty)
-		select {
-		case <-closableNil.closeCalled:
-			s.Fail("Close should NOT be called on typed-nil client")
-		default:
-			// Success - Close was not called
-		}
 	})
 }
-
-// mockClosableClient implements Client interface for testing timer behavior
-type mockClosableClient struct {
-	closeCalled chan bool
-}
-
-func (m *mockClosableClient) Close() error {
-	if m.closeCalled != nil {
-		m.closeCalled <- true
-	}
-	return nil
-}
-
-func (m *mockClosableClient) Chmod(path string, mode os.FileMode) error { return nil }
-func (m *mockClosableClient) Chtimes(path string, atime, mtime time.Time) error {
-	return nil
-}
-func (m *mockClosableClient) Create(path string) (*_sftp.File, error) { return nil, nil }
-func (m *mockClosableClient) MkdirAll(path string) error              { return nil }
-func (m *mockClosableClient) OpenFile(path string, f int) (*_sftp.File, error) {
-	return nil, nil
-}
-func (m *mockClosableClient) ReadDir(p string) ([]os.FileInfo, error) { return nil, nil }
-func (m *mockClosableClient) Remove(path string) error                { return nil }
-func (m *mockClosableClient) Rename(oldname, newname string) error    { return nil }
-func (m *mockClosableClient) Stat(p string) (os.FileInfo, error)      { return nil, nil }
 
 // mockCloser implements io.Closer for testing
 type mockCloser struct {
