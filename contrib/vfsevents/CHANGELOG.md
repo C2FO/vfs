@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [[contrib/vfsevents/v1.2.1](https://github.com/C2FO/vfs/releases/tag/contrib%2Fvfsevents%2Fv1.2.1)] - 2026-07-16
 ### Fixed
 - `TestS3WatcherTestSuite/TestNonVersionedBucketMetadata`: replaced a fixed `time.Sleep` with synchronization on the `pollOnce` goroutine's completion (via an error channel), so the test no longer races with the goroutine's write to the shared `receivedEvent` variable and no longer risks tearing down before the `DeleteMessage` mock expectation is satisfied. This was found while validating [#313](https://github.com/C2FO/vfs/issues/313); the originally reported `TestStart` race was already fixed in v1.1.5.
 
