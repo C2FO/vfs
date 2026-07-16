@@ -33,6 +33,44 @@ func (s *S3WatcherTestSuite) SetupTest() {
 	s.watcher, _ = NewS3Watcher("https://sqs.us-east-1.amazonaws.com/123456789012/my-queue", WithSqsClient(s.sqsClient))
 }
 
+// waitForPoll waits for a pollOnce goroutine (running in the background and
+// signaling its return value on done) to complete, instead of sleeping a
+// fixed duration or only synchronizing on the handler firing. This avoids
+// racing with the goroutine's writes to test-local state and guarantees any
+// mock calls made after the handler runs (e.g. DeleteMessage) have already
+// happened before this subtest's assertions and mock-expectation teardown.
+//
+// If the goroutine doesn't finish within timeout, cancel is invoked
+// immediately (rather than relying solely on a deferred cancel, which only
+// fires once the calling test function returns) and a short, bounded grace
+// period is given for the goroutine to exit before failing the test. This
+// prevents the goroutine from continuing to run - and potentially hitting
+// the mock - after the subtest has already failed.
+//
+// ok is false if the wait timed out (the test has already been failed via
+// s.Fail); callers should return immediately in that case.
+func (s *S3WatcherTestSuite) waitForPoll(
+	done <-chan error, cancel context.CancelFunc, timeout time.Duration, failMsg string,
+) (err error, ok bool) {
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+
+	select {
+	case err := <-done:
+		return err, true
+	case <-timer.C:
+		cancel()
+		graceTimer := time.NewTimer(500 * time.Millisecond)
+		defer graceTimer.Stop()
+		select {
+		case <-done:
+		case <-graceTimer.C:
+		}
+		s.Fail(failMsg)
+		return nil, false
+	}
+}
+
 func (s *S3WatcherTestSuite) TestNewS3Watcher() {
 	tests := []struct {
 		name     string
@@ -897,10 +935,8 @@ func (s *S3WatcherTestSuite) TestGetOperationType() {
 func (s *S3WatcherTestSuite) TestEnhancedMetadata() {
 	// Test that enhanced metadata is properly captured and included in events
 	var receivedEvent vfsevents.Event
-	eventReceived := make(chan bool, 1)
 	handler := func(event vfsevents.Event) {
 		receivedEvent = event
-		eventReceived <- true
 	}
 	// Create a comprehensive S3 event with all metadata fields
 	s3Event := S3Event{
@@ -948,18 +984,16 @@ func (s *S3WatcherTestSuite) TestEnhancedMetadata() {
 	status := &vfsevents.WatcherStatus{}
 
 	// Start pollOnce in goroutine
+	done := make(chan error, 1)
 	go func() {
-		_ = s.watcher.pollOnce(ctx, handler, status, config)
+		done <- s.watcher.pollOnce(ctx, handler, status, config)
 	}()
 
-	// Wait for event to be received with timeout
-	select {
-	case <-eventReceived:
-		// Event received successfully
-	case <-time.After(2 * time.Second):
-		s.Fail("Timeout waiting for S3 event to be processed")
+	err, ok := s.waitForPoll(done, cancel, 2*time.Second, "Timeout waiting for S3 event to be processed")
+	if !ok {
 		return
 	}
+	s.Require().NoError(err, "pollOnce should process the message without error")
 
 	// Verify the event was processed and contains enhanced metadata
 	s.Equal(vfsevents.EventModified, receivedEvent.Type, "Copy operation should be mapped to EventModified")
@@ -1030,33 +1064,16 @@ func (s *S3WatcherTestSuite) TestNonVersionedBucketMetadata() {
 	config := &vfsevents.StartConfig{}
 	status := &vfsevents.WatcherStatus{}
 
-	// Wait for pollOnce to fully return (handler call + DeleteMessage) instead
-	// of sleeping or only waiting for the handler to fire, so the goroutine's
-	// write to receivedEvent is synchronized with this goroutine's read below
-	// and the DeleteMessage expectation is guaranteed to be satisfied before
-	// this subtest (and its mock assertions) complete.
 	done := make(chan error, 1)
 	go func() {
 		done <- s.watcher.pollOnce(ctx, handler, status, config)
 	}()
 
-	select {
-	case err := <-done:
-		s.Require().NoError(err, "pollOnce should process the message without error")
-	case <-time.After(2 * time.Second):
-		// Cancel immediately (rather than relying on the deferred cancel, which
-		// only fires once this function returns) and give the goroutine a
-		// short, bounded window to exit before we return. Otherwise it could
-		// keep running and hit the mock after this subtest has already failed,
-		// triggering a confusing secondary unexpected-call panic.
-		cancel()
-		select {
-		case <-done:
-		case <-time.After(500 * time.Millisecond):
-		}
-		s.Fail("Timeout waiting for S3 event to be processed")
+	err, ok := s.waitForPoll(done, cancel, 2*time.Second, "Timeout waiting for S3 event to be processed")
+	if !ok {
 		return
 	}
+	s.Require().NoError(err, "pollOnce should process the message without error")
 
 	// Verify the event was processed
 	s.Equal(vfsevents.EventCreated, receivedEvent.Type, "Put operation should be mapped to EventCreated")
