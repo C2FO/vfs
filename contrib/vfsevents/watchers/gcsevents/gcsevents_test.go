@@ -31,6 +31,42 @@ func (s *GCSWatcherTestSuite) SetupTest() {
 	s.watcher, _ = NewGCSWatcher("my-project-id", "my-subscription", WithPubSubClient(s.pubsubClient))
 }
 
+// waitForReceive waits for a receiveWithRetry goroutine (running in the
+// background and signaling its return value on done) to complete, instead of
+// sleeping a fixed duration. This avoids racing with the goroutine's writes
+// to test-local state (e.g. a captured event).
+//
+// If the goroutine doesn't finish within timeout, cancel is invoked
+// immediately (rather than relying solely on a deferred cancel, which only
+// fires once the calling test function returns) and a short, bounded grace
+// period is given for the goroutine to exit before failing the test. This
+// prevents the goroutine from continuing to run - and potentially hitting
+// the mock - after the subtest has already failed.
+//
+// ok is false if the wait timed out (the test has already been failed via
+// s.Fail); callers should return immediately in that case.
+func (s *GCSWatcherTestSuite) waitForReceive(
+	done <-chan error, cancel context.CancelFunc, timeout time.Duration, failMsg string,
+) (err error, ok bool) {
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+
+	select {
+	case err := <-done:
+		return err, true
+	case <-timer.C:
+		cancel()
+		graceTimer := time.NewTimer(500 * time.Millisecond)
+		defer graceTimer.Stop()
+		select {
+		case <-done:
+		case <-graceTimer.C:
+		}
+		s.Fail(failMsg)
+		return nil, false
+	}
+}
+
 func (s *GCSWatcherTestSuite) TestNewGCSWatcher() {
 	tests := []struct {
 		name           string
@@ -529,17 +565,22 @@ func (s *GCSWatcherTestSuite) TestRetryBackoffTiming() {
 		Return(nil).
 		Once()
 
-	ctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	config := &vfsevents.StartConfig{}
 	status := &vfsevents.WatcherStatus{}
 
+	done := make(chan error, 1)
 	go func() {
-		_ = s.watcher.receiveWithRetry(ctx, handler, errHandler, status, config)
+		done <- s.watcher.receiveWithRetry(ctx, handler, errHandler, status, config)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
+	err, ok := s.waitForReceive(done, cancel, 2*time.Second, "Timeout waiting for GCS event to be processed")
+	if !ok {
+		return
+	}
+	s.Require().NoError(err, "receiveWithRetry should process the message without error")
 
 	// Verify event was processed
 	s.NotEmpty(receivedEvents, "Should process events without error")
@@ -706,17 +747,22 @@ func (s *GCSWatcherTestSuite) TestEnhancedMetadata() {
 		Return(nil).
 		Once()
 
-	ctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	config := &vfsevents.StartConfig{}
 	status := &vfsevents.WatcherStatus{}
 
+	done := make(chan error, 1)
 	go func() {
-		_ = s.watcher.receiveWithRetry(ctx, handler, errHandler, status, config)
+		done <- s.watcher.receiveWithRetry(ctx, handler, errHandler, status, config)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
+	err, ok := s.waitForReceive(done, cancel, 2*time.Second, "Timeout waiting for GCS event to be processed")
+	if !ok {
+		return
+	}
+	s.Require().NoError(err, "receiveWithRetry should process the message without error")
 
 	s.Require().NotNil(receivedEvent)
 	s.Equal(vfsevents.EventModified, receivedEvent.Type) // Should be Modified due to overwroteGeneration
@@ -786,17 +832,22 @@ func (s *GCSWatcherTestSuite) TestOverwriteEventSuppression() {
 		Return(nil).
 		Once()
 
-	ctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	config := &vfsevents.StartConfig{}
 	status := &vfsevents.WatcherStatus{}
 
+	done := make(chan error, 1)
 	go func() {
-		_ = s.watcher.receiveWithRetry(ctx, handler, errHandler, status, config)
+		done <- s.watcher.receiveWithRetry(ctx, handler, errHandler, status, config)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
+	err, ok := s.waitForReceive(done, cancel, 2*time.Second, "Timeout waiting for GCS events to be processed")
+	if !ok {
+		return
+	}
+	s.Require().NoError(err, "receiveWithRetry should process the messages without error")
 
 	// Verify only one event was generated (the OBJECT_FINALIZE -> EventModified)
 	s.Require().Len(receivedEvents, 1, "Should only receive one event for overwrite operation")
