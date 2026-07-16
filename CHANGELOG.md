@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SFTP backend tests: Raised the default auto-disconnect duration for the test binary (via a new `TestMain`) so background disconnect timers left running by tests that don't explicitly configure `AutoDisconnect` can no longer fire into later, unrelated tests and panic on their now-torn-down mocks.
 - FTP backend: Fixed a data race in `openWriteConnection` where the mocked `StorFrom` call's `io.Reader` argument (an `*io.PipeReader`) was formatted via `fmt`'s `%v` by testify's mock argument diffing - which reflects into unexported struct fields - concurrently with the pipe's writer side being used on another goroutine. The reader is now wrapped in a type with a `String()` method so formatting no longer touches the pipe's internals.
 - CI: Added `-race` to the Go test workflow across all modules, now that the above races are fixed.
+- CI: Fixed the "Set TMPDIR for Windows" step, which used `shell: cmd` with bash-style `$GITHUB_ENV` syntax that `cmd.exe` doesn't expand, so it silently never set `TEMP`/`TMP`. The "Run Tests" step then explicitly set `TEMP`/`TMP` to an empty string (falling back from the never-populated `env.TEMP`/`env.TMP`), which broke cgo's toolchain on Windows once `-race` (which requires cgo) was enabled. The step now uses `shell: pwsh` with the correct `$env:GITHUB_ENV` syntax and ensures `C:\Temp` exists.
 
 ## [[v7.20.4](https://github.com/C2FO/vfs/releases/tag/v7.20.4)] - 2026-07-16
 ### Fixed
