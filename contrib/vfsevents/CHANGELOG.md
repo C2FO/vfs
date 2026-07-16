@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Temporarily skipped `fsnotify` watcher tests on Windows (`TestFSNotifyWatcherTestSuite`, `TestDebouncing`, `TestDebouncingEdgeCases`, `TestEventAnalysis`) pending a fix for a pre-existing bug where `fileURL()`'s `file://` URI, built from a Windows drive-letter temp path, round-trips into an invalid native path (e.g. `/C:/Temp/...`) by the time it reaches `fsnotify.Add()`. Tracked in [#344](https://github.com/C2FO/vfs/issues/344).
+
 ## [[contrib/vfsevents/v1.2.2](https://github.com/C2FO/vfs/releases/tag/contrib%2Fvfsevents%2Fv1.2.2)] - 2026-07-16
 ### Fixed
 - `TestGCSWatcherTestSuite/TestEnhancedMetadata`, `TestGCSWatcherTestSuite/TestOverwriteEventSuppression`, and `TestGCSWatcherTestSuite/TestRetryBackoffTiming`: replaced fixed `time.Sleep` waits with synchronization on the `receiveWithRetry` goroutine's completion (via an error channel), so these tests no longer race with the goroutine's writes to shared test state. See [#340](https://github.com/C2FO/vfs/issues/340).
