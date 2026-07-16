@@ -6,7 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Fixed
-- SFTP backend: Fixed a data race in `FileSystem.connTimerStart`'s `time.AfterFunc` callback, which read/wrote `sftpclient`/`sshConn` without holding `timerMutex`, the same mutex used by `connTimerStart`/`connTimerStop`/`Client`. Also fixed `connTimerStart` leaking a timer goroutine on every call by not stopping the previously-scheduled timer before replacing it. See [#338](https://github.com/C2FO/vfs/issues/338).
+- SFTP backend: Fixed a data race in `FileSystem.connTimerStart`'s `time.AfterFunc` callback, which read/wrote `sftpclient`/`sshConn` without holding `timerMutex`, the same mutex used by `connTimerStart`/`connTimerStop`/`Client`. Also fixed `connTimerStart` leaking a timer goroutine on every call (only the most recently created timer was stoppable) and hardened the callback against acting on a stale, already-superseded timer. See [#338](https://github.com/C2FO/vfs/issues/338).
+- SFTP backend tests: Raised the default auto-disconnect duration for the test binary (via a new `TestMain`) so background disconnect timers left running by tests that don't explicitly configure `AutoDisconnect` can no longer fire into later, unrelated tests and panic on their now-torn-down mocks.
+- FTP backend: Fixed a data race in `openWriteConnection` where the mocked `StorFrom` call's `io.Reader` argument (an `*io.PipeReader`) was formatted via `fmt`'s `%v` by testify's mock argument diffing - which reflects into unexported struct fields - concurrently with the pipe's writer side being used on another goroutine. The reader is now wrapped in a type with a `String()` method so formatting no longer touches the pipe's internals.
+- CI: Added `-race` to the Go test workflow across all modules, now that the above races are fixed.
 
 ## [[v7.20.4](https://github.com/C2FO/vfs/releases/tag/v7.20.4)] - 2026-07-16
 ### Fixed

@@ -185,6 +185,25 @@ func getDataConn(ctx context.Context, a authority.Authority, fs *FileSystem, f *
 	return fs.dataconn, nil
 }
 
+// nonReflectingReader wraps an io.Reader solely to give it a String method.
+// It exists because client.StorFrom's reader argument is read concurrently
+// (here, by the writer side of the same io.Pipe, on another goroutine) while
+// it's passed through client.StorFrom. In production this is harmless, since
+// nothing else inspects the argument. But in tests, testify's mock formats
+// every argument via fmt's "%v" for its diagnostic diff output - even ones
+// already matched by mock.Anything - and fmt's default struct formatting
+// reads a value's unexported fields directly, bypassing the io.Pipe's own
+// synchronization. That's a genuine data race against the concurrent writer.
+// Implementing Stringer makes fmt use this method instead of reflecting into
+// the wrapped reader's internals.
+type nonReflectingReader struct {
+	io.Reader
+}
+
+func (r *nonReflectingReader) String() string {
+	return "io.Reader"
+}
+
 func openWriteConnection(client types.Client, f *File) (types.DataConn, error) {
 	found, err := f.Location().Exists()
 	if err != nil {
@@ -203,7 +222,7 @@ func openWriteConnection(client types.Client, f *File) (types.DataConn, error) {
 	pr, pw := io.Pipe()
 	errChan := make(chan error, 1)
 	go func(errChan chan error) {
-		err := client.StorFrom(f.Path(), pr, uint64(f.offset))
+		err := client.StorFrom(f.Path(), &nonReflectingReader{pr}, uint64(f.offset))
 		errChan <- err
 		// close the pipe reader so that writes to the dataconn aren't blocking.
 		// error will occur when pipereader is already closed - nothing to do in that case.

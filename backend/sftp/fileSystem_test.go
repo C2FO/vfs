@@ -14,6 +14,20 @@ import (
 	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
+// TestMain raises the default auto-disconnect duration for the whole test
+// binary. Most tests in this package never set Options.AutoDisconnect, so
+// they schedule a real background timer using the production default (10s).
+// Left unstopped at the default duration, that timer can outlive its own
+// test and fire during a later, unrelated test, closing whatever mock client
+// is active at that point - which fails that unrelated test (or, under
+// -race, is indistinguishable from a real race until diagnosed). Tests that
+// specifically exercise the auto-disconnect timer already set a short
+// AutoDisconnect explicitly, so they're unaffected by raising the default.
+func TestMain(m *testing.M) {
+	defaultAutoDisconnectDuration = 3600
+	os.Exit(m.Run())
+}
+
 type fileSystemTestSuite struct {
 	suite.Suite
 	sftpfs *FileSystem

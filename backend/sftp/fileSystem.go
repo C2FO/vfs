@@ -22,7 +22,15 @@ import (
 // Scheme defines the filesystem type.
 const Scheme = "sftp"
 const name = "Secure File Transfer Protocol"
-const defaultAutoDisconnectDuration = 10
+
+// defaultAutoDisconnectDuration is the number of idle seconds before a
+// FileSystem's connection auto-disconnects, when Options.AutoDisconnect is
+// unset. It's a var (rather than a const) so tests can raise it for the
+// duration of the test binary, preventing the real background disconnect
+// timer from firing into an unrelated, already-completed test later in the
+// same process (see TestMain in fileSystem_test.go). Production behavior is
+// unaffected: this is only ever mutated by test code.
+var defaultAutoDisconnectDuration = 10
 
 var defaultClientGetter func(authority.Authority, Options) (Client, io.Closer, error)
 
