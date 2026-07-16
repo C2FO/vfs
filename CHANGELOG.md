@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- SFTP backend: Fixed a data race in `FileSystem.connTimerStart`'s `time.AfterFunc` callback, which read/wrote `sftpclient`/`sshConn` without holding `timerMutex`, the same mutex used by `connTimerStart`/`connTimerStop`/`Client`. Also fixed `connTimerStart` leaking a timer goroutine on every call by not stopping the previously-scheduled timer before replacing it. See [#338](https://github.com/C2FO/vfs/issues/338).
 
 ## [[v7.20.4](https://github.com/C2FO/vfs/releases/tag/v7.20.4)] - 2026-07-16
 ### Fixed

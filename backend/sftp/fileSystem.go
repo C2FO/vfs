@@ -124,6 +124,10 @@ func (fs *FileSystem) Scheme() string {
 func (fs *FileSystem) Client(a authority.Authority) (Client, error) {
 	// first stop connection timer, if any
 	fs.connTimerStop()
+
+	fs.timerMutex.Lock()
+	defer fs.timerMutex.Unlock()
+
 	if fs.sftpclient == nil || (reflect.ValueOf(fs.sftpclient).IsValid() && reflect.ValueOf(fs.sftpclient).IsNil()) {
 		var err error
 		fs.sftpclient, fs.sshConn, err = defaultClientGetter(a, fs.options)
@@ -138,12 +142,40 @@ func (fs *FileSystem) connTimerStart() {
 	fs.timerMutex.Lock()
 	defer fs.timerMutex.Unlock()
 
+	// Stop any previously-scheduled timer before replacing it. Without this,
+	// repeated calls to connTimerStart (e.g. from successive file operations,
+	// each deferring a call) leak an orphaned timer goroutine per call, since
+	// only the most recently created timer is retained in fs.connTimer and
+	// reachable by connTimerStop.
+	if fs.connTimer != nil {
+		fs.connTimer.Stop()
+	}
+
 	aliveSec := defaultAutoDisconnectDuration
 	if fs.options.AutoDisconnect > 0 {
 		aliveSec = fs.options.AutoDisconnect
 	}
 
-	fs.connTimer = time.AfterFunc(time.Duration(aliveSec)*time.Second, func() {
+	// Capture this timer's own identity so the callback can detect whether it is
+	// still the active timer when it eventually runs. time.Timer.Stop does not
+	// wait for an already-fired callback, so a callback may still be parked on
+	// timerMutex after connTimerStop niled fs.connTimer or connTimerStart
+	// replaced it. Without this guard, such a stale callback would close a
+	// client that a concurrent Client() call already handed back to a caller.
+	var timer *time.Timer
+	timer = time.AfterFunc(time.Duration(aliveSec)*time.Second, func() {
+		// The timer fires asynchronously on its own goroutine, so we must hold the
+		// same mutex used by connTimerStart/connTimerStop/Client to safely
+		// read/mutate fs.sftpclient and fs.sshConn.
+		fs.timerMutex.Lock()
+		defer fs.timerMutex.Unlock()
+
+		// If this is no longer the active timer, it was stopped or superseded
+		// while already firing; do nothing so we don't close an in-use client.
+		if fs.connTimer != timer {
+			return
+		}
+
 		// close connection and nil-ify client to force lazy reconnect
 		// Only close if we have a valid, non-nil client (not a typed-nil)
 		if fs.sftpclient != nil && reflect.ValueOf(fs.sftpclient).IsValid() && !reflect.ValueOf(fs.sftpclient).IsNil() {
@@ -156,6 +188,7 @@ func (fs *FileSystem) connTimerStart() {
 			fs.sshConn = nil
 		}
 	})
+	fs.connTimer = timer
 }
 
 func (fs *FileSystem) connTimerStop() {

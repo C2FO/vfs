@@ -1,24 +1,28 @@
-# Prenup v2 configuration. See https://github.com/C2FO/ep-tools/tree/main/prenup for docs.
-version: 2
+# .prenup.yaml — pre-commit checks managed by prenup.
+# What is this? Prenup runs configurable checks before each commit, scoped to
+# the parts of the repo that changed. Learn more and install:
+#   https://github.com/c2fo/prenup
+version: 1
 module_markers:
   - go.mod
 exclude:
-  - .github
-  - '*.yaml'
-  - '*.yml'
+  - .github/**
+  - '**/*.yaml'
 output: auto
 tasks:
   - name: Run tests
     default_selected: true
     command: go test ./...
     per_module: true
-    working_dir: '{{.module_root}}'
+    paths:
+      - '**/*.go'
   - name: Run golangci-lint
     default_selected: true
-    command: golangci-lint run --max-same-issues 0 --build-tags=vfsintegration ./...
+    command: "golangci-lint run --new-from-rev HEAD --max-same-issues 0 --build-tags=vfsintegration ./..."
     per_module: true
-    working_dir: '{{.module_root}}'
-  - name: Validate CHANGELOG.md
+    paths:
+      - '**/*.go'
+  - name: "Validate CHANGELOG.md"
     default_selected: true
     # Runs the same image and subcommand the validate workflow uses in CI,
     # reading custom_change_types from .releasegen.yaml. Replaces the
