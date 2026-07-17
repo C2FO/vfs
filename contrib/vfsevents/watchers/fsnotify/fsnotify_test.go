@@ -152,7 +152,7 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 		select {
 		case event := <-events:
 			s.Equal(vfsevents.EventCreated, event.Type)
-			s.Equal(nativePathToURI(testFile), event.URI)
+			s.Equal(s.watcher.nativePathToURI(testFile), event.URI)
 		case err := <-errors:
 			s.Require().NoError(err)
 		case <-time.After(getEventTimeout()):
@@ -232,7 +232,7 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 		select {
 		case event := <-events:
 			s.Equal(vfsevents.EventCreated, event.Type)
-			s.Equal(nativePathToURI(testFile), event.URI)
+			s.Equal(s.watcher.nativePathToURI(testFile), event.URI)
 			s.Equal(testFile, event.Metadata["path"])
 		case <-time.After(getEventTimeout()):
 			s.Fail("Timeout waiting for create event")
@@ -291,7 +291,7 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 			case event := <-events:
 				if event.Type == vfsevents.EventModified {
 					modifyReceived = true
-					s.Equal(nativePathToURI(testFile), event.URI)
+					s.Equal(s.watcher.nativePathToURI(testFile), event.URI)
 					s.Equal(testFile, event.Metadata["path"])
 					break modifyLoop
 				}
@@ -335,7 +335,7 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 			case event := <-events:
 				// Accept both delete and rename events as valid for file removal
 				if event.Type == vfsevents.EventDeleted {
-					s.Equal(nativePathToURI(testFile), event.URI)
+					s.Equal(s.watcher.nativePathToURI(testFile), event.URI)
 					eventReceived = true
 				}
 				// Continue waiting if it's not a delete event (might be a modify event from the delete operation)
@@ -387,7 +387,7 @@ func (s *FSNotifyWatcherTestSuite) TestRecursiveWatching() {
 		select {
 		case event := <-events:
 			s.Equal(vfsevents.EventCreated, event.Type)
-			s.Equal(nativePathToURI(subDir), event.URI)
+			s.Equal(s.watcher.nativePathToURI(subDir), event.URI)
 		case <-time.After(getEventTimeout()):
 			s.Fail("Timeout waiting for directory create event")
 		}
@@ -404,7 +404,7 @@ func (s *FSNotifyWatcherTestSuite) TestRecursiveWatching() {
 		select {
 		case event := <-events:
 			s.Equal(vfsevents.EventCreated, event.Type)
-			s.Equal(nativePathToURI(testFile), event.URI)
+			s.Equal(s.watcher.nativePathToURI(testFile), event.URI)
 		case <-time.After(getEventTimeout()):
 			s.Fail("Timeout waiting for nested file create event")
 		}

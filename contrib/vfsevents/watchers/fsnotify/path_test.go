@@ -4,6 +4,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/c2fo/vfs/v7/vfssimple"
 )
 
 // TestVfsPathToNativeOS covers the VFS-path -> native-OS-path conversion used before handing a
@@ -30,8 +33,14 @@ func TestVfsPathToNativeOS(t *testing.T) {
 			expected: `C:\Temp\TestDebouncingEdgeCases3938112569\001`,
 		},
 		{
-			name:     "windows root of drive",
+			name:     "windows root of drive with trailing slash",
 			path:     "/C:/",
+			goos:     "windows",
+			expected: `C:\`,
+		},
+		{
+			name:     "windows root of drive without trailing slash keeps drive-root meaning",
+			path:     "/C:",
 			goos:     "windows",
 			expected: `C:\`,
 		},
@@ -56,16 +65,74 @@ func TestVfsPathToNativeOS(t *testing.T) {
 	}
 }
 
+// TestResolveWatchPathOS covers deriving the native watch path from a vfs.Location, including
+// the Windows drive-letter case from https://github.com/C2FO/vfs/issues/344. It is parameterized
+// on GOOS so the Windows behavior can be verified without actually running on Windows.
+//
+// Location.Path() is purely virtual bookkeeping (it never touches the real filesystem), so a
+// Windows-style file:// URI can be built and inspected on any host OS.
+func TestResolveWatchPathOS(t *testing.T) {
+	tests := []struct {
+		name        string
+		uri         string
+		goos        string
+		expected    string
+		expectedErr string
+	}{
+		{
+			name:     "windows drive-letter location",
+			uri:      "file:///C:/Temp/foo/",
+			goos:     "windows",
+			expected: `C:\Temp\foo`,
+		},
+		{
+			name:     "windows drive-root location",
+			uri:      "file:///C:/",
+			goos:     "windows",
+			expected: `C:\`,
+		},
+		{
+			name:     "posix location",
+			uri:      "file:///tmp/foo/",
+			goos:     "linux",
+			expected: "/tmp/foo",
+		},
+		{
+			name:        "root location is invalid",
+			uri:         "file:///",
+			goos:        "linux",
+			expectedErr: "invalid file location URI",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			loc, err := vfssimple.NewLocation(tt.uri)
+			require.NoError(t, err)
+
+			native, err := resolveWatchPathOS(loc, tt.goos)
+			if tt.expectedErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, native)
+		})
+	}
+}
+
 // TestNativePathToURIOS covers the native-OS-path -> "file://" URI conversion applied to
 // fsnotify event paths, including the Windows drive-letter case from
 // https://github.com/C2FO/vfs/issues/344. It is parameterized on GOOS so the Windows behavior
 // can be verified without actually running on Windows.
 func TestNativePathToURIOS(t *testing.T) {
 	tests := []struct {
-		name     string
-		path     string
-		goos     string
-		expected string
+		name      string
+		path      string
+		goos      string
+		authority string
+		expected  string
 	}{
 		{
 			name:     "windows drive-letter path gains leading slash and forward slashes",
@@ -91,11 +158,18 @@ func TestNativePathToURIOS(t *testing.T) {
 			goos:     "darwin",
 			expected: "file:///tmp/foo/bar.txt",
 		},
+		{
+			name:      "non-empty authority is preserved",
+			path:      `C:\Temp\bar.txt`,
+			goos:      "windows",
+			authority: "myhost",
+			expected:  "file://myhost/C:/Temp/bar.txt",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, nativePathToURIOS(tt.path, tt.goos))
+			assert.Equal(t, tt.expected, nativePathToURIOS(tt.path, tt.goos, tt.authority))
 		})
 	}
 }
@@ -125,7 +199,7 @@ func TestPathConversionRoundTrip(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			vfsPath := tt.uri[len("file://"):]
 			native := vfsPathToNativeOS(vfsPath, tt.goos)
-			assert.Equal(t, tt.uri, nativePathToURIOS(native, tt.goos))
+			assert.Equal(t, tt.uri, nativePathToURIOS(native, tt.goos, ""))
 		})
 	}
 }

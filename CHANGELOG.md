@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `backend/os`: Added a cross-reference comment on `toNativeOSPath` pointing at the near-duplicate Windows drive-letter conversion logic in `contrib/vfsevents`'s `fsnotify` watcher, which can't import this unexported helper across module boundaries, so the two stay in sync if this logic changes. No behavior change.
+
 ## [[v7.20.5](https://github.com/C2FO/vfs/releases/tag/v7.20.5)] - 2026-07-17
 ### Fixed
 - SFTP backend: Fixed a data race in `FileSystem.connTimerStart`'s `time.AfterFunc` callback, which read/wrote `sftpclient`/`sshConn` without holding `timerMutex`, the same mutex used by `connTimerStart`/`connTimerStop`/`Client`. Also fixed `connTimerStart` leaking a timer goroutine on every call (only the most recently created timer was stoppable) and hardened the callback against acting on a stale, already-superseded timer. See [#338](https://github.com/C2FO/vfs/issues/338).
