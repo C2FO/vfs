@@ -59,6 +59,15 @@ type FSNotifyWatcherTestSuite struct {
 }
 
 func (s *FSNotifyWatcherTestSuite) SetupTest() {
+	// fileURL builds a file:// URI from the temp dir and hands it to
+	// vfssimple.NewLocation, which - for a Windows drive-letter path such as
+	// C:\Temp\... - round-trips back to a native path with a stray leading
+	// slash (e.g. /C:/Temp/...), which Windows rejects as an invalid path.
+	// See https://github.com/C2FO/vfs/issues/344.
+	if runtime.GOOS == "windows" {
+		s.T().Skip("skipping on windows: file:// URI round-trip produces an invalid drive-letter path, see #344")
+	}
+
 	// Create a temporary directory for testing
 	s.tempDir = s.T().TempDir()
 }

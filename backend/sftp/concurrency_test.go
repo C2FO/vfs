@@ -387,6 +387,37 @@ func (s *SFTPConcurrencyTestSuite) TestTimerLogicValidation() {
 		// The key validation: no panic should have occurred
 		s.False(panicOccurred, "Timer should handle typed-nil without panic")
 	})
+
+	s.Run("Stale timer callback does not close a superseded client", func() {
+		// Deliberately create a mock with no Close() expectation: if the stale
+		// callback wrongly calls Close() on it, the mock will fail this test for
+		// an unexpected call.
+		mockClient := mocks.NewClient(s.T())
+
+		fs := &FileSystem{
+			sftpclient: mockClient,
+			options: Options{
+				AutoDisconnect: 1, // 1 second timeout
+			},
+		}
+
+		fs.connTimerStart()
+
+		// Simulate a race where fs.connTimer is superseded (e.g. by a concurrent
+		// connTimerStart or connTimerStop) without Stop() being called on the
+		// timer we just started - so its already-scheduled callback still fires,
+		// but is no longer the "active" timer by the time it does.
+		fs.timerMutex.Lock()
+		fs.connTimer = nil
+		fs.timerMutex.Unlock()
+
+		// Wait past the original timer's fire time so its callback runs.
+		time.Sleep(1500 * time.Millisecond)
+
+		fs.timerMutex.Lock()
+		defer fs.timerMutex.Unlock()
+		s.Equal(mockClient, fs.sftpclient, "stale callback must not touch fs.sftpclient once superseded")
+	})
 }
 
 // mockCloser implements io.Closer for testing

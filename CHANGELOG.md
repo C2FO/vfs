@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- SFTP backend: Fixed a data race in `FileSystem.connTimerStart`'s `time.AfterFunc` callback, which read/wrote `sftpclient`/`sshConn` without holding `timerMutex`, the same mutex used by `connTimerStart`/`connTimerStop`/`Client`. Also fixed `connTimerStart` leaking a timer goroutine on every call (only the most recently created timer was stoppable) and hardened the callback against acting on a stale, already-superseded timer. See [#338](https://github.com/C2FO/vfs/issues/338).
+- SFTP backend tests: Raised the default auto-disconnect duration for the test binary (via a new `TestMain`) so background disconnect timers left running by tests that don't explicitly configure `AutoDisconnect` can no longer fire into later, unrelated tests and panic on their now-torn-down mocks.
+- FTP backend: Fixed a data race in `openWriteConnection` where the mocked `StorFrom` call's `io.Reader` argument (an `*io.PipeReader`) was formatted via `fmt`'s `%v` by testify's mock argument diffing - which reflects into unexported struct fields - concurrently with the pipe's writer side being used on another goroutine. The reader is now wrapped in a type with a `String()` method so formatting no longer touches the pipe's internals.
+- CI: Added `-race` to the Go test workflow across all modules, now that the above races are fixed.
+- CI: Fixed the "Set TMPDIR for Windows" step, which used `shell: cmd` with bash-style `$GITHUB_ENV` syntax that `cmd.exe` doesn't expand, so it silently never set `TEMP`/`TMP`. The "Run Tests" step then explicitly set `TEMP`/`TMP` to an empty string (falling back from the never-populated `env.TEMP`/`env.TMP`), which broke cgo's toolchain on Windows once `-race` (which requires cgo) was enabled. The step now uses `shell: pwsh` with the correct `$env:GITHUB_ENV` syntax and ensures `C:\Temp` exists.
+- `contrib/vfsevents`: Temporarily skipped `fsnotify` watcher tests on Windows (`TestFSNotifyWatcherTestSuite`, `TestDebouncing`, `TestDebouncingEdgeCases`, `TestEventAnalysis`) that were previously masked by the broken CI `TEMP`/`TMP` setup above. With `TEMP` now pointing at a real `C:\Temp` directory, these tests expose a pre-existing bug where a `file://` URI built from a Windows drive-letter path round-trips into an invalid native path (e.g. `/C:/Temp/...`) before being passed to `fsnotify.Add()`. Tracked in #344.
 
 ## [[v7.20.4](https://github.com/C2FO/vfs/releases/tag/v7.20.4)] - 2026-07-16
 ### Fixed
