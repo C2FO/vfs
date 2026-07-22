@@ -351,16 +351,31 @@ func (f *File) URI() string {
 }
 
 // checkTempFile lazily initializes the local temp file that backs Read, Seek,
-// and Write operations. The isWrite flag distinguishes the two access modes so
-// the backend behaves consistently with the other backends (e.g. s3):
-//   - Read/Seek (isWrite=false) on a blob that does not exist returns
-//     os.ErrNotExist rather than silently operating on an empty temp file.
-//   - Write (isWrite=true) always starts from a fresh, empty temp file and does
-//     not download existing remote content first, so a write that does not seek
-//     replaces the blob instead of producing a partial write over downloaded
-//     content.
+// and Write operations. It only does work the first time it is called for a
+// given File (when f.tempFile is nil); the isWrite flag then selects how that
+// initial temp file is seeded so the backend behaves consistently with the
+// other backends (e.g. s3):
+//   - Write (isWrite=true) seeds an empty temp file without downloading the
+//     existing blob, so a write that does not first Seek replaces the blob
+//     rather than overwriting downloaded content in place. (A prior Read/Seek
+//     will have already populated the temp file, so read-modify-write still
+//     works.)
+//   - Read/Seek (isWrite=false) require the existing remote content, so a blob
+//     that does not exist returns os.ErrNotExist rather than silently operating
+//     on an empty temp file.
 func (f *File) checkTempFile(isWrite bool) error {
 	if f.tempFile != nil {
+		return nil
+	}
+
+	// Writes start from an empty temp file and need neither the client nor an
+	// existence check.
+	if isWrite {
+		tf, err := os.CreateTemp("", fmt.Sprintf("%s.%d", path.Base(f.Name()), time.Now().UnixNano()))
+		if err != nil {
+			return err
+		}
+		f.tempFile = tf
 		return nil
 	}
 
@@ -373,39 +388,30 @@ func (f *File) checkTempFile(isWrite bool) error {
 	if err != nil {
 		return err
 	}
-
-	// Read/Seek on a blob that does not exist is an error, mirroring the other
-	// backends. Return before creating a temp file so a later call doesn't find
-	// a stale empty temp file and succeed.
-	if !isWrite && !exists {
+	if !exists {
 		return os.ErrNotExist
 	}
+
+	reader, err := client.Download(f)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = reader.Close() }()
 
 	tf, err := os.CreateTemp("", fmt.Sprintf("%s.%d", path.Base(f.Name()), time.Now().UnixNano()))
 	if err != nil {
 		return err
 	}
 
-	// Writes always start from an empty temp file so a write that does not seek
-	// replaces the blob rather than overwriting downloaded content in place.
-	// Reads/seeks need the existing remote content copied in first.
-	if !isWrite {
-		reader, dlErr := client.Download(f)
-		if dlErr != nil {
-			_ = tf.Close()
-			return dlErr
-		}
+	buffer := make([]byte, utils.TouchCopyMinBufferSize)
+	if _, err := io.CopyBuffer(tf, reader, buffer); err != nil {
+		_ = tf.Close()
+		return err
+	}
 
-		buffer := make([]byte, utils.TouchCopyMinBufferSize)
-		if _, err := io.CopyBuffer(tf, reader, buffer); err != nil {
-			_ = tf.Close()
-			return err
-		}
-
-		if _, err := tf.Seek(0, 0); err != nil {
-			_ = tf.Close()
-			return err
-		}
+	if _, err := tf.Seek(0, 0); err != nil {
+		_ = tf.Close()
+		return err
 	}
 
 	f.tempFile = tf
