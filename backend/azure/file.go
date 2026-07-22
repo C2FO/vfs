@@ -70,7 +70,7 @@ func (f *File) Close() error {
 // the file is created and read operations are performed against that.  The temp file is closed and flushed to Azure
 // when f.Close() is called.
 func (f *File) Read(p []byte) (n int, err error) {
-	if err := f.checkTempFile(); err != nil {
+	if err := f.checkTempFile(false); err != nil {
 		return 0, utils.WrapReadError(err)
 	}
 	read, err := f.tempFile.Read(p)
@@ -91,7 +91,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 // the file is created and operations are performed against that.  The temp file is closed and flushed to Azure
 // when f.Close() is called.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
-	if err := f.checkTempFile(); err != nil {
+	if err := f.checkTempFile(false); err != nil {
 		return 0, utils.WrapSeekError(err)
 	}
 	pos, err := f.tempFile.Seek(offset, whence)
@@ -104,7 +104,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 // Write implements the io.Writer interface.  Writes are performed against a temporary local file.  The temp file is
 // closed and flushed to Azure with f.Close() is called.
 func (f *File) Write(p []byte) (int, error) {
-	if err := f.checkTempFile(); err != nil {
+	if err := f.checkTempFile(true); err != nil {
 		return 0, utils.WrapWriteError(err)
 	}
 
@@ -350,46 +350,65 @@ func (f *File) URI() string {
 	return utils.GetFileURI(f)
 }
 
-func (f *File) checkTempFile() error {
-	if f.tempFile == nil {
-		client, err := f.location.fileSystem.Client()
-		if err != nil {
+// checkTempFile lazily initializes the local temp file that backs Read, Seek,
+// and Write operations. The isWrite flag distinguishes the two access modes so
+// the backend behaves consistently with the other backends (e.g. s3):
+//   - Read/Seek (isWrite=false) on a blob that does not exist returns
+//     os.ErrNotExist rather than silently operating on an empty temp file.
+//   - Write (isWrite=true) always starts from a fresh, empty temp file and does
+//     not download existing remote content first, so a write that does not seek
+//     replaces the blob instead of producing a partial write over downloaded
+//     content.
+func (f *File) checkTempFile(isWrite bool) error {
+	if f.tempFile != nil {
+		return nil
+	}
+
+	client, err := f.location.fileSystem.Client()
+	if err != nil {
+		return err
+	}
+
+	exists, err := f.Exists()
+	if err != nil {
+		return err
+	}
+
+	// Read/Seek on a blob that does not exist is an error, mirroring the other
+	// backends. Return before creating a temp file so a later call doesn't find
+	// a stale empty temp file and succeed.
+	if !isWrite && !exists {
+		return os.ErrNotExist
+	}
+
+	tf, err := os.CreateTemp("", fmt.Sprintf("%s.%d", path.Base(f.Name()), time.Now().UnixNano()))
+	if err != nil {
+		return err
+	}
+
+	// Writes always start from an empty temp file so a write that does not seek
+	// replaces the blob rather than overwriting downloaded content in place.
+	// Reads/seeks need the existing remote content copied in first.
+	if !isWrite {
+		reader, dlErr := client.Download(f)
+		if dlErr != nil {
+			_ = tf.Close()
+			return dlErr
+		}
+
+		buffer := make([]byte, utils.TouchCopyMinBufferSize)
+		if _, err := io.CopyBuffer(tf, reader, buffer); err != nil {
+			_ = tf.Close()
 			return err
 		}
 
-		exists, err := f.Exists()
-		if err != nil {
+		if _, err := tf.Seek(0, 0); err != nil {
+			_ = tf.Close()
 			return err
-		}
-		if !exists {
-			tf, tfErr := os.CreateTemp("", fmt.Sprintf("%s.%d", path.Base(f.Name()), time.Now().UnixNano()))
-			if tfErr != nil {
-				return tfErr
-			}
-			f.tempFile = tf
-		} else {
-			reader, dlErr := client.Download(f)
-			if dlErr != nil {
-				return dlErr
-			}
-
-			tf, tfErr := os.CreateTemp("", fmt.Sprintf("%s.%d", path.Base(f.Name()), time.Now().UnixNano()))
-			if tfErr != nil {
-				return tfErr
-			}
-
-			buffer := make([]byte, utils.TouchCopyMinBufferSize)
-			if _, err := io.CopyBuffer(tf, reader, buffer); err != nil {
-				return err
-			}
-
-			if _, err := tf.Seek(0, 0); err != nil {
-				return err
-			}
-
-			f.tempFile = tf
 		}
 	}
+
+	f.tempFile = tf
 	return nil
 }
 

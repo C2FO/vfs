@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- `backend/azure`: `Read`/`Seek` on a blob that does not exist now return `os.ErrNotExist` instead of silently operating on an empty temp file, matching the behavior of the other backends (e.g. `s3`).
+- `backend/azure`: A `Write` that does not first `Seek` no longer re-downloads the existing blob into the temp file before writing, which previously produced a partial write over the downloaded content. Writes now start from an empty temp file and replace the blob, consistent with the other backends.
+- `backend/ftp`: `Location.Exists` now returns `true` for the root location (`/`) instead of attempting to list its (nonexistent) parent directory.
 
 ## [[v7.20.6](https://github.com/C2FO/vfs/releases/tag/v7.20.6)] - 2026-07-22
 ### Fixed

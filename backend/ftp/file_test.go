@@ -761,6 +761,7 @@ func (ts *fileTestSuite) TestMoveToFile_sameAuthority() {
 		location: &Location{
 			fileSystem: targetFS,
 			authority:  auth,
+			path:       "/targ/",
 		},
 		path: "/targ/hello.txt",
 	}
