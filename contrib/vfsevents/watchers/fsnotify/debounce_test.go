@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -19,13 +18,6 @@ import (
 )
 
 func TestDebouncing(t *testing.T) {
-	// fileURL round-trips a Windows drive-letter path (e.g. C:\Temp\...) into
-	// an invalid native path (e.g. /C:/Temp/...) via vfssimple.NewLocation.
-	// See https://github.com/C2FO/vfs/issues/344.
-	if runtime.GOOS == "windows" {
-		t.Skip("skipping on windows: file:// URI round-trip produces an invalid drive-letter path, see #344")
-	}
-
 	tempDir := t.TempDir()
 
 	location, err := vfssimple.NewLocation(fileURL(tempDir))
@@ -324,13 +316,6 @@ eventLoop:
 }
 
 func TestDebouncingEdgeCases(t *testing.T) {
-	// fileURL round-trips a Windows drive-letter path (e.g. C:\Temp\...) into
-	// an invalid native path (e.g. /C:/Temp/...) via vfssimple.NewLocation.
-	// See https://github.com/C2FO/vfs/issues/344.
-	if runtime.GOOS == "windows" {
-		t.Skip("skipping on windows: file:// URI round-trip produces an invalid drive-letter path, see #344")
-	}
-
 	tempDir := t.TempDir()
 
 	location, err := vfssimple.NewLocation(fileURL(tempDir))

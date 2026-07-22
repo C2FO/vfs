@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -150,11 +151,10 @@ func (w *FSNotifyWatcher) Start(
 		opt(config)
 	}
 
-	// Get the local path from the VFS location
-	localPath := strings.TrimPrefix(w.location.URI(), "file://")
-	localPath = strings.TrimSuffix(localPath, "/") // Remove trailing slash if present
-	if localPath == "" {
-		return fmt.Errorf("invalid file location URI: %s", w.location.URI())
+	// Get the native OS path to watch from the location's VFS path. See #344.
+	localPath, err := resolveWatchPath(w.location)
+	if err != nil {
+		return err
 	}
 
 	// Add the main directory to watch
@@ -489,8 +489,8 @@ func (w *FSNotifyWatcher) convertEvent(event fsnotify.Event) *vfsevents.Event {
 		return nil
 	}
 
-	// Convert local path back to VFS URI
-	uri := "file://" + event.Name
+	// Convert the native OS path reported by fsnotify back into a VFS URI. See #344.
+	uri := w.nativePathToURI(event.Name)
 
 	return &vfsevents.Event{
 		URI:       uri,
@@ -539,4 +539,66 @@ func (w *FSNotifyWatcher) removeRecursiveWatchPaths(rootPath string) {
 			delete(w.watchPaths, watchedPath)
 		}
 	}
+}
+
+// resolveWatchPath derives the native OS path to watch from a location's VFS path, for
+// handing to fsnotify.Add. See #344.
+func resolveWatchPath(loc vfs.Location) (string, error) {
+	return resolveWatchPathOS(loc, runtime.GOOS)
+}
+
+// resolveWatchPathOS is the GOOS-parameterized implementation of resolveWatchPath, split out so
+// the Windows drive-letter handling can be unit tested on any platform.
+func resolveWatchPathOS(loc vfs.Location, goos string) (string, error) {
+	// Location.Path() is scheme/authority-free, so unlike parsing URI() there's no risk of a
+	// non-empty authority (e.g. "file://host/C:/Temp") getting swept into the path and mangled
+	// by the drive-letter conversion below.
+	locPath := strings.TrimSuffix(loc.Path(), "/")
+	if locPath == "" {
+		return "", fmt.Errorf("invalid file location URI: %s", loc.URI())
+	}
+	return vfsPathToNativeOS(locPath, goos), nil
+}
+
+// vfsPathToNativeOS converts a VFS-style path (forward slashes, with a leading slash before a
+// Windows drive letter, e.g. "/C:/Temp/foo") into a native OS path suitable for passing to
+// fsnotify. On non-Windows platforms this is a no-op.
+//
+// NOTE: mirrors the unexported toNativeOSPath in
+// github.com/c2fo/vfs/v7/backend/os/file.go; keep both in sync if the Windows
+// drive-letter handling changes.
+func vfsPathToNativeOS(p, goos string) string {
+	if p == "" || goos != "windows" {
+		return p
+	}
+	// Strip the leading slash VFS uses before a Windows drive letter, e.g. "/C:/Temp" -> "C:/Temp".
+	if len(p) >= 3 && p[0] == '/' && p[2] == ':' {
+		p = p[1:]
+	}
+	p = strings.ReplaceAll(p, "/", `\`)
+	// "C:" means "current directory on drive C" to Windows APIs, not the drive root ("C:\").
+	// If stripping the leading slash left a bare drive letter, make the root explicit.
+	if len(p) == 2 && p[1] == ':' {
+		p += `\`
+	}
+	return p
+}
+
+// nativePathToURI converts a native OS path (as reported by fsnotify events) back into a
+// "file://" VFS URI, preserving the watcher's location authority.
+func (w *FSNotifyWatcher) nativePathToURI(p string) string {
+	return nativePathToURIOS(p, runtime.GOOS, w.location.Authority().String())
+}
+
+// nativePathToURIOS is the GOOS-parameterized implementation of nativePathToURI, split out so
+// the Windows drive-letter handling can be unit tested on any platform.
+func nativePathToURIOS(p, goos, authority string) string {
+	if goos == "windows" {
+		p = strings.ReplaceAll(p, `\`, "/")
+		// Re-add the leading slash VFS expects before a Windows drive letter, e.g. "C:/Temp" -> "/C:/Temp".
+		if len(p) >= 2 && p[1] == ':' {
+			p = "/" + p
+		}
+	}
+	return "file://" + authority + p
 }

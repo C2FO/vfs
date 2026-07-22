@@ -59,15 +59,6 @@ type FSNotifyWatcherTestSuite struct {
 }
 
 func (s *FSNotifyWatcherTestSuite) SetupTest() {
-	// fileURL builds a file:// URI from the temp dir and hands it to
-	// vfssimple.NewLocation, which - for a Windows drive-letter path such as
-	// C:\Temp\... - round-trips back to a native path with a stray leading
-	// slash (e.g. /C:/Temp/...), which Windows rejects as an invalid path.
-	// See https://github.com/C2FO/vfs/issues/344.
-	if runtime.GOOS == "windows" {
-		s.T().Skip("skipping on windows: file:// URI round-trip produces an invalid drive-letter path, see #344")
-	}
-
 	// Create a temporary directory for testing
 	s.tempDir = s.T().TempDir()
 }
@@ -161,7 +152,7 @@ func (s *FSNotifyWatcherTestSuite) TestStartAndStop() {
 		select {
 		case event := <-events:
 			s.Equal(vfsevents.EventCreated, event.Type)
-			s.Equal("file://"+testFile, event.URI)
+			s.Equal(s.watcher.nativePathToURI(testFile), event.URI)
 		case err := <-errors:
 			s.Require().NoError(err)
 		case <-time.After(getEventTimeout()):
@@ -241,7 +232,7 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 		select {
 		case event := <-events:
 			s.Equal(vfsevents.EventCreated, event.Type)
-			s.Equal("file://"+testFile, event.URI)
+			s.Equal(s.watcher.nativePathToURI(testFile), event.URI)
 			s.Equal(testFile, event.Metadata["path"])
 		case <-time.After(getEventTimeout()):
 			s.Fail("Timeout waiting for create event")
@@ -300,7 +291,7 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 			case event := <-events:
 				if event.Type == vfsevents.EventModified {
 					modifyReceived = true
-					s.Equal("file://"+testFile, event.URI)
+					s.Equal(s.watcher.nativePathToURI(testFile), event.URI)
 					s.Equal(testFile, event.Metadata["path"])
 					break modifyLoop
 				}
@@ -344,7 +335,7 @@ func (s *FSNotifyWatcherTestSuite) TestFileOperations() {
 			case event := <-events:
 				// Accept both delete and rename events as valid for file removal
 				if event.Type == vfsevents.EventDeleted {
-					s.Equal("file://"+testFile, event.URI)
+					s.Equal(s.watcher.nativePathToURI(testFile), event.URI)
 					eventReceived = true
 				}
 				// Continue waiting if it's not a delete event (might be a modify event from the delete operation)
@@ -396,7 +387,7 @@ func (s *FSNotifyWatcherTestSuite) TestRecursiveWatching() {
 		select {
 		case event := <-events:
 			s.Equal(vfsevents.EventCreated, event.Type)
-			s.Equal("file://"+subDir, event.URI)
+			s.Equal(s.watcher.nativePathToURI(subDir), event.URI)
 		case <-time.After(getEventTimeout()):
 			s.Fail("Timeout waiting for directory create event")
 		}
@@ -413,7 +404,7 @@ func (s *FSNotifyWatcherTestSuite) TestRecursiveWatching() {
 		select {
 		case event := <-events:
 			s.Equal(vfsevents.EventCreated, event.Type)
-			s.Equal("file://"+testFile, event.URI)
+			s.Equal(s.watcher.nativePathToURI(testFile), event.URI)
 		case <-time.After(getEventTimeout()):
 			s.Fail("Timeout waiting for nested file create event")
 		}

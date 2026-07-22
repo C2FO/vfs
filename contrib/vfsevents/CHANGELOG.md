@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `fsnotify` watcher: fixed a bug where a `file://` URI built from a Windows drive-letter path (e.g. `file:///C:/Temp/...`) round-tripped into an invalid native path (e.g. `/C:/Temp/...`, with a stray leading slash) by the time it reached `fsnotify.Add()`, causing `GetFileAttributes` errors on Windows. `Start()` now derives the watch path from the location's `Path()` (rather than hand-parsing its `URI()`, which could otherwise mangle a non-empty authority into the path) and converts it to a native OS path before passing it to `fsnotify.Add()`; a location representing an entire Windows drive root (e.g. `C:\`) is also now watched correctly rather than being reduced to a relative-to-cwd path (`C:`). `convertEvent()` now converts native event paths back into proper `file://` URIs, preserving the location's authority. Re-enabled the `fsnotify` watcher tests on Windows (`TestFSNotifyWatcherTestSuite`, `TestDebouncing`, `TestDebouncingEdgeCases`, `TestEventAnalysis`) that were temporarily skipped for this issue. Fixes [#344](https://github.com/C2FO/vfs/issues/344).
+
 ## [[contrib/vfsevents/v1.2.3](https://github.com/C2FO/vfs/releases/tag/contrib%2Fvfsevents%2Fv1.2.3)] - 2026-07-17
 ### Fixed
 - Temporarily skipped `fsnotify` watcher tests on Windows (`TestFSNotifyWatcherTestSuite`, `TestDebouncing`, `TestDebouncingEdgeCases`, `TestEventAnalysis`) pending a fix for a pre-existing bug where `fileURL()`'s `file://` URI, built from a Windows drive-letter temp path, round-trips into an invalid native path (e.g. `/C:/Temp/...`) by the time it reaches `fsnotify.Add()`. Tracked in [#344](https://github.com/C2FO/vfs/issues/344).
