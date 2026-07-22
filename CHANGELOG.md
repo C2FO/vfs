@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [[v7.20.6](https://github.com/C2FO/vfs/releases/tag/v7.20.6)] - 2026-07-22
 ### Fixed
 - `backend/os`: Added a cross-reference comment on `toNativeOSPath` pointing at the near-duplicate Windows drive-letter conversion logic in `contrib/vfsevents`'s `fsnotify` watcher, which can't import this unexported helper across module boundaries, so the two stay in sync if this logic changes. No behavior change.
 
