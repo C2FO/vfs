@@ -160,6 +160,24 @@ YOUR_TOKEN=xxx go test -v -tags=vfsintegration ./... -run TestConformance
 | `SkipTouchTimestampTest` | Backend doesn't update `LastModified` on identical content |
 | `SkipFTPSpecificTests` | Backend has FTP-like IO limitations |
 
+#### Automated (container-based) conformance without credentials
+
+The same conformance suites can run automatically — no tokens or
+pre-provisioned accounts — when there is something local to test against. See
+the [`testcontainers/` module README](../../testcontainers/README.md#adding-a-backend)
+for the pattern:
+
+- **Backends with a containerizable server** (object stores, SFTP/FTP, etc.):
+  point the backend at a container and delegate to `backend/testsuite`.
+- **SaaS / HTTP-API backends with no emulator** (e.g. Dropbox, and the
+  in-progress OneDrive backend): stub the REST API with a
+  [WireMock](https://wiremock.org/) container. This requires the backend to
+  expose a **custom endpoint / base-URL option** so it can be aimed at the mock.
+
+Keep these tests **in your contrib module** (importing `testcontainers-go` and
+`backend/testsuite`) so the extra dependencies stay isolated from core VFS and
+from the core `testcontainers/` harness.
+
 ### 5. Documentation
 
 Your README should include:

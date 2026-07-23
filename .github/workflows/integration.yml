@@ -1,0 +1,57 @@
+name: Integration (testcontainers)
+
+# Runs the testcontainers module, which stands up real backend servers as
+# disposable Docker containers and runs the shared conformance + IO suites
+# against them. This requires a Docker daemon, so it lives in its own Linux-only
+# workflow rather than the generic multi-OS test matrix.
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  schedule:
+    # Nightly run to catch upstream image/backend drift even without a PR.
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  testcontainers:
+    name: testcontainers conformance
+    runs-on: ubuntu-latest
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: '1.26'
+          check-latest: true
+          cache: false
+
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Authenticating lifts the anonymous Docker Hub pull rate limit that shared
+      # runners frequently hit. Optional: skipped automatically on forks and
+      # whenever the DOCKERHUB_* secrets are not configured.
+      - name: Log in to Docker Hub
+        if: ${{ env.DOCKERHUB_USERNAME != '' }}
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      - name: Run integration tests
+        working-directory: testcontainers
+        run: go test -tags=vfsintegration -race -timeout 30m ./...
