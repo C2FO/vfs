@@ -1,6 +1,7 @@
 package testsuite
 
 import (
+	"errors"
 	"io"
 	"regexp"
 	"strconv"
@@ -180,19 +181,32 @@ func DefaultIOTestCases() []IOTestCase {
 	}
 }
 
-// RunIOTests runs IO conformance tests against the provided location
-func RunIOTests(t *testing.T, location vfs.Location) {
+// RunIOTests runs IO conformance tests against the provided location.
+// Optional ConformanceOptions allow backends to skip IO sequences they cannot
+// support (e.g. FTP, which cannot perform partial writes).
+func RunIOTests(t *testing.T, location vfs.Location, opts ...ConformanceOptions) {
 	t.Helper()
-	runIOTestsWithCases(t, location.URI(), location, DefaultIOTestCases())
+	opt := ConformanceOptions{}
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+	runIOTestsWithCases(t, location.URI(), location, DefaultIOTestCases(), opt)
 }
 
-func runIOTestsWithCases(t *testing.T, testPath string, location vfs.Location, testCases []IOTestCase) {
+func runIOTestsWithCases(t *testing.T, testPath string, location vfs.Location, testCases []IOTestCase, opts ConformanceOptions) {
 	t.Helper()
 	defer teardownTestLocation(t, testPath, location)
 
 	for _, tc := range testCases {
 		t.Run(tc.Description, func(t *testing.T) {
 			testFileName := "testfile.txt"
+
+			// FTP streams writes directly to the server and cannot rewind an
+			// in-progress write, so "Write, Seek, Write" sequences (partial
+			// writes) are unsupported on that backend.
+			if opts.SkipFTPSpecificTests && strings.HasPrefix(tc.Description, "Write, Seek, Write") {
+				t.Skip("partial writes (Write, Seek, Write) are not supported by this backend")
+			}
 
 			func() {
 				file, err := setupTestFile(tc.FileAlreadyExists, location, testFileName)
@@ -283,6 +297,15 @@ SEQ:
 				b := make([]byte, bytesize)
 				_, commandErr = file.Read(b)
 				if commandErr != nil {
+					// Reading up to (and not past) the end of the file is a
+					// valid, non-fatal condition: some backends return io.EOF
+					// alongside the final bytes of a read. Treat that as a
+					// successful read and continue the sequence rather than
+					// aborting it.
+					if errors.Is(commandErr, io.EOF) {
+						commandErr = nil
+						continue
+					}
 					break SEQ
 				}
 			}
