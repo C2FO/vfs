@@ -1,6 +1,6 @@
 module github.com/c2fo/vfs/testcontainers
 
-go 1.26
+go 1.25.11
 
 replace github.com/c2fo/vfs/v7 => ../
 
@@ -80,7 +80,9 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.18 // indirect
 	github.com/googleapis/gax-go/v2 v2.23.0 // indirect
-	github.com/jlaffaye/ftp v0.2.1 // indirect
+	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/jlaffaye/ftp v0.2.1-0.20240214224549-4edb16bfcd0f // indirect
 	github.com/klauspost/compress v1.19.1 // indirect
 	github.com/kr/fs v0.1.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
