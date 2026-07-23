@@ -360,17 +360,19 @@ func registerFTP(t *testing.T) ([]string, error) {
 		return nil, err
 	}
 
-	host, err := ctr.Host(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	port, err := ctr.MappedPort(ctx, ftpPort)
 	if err != nil {
 		return nil, err
 	}
 
-	authority := fmt.Sprintf("ftp://%s@%s:%s/", ftpUsername, host, port.Port())
+	// Use the IPv4 loopback (not ctr.Host()) for the control connection.
+	// jlaffaye/ftp reuses the control-connection host for the passive data
+	// connection, discarding the private PASV IP the server advertises. On
+	// GitHub-hosted runners ctr.Host() is "localhost", which resolves to ::1
+	// first, but the passive ports below are published on IPv4 only — so a
+	// reused ::1 data host is refused. Pinning the control host to 127.0.0.1
+	// keeps the reused data-connection host on IPv4, matching the binding.
+	authority := fmt.Sprintf("ftp://%s@%s:%s/", ftpUsername, ftpPasvAddress, port.Port())
 	backend.Register(authority, ftp.NewFileSystem(ftp.WithOptions(ftp.Options{Password: ftpPassword})))
 	return []string{authority}, nil
 }
