@@ -62,5 +62,9 @@ func TestIOConformance(t *testing.T) {
 		t.Fatalf("failed to create FTP test location: %v", err)
 	}
 
-	testsuite.RunIOTests(t, location)
+	opts := testsuite.ConformanceOptions{
+		SkipFTPSpecificTests: true,
+	}
+
+	testsuite.RunIOTests(t, location, opts)
 }

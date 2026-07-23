@@ -1,6 +1,7 @@
 package testsuite
 
 import (
+	"errors"
 	"io"
 	"regexp"
 	"strconv"
@@ -29,6 +30,21 @@ type IOTestCase struct {
 	FileAlreadyExists bool
 	ExpectFailure     bool
 	ExpectedResults   string
+
+	// RequiresSeekWithinWrite marks sequences that seek backward within an
+	// open write stream and then write again (i.e. "Write, Seek, Write").
+	// Stream-only backends such as FTP cannot rewind an in-progress upload,
+	// so these cases are skipped when ConformanceOptions.SkipFTPSpecificTests
+	// is set.
+	//
+	// NOTE (PR C): the exact set of IO sequences FTP cannot support is
+	// currently inferred from prior work (#294) and only validated against a
+	// real FTP server under the vfsintegration build tag. When the
+	// testcontainers module runs these against vsftpd, confirm whether other
+	// partial-write sequences (e.g. "Seek, Write" / "Read, Write") also need
+	// this flag; if so, set it on those cases here rather than widening the
+	// skip predicate.
+	RequiresSeekWithinWrite bool
 }
 
 // DefaultIOTestCases returns the standard set of IO test cases
@@ -77,18 +93,20 @@ func DefaultIOTestCases() []IOTestCase {
 
 		// Write, Seek, Write, Close
 		{
-			Description:       "Write, Seek, Write, Close, file does not exist",
-			Sequence:          "W(this and that);S(0,0);W(that);C()",
-			FileAlreadyExists: false,
-			ExpectFailure:     false,
-			ExpectedResults:   "that and that",
+			Description:             "Write, Seek, Write, Close, file does not exist",
+			Sequence:                "W(this and that);S(0,0);W(that);C()",
+			FileAlreadyExists:       false,
+			ExpectFailure:           false,
+			ExpectedResults:         "that and that",
+			RequiresSeekWithinWrite: true,
 		},
 		{
-			Description:       "Write, Seek, Write, Close, file exists",
-			Sequence:          "W(this and that);S(0,0);W(that);C()",
-			FileAlreadyExists: true,
-			ExpectFailure:     false,
-			ExpectedResults:   "that and that",
+			Description:             "Write, Seek, Write, Close, file exists",
+			Sequence:                "W(this and that);S(0,0);W(that);C()",
+			FileAlreadyExists:       true,
+			ExpectFailure:           false,
+			ExpectedResults:         "that and that",
+			RequiresSeekWithinWrite: true,
 		},
 
 		// Seek
@@ -180,19 +198,32 @@ func DefaultIOTestCases() []IOTestCase {
 	}
 }
 
-// RunIOTests runs IO conformance tests against the provided location
-func RunIOTests(t *testing.T, location vfs.Location) {
+// RunIOTests runs IO conformance tests against the provided location.
+// Optional ConformanceOptions allow backends to skip IO sequences they cannot
+// support (e.g. FTP, which cannot perform partial writes).
+func RunIOTests(t *testing.T, location vfs.Location, opts ...ConformanceOptions) {
 	t.Helper()
-	runIOTestsWithCases(t, location.URI(), location, DefaultIOTestCases())
+	opt := ConformanceOptions{}
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+	runIOTestsWithCases(t, location.URI(), location, DefaultIOTestCases(), opt)
 }
 
-func runIOTestsWithCases(t *testing.T, testPath string, location vfs.Location, testCases []IOTestCase) {
+func runIOTestsWithCases(t *testing.T, testPath string, location vfs.Location, testCases []IOTestCase, opts ConformanceOptions) {
 	t.Helper()
 	defer teardownTestLocation(t, testPath, location)
 
 	for _, tc := range testCases {
 		t.Run(tc.Description, func(t *testing.T) {
 			testFileName := "testfile.txt"
+
+			// FTP streams writes directly to the server and cannot rewind an
+			// in-progress write, so "Write, Seek, Write" sequences are
+			// unsupported on that backend.
+			if opts.SkipFTPSpecificTests && tc.RequiresSeekWithinWrite {
+				t.Skip("seek-within-write sequences are not supported by this backend")
+			}
 
 			func() {
 				file, err := setupTestFile(tc.FileAlreadyExists, location, testFileName)
@@ -281,8 +312,19 @@ SEQ:
 					t.Fatalf("invalid bytesize: %s", commandArgs[0])
 				}
 				b := make([]byte, bytesize)
-				_, commandErr = file.Read(b)
+				var n int
+				n, commandErr = file.Read(b)
 				if commandErr != nil {
+					// Reading up to (and not past) the end of the file is a
+					// valid, non-fatal condition: some backends return io.EOF
+					// alongside the final bytes of a fully-satisfied read.
+					// Only forgive io.EOF in that exact case; a short read
+					// (n < bytesize) paired with io.EOF is a genuine failure
+					// and must not be masked.
+					if errors.Is(commandErr, io.EOF) && uint64(n) == bytesize {
+						commandErr = nil
+						continue
+					}
 					break SEQ
 				}
 			}
