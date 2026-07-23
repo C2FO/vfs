@@ -70,7 +70,7 @@ func (f *File) Close() error {
 // the file is created and read operations are performed against that.  The temp file is closed and flushed to Azure
 // when f.Close() is called.
 func (f *File) Read(p []byte) (n int, err error) {
-	if err := f.checkTempFile(); err != nil {
+	if err := f.checkTempFile(false); err != nil {
 		return 0, utils.WrapReadError(err)
 	}
 	read, err := f.tempFile.Read(p)
@@ -91,7 +91,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 // the file is created and operations are performed against that.  The temp file is closed and flushed to Azure
 // when f.Close() is called.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
-	if err := f.checkTempFile(); err != nil {
+	if err := f.checkTempFile(false); err != nil {
 		return 0, utils.WrapSeekError(err)
 	}
 	pos, err := f.tempFile.Seek(offset, whence)
@@ -104,7 +104,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 // Write implements the io.Writer interface.  Writes are performed against a temporary local file.  The temp file is
 // closed and flushed to Azure with f.Close() is called.
 func (f *File) Write(p []byte) (int, error) {
-	if err := f.checkTempFile(); err != nil {
+	if err := f.checkTempFile(true); err != nil {
 		return 0, utils.WrapWriteError(err)
 	}
 
@@ -350,46 +350,71 @@ func (f *File) URI() string {
 	return utils.GetFileURI(f)
 }
 
-func (f *File) checkTempFile() error {
-	if f.tempFile == nil {
-		client, err := f.location.fileSystem.Client()
-		if err != nil {
-			return err
-		}
-
-		exists, err := f.Exists()
-		if err != nil {
-			return err
-		}
-		if !exists {
-			tf, tfErr := os.CreateTemp("", fmt.Sprintf("%s.%d", path.Base(f.Name()), time.Now().UnixNano()))
-			if tfErr != nil {
-				return tfErr
-			}
-			f.tempFile = tf
-		} else {
-			reader, dlErr := client.Download(f)
-			if dlErr != nil {
-				return dlErr
-			}
-
-			tf, tfErr := os.CreateTemp("", fmt.Sprintf("%s.%d", path.Base(f.Name()), time.Now().UnixNano()))
-			if tfErr != nil {
-				return tfErr
-			}
-
-			buffer := make([]byte, utils.TouchCopyMinBufferSize)
-			if _, err := io.CopyBuffer(tf, reader, buffer); err != nil {
-				return err
-			}
-
-			if _, err := tf.Seek(0, 0); err != nil {
-				return err
-			}
-
-			f.tempFile = tf
-		}
+// checkTempFile lazily initializes the local temp file that backs Read, Seek,
+// and Write operations. It only does work the first time it is called for a
+// given File (when f.tempFile is nil); the isWrite flag then selects how that
+// initial temp file is seeded so the backend behaves consistently with the
+// other backends (e.g. s3):
+//   - Write (isWrite=true) seeds an empty temp file without downloading the
+//     existing blob, so a write that does not first Seek replaces the blob
+//     rather than overwriting downloaded content in place. (A prior Read/Seek
+//     will have already populated the temp file, so read-modify-write still
+//     works.)
+//   - Read/Seek (isWrite=false) require the existing remote content, so a blob
+//     that does not exist returns os.ErrNotExist rather than silently operating
+//     on an empty temp file.
+func (f *File) checkTempFile(isWrite bool) error {
+	if f.tempFile != nil {
+		return nil
 	}
+
+	// Writes start from an empty temp file and need neither the client nor an
+	// existence check.
+	if isWrite {
+		tf, err := os.CreateTemp("", fmt.Sprintf("%s.%d", path.Base(f.Name()), time.Now().UnixNano()))
+		if err != nil {
+			return err
+		}
+		f.tempFile = tf
+		return nil
+	}
+
+	client, err := f.location.fileSystem.Client()
+	if err != nil {
+		return err
+	}
+
+	exists, err := f.Exists()
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return os.ErrNotExist
+	}
+
+	reader, err := client.Download(f)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = reader.Close() }()
+
+	tf, err := os.CreateTemp("", fmt.Sprintf("%s.%d", path.Base(f.Name()), time.Now().UnixNano()))
+	if err != nil {
+		return err
+	}
+
+	buffer := make([]byte, utils.TouchCopyMinBufferSize)
+	if _, err := io.CopyBuffer(tf, reader, buffer); err != nil {
+		_ = tf.Close()
+		return err
+	}
+
+	if _, err := tf.Seek(0, 0); err != nil {
+		_ = tf.Close()
+		return err
+	}
+
+	f.tempFile = tf
 	return nil
 }
 

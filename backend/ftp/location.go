@@ -152,6 +152,12 @@ func (l *Location) Path() string {
 
 // Exists returns true if the remote FTP directory exists.
 func (l *Location) Exists() (bool, error) {
+	// The root directory always exists. Checking it the normal way would require
+	// listing its parent, which has no meaning for "/".
+	if l.Path() == "/" {
+		return true, nil
+	}
+
 	dc, err := l.fileSystem.DataConn(context.TODO(), l.Authority(), types.SingleOp, nil)
 	if err != nil {
 		return false, err

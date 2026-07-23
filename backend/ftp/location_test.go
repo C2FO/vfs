@@ -411,8 +411,16 @@ func (lt *locationTestSuite) TestNewFile() {
 func (lt *locationTestSuite) TestExists() {
 	authorityStr := "host.com"
 
-	// location exists
+	// root location always exists without listing its (nonexistent) parent
 	locPath := "/"
+	loc, err := lt.ftpfs.NewLocation(authorityStr, locPath)
+	lt.Require().NoError(err)
+	exists, err := loc.Exists()
+	lt.Require().NoError(err, "No error expected from Exists")
+	lt.True(exists, "Root location expected to always exist.")
+
+	// non-root location exists
+	locPath = "/my/dir/"
 	entries := []*_ftp.Entry{
 		{
 			Name:   "file.txt",
@@ -421,16 +429,16 @@ func (lt *locationTestSuite) TestExists() {
 			Time:   time.Now().UTC(),
 		},
 		{
-			Name:   locPath,
+			Name:   "dir",
 			Target: "",
 			Type:   _ftp.EntryTypeFolder,
 			Time:   time.Now().UTC(),
 		},
 	}
-	lt.client.EXPECT().List(locPath).Return(entries, nil).Once()
-	loc, err := lt.ftpfs.NewLocation(authorityStr, locPath)
+	lt.client.EXPECT().List("/my/").Return(entries, nil).Once()
+	loc, err = lt.ftpfs.NewLocation(authorityStr, locPath)
 	lt.Require().NoError(err)
-	exists, err := loc.Exists()
+	exists, err = loc.Exists()
 	lt.Require().NoError(err, "No error expected from Exists")
 	lt.True(exists, "Call to Exists expected to return true.")
 
