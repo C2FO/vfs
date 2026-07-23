@@ -312,14 +312,16 @@ SEQ:
 					t.Fatalf("invalid bytesize: %s", commandArgs[0])
 				}
 				b := make([]byte, bytesize)
-				_, commandErr = file.Read(b)
+				var n int
+				n, commandErr = file.Read(b)
 				if commandErr != nil {
 					// Reading up to (and not past) the end of the file is a
 					// valid, non-fatal condition: some backends return io.EOF
-					// alongside the final bytes of a read. Treat that as a
-					// successful read and continue the sequence rather than
-					// aborting it.
-					if errors.Is(commandErr, io.EOF) {
+					// alongside the final bytes of a fully-satisfied read.
+					// Only forgive io.EOF in that exact case; a short read
+					// (n < bytesize) paired with io.EOF is a genuine failure
+					// and must not be masked.
+					if errors.Is(commandErr, io.EOF) && uint64(n) == bytesize {
 						commandErr = nil
 						continue
 					}

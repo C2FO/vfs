@@ -73,6 +73,24 @@ func (f *eofInjectingFile) Read(p []byte) (int, error) {
 	return n, err
 }
 
+// shortReadEOFFile wraps a vfs.File and returns io.EOF alongside fewer bytes
+// than requested, simulating a genuine short read that happens to coincide
+// with EOF (as opposed to a fully-satisfied read that also signals EOF).
+type shortReadEOFFile struct {
+	vfs.File
+}
+
+func (f *shortReadEOFFile) Read(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, io.EOF
+	}
+	n, err := f.File.Read(p[:1])
+	if err == nil {
+		return n, io.EOF
+	}
+	return n, err
+}
+
 // TestExecuteSequence_EOFOnFullRead verifies that a fixed-size read returning
 // io.EOF together with data is treated as a successful read: the sequence must
 // continue (so the trailing Close runs) and report no error.
@@ -94,4 +112,28 @@ func TestExecuteSequence_EOFOnFullRead(t *testing.T) {
 	contents, err := ExecuteSequence(t, wrapped, "R(9);C()")
 	require.NoError(t, err)
 	require.Equal(t, "some text", contents)
+}
+
+// TestExecuteSequence_ShortReadWithEOFIsAnError verifies that a short read
+// (fewer bytes than requested) accompanied by io.EOF is treated as a genuine
+// failure and is not masked by the "EOF on a fully-satisfied read" allowance.
+func TestExecuteSequence_ShortReadWithEOFIsAnError(t *testing.T) {
+	loc := newMemIOLocation(t)
+
+	seed, err := loc.NewFile("shortread.txt")
+	require.NoError(t, err)
+	_, err = seed.Write([]byte("some text"))
+	require.NoError(t, err)
+	require.NoError(t, seed.Close())
+
+	readFile, err := loc.NewFile("shortread.txt")
+	require.NoError(t, err)
+	wrapped := &shortReadEOFFile{File: readFile}
+
+	// R(9) requests 9 bytes but the wrapper only ever returns 1 byte at a time
+	// alongside io.EOF; this must be reported as an error, not silently
+	// forgiven and allowed to continue on to C().
+	_, err = ExecuteSequence(t, wrapped, "R(9);C()")
+	require.Error(t, err)
+	require.ErrorIs(t, err, io.EOF)
 }
