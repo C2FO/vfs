@@ -46,7 +46,7 @@ jobs:
       # runners frequently hit. Optional: skipped automatically on forks and
       # whenever the DOCKERHUB_* secrets are not configured.
       - name: Log in to Docker Hub
-        if: ${{ env.DOCKERHUB_USERNAME != '' }}
+        if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}

@@ -565,7 +565,7 @@ func RunFileTests(t *testing.T, baseLoc vfs.Location, opts ConformanceOptions) {
 			// identically across every backend.
 			assert.True(t,
 				strings.HasSuffix(dstSpaces.Path(), path.Join(test.Path, test.Filename)),
-				"destination file %s ends with source string for %s", dstSpaces.Path(), path.Join(test.Path, test.Filename),
+				"moved-to-destination file path %s should end with expected suffix %s", dstSpaces.Path(), path.Join(test.Path, test.Filename),
 			)
 
 			newSrcSpaces, err := dstSpaces.MoveToLocation(srcSpaces.Location())
@@ -577,7 +577,10 @@ func RunFileTests(t *testing.T, baseLoc vfs.Location, opts ConformanceOptions) {
 			require.NoError(t, err)
 			assert.False(t, exists, "dstSpaces should no longer exist")
 			hasSuffix := strings.HasSuffix(newSrcSpaces.Path(), path.Join(test.Path, test.Filename))
-			assert.True(t, hasSuffix, "destination file %s ends with source string for %s", newSrcSpaces.Path(), path.Join(test.Path, test.Filename))
+			assert.True(t, hasSuffix,
+				"moved-back-to-source file path %s should end with expected suffix %s",
+				newSrcSpaces.Path(), path.Join(test.Path, test.Filename),
+			)
 
 			require.NoError(t, newSrcSpaces.Delete())
 			exists, err = newSrcSpaces.Exists()
