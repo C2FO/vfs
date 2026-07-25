@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [[v7.22.0](https://github.com/C2FO/vfs/releases/tag/v7.22.0)] - 2026-07-25
 ### Added
 - `testcontainers`: New Docker-backed integration test module that runs the shared `backend/testsuite` conformance and IO suites against real backend servers (minio for `s3`, exercised with server-side encryption both on and off; azurite for `azure`; fake-gcs-server for `gs`; atmoz/sftp for `sftp`; and vsftpd for `ftp`) spun up automatically via testcontainers-go. Gated behind the `vfsintegration` build tag and a running Docker daemon, and wired into a dedicated `Integration (testcontainers)` CI workflow so backend conformance is validated on every PR without manual setup or credentials. Derived from the community contribution in [#294](https://github.com/C2FO/vfs/pull/294) by [Nathan Baulch](https://github.com/NathanBaulch), reworked and split into [#346](https://github.com/C2FO/vfs/pull/346), [#347](https://github.com/C2FO/vfs/pull/347), and this module.
 
