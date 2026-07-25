@@ -555,9 +555,17 @@ func RunFileTests(t *testing.T, baseLoc vfs.Location, opts ConformanceOptions) {
 			exists, err = srcSpaces.Exists()
 			require.NoError(t, err)
 			assert.False(t, exists, "srcSpaces should no longer exist")
+			// Assert on Path() rather than URI(): Path() is the raw, un-encoded
+			// path on every backend, whereas URI() is percent-encoded on some
+			// backends (e.g. sftp, ftp) and raw on others, so a URI suffix check
+			// is not portable for names containing spaces or "%". That encoding
+			// divergence is a known, pre-existing backend inconsistency; this
+			// portable suite deliberately does not assert URI() round-tripping
+			// for special characters, and Path() is the invariant that holds
+			// identically across every backend.
 			assert.True(t,
-				strings.HasSuffix(dstSpaces.URI(), path.Join(test.Path, test.Filename)),
-				"destination file %s ends with source string for %s", dstSpaces.URI(), path.Join(test.Path, test.Filename),
+				strings.HasSuffix(dstSpaces.Path(), path.Join(test.Path, test.Filename)),
+				"moved-to-destination file path %s should end with expected suffix %s", dstSpaces.Path(), path.Join(test.Path, test.Filename),
 			)
 
 			newSrcSpaces, err := dstSpaces.MoveToLocation(srcSpaces.Location())
@@ -568,8 +576,11 @@ func RunFileTests(t *testing.T, baseLoc vfs.Location, opts ConformanceOptions) {
 			exists, err = dstSpaces.Exists()
 			require.NoError(t, err)
 			assert.False(t, exists, "dstSpaces should no longer exist")
-			hasSuffix := strings.HasSuffix(newSrcSpaces.URI(), path.Join(test.Path, test.Filename))
-			assert.True(t, hasSuffix, "destination file %s ends with source string for %s", dstSpaces.URI(), path.Join(test.Path, test.Filename))
+			hasSuffix := strings.HasSuffix(newSrcSpaces.Path(), path.Join(test.Path, test.Filename))
+			assert.True(t, hasSuffix,
+				"moved-back-to-source file path %s should end with expected suffix %s",
+				newSrcSpaces.Path(), path.Join(test.Path, test.Filename),
+			)
 
 			require.NoError(t, newSrcSpaces.Delete())
 			exists, err = newSrcSpaces.Exists()

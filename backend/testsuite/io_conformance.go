@@ -37,13 +37,13 @@ type IOTestCase struct {
 	// so these cases are skipped when ConformanceOptions.SkipFTPSpecificTests
 	// is set.
 	//
-	// NOTE (PR C): the exact set of IO sequences FTP cannot support is
-	// currently inferred from prior work (#294) and only validated against a
-	// real FTP server under the vfsintegration build tag. When the
-	// testcontainers module runs these against vsftpd, confirm whether other
-	// partial-write sequences (e.g. "Seek, Write" / "Read, Write") also need
-	// this flag; if so, set it on those cases here rather than widening the
-	// skip predicate.
+	// Validated in PR C against a live vsftpd server (the testcontainers
+	// module): of every IO sequence defined here, "Write, Seek, Write" is the
+	// only one FTP cannot support. The other partial-write sequences
+	// ("Seek, Write", "Read, Write", "Read, Seek, Write", "Write, Seek, Read")
+	// all pass against a real server, so this flag is set only on the
+	// "Write, Seek, Write" cases. Do not widen the skip predicate without
+	// re-validating against vsftpd.
 	RequiresSeekWithinWrite bool
 }
 
