@@ -108,6 +108,62 @@ func (ts *fileSystemTestSuite) TestClient() {
 	ts.NotNil(s3fs.client, "client was set")
 }
 
+func (ts *fileSystemTestSuite) TestWithClientOption_nilClient() {
+	fs := NewFileSystem(WithClient(nil))
+
+	client, err := fs.Client()
+	ts.Require().ErrorIs(err, errClientNotSupported, "a nil client is reported, not replaced by a default")
+	ts.Nil(client)
+}
+
+func (ts *fileSystemTestSuite) TestWithClient_unsupportedClient() {
+	fs := (&FileSystem{}).WithClient("just a string")
+
+	client, err := fs.Client()
+	ts.Require().ErrorIs(err, errClientNotSupported, "unsupported client is reported, not ignored")
+	ts.Contains(err.Error(), "string", "error names the offending type")
+	ts.Nil(client, "no client is returned")
+
+	// a subsequent valid client clears the deferred error
+	supported := mocks.NewClient(ts.T())
+	client, err = fs.WithClient(supported).Client()
+	ts.Require().NoError(err)
+	ts.Equal(supported, client)
+}
+
+func (ts *fileSystemTestSuite) TestBackendClient() {
+	ts.Run("client supporting ListObjectsV2 is used directly", func() {
+		client := newSDKStyleClient(ts.T())
+		fs := &FileSystem{client: client}
+
+		backend, err := fs.backendClient()
+		ts.Require().NoError(err)
+		ts.Same(client, backend)
+	})
+
+	ts.Run("client without ListObjectsV2 is adapted", func() {
+		client := mocks.NewClient(ts.T())
+		fs := &FileSystem{client: client}
+
+		backend, err := fs.backendClient()
+		ts.Require().NoError(err)
+		ts.IsType(&legacyClient{}, backend)
+
+		// the public accessor still hands back the client as supplied
+		public, err := fs.Client()
+		ts.Require().NoError(err)
+		ts.Same(client, public)
+	})
+
+	ts.Run("deferred client error is reported", func() {
+		fs := (&FileSystem{}).WithClient(42)
+
+		backend, err := fs.backendClient()
+		ts.Require().ErrorIs(err, errClientNotSupported)
+		ts.Nil(backend)
+	})
+}
+
 func TestFileSystem(t *testing.T) {
 	suite.Run(t, new(fileSystemTestSuite))
 }

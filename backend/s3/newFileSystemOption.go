@@ -1,6 +1,10 @@
 package s3
 
-import "github.com/c2fo/vfs/v7/options"
+import (
+	"fmt"
+
+	"github.com/c2fo/vfs/v7/options"
+)
 
 const (
 	optionNameClient  = "client"
@@ -22,7 +26,16 @@ type clientOpt struct {
 }
 
 // Apply applies the client to the filesystem
+//
+// A nil client is rejected rather than silently falling back to a default client, matching the
+// behavior of FileSystem.WithClient. Apply can't return an error, so the failure surfaces on the
+// next call to FileSystem.Client.
 func (ct *clientOpt) Apply(fs *FileSystem) {
+	if ct.client == nil {
+		fs.clientErr = fmt.Errorf("%w: nil", errClientNotSupported)
+		return
+	}
+
 	fs.client = ct.client
 }
 

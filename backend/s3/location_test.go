@@ -99,6 +99,60 @@ func (lt *locationTestSuite) TestList_pagedCall() {
 	}
 }
 
+// TestList_nativeListObjectsV2 covers the path where the client implements ListObjectsV2 itself,
+// so no adapter sits between the location and the client. The other list tests inject a Client
+// without ListObjectsV2 and therefore exercise the adapter.
+func (lt *locationTestSuite) TestList_nativeListObjectsV2() {
+	expectedFileList := []string{"file.txt", "file2.txt"}
+	keyListFromAPI := []string{"dir1/file.txt", "dir1/file2.txt"}
+	bucket := "bucket"
+	prefix := "dir1/"
+	delimiter := "/"
+
+	client := newSDKStyleClient(lt.T())
+	client.v2.EXPECT().ListObjectsV2(matchContext, &s3.ListObjectsV2Input{
+		Bucket:    &bucket,
+		Prefix:    &prefix,
+		Delimiter: &delimiter,
+	}).Return(&s3.ListObjectsV2Output{
+		Contents:    convertKeysToS3Objects(keyListFromAPI),
+		IsTruncated: aws.Bool(false),
+		Prefix:      &prefix,
+	}, nil).Once()
+
+	loc, err := (&FileSystem{client: client}).NewLocation(bucket, "/dir1/")
+	lt.Require().NoError(err)
+
+	fileList, err := loc.List()
+	lt.Require().NoError(err, "Shouldn't return an error when successfully returning list.")
+	lt.ElementsMatch(expectedFileList, fileList, "Should return the expected files.")
+}
+
+// TestList_truncatedWithoutToken guards against the pagination loop reissuing an identical request
+// forever when a response claims truncation but gives nothing to resume from.
+func (lt *locationTestSuite) TestList_truncatedWithoutToken() {
+	bucket := "bucket"
+	prefix := "dir1/"
+	delimiter := "/"
+
+	client := newSDKStyleClient(lt.T())
+	client.v2.EXPECT().ListObjectsV2(matchContext, &s3.ListObjectsV2Input{
+		Bucket:    &bucket,
+		Prefix:    &prefix,
+		Delimiter: &delimiter,
+	}).Return(&s3.ListObjectsV2Output{
+		Contents:    convertKeysToS3Objects([]string{"dir1/file.txt"}),
+		IsTruncated: aws.Bool(true),
+	}, nil).Once()
+
+	loc, err := (&FileSystem{client: client}).NewLocation(bucket, "/dir1/")
+	lt.Require().NoError(err)
+
+	fileList, err := loc.List()
+	lt.Require().ErrorIs(err, errTruncatedWithoutToken)
+	lt.Empty(fileList)
+}
+
 func (lt *locationTestSuite) TestListByPrefix() {
 	expectedFileList := []string{"file1.txt", "file2.txt"}
 	keyListFromAPI := []string{"dir1/file1.txt", "dir1/file2.txt"}
