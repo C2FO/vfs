@@ -178,6 +178,41 @@ func (ts *fileSystemTestSuite) TestWithOptions_clearsDeferredClientError() {
 	})
 }
 
+// TestWithClient_rejectionClearsStaleClient guards against a rejected client leaving a prior,
+// still-set client silently active. Once the caller explicitly swaps in a bad client, that
+// intent should stick even after a later WithOptions call clears the deferred error - the old
+// client shouldn't reappear.
+func (ts *fileSystemTestSuite) TestWithClient_rejectionClearsStaleClient() {
+	ts.Run("chainable method", func() {
+		good := mocks.NewClient(ts.T())
+		fs := NewFileSystem(WithClient(good))
+
+		fs = fs.WithClient("not a client")
+		_, err := fs.Client()
+		ts.Require().Error(err, "sanity check: rejection is latched")
+
+		// Options{} doesn't touch fs.client under the pre-existing region/endpoint/etc reset
+		// logic, so this specifically exercises the explicit clear on rejection.
+		fs = fs.WithOptions(Options{})
+		client, err := fs.Client()
+		ts.Require().NoError(err)
+		ts.NotEqual(good, client, "the rejected call's stale client must not resurface")
+	})
+
+	ts.Run("functional option", func() {
+		good := mocks.NewClient(ts.T())
+		fs := NewFileSystem(WithClient(good), WithClient(nil))
+
+		_, err := fs.Client()
+		ts.Require().Error(err, "sanity check: rejection is latched")
+
+		fs = NewFileSystem(WithClient(good), WithClient(nil), WithOptions(Options{}))
+		client, err := fs.Client()
+		ts.Require().NoError(err)
+		ts.NotEqual(good, client, "the rejected option's stale client must not resurface")
+	})
+}
+
 func (ts *fileSystemTestSuite) TestBackendClient() {
 	ts.Run("client supporting ListObjectsV2 is used directly", func() {
 		client := newSDKStyleClient(ts.T())

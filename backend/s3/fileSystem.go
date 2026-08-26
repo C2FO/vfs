@@ -20,7 +20,10 @@ const name = "AWS S3"
 var (
 	errFileSystemRequired       = errors.New("non-nil s3.FileSystem pointer is required")
 	errAuthorityAndNameRequired = errors.New("non-empty strings for authority and name are required")
-	errClientNotSupported       = errors.New("client does not implement s3.Client")
+	// errClientNotSupported names the full import path rather than the bare package-qualified
+	// "s3.Client" because the AWS SDK's own service package is also imported as s3, and its
+	// *s3.Client type is a different thing from this package's Client interface.
+	errClientNotSupported = errors.New("client does not implement github.com/c2fo/vfs/v7/backend/s3.Client")
 )
 
 // FileSystem implements vfs.FileSystem for the S3 file system.
@@ -183,11 +186,16 @@ func (fs *FileSystem) WithClient(client any) *FileSystem {
 	c, ok := client.(Client)
 	switch {
 	case !ok:
+		// A rejected client also clears any client set by a prior call, so a caller who
+		// explicitly swaps in a bad client doesn't silently fall back to the old one once the
+		// error is later cleared by WithOptions.
+		fs.client = nil
 		fs.clientErr = fmt.Errorf("%w: %T", errClientNotSupported, client)
 		return fs
 	case isNilClient(c):
 		// ok is true here even for a typed nil like (*s3.Client)(nil): the concrete type
 		// satisfies Client regardless of the pointer's value.
+		fs.client = nil
 		fs.clientErr = fmt.Errorf("%w: nil", errClientNotSupported)
 		return fs
 	}

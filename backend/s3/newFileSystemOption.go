@@ -33,6 +33,10 @@ type clientOpt struct {
 // the next call to FileSystem.Client.
 func (ct *clientOpt) Apply(fs *FileSystem) {
 	if isNilClient(ct.client) {
+		// Also clears any client set by a prior option in the chain, so a rejected client
+		// doesn't leave the old one silently active once the error is later cleared by
+		// WithOptions.
+		fs.client = nil
 		fs.clientErr = fmt.Errorf("%w: nil", errClientNotSupported)
 		return
 	}
