@@ -28,10 +28,11 @@ type clientOpt struct {
 // Apply applies the client to the filesystem
 //
 // A nil client is rejected rather than silently falling back to a default client, matching the
-// behavior of FileSystem.WithClient. Apply can't return an error, so the failure surfaces on the
-// next call to FileSystem.Client.
+// behavior of FileSystem.WithClient. This also catches a typed nil, such as WithClient((*s3.Client)(nil)),
+// which a plain nil comparison would miss. Apply can't return an error, so the failure surfaces on
+// the next call to FileSystem.Client.
 func (ct *clientOpt) Apply(fs *FileSystem) {
-	if ct.client == nil {
+	if isNilClient(ct.client) {
 		fs.clientErr = fmt.Errorf("%w: nil", errClientNotSupported)
 		return
 	}

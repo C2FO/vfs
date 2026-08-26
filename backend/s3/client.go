@@ -2,6 +2,7 @@ package s3
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
@@ -39,6 +40,18 @@ type backendClient interface {
 	ListObjectVersions(context.Context, *s3.ListObjectVersionsInput, ...func(*s3.Options)) (*s3.ListObjectVersionsOutput, error)
 	PutObject(context.Context, *s3.PutObjectInput, ...func(*s3.Options)) (*s3.PutObjectOutput, error)
 	UploadPart(context.Context, *s3.UploadPartInput, ...func(*s3.Options)) (*s3.UploadPartOutput, error)
+}
+
+// isNilClient reports whether c is nil, including a typed nil such as (*s3.Client)(nil) passed
+// through an interface parameter. A plain `c == nil` comparison misses that case: the interface
+// still carries a concrete type, so it compares unequal to the untyped nil literal even though
+// calling a method on it panics.
+func isNilClient(c Client) bool {
+	if c == nil {
+		return true
+	}
+	v := reflect.ValueOf(c)
+	return v.Kind() == reflect.Pointer && v.IsNil()
 }
 
 // asBackendClient returns c as a backendClient, wrapping it only when it doesn't already provide

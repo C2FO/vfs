@@ -181,8 +181,14 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 //	fs := s3.NewFileSystem().WithClient(client)
 func (fs *FileSystem) WithClient(client any) *FileSystem {
 	c, ok := client.(Client)
-	if !ok {
+	switch {
+	case !ok:
 		fs.clientErr = fmt.Errorf("%w: %T", errClientNotSupported, client)
+		return fs
+	case isNilClient(c):
+		// ok is true here even for a typed nil like (*s3.Client)(nil): the concrete type
+		// satisfies Client regardless of the pointer's value.
+		fs.clientErr = fmt.Errorf("%w: nil", errClientNotSupported)
 		return fs
 	}
 

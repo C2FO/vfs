@@ -3,6 +3,7 @@ package s3
 import (
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v7/backend/s3/mocks"
@@ -26,9 +27,13 @@ func (ts *fileSystemTestSuite) TestNewFileSystem() {
 	ts.Equal("us-east-1", newFS.options.Region, "Should set region to us-east-1")
 
 	// test with client
-	newFS = NewFileSystem(WithClient(s3cliMock))
+	// A fresh mock is used here rather than the package-level s3cliMock var (owned by
+	// fileTestSuite in file_test.go): that var is only populated by that suite's SetupTest,
+	// and test file execution order isn't guaranteed to run it first.
+	mockClient := mocks.NewClient(ts.T())
+	newFS = NewFileSystem(WithClient(mockClient))
 	ts.NotNil(newFS, "Should return a new fileSystem for s3")
-	ts.Equal(s3cliMock, newFS.client, "Should set client to s3cliMock")
+	ts.Equal(mockClient, newFS.client, "Should set client to the mock client")
 }
 
 func (ts *fileSystemTestSuite) TestNewFile() {
@@ -116,6 +121,16 @@ func (ts *fileSystemTestSuite) TestWithClientOption_nilClient() {
 	ts.Nil(client)
 }
 
+func (ts *fileSystemTestSuite) TestWithClientOption_typedNilClient() {
+	var typedNil *s3.Client // satisfies Client at compile time, but the pointer itself is nil
+
+	fs := NewFileSystem(WithClient(typedNil))
+
+	client, err := fs.Client()
+	ts.Require().ErrorIs(err, errClientNotSupported, "a typed-nil client is reported, not treated as a valid client")
+	ts.Nil(client)
+}
+
 func (ts *fileSystemTestSuite) TestWithClient_unsupportedClient() {
 	fs := (&FileSystem{}).WithClient("just a string")
 
@@ -129,6 +144,16 @@ func (ts *fileSystemTestSuite) TestWithClient_unsupportedClient() {
 	client, err = fs.WithClient(supported).Client()
 	ts.Require().NoError(err)
 	ts.Equal(supported, client)
+}
+
+func (ts *fileSystemTestSuite) TestWithClient_typedNilClient() {
+	var typedNil *s3.Client // the type assertion to Client succeeds; only the pointer is nil
+
+	fs := (&FileSystem{}).WithClient(typedNil)
+
+	client, err := fs.Client()
+	ts.Require().ErrorIs(err, errClientNotSupported, "a typed-nil client is reported, not treated as a valid client")
+	ts.Nil(client, "no client is returned")
 }
 
 func (ts *fileSystemTestSuite) TestWithOptions_clearsDeferredClientError() {
