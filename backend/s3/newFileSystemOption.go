@@ -37,6 +37,7 @@ func (ct *clientOpt) Apply(fs *FileSystem) {
 	}
 
 	fs.client = ct.client
+	fs.clientErr = nil
 }
 
 // NewFileSystemOptionName returns the name of the option
@@ -61,6 +62,9 @@ type optionsOpt struct {
 // Apply applies the options to the filesystem
 func (o *optionsOpt) Apply(fs *FileSystem) {
 	fs.options = o.options
+	// Options gives Client() an alternate way to resolve a client, so any previously latched
+	// error (e.g. from WithClient) no longer applies.
+	fs.clientErr = nil
 }
 
 // NewFileSystemOptionName returns the name of the option

@@ -131,6 +131,28 @@ func (ts *fileSystemTestSuite) TestWithClient_unsupportedClient() {
 	ts.Equal(supported, client)
 }
 
+func (ts *fileSystemTestSuite) TestWithOptions_clearsDeferredClientError() {
+	ts.Run("chainable method", func() {
+		fs := (&FileSystem{}).WithClient("just a string")
+		_, err := fs.Client()
+		ts.Require().Error(err, "sanity check: error is latched before WithOptions")
+
+		fs = fs.WithOptions(Options{Region: "us-east-1"})
+		_, err = fs.Client()
+		ts.Require().NoError(err, "supplying Options should clear a previously deferred client error")
+	})
+
+	ts.Run("functional option", func() {
+		fs := NewFileSystem(WithClient(nil))
+		_, err := fs.Client()
+		ts.Require().Error(err, "sanity check: error is latched before WithOptions")
+
+		fs = NewFileSystem(WithClient(nil), WithOptions(Options{Region: "us-east-1"}))
+		_, err = fs.Client()
+		ts.Require().NoError(err, "supplying Options should clear a previously deferred client error")
+	})
+}
+
 func (ts *fileSystemTestSuite) TestBackendClient() {
 	ts.Run("client supporting ListObjectsV2 is used directly", func() {
 		client := newSDKStyleClient(ts.T())

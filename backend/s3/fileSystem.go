@@ -154,6 +154,9 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 	// only set options if vfs.Options is s3.Options
 	if opts, ok := opts.(Options); ok {
 		fs.options = opts
+		// Options gives Client() an alternate way to resolve a client, so any previously latched
+		// error (e.g. from WithClient) no longer applies.
+		fs.clientErr = nil
 		// we set client to nil to ensure that a new client is created using the new context when Client() is called
 		if opts.Region != "" || opts.ForcePathStyle || opts.Endpoint != "" || opts.Retry != nil ||
 			opts.AccessKeyID != "" || opts.SecretAccessKey != "" || opts.SessionToken != "" {

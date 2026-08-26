@@ -1,6 +1,7 @@
 package s3
 
 import (
+	"errors"
 	"path"
 	"regexp"
 	"testing"
@@ -150,6 +151,29 @@ func (lt *locationTestSuite) TestList_truncatedWithoutToken() {
 
 	fileList, err := loc.List()
 	lt.Require().ErrorIs(err, errTruncatedWithoutToken)
+	lt.Empty(fileList)
+}
+
+// TestList_listObjectsV2Error guards against a lost or altered error when ListObjectsV2 itself
+// fails, whether on the first page or a later one.
+func (lt *locationTestSuite) TestList_listObjectsV2Error() {
+	bucket := "bucket"
+	prefix := "dir1/"
+	delimiter := "/"
+	apiErr := errors.New("some s3 error")
+
+	client := newSDKStyleClient(lt.T())
+	client.v2.EXPECT().ListObjectsV2(matchContext, &s3.ListObjectsV2Input{
+		Bucket:    &bucket,
+		Prefix:    &prefix,
+		Delimiter: &delimiter,
+	}).Return(nil, apiErr).Once()
+
+	loc, err := (&FileSystem{client: client}).NewLocation(bucket, "/dir1/")
+	lt.Require().NoError(err)
+
+	fileList, err := loc.List()
+	lt.Require().ErrorIs(err, apiErr)
 	lt.Empty(fileList)
 }
 

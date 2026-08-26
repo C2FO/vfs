@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `backend/s3`: Paged listings no longer panic when an S3 response omits `IsTruncated`, and resume with a continuation token derived from the last returned key when the response omits a next marker (which S3 does when no delimiter is set).
 - `backend/s3`: A paged listing that reports truncation but supplies no continuation token now returns an error instead of reissuing the identical request forever.
 - `backend/s3`: Supplying a client that does not implement `s3.Client` (or a nil client) is now reported rather than silently ignored in favor of a default client. This applies to both the `WithClient` option and the deprecated `FileSystem.WithClient` method; since neither can return an error, the failure is reported by the next call to `Client`. Code that previously passed an unusable client and unknowingly ran against a default client will now see an error.
+- `backend/s3`: That same deferred error no longer outlives a subsequent `WithOptions` call. Previously, once an unsupported or nil client was reported, the `FileSystem` was permanently unusable even if valid `Options` were supplied afterward to build a client from scratch.
 
 ## [[v7.23.0](https://github.com/C2FO/vfs/releases/tag/v7.23.0)] - 2026-08-19
 ### Security
