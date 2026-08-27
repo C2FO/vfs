@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [[v7.24.0](https://github.com/C2FO/vfs/releases/tag/v7.24.0)] - 2026-08-27
 ### Added
 - `backend/s3`: Listing now uses the `ListObjectsV2` API instead of the older `ListObjects`. Clients supplied via `WithClient` that do not implement `ListObjectsV2` are transparently adapted to the v1 operation, so the exported `Client` interface is unchanged and existing custom clients and mocks keep working. This also prepares the backend for the migration to `feature/s3/transfermanager`, which requires `ListObjectsV2` ([#317](https://github.com/C2FO/vfs/issues/317)).
 
