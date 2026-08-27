@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `backend/s3`: Uploads and downloads now use `feature/s3/transfermanager` instead of the deprecated `feature/s3/manager`. The exported `Client` interface is unchanged, so existing custom clients and mocks keep working; the switch happens through the same internal `ListObjectsV2`-based adapter introduced for listing ([#317](https://github.com/C2FO/vfs/issues/317)).
+
+### Fixed
+- `backend/s3`: An `UploadPartitionSize` below the 5MB S3 minimum is now rejected up front, matching the local check the deprecated uploader used to perform. Previously an undersized value passed through silently and only surfaced later as a remote `EntityTooSmall` error on all but the last part.
+
 ## [[v7.24.0](https://github.com/C2FO/vfs/releases/tag/v7.24.0)] - 2026-08-27
 ### Added
 - `backend/s3`: Listing now uses the `ListObjectsV2` API instead of the older `ListObjects`. Clients supplied via `WithClient` that do not implement `ListObjectsV2` are transparently adapted to the v1 operation, so the exported `Client` interface is unchanged and existing custom clients and mocks keep working. This also prepares the backend for the migration to `feature/s3/transfermanager`, which requires `ListObjectsV2` ([#317](https://github.com/C2FO/vfs/issues/317)).
