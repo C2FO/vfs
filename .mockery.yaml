@@ -18,6 +18,12 @@ packages:
   github.com/c2fo/vfs/v7/backend/s3:
     config:
       all: true
+    interfaces:
+      # backendClient is unexported, so the generated mock needs an exported name to be usable.
+      backendClient:
+        config:
+          structname: BackendClient
+          filename: BackendClient.go
   github.com/c2fo/vfs/v7/backend/sftp:
     interfaces:
       Client: {}

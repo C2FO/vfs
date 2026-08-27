@@ -1,6 +1,10 @@
 package s3
 
-import "github.com/c2fo/vfs/v7/options"
+import (
+	"fmt"
+
+	"github.com/c2fo/vfs/v7/options"
+)
 
 const (
 	optionNameClient  = "client"
@@ -22,8 +26,23 @@ type clientOpt struct {
 }
 
 // Apply applies the client to the filesystem
+//
+// A nil client is rejected rather than silently falling back to a default client, matching the
+// behavior of FileSystem.WithClient. This also catches a typed nil, such as WithClient((*s3.Client)(nil)),
+// which a plain nil comparison would miss. Apply can't return an error, so the failure surfaces on
+// the next call to FileSystem.Client.
 func (ct *clientOpt) Apply(fs *FileSystem) {
+	if isNilClient(ct.client) {
+		// Also clears any client set by a prior option in the chain, so a rejected client
+		// doesn't leave the old one silently active once the error is later cleared by
+		// WithOptions.
+		fs.client = nil
+		fs.clientErr = fmt.Errorf("%w: nil", errClientNotSupported)
+		return
+	}
+
 	fs.client = ct.client
+	fs.clientErr = nil
 }
 
 // NewFileSystemOptionName returns the name of the option
@@ -48,6 +67,9 @@ type optionsOpt struct {
 // Apply applies the options to the filesystem
 func (o *optionsOpt) Apply(fs *FileSystem) {
 	fs.options = o.options
+	// Options gives Client() an alternate way to resolve a client, so any previously latched
+	// error (e.g. from WithClient) no longer applies.
+	fs.clientErr = nil
 }
 
 // NewFileSystemOptionName returns the name of the option

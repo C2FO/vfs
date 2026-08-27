@@ -3,6 +3,7 @@ package s3
 import (
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v7/backend/s3/mocks"
@@ -26,9 +27,13 @@ func (ts *fileSystemTestSuite) TestNewFileSystem() {
 	ts.Equal("us-east-1", newFS.options.Region, "Should set region to us-east-1")
 
 	// test with client
-	newFS = NewFileSystem(WithClient(s3cliMock))
+	// A fresh mock is used here rather than the package-level s3cliMock var (owned by
+	// fileTestSuite in file_test.go): that var is only populated by that suite's SetupTest,
+	// and test file execution order isn't guaranteed to run it first.
+	mockClient := mocks.NewClient(ts.T())
+	newFS = NewFileSystem(WithClient(mockClient))
 	ts.NotNil(newFS, "Should return a new fileSystem for s3")
-	ts.Equal(s3cliMock, newFS.client, "Should set client to s3cliMock")
+	ts.Equal(mockClient, newFS.client, "Should set client to the mock client")
 }
 
 func (ts *fileSystemTestSuite) TestNewFile() {
@@ -106,6 +111,139 @@ func (ts *fileSystemTestSuite) TestClient() {
 	ts.Require().NoError(err, "no error")
 	ts.NotNil(client, "client was set")
 	ts.NotNil(s3fs.client, "client was set")
+}
+
+func (ts *fileSystemTestSuite) TestWithClientOption_nilClient() {
+	fs := NewFileSystem(WithClient(nil))
+
+	client, err := fs.Client()
+	ts.Require().ErrorIs(err, errClientNotSupported, "a nil client is reported, not replaced by a default")
+	ts.Nil(client)
+}
+
+func (ts *fileSystemTestSuite) TestWithClientOption_typedNilClient() {
+	var typedNil *s3.Client // satisfies Client at compile time, but the pointer itself is nil
+
+	fs := NewFileSystem(WithClient(typedNil))
+
+	client, err := fs.Client()
+	ts.Require().ErrorIs(err, errClientNotSupported, "a typed-nil client is reported, not treated as a valid client")
+	ts.Nil(client)
+}
+
+func (ts *fileSystemTestSuite) TestWithClient_unsupportedClient() {
+	fs := (&FileSystem{}).WithClient("just a string")
+
+	client, err := fs.Client()
+	ts.Require().ErrorIs(err, errClientNotSupported, "unsupported client is reported, not ignored")
+	ts.Contains(err.Error(), "string", "error names the offending type")
+	ts.Nil(client, "no client is returned")
+
+	// a subsequent valid client clears the deferred error
+	supported := mocks.NewClient(ts.T())
+	client, err = fs.WithClient(supported).Client()
+	ts.Require().NoError(err)
+	ts.Equal(supported, client)
+}
+
+func (ts *fileSystemTestSuite) TestWithClient_typedNilClient() {
+	var typedNil *s3.Client // the type assertion to Client succeeds; only the pointer is nil
+
+	fs := (&FileSystem{}).WithClient(typedNil)
+
+	client, err := fs.Client()
+	ts.Require().ErrorIs(err, errClientNotSupported, "a typed-nil client is reported, not treated as a valid client")
+	ts.Nil(client, "no client is returned")
+}
+
+func (ts *fileSystemTestSuite) TestWithOptions_clearsDeferredClientError() {
+	ts.Run("chainable method", func() {
+		fs := (&FileSystem{}).WithClient("just a string")
+		_, err := fs.Client()
+		ts.Require().Error(err, "sanity check: error is latched before WithOptions")
+
+		fs = fs.WithOptions(Options{Region: "us-east-1"})
+		_, err = fs.Client()
+		ts.Require().NoError(err, "supplying Options should clear a previously deferred client error")
+	})
+
+	ts.Run("functional option", func() {
+		fs := NewFileSystem(WithClient(nil))
+		_, err := fs.Client()
+		ts.Require().Error(err, "sanity check: error is latched before WithOptions")
+
+		fs = NewFileSystem(WithClient(nil), WithOptions(Options{Region: "us-east-1"}))
+		_, err = fs.Client()
+		ts.Require().NoError(err, "supplying Options should clear a previously deferred client error")
+	})
+}
+
+// TestWithClient_rejectionClearsStaleClient guards against a rejected client leaving a prior,
+// still-set client silently active. Once the caller explicitly swaps in a bad client, that
+// intent should stick even after a later WithOptions call clears the deferred error - the old
+// client shouldn't reappear.
+func (ts *fileSystemTestSuite) TestWithClient_rejectionClearsStaleClient() {
+	ts.Run("chainable method", func() {
+		good := mocks.NewClient(ts.T())
+		fs := NewFileSystem(WithClient(good))
+
+		fs = fs.WithClient("not a client")
+		_, err := fs.Client()
+		ts.Require().Error(err, "sanity check: rejection is latched")
+
+		// Options{} doesn't touch fs.client under the pre-existing region/endpoint/etc reset
+		// logic, so this specifically exercises the explicit clear on rejection.
+		fs = fs.WithOptions(Options{})
+		client, err := fs.Client()
+		ts.Require().NoError(err)
+		ts.NotEqual(good, client, "the rejected call's stale client must not resurface")
+	})
+
+	ts.Run("functional option", func() {
+		good := mocks.NewClient(ts.T())
+		fs := NewFileSystem(WithClient(good), WithClient(nil))
+
+		_, err := fs.Client()
+		ts.Require().Error(err, "sanity check: rejection is latched")
+
+		fs = NewFileSystem(WithClient(good), WithClient(nil), WithOptions(Options{}))
+		client, err := fs.Client()
+		ts.Require().NoError(err)
+		ts.NotEqual(good, client, "the rejected option's stale client must not resurface")
+	})
+}
+
+func (ts *fileSystemTestSuite) TestBackendClient() {
+	ts.Run("client supporting ListObjectsV2 is used directly", func() {
+		client := newSDKStyleClient(ts.T())
+		fs := &FileSystem{client: client}
+
+		backend, err := fs.backendClient()
+		ts.Require().NoError(err)
+		ts.Same(client, backend)
+	})
+
+	ts.Run("client without ListObjectsV2 is adapted", func() {
+		client := mocks.NewClient(ts.T())
+		fs := &FileSystem{client: client}
+
+		backend, err := fs.backendClient()
+		ts.Require().NoError(err)
+		ts.IsType(&legacyClient{}, backend)
+
+		// the public accessor still hands back the client as supplied
+		public, err := fs.Client()
+		ts.Require().NoError(err)
+		ts.Same(client, public)
+	})
+
+	ts.Run("deferred client error is reported", func() {
+		fs := (&FileSystem{}).WithClient(42)
+
+		backend, err := fs.backendClient()
+		ts.Require().ErrorIs(err, errClientNotSupported)
+		ts.Nil(backend)
+	})
 }
 
 func TestFileSystem(t *testing.T) {

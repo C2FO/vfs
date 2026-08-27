@@ -20,6 +20,8 @@ import (
 var (
 	errLocationRequired = errors.New("non-nil s3.Location pointer is required")
 	errPathRequired     = errors.New("non-empty string for path is required")
+
+	errTruncatedWithoutToken = errors.New("s3 returned a truncated listing without a continuation token")
 )
 
 // Location implements the vfs.Location interface specific to S3 fs.
@@ -216,14 +218,14 @@ func (l *Location) String() string {
 	Private helpers
 */
 
-func (l *Location) fullLocationList(input *s3.ListObjectsInput, prefix string) ([]string, error) {
+func (l *Location) fullLocationList(input *s3.ListObjectsV2Input, prefix string) ([]string, error) {
 	var keys []string
-	client, err := l.fileSystem.Client()
+	client, err := l.fileSystem.backendClient()
 	if err != nil {
 		return keys, err
 	}
 	for {
-		listObjectsOutput, err := client.ListObjects(context.Background(), input)
+		listObjectsOutput, err := client.ListObjectsV2(context.Background(), input)
 		if err != nil {
 			return []string{}, err
 		}
@@ -231,19 +233,24 @@ func (l *Location) fullLocationList(input *s3.ListObjectsInput, prefix string) (
 		keys = append(keys, newKeys...)
 
 		// if s3 response "IsTruncated" we need to call List again with
-		// an updated Marker (s3 version of paging)
-		if *listObjectsOutput.IsTruncated {
-			input.Marker = listObjectsOutput.NextMarker
-		} else {
+		// an updated ContinuationToken (s3 version of paging)
+		if !aws.ToBool(listObjectsOutput.IsTruncated) {
 			break
 		}
+
+		// A truncated page with no continuation token leaves nowhere to resume from. Reissuing the
+		// request unchanged would loop forever, so fail instead.
+		if listObjectsOutput.NextContinuationToken == nil {
+			return []string{}, errTruncatedWithoutToken
+		}
+		input.ContinuationToken = listObjectsOutput.NextContinuationToken
 	}
 
 	return keys, nil
 }
 
-func (l *Location) getListObjectsInput() *s3.ListObjectsInput {
-	return &s3.ListObjectsInput{
+func (l *Location) getListObjectsInput() *s3.ListObjectsV2Input {
+	return &s3.ListObjectsV2Input{
 		Bucket:    aws.String(l.Authority().String()),
 		Delimiter: aws.String("/"),
 	}

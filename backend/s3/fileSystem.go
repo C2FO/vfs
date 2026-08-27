@@ -3,6 +3,7 @@ package s3
 
 import (
 	"errors"
+	"fmt"
 	"path"
 
 	"github.com/c2fo/vfs/v7"
@@ -19,12 +20,19 @@ const name = "AWS S3"
 var (
 	errFileSystemRequired       = errors.New("non-nil s3.FileSystem pointer is required")
 	errAuthorityAndNameRequired = errors.New("non-empty strings for authority and name are required")
+	// errClientNotSupported names the full import path rather than the bare package-qualified
+	// "s3.Client" because the AWS SDK's own service package is also imported as s3, and its
+	// *s3.Client type is a different thing from this package's Client interface.
+	errClientNotSupported = errors.New("client does not implement github.com/c2fo/vfs/v7/backend/s3.Client")
 )
 
 // FileSystem implements vfs.FileSystem for the S3 file system.
 type FileSystem struct {
-	client  Client
-	options Options
+	client Client
+	// clientErr defers reporting a client supplied through the chainable WithClient method, which
+	// can't return an error itself, until the client is actually resolved.
+	clientErr error
+	options   Options
 }
 
 // NewFileSystem initializer for FileSystem struct accepts aws-sdk client and returns Filesystem or error.
@@ -110,14 +118,29 @@ func (fs *FileSystem) Scheme() string {
 // Client returns the underlying aws s3 client, creating it, if necessary
 // See Overview for authentication resolution
 func (fs *FileSystem) Client() (Client, error) {
+	if fs.clientErr != nil {
+		return nil, fs.clientErr
+	}
+
 	if fs.client == nil {
-		var err error
-		fs.client, err = GetClient(fs.options)
+		client, err := GetClient(fs.options)
 		if err != nil {
 			return nil, err
 		}
+		fs.client = client
 	}
+
 	return fs.client, nil
+}
+
+// backendClient returns the client as the contract the backend uses internally, adapting one that
+// predates ListObjectsV2.
+func (fs *FileSystem) backendClient() (backendClient, error) {
+	client, err := fs.Client()
+	if err != nil {
+		return nil, err
+	}
+	return asBackendClient(client), nil
 }
 
 // WithOptions sets options for client and returns the file system (chainable)
@@ -134,6 +157,9 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 	// only set options if vfs.Options is s3.Options
 	if opts, ok := opts.(Options); ok {
 		fs.options = opts
+		// Options gives Client() an alternate way to resolve a client, so any previously latched
+		// error (e.g. from WithClient) no longer applies.
+		fs.clientErr = nil
 		// we set client to nil to ensure that a new client is created using the new context when Client() is called
 		if opts.Region != "" || opts.ForcePathStyle || opts.Endpoint != "" || opts.Retry != nil ||
 			opts.AccessKeyID != "" || opts.SecretAccessKey != "" || opts.SessionToken != "" {
@@ -145,6 +171,9 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 
 // WithClient passes in an s3 client and returns the file system (chainable)
 //
+// A client that doesn't implement Client is rejected, and the error is returned by the next call
+// to Client rather than by this method, which can't return one.
+//
 // Deprecated: This method is deprecated and will be removed in a future release.
 // Use WithClient option:
 //
@@ -154,10 +183,27 @@ func (fs *FileSystem) WithOptions(opts vfs.Options) *FileSystem {
 //
 //	fs := s3.NewFileSystem().WithClient(client)
 func (fs *FileSystem) WithClient(client any) *FileSystem {
-	if c, ok := client.(Client); ok {
-		fs.client = c
-		fs.options = Options{}
+	c, ok := client.(Client)
+	switch {
+	case !ok:
+		// A rejected client also clears any client set by a prior call, so a caller who
+		// explicitly swaps in a bad client doesn't silently fall back to the old one once the
+		// error is later cleared by WithOptions.
+		fs.client = nil
+		fs.clientErr = fmt.Errorf("%w: %T", errClientNotSupported, client)
+		return fs
+	case isNilClient(c):
+		// ok is true here even for a typed nil like (*s3.Client)(nil): the concrete type
+		// satisfies Client regardless of the pointer's value.
+		fs.client = nil
+		fs.clientErr = fmt.Errorf("%w: nil", errClientNotSupported)
+		return fs
 	}
+
+	fs.client = c
+	fs.clientErr = nil
+	fs.options = Options{}
+
 	return fs
 }
 

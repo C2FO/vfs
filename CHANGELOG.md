@@ -5,6 +5,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- `backend/s3`: Listing now uses the `ListObjectsV2` API instead of the older `ListObjects`. Clients supplied via `WithClient` that do not implement `ListObjectsV2` are transparently adapted to the v1 operation, so the exported `Client` interface is unchanged and existing custom clients and mocks keep working. This also prepares the backend for the migration to `feature/s3/transfermanager`, which requires `ListObjectsV2` ([#317](https://github.com/C2FO/vfs/issues/317)).
+
+### Fixed
+- `backend/s3`: Paged listings no longer panic when an S3 response omits `IsTruncated`, and resume with a continuation token derived from the last returned key when the response omits a next marker (which S3 does when no delimiter is set).
+- `backend/s3`: A paged listing that reports truncation but supplies no continuation token now returns an error instead of reissuing the identical request forever.
+- `backend/s3`: Supplying a client that does not implement `s3.Client` (or a nil client) is now reported rather than silently ignored in favor of a default client. This applies to both the `WithClient` option and the deprecated `FileSystem.WithClient` method; since neither can return an error, the failure is reported by the next call to `Client`. Code that previously passed an unusable client and unknowingly ran against a default client will now see an error.
+- `backend/s3`: That same deferred error no longer outlives a subsequent `WithOptions` call. Previously, once an unsupported or nil client was reported, the `FileSystem` was permanently unusable even if valid `Options` were supplied afterward to build a client from scratch.
+- `backend/s3`: A typed nil client (e.g. `WithClient((*s3.Client)(nil))`) is now reported the same as an untyped nil. Previously the nil check only caught the untyped case, so a typed nil passed the check, and was stored as a usable-looking client that panicked whenever a method was called on it.
+- `backend/s3`: Rejecting a client via `WithClient` now clears any client set by an earlier call, rather than leaving it in place. Previously, swapping in a bad client after a good one left the good client active behind the deferred error; if that error was later cleared by an unrelated `WithOptions` call, the old client silently came back instead of a fresh one being built from the new options.
+- `backend/s3`: The deferred client error's message named `s3.Client`, which is ambiguous with the AWS SDK's own `s3.Client` type from a different package. It now names the full import path.
+- `backend/s3`: A client without native `ListObjectsV2` support that returns `(nil, nil)` from `ListObjects` no longer panics the adapter; the response is treated as an empty page instead.
 
 ## [[v7.23.0](https://github.com/C2FO/vfs/releases/tag/v7.23.0)] - 2026-08-19
 ### Security
