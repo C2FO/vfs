@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [[v7.25.0](https://github.com/C2FO/vfs/releases/tag/v7.25.0)] - 2026-08-27
 ### Added
 - `backend/s3`: Uploads and downloads now use `feature/s3/transfermanager` instead of the deprecated `feature/s3/manager`. The exported `Client` interface is unchanged, so existing custom clients and mocks keep working; the switch happens through the same internal `ListObjectsV2`-based adapter introduced for listing ([#317](https://github.com/C2FO/vfs/issues/317)).
 
