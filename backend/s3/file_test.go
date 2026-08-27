@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
 	tmtypes "github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
@@ -746,6 +747,36 @@ func (ts *fileTestSuite) TestResolveUploadPartSize() {
 	}
 }
 
+// TestWithUploadPartSize guards that a single partSize value is applied to both fields:
+// PartSizeBytes and MultipartUploadThreshold must move together, or objects between
+// transfermanager's 16MB default threshold and today's 32MB default partition size would
+// silently switch from a single PutObject to a multipart upload, changing their ETag format.
+func (ts *fileTestSuite) TestWithUploadPartSize() {
+	opts := &transfermanager.Options{}
+	withUploadPartSize(20 * 1024 * 1024)(opts)
+	ts.Equal(int64(20*1024*1024), opts.PartSizeBytes)
+	ts.Equal(int64(20*1024*1024), opts.MultipartUploadThreshold)
+}
+
+// TestWithDownloadPartSize guards that only PartSizeBytes is set for downloads: unlike uploads,
+// there's no multipart-threshold equivalent to keep in sync here.
+func (ts *fileTestSuite) TestWithDownloadPartSize() {
+	opts := &transfermanager.Options{}
+	withDownloadPartSize(20 * 1024 * 1024)(opts)
+	ts.Equal(int64(20*1024*1024), opts.PartSizeBytes)
+	ts.Zero(opts.MultipartUploadThreshold)
+}
+
+// TestDisableChecksumValidation guards that downloads opt out of transfermanager's default of
+// requesting a checksum (ChecksumMode: ENABLED) on every GetObject. manager.Downloader never sent
+// that header; left at transfermanager's default, an S3-compatible provider that doesn't
+// recognize it could reject the request outright, a regression this migration shouldn't introduce.
+func (ts *fileTestSuite) TestDisableChecksumValidation() {
+	opts := &transfermanager.Options{}
+	disableChecksumValidation(opts)
+	ts.True(opts.DisableChecksumValidation)
+}
+
 // TestWriteRejectsUndersizedUploadPartitionSize guards that the validation in
 // resolveUploadPartSize is actually wired into the write path, not just callable in isolation.
 func (ts *fileTestSuite) TestWriteRejectsUndersizedUploadPartitionSize() {
@@ -804,6 +835,39 @@ func (ts *fileTestSuite) TestSeekThenWriteDownloadsExistingContent() {
 
 	ts.Require().NoError(file.Close())
 	ts.Equal("Hello Bob!d!", uploaded, "the untouched prefix and suffix must come from the downloaded existing content")
+}
+
+// TestSeekThenWriteCloseRejectsUndersizedUploadPartitionSize covers the other place
+// resolveUploadPartSize can fail: after a Seek, getS3Writer is skipped (initWriters only calls it
+// when !seekCalled), so the upload - and this validation - is deferred until Close calls
+// tempToS3. This must not leave the temp file it created behind, the same requirement as the
+// Write-time failure in TestWriteRejectsUndersizedUploadPartitionSize.
+func (ts *fileTestSuite) TestSeekThenWriteCloseRejectsUndersizedUploadPartitionSize() {
+	existing := "Hello world!"
+
+	s3Mock := mocks.NewClient(ts.T())
+	s3Mock.EXPECT().HeadObject(matchContext, mock.IsType((*s3.HeadObjectInput)(nil))).
+		Return(&s3.HeadObjectOutput{ContentLength: aws.Int64(int64(len(existing)))}, nil)
+	s3Mock.EXPECT().GetObject(matchContext, mock.IsType((*s3.GetObjectInput)(nil)), mock.Anything).
+		Return(&s3.GetObjectOutput{
+			ContentLength: aws.Int64(int64(len(existing))),
+			Body:          io.NopCloser(strings.NewReader(existing)),
+		}, nil)
+
+	fs := FileSystem{client: s3Mock, options: Options{UploadPartitionSize: minUploadPartSize - 1}}
+	file, err := fs.NewFile("mybucket", "/some/file/test.txt")
+	ts.Require().NoError(err)
+
+	_, err = file.Seek(6, io.SeekStart)
+	ts.Require().NoError(err)
+
+	_, err = file.Write([]byte("Bob!"))
+	ts.Require().NoError(err, "resolveUploadPartSize isn't checked until Close in the seek-then-write path")
+
+	err = file.Close()
+	ts.Require().Error(err)
+	ts.Contains(err.Error(), "upload partition size must be at least")
+	ts.Nil(file.(*File).tempFileWriter, "failed Close must not leave a temp file behind")
 }
 
 func (ts *fileTestSuite) TestNewFile() {

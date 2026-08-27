@@ -286,7 +286,7 @@ func (f *File) Close() error { //nolint:gocyclo
 	} else if f.tempFileWriter != nil { // s3Writer is nil but tempFileWriter is not nil (seek after write, write after seek)
 		// write tempFileWriter to s3
 		if err := f.tempToS3(); err != nil {
-			return utils.WrapCloseError(err)
+			return utils.WrapCloseError(f.cleanupTempFileOnErr(err))
 		}
 		wroteFile = true
 	}
@@ -651,7 +651,7 @@ func (f *File) copyS3ToLocalTempReader(tmpFile *os.File) error {
 		Key:      aws.String(f.key),
 		WriterAt: tmpFile,
 	}
-	downloader := transfermanager.New(client, withDownloadPartSize(f.getDownloadPartitionSize()))
+	downloader := transfermanager.New(client, withDownloadPartSize(f.getDownloadPartitionSize()), disableChecksumValidation)
 	_, err = downloader.DownloadObject(context.Background(), input)
 
 	return err
@@ -813,11 +813,14 @@ func (f *File) initWriters() error {
 	return nil
 }
 
-// cleanupTempFileOnErr closes and removes the temp file created earlier in initWriters before
-// returning origErr. Without this, a failure after the temp file is created (e.g. a download
-// error, a failed Seek, or getS3Writer rejecting an undersized UploadPartitionSize) leaves an
-// open, orphaned temp file descriptor on disk: callers that get an error from Write are not
-// expected to call Close() afterward, so cleanupTempFile would otherwise never run for it.
+// cleanupTempFileOnErr closes and removes the temp file before returning origErr. It guards two
+// call sites that fail after the temp file has already been created: initWriters (a download
+// error, a failed Seek, or getS3Writer rejecting an undersized UploadPartitionSize - callers of a
+// failed Write are not expected to call Close afterward) and Close's own call to tempToS3 for the
+// seek-then-write case (getS3Writer is skipped after a Seek, so the upload, and any
+// UploadPartitionSize validation failure, is deferred until Close). Without this, either failure
+// leaves an open, orphaned temp file on disk since the normal cleanupTempFile call in Close is
+// never reached.
 func (f *File) cleanupTempFileOnErr(origErr error) error {
 	if cleanupErr := f.cleanupTempFile(); cleanupErr != nil {
 		return errors.Join(origErr, cleanupErr)
@@ -904,4 +907,13 @@ func withDownloadPartSize(partSize int64) func(*transfermanager.Options) {
 	return func(o *transfermanager.Options) {
 		o.PartSizeBytes = partSize
 	}
+}
+
+// disableChecksumValidation preserves manager.Downloader's prior behavior of never requesting a
+// checksum on GetObject. Left at transfermanager's default, DownloadObjectInput.ChecksumMode is
+// implicitly ENABLED on every request; AWS S3 and MinIO accept the added x-amz-checksum-mode
+// header, but an S3-compatible provider that doesn't recognize it could reject the request
+// outright, a regression a purely additive migration like this one shouldn't introduce.
+func disableChecksumValidation(o *transfermanager.Options) {
+	o.DisableChecksumValidation = true
 }
