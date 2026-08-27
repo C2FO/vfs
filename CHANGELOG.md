@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `backend/s3`: Uploads and downloads now use `feature/s3/transfermanager` instead of the deprecated `feature/s3/manager`. The exported `Client` interface is unchanged, so existing custom clients and mocks keep working; the switch happens through the same internal `ListObjectsV2`-based adapter introduced for listing ([#317](https://github.com/C2FO/vfs/issues/317)).
+
+### Fixed
+- `backend/s3`: An `UploadPartitionSize` below the 5MB S3 minimum is now rejected up front, matching the local check the deprecated uploader used to perform. Previously an undersized value passed through silently and only surfaced later as a remote `EntityTooSmall` error on all but the last part.
+- `backend/s3`: A `Write` failure that occurs after the local temp file has been created (e.g. the `UploadPartitionSize` validation above, a failed `Seek`, or a failed download of existing content before an in-place edit) no longer leaks an open, orphaned temp file. Callers are not expected to call `Close()` after a failed `Write`, so the temp file is now cleaned up as part of handling the failure itself.
+- `backend/s3`: `Close()` after a `Seek` followed by a `Write` no longer leaks an open, orphaned temp file if the deferred upload it triggers fails (e.g. the same undersized `UploadPartitionSize` case above). This is the same gap as the `Write`-time fix, just for the path where the upload itself isn't attempted until `Close()`.
+- `backend/s3`: Downloads no longer request a checksum (`ChecksumMode: ENABLED`) on every `GetObject`. `feature/s3/transfermanager` enables this by default; the deprecated `feature/s3/manager` never did, and an S3-compatible provider that doesn't recognize the header could otherwise reject the request.
+
 ## [[v7.24.0](https://github.com/C2FO/vfs/releases/tag/v7.24.0)] - 2026-08-27
 ### Added
 - `backend/s3`: Listing now uses the `ListObjectsV2` API instead of the older `ListObjects`. Clients supplied via `WithClient` that do not implement `ListObjectsV2` are transparently adapted to the v1 operation, so the exported `Client` interface is unchanged and existing custom clients and mocks keep working. This also prepares the backend for the migration to `feature/s3/transfermanager`, which requires `ListObjectsV2` ([#317](https://github.com/C2FO/vfs/issues/317)).

@@ -12,7 +12,8 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
+	tmtypes "github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 
@@ -24,6 +25,11 @@ import (
 )
 
 const defaultPartitionSize = int64(32 * 1024 * 1024)
+
+// minUploadPartSize mirrors the 5MB minimum feature/s3/manager.Uploader enforced locally.
+// transfermanager.Options.PartSizeBytes carries no such floor, so a value below this would
+// only be caught remotely by S3 as an EntityTooSmall error on all but the last part.
+const minUploadPartSize = int64(5 * 1024 * 1024)
 
 // File implements vfs.File interface for S3 fs.
 type File struct {
@@ -280,7 +286,7 @@ func (f *File) Close() error { //nolint:gocyclo
 	} else if f.tempFileWriter != nil { // s3Writer is nil but tempFileWriter is not nil (seek after write, write after seek)
 		// write tempFileWriter to s3
 		if err := f.tempToS3(); err != nil {
-			return utils.WrapCloseError(err)
+			return utils.WrapCloseError(f.cleanupTempFileOnErr(err))
 		}
 		wroteFile = true
 	}
@@ -328,18 +334,21 @@ func (f *File) tempToS3() error {
 	}
 
 	// write tempFileWriter to s3
-	client, err := f.location.fileSystem.Client()
+	client, err := f.location.fileSystem.backendClient()
 	if err != nil {
 		return err
 	}
 
-	//nolint:staticcheck // SA1019: AWS SDK v2 manager API deprecated, migration to transfermanager tracked separately
-	uploader := manager.NewUploader(client, withUploadPartitionSize(f.getUploadPartitionSize()))
-	uploadInput := uploadInput(f)
-	uploadInput.Body = f.tempFileWriter
+	partSize, err := f.resolveUploadPartSize()
+	if err != nil {
+		return err
+	}
 
-	//nolint:staticcheck // SA1019: AWS SDK v2 manager API deprecated, migration to transfermanager tracked separately
-	_, err = uploader.Upload(context.Background(), uploadInput)
+	uploader := transfermanager.New(client, withUploadPartSize(partSize))
+	input := uploadObjectInput(f)
+	input.Body = f.tempFileWriter
+
+	_, err = uploader.UploadObject(context.Background(), input)
 	if err != nil {
 		return err
 	}
@@ -631,31 +640,32 @@ func (f *File) isSameAuth(targetFile *File) (bool, types.ObjectCannedACL) {
 }
 
 func (f *File) copyS3ToLocalTempReader(tmpFile *os.File) error {
-	client, err := f.location.fileSystem.Client()
+	client, err := f.location.fileSystem.backendClient()
 	if err != nil {
 		return err
 	}
 
 	// Download file
-	input := &s3.GetObjectInput{
-		Bucket: aws.String(f.Location().Authority().String()),
-		Key:    aws.String(f.key),
+	input := &transfermanager.DownloadObjectInput{
+		Bucket:   aws.String(f.Location().Authority().String()),
+		Key:      aws.String(f.key),
+		WriterAt: tmpFile,
 	}
-	opt := withDownloadPartitionSize(f.getDownloadPartitionSize())
-	//nolint:staticcheck // SA1019: AWS SDK v2 manager API deprecated, migration to transfermanager tracked separately
-	_, err = manager.NewDownloader(client, opt).
-		Download(context.Background(), tmpFile, input)
+	downloader := transfermanager.New(client, withDownloadPartSize(f.getDownloadPartitionSize()), disableChecksumValidation)
+	_, err = downloader.DownloadObject(context.Background(), input)
 
 	return err
 }
 
 // TODO: need to provide an implementation-agnostic container for providing config options such as SSE
-func uploadInput(f *File) *s3.PutObjectInput {
+func uploadObjectInput(f *File) *transfermanager.UploadObjectInput {
 	bucket := f.Location().Authority().String()
-	input := &s3.PutObjectInput{
-		Bucket:               &bucket,
-		Key:                  &f.key,
-		ServerSideEncryption: types.ServerSideEncryptionAes256,
+	input := &transfermanager.UploadObjectInput{
+		Bucket: &bucket,
+		Key:    &f.key,
+		// transfermanager.types and service/s3/types both spell ServerSideEncryption as a plain
+		// string type, so casting the s3 constant sidesteps needing a duplicate one here.
+		ServerSideEncryption: tmtypes.ServerSideEncryption(types.ServerSideEncryptionAes256),
 	}
 
 	if f.location.fileSystem.options.DisableServerSideEncryption {
@@ -664,7 +674,7 @@ func uploadInput(f *File) *s3.PutObjectInput {
 
 	opts := f.location.fileSystem.options
 	if opts.ACL != "" {
-		input.ACL = opts.ACL
+		input.ACL = tmtypes.ObjectCannedACL(opts.ACL)
 	}
 
 	for _, o := range f.opts {
@@ -777,12 +787,12 @@ func (f *File) initWriters() error {
 			// if file exists(because cursor position is non-zero), we need to copy the existing s3 file to temp
 			err := f.copyS3ToLocalTempReader(tmpFile)
 			if err != nil {
-				return err
+				return f.cleanupTempFileOnErr(err)
 			}
 
 			// seek to cursorPos
 			if _, err := f.tempFileWriter.Seek(f.cursorPos, 0); err != nil {
-				return err
+				return f.cleanupTempFileOnErr(err)
 			}
 		}
 	}
@@ -792,7 +802,7 @@ func (f *File) initWriters() error {
 		if !f.seekCalled && !f.readCalled {
 			w, err := f.getS3Writer()
 			if err != nil {
-				return err
+				return f.cleanupTempFileOnErr(err)
 			}
 
 			// Set the reader to the body of the object
@@ -803,30 +813,47 @@ func (f *File) initWriters() error {
 	return nil
 }
 
+// cleanupTempFileOnErr closes and removes the temp file before returning origErr. It guards two
+// call sites that fail after the temp file has already been created: initWriters (a download
+// error, a failed Seek, or getS3Writer rejecting an undersized UploadPartitionSize - callers of a
+// failed Write are not expected to call Close afterward) and Close's own call to tempToS3 for the
+// seek-then-write case (getS3Writer is skipped after a Seek, so the upload, and any
+// UploadPartitionSize validation failure, is deferred until Close). Without this, either failure
+// leaves an open, orphaned temp file on disk since the normal cleanupTempFile call in Close is
+// never reached.
+func (f *File) cleanupTempFileOnErr(origErr error) error {
+	if cleanupErr := f.cleanupTempFile(); cleanupErr != nil {
+		return errors.Join(origErr, cleanupErr)
+	}
+	return origErr
+}
+
 func (f *File) getS3Writer() (*io.PipeWriter, error) {
 	f.s3WriterCompleteCh = make(chan error, 1)
 	pr, pw := io.Pipe()
 
-	client, err := f.location.fileSystem.Client()
+	client, err := f.location.fileSystem.backendClient()
 	if err != nil {
 		return nil, err
 	}
-	//nolint:staticcheck // SA1019: AWS SDK v2 manager API deprecated, migration to transfermanager tracked separately
-	uploader := manager.NewUploader(client, withUploadPartitionSize(f.getUploadPartitionSize()))
+	partSize, err := f.resolveUploadPartSize()
+	if err != nil {
+		return nil, err
+	}
+	uploader := transfermanager.New(client, withUploadPartSize(partSize))
 	ctx, cancel := context.WithCancel(context.Background())
 	f.cancelFunc = cancel
-	uploadInput := uploadInput(f)
-	uploadInput.Body = pr
+	input := uploadObjectInput(f)
+	input.Body = pr
 
-	go func(input *s3.PutObjectInput) {
+	go func(input *transfermanager.UploadObjectInput) {
 		defer cancel()
-		//nolint:staticcheck // SA1019: AWS SDK v2 manager API deprecated, migration to transfermanager tracked separately
-		_, err := uploader.Upload(ctx, input)
+		_, err := uploader.UploadObject(ctx, input)
 		if err != nil {
 			_ = pw.CloseWithError(err)
 		}
 		f.s3WriterCompleteCh <- err
-	}(uploadInput)
+	}(input)
 
 	return pw, nil
 }
@@ -851,18 +878,42 @@ func (f *File) getDownloadPartitionSize() int64 {
 	return partSize
 }
 
-//nolint:staticcheck // SA1019: AWS SDK v2 manager API deprecated, migration to transfermanager tracked separately
-func withDownloadPartitionSize(partSize int64) func(*manager.Downloader) {
-	//nolint:staticcheck // SA1019: AWS SDK v2 manager API deprecated, migration to transfermanager tracked separately
-	return func(d *manager.Downloader) {
-		d.PartSize = partSize
+// resolveUploadPartSize resolves the configured upload partition size, rejecting a value below
+// the 5MB minimum S3 enforces for all but the last part of a multipart upload. manager.Uploader
+// rejected this locally; transfermanager.Options carries no such floor, so without this check an
+// undersized value would surface late, as a remote EntityTooSmall error.
+func (f *File) resolveUploadPartSize() (int64, error) {
+	partSize := f.getUploadPartitionSize()
+	if partSize < minUploadPartSize {
+		return 0, fmt.Errorf("upload partition size must be at least %d bytes", minUploadPartSize)
+	}
+
+	return partSize, nil
+}
+
+// withUploadPartSize sets both the per-part size and the multipart threshold to partSize. Setting
+// them equal replicates manager.Uploader's PartSize field, which served both purposes: today's
+// default (32MB) exceeds transfermanager's default MultipartUploadThreshold (16MB), and leaving
+// them apart would silently switch objects between 16MB and 32MB from a single PutObject to a
+// multipart upload, changing the ETag format for anything currently below 32MB.
+func withUploadPartSize(partSize int64) func(*transfermanager.Options) {
+	return func(o *transfermanager.Options) {
+		o.PartSizeBytes = partSize
+		o.MultipartUploadThreshold = partSize
 	}
 }
 
-//nolint:staticcheck // SA1019: AWS SDK v2 manager API deprecated, migration to transfermanager tracked separately
-func withUploadPartitionSize(partSize int64) func(*manager.Uploader) {
-	//nolint:staticcheck // SA1019: AWS SDK v2 manager API deprecated, migration to transfermanager tracked separately
-	return func(u *manager.Uploader) {
-		u.PartSize = partSize
+func withDownloadPartSize(partSize int64) func(*transfermanager.Options) {
+	return func(o *transfermanager.Options) {
+		o.PartSizeBytes = partSize
 	}
+}
+
+// disableChecksumValidation preserves manager.Downloader's prior behavior of never requesting a
+// checksum on GetObject. Left at transfermanager's default, DownloadObjectInput.ChecksumMode is
+// implicitly ENABLED on every request; AWS S3 and MinIO accept the added x-amz-checksum-mode
+// header, but an S3-compatible provider that doesn't recognize it could reject the request
+// outright, a regression a purely additive migration like this one shouldn't introduce.
+func disableChecksumValidation(o *transfermanager.Options) {
+	o.DisableChecksumValidation = true
 }

@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
+	tmtypes "github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/stretchr/testify/mock"
@@ -674,9 +676,10 @@ func (ts *fileTestSuite) TestStringer() {
 func (ts *fileTestSuite) TestUploadInput() {
 	fs = FileSystem{client: mocks.NewClient(ts.T())}
 	file, _ := fs.NewFile("mybucket", "/some/file/test.txt")
-	ts.Equal(types.ServerSideEncryptionAes256, uploadInput(file.(*File)).ServerSideEncryption, "sse was set")
-	ts.Equal("some/file/test.txt", *uploadInput(file.(*File)).Key, "key was set")
-	ts.Equal("mybucket", *uploadInput(file.(*File)).Bucket, "bucket was set")
+	wantSSE := tmtypes.ServerSideEncryption(types.ServerSideEncryptionAes256)
+	ts.Equal(wantSSE, uploadObjectInput(file.(*File)).ServerSideEncryption, "sse was set")
+	ts.Equal("some/file/test.txt", *uploadObjectInput(file.(*File)).Key, "key was set")
+	ts.Equal("mybucket", *uploadObjectInput(file.(*File)).Bucket, "bucket was set")
 }
 
 func (ts *fileTestSuite) TestUploadInputDisableSSE() {
@@ -684,7 +687,7 @@ func (ts *fileTestSuite) TestUploadInputDisableSSE() {
 		WithOptions(Options{DisableServerSideEncryption: true}),
 	)
 	file, _ := fs.NewFile("mybucket", "/some/file/test.txt")
-	input := uploadInput(file.(*File))
+	input := uploadObjectInput(file.(*File))
 	ts.Empty(input.ServerSideEncryption, "sse was disabled")
 	ts.Equal("some/file/test.txt", *input.Key, "key was set")
 	ts.Equal("mybucket", *input.Bucket, "bucket was set")
@@ -693,8 +696,178 @@ func (ts *fileTestSuite) TestUploadInputDisableSSE() {
 func (ts *fileTestSuite) TestUploadInputContentType() {
 	fs = FileSystem{client: mocks.NewClient(ts.T())}
 	file, _ := fs.NewFile("mybucket", "/some/file/test.txt", newfile.WithContentType("text/plain"))
-	input := uploadInput(file.(*File))
+	input := uploadObjectInput(file.(*File))
 	ts.Equal("text/plain", *input.ContentType)
+}
+
+// TestResolveUploadPartSize guards the 5MB floor manager.Uploader used to enforce locally.
+// transfermanager.Options.PartSizeBytes carries no equivalent check, so a value below this would
+// only surface later, as a remote EntityTooSmall error on all but the last part.
+func (ts *fileTestSuite) TestResolveUploadPartSize() {
+	tests := []struct {
+		name          string
+		partitionSize int64
+		expectedSize  int64
+		expectedError string
+	}{
+		{
+			name:         "unset falls back to the default",
+			expectedSize: defaultPartitionSize,
+		},
+		{
+			name:          "at the minimum is accepted",
+			partitionSize: minUploadPartSize,
+			expectedSize:  minUploadPartSize,
+		},
+		{
+			name:          "below the minimum is rejected",
+			partitionSize: minUploadPartSize - 1,
+			expectedError: "upload partition size must be at least 5242880 bytes",
+		},
+	}
+
+	for _, tt := range tests {
+		ts.Run(tt.name, func() {
+			fs := FileSystem{
+				client:  mocks.NewClient(ts.T()),
+				options: Options{UploadPartitionSize: tt.partitionSize},
+			}
+			file, err := fs.NewFile("mybucket", "/some/file/test.txt")
+			ts.Require().NoError(err)
+
+			size, err := file.(*File).resolveUploadPartSize()
+			if tt.expectedError != "" {
+				ts.Require().Error(err)
+				ts.Contains(err.Error(), tt.expectedError)
+				return
+			}
+			ts.Require().NoError(err)
+			ts.Equal(tt.expectedSize, size)
+		})
+	}
+}
+
+// TestWithUploadPartSize guards that a single partSize value is applied to both fields:
+// PartSizeBytes and MultipartUploadThreshold must move together, or objects between
+// transfermanager's 16MB default threshold and today's 32MB default partition size would
+// silently switch from a single PutObject to a multipart upload, changing their ETag format.
+func (ts *fileTestSuite) TestWithUploadPartSize() {
+	opts := &transfermanager.Options{}
+	withUploadPartSize(20 * 1024 * 1024)(opts)
+	ts.Equal(int64(20*1024*1024), opts.PartSizeBytes)
+	ts.Equal(int64(20*1024*1024), opts.MultipartUploadThreshold)
+}
+
+// TestWithDownloadPartSize guards that only PartSizeBytes is set for downloads: unlike uploads,
+// there's no multipart-threshold equivalent to keep in sync here.
+func (ts *fileTestSuite) TestWithDownloadPartSize() {
+	opts := &transfermanager.Options{}
+	withDownloadPartSize(20 * 1024 * 1024)(opts)
+	ts.Equal(int64(20*1024*1024), opts.PartSizeBytes)
+	ts.Zero(opts.MultipartUploadThreshold)
+}
+
+// TestDisableChecksumValidation guards that downloads opt out of transfermanager's default of
+// requesting a checksum (ChecksumMode: ENABLED) on every GetObject. manager.Downloader never sent
+// that header; left at transfermanager's default, an S3-compatible provider that doesn't
+// recognize it could reject the request outright, a regression this migration shouldn't introduce.
+func (ts *fileTestSuite) TestDisableChecksumValidation() {
+	opts := &transfermanager.Options{}
+	disableChecksumValidation(opts)
+	ts.True(opts.DisableChecksumValidation)
+}
+
+// TestWriteRejectsUndersizedUploadPartitionSize guards that the validation in
+// resolveUploadPartSize is actually wired into the write path, not just callable in isolation.
+func (ts *fileTestSuite) TestWriteRejectsUndersizedUploadPartitionSize() {
+	fs := FileSystem{
+		client:  mocks.NewClient(ts.T()),
+		options: Options{UploadPartitionSize: minUploadPartSize - 1},
+	}
+	file, err := fs.NewFile("mybucket", "/some/file/test.txt")
+	ts.Require().NoError(err)
+
+	_, err = file.Write([]byte("hello"))
+	ts.Require().Error(err)
+	ts.Contains(err.Error(), "upload partition size must be at least")
+
+	// The Write above failed before any caller had a chance to call Close(), which is the
+	// normal trigger for temp file cleanup. initWriters must clean up on this failure path
+	// itself, or the temp file created inside it leaks an open fd and a file on disk.
+	ts.Nil(file.(*File).tempFileWriter, "failed Write must not leave a temp file behind")
+}
+
+// TestSeekThenWriteDownloadsExistingContent covers copyS3ToLocalTempReader, which had no unit
+// test coverage: seeking into an existing object before the first Write must download its current
+// contents into the temp file so the seek offset lands in real data rather than a hole of zero
+// bytes. The transfermanager-based download path replaced manager.Downloader here, so this also
+// guards that the swap preserved the merge behavior end to end.
+func (ts *fileTestSuite) TestSeekThenWriteDownloadsExistingContent() {
+	existing := "Hello world!"
+
+	s3Mock := mocks.NewClient(ts.T())
+	s3Mock.EXPECT().HeadObject(matchContext, mock.IsType((*s3.HeadObjectInput)(nil))).
+		Return(&s3.HeadObjectOutput{ContentLength: aws.Int64(int64(len(existing)))}, nil)
+	s3Mock.EXPECT().GetObject(matchContext, mock.IsType((*s3.GetObjectInput)(nil)), mock.Anything).
+		Return(&s3.GetObjectOutput{
+			ContentLength: aws.Int64(int64(len(existing))),
+			Body:          io.NopCloser(strings.NewReader(existing)),
+		}, nil)
+
+	var uploaded string
+	s3Mock.EXPECT().PutObject(matchContext, mock.IsType((*s3.PutObjectInput)(nil)), mock.Anything, mock.Anything).
+		Run(func(_ context.Context, input *s3.PutObjectInput, _ ...func(*s3.Options)) {
+			b, readErr := io.ReadAll(input.Body)
+			ts.Require().NoError(readErr)
+			uploaded = string(b)
+		}).
+		Return(&s3.PutObjectOutput{}, nil)
+
+	fs := FileSystem{client: s3Mock, options: defaultOptions}
+	file, err := fs.NewFile("mybucket", "/some/file/test.txt")
+	ts.Require().NoError(err)
+
+	_, err = file.Seek(6, io.SeekStart)
+	ts.Require().NoError(err)
+
+	_, err = file.Write([]byte("Bob!"))
+	ts.Require().NoError(err)
+
+	ts.Require().NoError(file.Close())
+	ts.Equal("Hello Bob!d!", uploaded, "the untouched prefix and suffix must come from the downloaded existing content")
+}
+
+// TestSeekThenWriteCloseRejectsUndersizedUploadPartitionSize covers the other place
+// resolveUploadPartSize can fail: after a Seek, getS3Writer is skipped (initWriters only calls it
+// when !seekCalled), so the upload - and this validation - is deferred until Close calls
+// tempToS3. This must not leave the temp file it created behind, the same requirement as the
+// Write-time failure in TestWriteRejectsUndersizedUploadPartitionSize.
+func (ts *fileTestSuite) TestSeekThenWriteCloseRejectsUndersizedUploadPartitionSize() {
+	existing := "Hello world!"
+
+	s3Mock := mocks.NewClient(ts.T())
+	s3Mock.EXPECT().HeadObject(matchContext, mock.IsType((*s3.HeadObjectInput)(nil))).
+		Return(&s3.HeadObjectOutput{ContentLength: aws.Int64(int64(len(existing)))}, nil)
+	s3Mock.EXPECT().GetObject(matchContext, mock.IsType((*s3.GetObjectInput)(nil)), mock.Anything).
+		Return(&s3.GetObjectOutput{
+			ContentLength: aws.Int64(int64(len(existing))),
+			Body:          io.NopCloser(strings.NewReader(existing)),
+		}, nil)
+
+	fs := FileSystem{client: s3Mock, options: Options{UploadPartitionSize: minUploadPartSize - 1}}
+	file, err := fs.NewFile("mybucket", "/some/file/test.txt")
+	ts.Require().NoError(err)
+
+	_, err = file.Seek(6, io.SeekStart)
+	ts.Require().NoError(err)
+
+	_, err = file.Write([]byte("Bob!"))
+	ts.Require().NoError(err, "resolveUploadPartSize isn't checked until Close in the seek-then-write path")
+
+	err = file.Close()
+	ts.Require().Error(err)
+	ts.Contains(err.Error(), "upload partition size must be at least")
+	ts.Nil(file.(*File).tempFileWriter, "failed Close must not leave a temp file behind")
 }
 
 func (ts *fileTestSuite) TestNewFile() {
