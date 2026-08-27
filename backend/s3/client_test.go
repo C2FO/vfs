@@ -180,6 +180,15 @@ func (cs *clientTestSuite) TestLegacyClientListObjectsV2() {
 			expectedInput: &s3.ListObjectsInput{Bucket: aws.String(bucket)},
 			expectedError: "some error",
 		},
+		{
+			// Nothing in the Client interface forbids a (nil, nil) return, and every field access
+			// on the v1 output would panic on a nil pointer if this weren't guarded, the same way
+			// a nil ListObjectsV2Input is guarded on the way in.
+			name:          "nil output with no error is treated as an empty page",
+			input:         &s3.ListObjectsV2Input{Bucket: aws.String(bucket)},
+			output:        nil,
+			expectedInput: &s3.ListObjectsInput{Bucket: aws.String(bucket)},
+		},
 	}
 
 	for _, tt := range tests {
@@ -202,8 +211,14 @@ func (cs *clientTestSuite) TestLegacyClientListObjectsV2() {
 			cs.Require().NoError(err)
 			cs.Equal(tt.expectedNextContinuation, out.NextContinuationToken)
 			cs.Equal(tt.expectedKeyCount, aws.ToInt32(out.KeyCount))
-			cs.Equal(tt.output.Contents, out.Contents)
-			cs.Equal(tt.output.IsTruncated, out.IsTruncated)
+
+			// A nil client output (the "nil output" case) is treated the same as an empty one.
+			wantOutput := tt.output
+			if wantOutput == nil {
+				wantOutput = &s3.ListObjectsOutput{}
+			}
+			cs.Equal(wantOutput.Contents, out.Contents)
+			cs.Equal(wantOutput.IsTruncated, out.IsTruncated)
 		})
 	}
 }

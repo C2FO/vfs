@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `backend/s3`: A typed nil client (e.g. `WithClient((*s3.Client)(nil))`) is now reported the same as an untyped nil. Previously the nil check only caught the untyped case, so a typed nil passed the check, and was stored as a usable-looking client that panicked whenever a method was called on it.
 - `backend/s3`: Rejecting a client via `WithClient` now clears any client set by an earlier call, rather than leaving it in place. Previously, swapping in a bad client after a good one left the good client active behind the deferred error; if that error was later cleared by an unrelated `WithOptions` call, the old client silently came back instead of a fresh one being built from the new options.
 - `backend/s3`: The deferred client error's message named `s3.Client`, which is ambiguous with the AWS SDK's own `s3.Client` type from a different package. It now names the full import path.
+- `backend/s3`: A client without native `ListObjectsV2` support that returns `(nil, nil)` from `ListObjects` no longer panics the adapter; the response is treated as an empty page instead.
 
 ## [[v7.23.0](https://github.com/C2FO/vfs/releases/tag/v7.23.0)] - 2026-08-19
 ### Security

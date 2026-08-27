@@ -101,6 +101,12 @@ func (c *legacyClient) ListObjectsV2(
 	if err != nil {
 		return nil, err
 	}
+	// A well-behaved client never returns (nil, nil), but nothing in the Client interface
+	// forbids it, and every field access below would panic on a nil out. Treat it the same as
+	// an empty page rather than trust the contract.
+	if out == nil {
+		out = &s3.ListObjectsOutput{}
+	}
 
 	// KeyCount counts common prefixes alongside keys, so both are summed. S3 never returns more
 	// than MaxKeys entries, which is capped at 1000, so the conversion cannot overflow.

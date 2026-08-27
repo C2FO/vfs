@@ -162,19 +162,49 @@ func (lt *locationTestSuite) TestList_listObjectsV2Error() {
 	delimiter := "/"
 	apiErr := errors.New("some s3 error")
 
-	client := newSDKStyleClient(lt.T())
-	client.v2.EXPECT().ListObjectsV2(matchContext, &s3.ListObjectsV2Input{
-		Bucket:    &bucket,
-		Prefix:    &prefix,
-		Delimiter: &delimiter,
-	}).Return(nil, apiErr).Once()
+	lt.Run("error on the first page", func() {
+		client := newSDKStyleClient(lt.T())
+		client.v2.EXPECT().ListObjectsV2(matchContext, &s3.ListObjectsV2Input{
+			Bucket:    &bucket,
+			Prefix:    &prefix,
+			Delimiter: &delimiter,
+		}).Return(nil, apiErr).Once()
 
-	loc, err := (&FileSystem{client: client}).NewLocation(bucket, "/dir1/")
-	lt.Require().NoError(err)
+		loc, err := (&FileSystem{client: client}).NewLocation(bucket, "/dir1/")
+		lt.Require().NoError(err)
 
-	fileList, err := loc.List()
-	lt.Require().ErrorIs(err, apiErr)
-	lt.Empty(fileList)
+		fileList, err := loc.List()
+		lt.Require().ErrorIs(err, apiErr)
+		lt.Empty(fileList)
+	})
+
+	lt.Run("error on a later page", func() {
+		continuationToken := "page-2-token"
+
+		client := newSDKStyleClient(lt.T())
+		client.v2.EXPECT().ListObjectsV2(matchContext, &s3.ListObjectsV2Input{
+			Bucket:    &bucket,
+			Prefix:    &prefix,
+			Delimiter: &delimiter,
+		}).Return(&s3.ListObjectsV2Output{
+			Contents:              convertKeysToS3Objects([]string{"dir1/file.txt"}),
+			IsTruncated:           aws.Bool(true),
+			NextContinuationToken: &continuationToken,
+		}, nil).Once()
+		client.v2.EXPECT().ListObjectsV2(matchContext, &s3.ListObjectsV2Input{
+			Bucket:            &bucket,
+			Prefix:            &prefix,
+			Delimiter:         &delimiter,
+			ContinuationToken: &continuationToken,
+		}).Return(nil, apiErr).Once()
+
+		loc, err := (&FileSystem{client: client}).NewLocation(bucket, "/dir1/")
+		lt.Require().NoError(err)
+
+		fileList, err := loc.List()
+		lt.Require().ErrorIs(err, apiErr)
+		lt.Empty(fileList, "keys gathered from the successful first page must not be returned alongside the error")
+	})
 }
 
 func (lt *locationTestSuite) TestListByPrefix() {
