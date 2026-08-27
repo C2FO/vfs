@@ -759,6 +759,11 @@ func (ts *fileTestSuite) TestWriteRejectsUndersizedUploadPartitionSize() {
 	_, err = file.Write([]byte("hello"))
 	ts.Require().Error(err)
 	ts.Contains(err.Error(), "upload partition size must be at least")
+
+	// The Write above failed before any caller had a chance to call Close(), which is the
+	// normal trigger for temp file cleanup. initWriters must clean up on this failure path
+	// itself, or the temp file created inside it leaks an open fd and a file on disk.
+	ts.Nil(file.(*File).tempFileWriter, "failed Write must not leave a temp file behind")
 }
 
 // TestSeekThenWriteDownloadsExistingContent covers copyS3ToLocalTempReader, which had no unit

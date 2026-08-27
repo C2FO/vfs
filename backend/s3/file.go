@@ -787,12 +787,12 @@ func (f *File) initWriters() error {
 			// if file exists(because cursor position is non-zero), we need to copy the existing s3 file to temp
 			err := f.copyS3ToLocalTempReader(tmpFile)
 			if err != nil {
-				return err
+				return f.cleanupTempFileOnErr(err)
 			}
 
 			// seek to cursorPos
 			if _, err := f.tempFileWriter.Seek(f.cursorPos, 0); err != nil {
-				return err
+				return f.cleanupTempFileOnErr(err)
 			}
 		}
 	}
@@ -802,7 +802,7 @@ func (f *File) initWriters() error {
 		if !f.seekCalled && !f.readCalled {
 			w, err := f.getS3Writer()
 			if err != nil {
-				return err
+				return f.cleanupTempFileOnErr(err)
 			}
 
 			// Set the reader to the body of the object
@@ -811,6 +811,18 @@ func (f *File) initWriters() error {
 	}
 
 	return nil
+}
+
+// cleanupTempFileOnErr closes and removes the temp file created earlier in initWriters before
+// returning origErr. Without this, a failure after the temp file is created (e.g. a download
+// error, a failed Seek, or getS3Writer rejecting an undersized UploadPartitionSize) leaves an
+// open, orphaned temp file descriptor on disk: callers that get an error from Write are not
+// expected to call Close() afterward, so cleanupTempFile would otherwise never run for it.
+func (f *File) cleanupTempFileOnErr(origErr error) error {
+	if cleanupErr := f.cleanupTempFile(); cleanupErr != nil {
+		return errors.Join(origErr, cleanupErr)
+	}
+	return origErr
 }
 
 func (f *File) getS3Writer() (*io.PipeWriter, error) {
