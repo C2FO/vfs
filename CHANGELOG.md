@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `docker/login-action` from v4.4.0 to v4.6.0
   - `github/codeql-action` from v4.32.6 to v4.37.7
   - `actions/create-github-app-token` from v2.2.2 to v3.2.0
-- Updated dependencies via `go get -u -t ./...` + `go mod tidy`.
+- Updated dependencies via `go get -u -t ./...` + `go mod tidy`, including `testcontainers/go.mod` (which uses a local `replace` on the core module and picked up the new indirect dependency versions).
 
 ## [[v7.25.0](https://github.com/C2FO/vfs/releases/tag/v7.25.0)] - 2026-08-27
 ### Added
