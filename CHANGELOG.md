@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [[v7.29.0](https://github.com/C2FO/vfs/releases/tag/v7.29.0)] - 2026-08-28
 ### Security
 - `testcontainers`: Updated Go version to 1.26.7 per the Go version policy in AGENTS.md ([#352](https://github.com/C2FO/vfs/issues/352)) and refreshed dependencies via `go get -u -t ./...` + `go mod tidy` (this module uses a local `replace` on the core VFS module, so it isn't pinned to a published core version).
 
