@@ -7,7 +7,7 @@ package mocks
 import (
 	"context"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 	mock "github.com/stretchr/testify/mock"
 )
 
