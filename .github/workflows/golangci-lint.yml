@@ -69,3 +69,22 @@ jobs:
           # Optional: if set to true then the action will use pre-installed Go.
           # skip-go-installation: true
           working-directory: ${{ matrix.module }}
+
+  # Single required-status-check gate for the whole lint matrix. The matrix above
+  # fans out into a dynamic, ever-changing set of per-module checks that can't
+  # reasonably be enumerated in branch protection, so branch protection/rulesets
+  # should require only this job instead of every generated "golangci-lint (...)" check.
+  golangci-required:
+    name: golangci-lint (required)
+    needs: golangci
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify lint matrix succeeded
+        run: |
+          result="${{ needs.golangci.result }}"
+          echo "Lint matrix result: $result"
+          if [ "$result" != "success" ]; then
+            echo "One or more jobs in the lint matrix did not succeed."
+            exit 1
+          fi
