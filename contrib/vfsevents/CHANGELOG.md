@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [[contrib/vfsevents/v1.4.1](https://github.com/C2FO/vfs/releases/tag/contrib%2Fvfsevents%2Fv1.4.1)] - 2026-08-28
 ### Fixed
 - `gcsevents`: Regenerated the `mocks.PubSubClient` mock, which had been mockery-generated against the deprecated `cloud.google.com/go/pubsub` (v1) package and never updated when the watcher migrated to `cloud.google.com/go/pubsub/v2`. The `PubSubClient` interface itself already used the v2 `*pubsub.Message` type; only the generated mock's import was stale. Running `go mod tidy` now drops `cloud.google.com/go/pubsub` (v1) entirely, silencing its deprecation warning. Fixes [#360](https://github.com/C2FO/vfs/issues/360).
 
