@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [[v7.28.0](https://github.com/C2FO/vfs/releases/tag/v7.28.0)] - 2026-08-28
 ### Added
 - CI: Added a `golangci-lint (required)` gate job to `golangci-lint.yml`, mirroring the `Test (required)` gate added for the `go.yml` test matrix. It depends on the entire per-module `golangci-lint` matrix and fails if any module didn't pass. Swapped it in as the required status check on `main` in place of `golangci-lint (.)`, which only covered the root module and didn't gate contrib modules or `testcontainers`.
 
