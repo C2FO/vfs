@@ -3,7 +3,6 @@ module github.com/c2fo/vfs/contrib/vfsevents
 go 1.26.7
 
 require (
-	cloud.google.com/go/pubsub v1.51.1
 	cloud.google.com/go/pubsub/v2 v2.7.0
 	github.com/aws/aws-sdk-go-v2 v1.45.1
 	github.com/aws/aws-sdk-go-v2/config v1.33.1
