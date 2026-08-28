@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Updated Go version references from 1.25 to 1.26.7 in `go.mod`, `.golangci.yml`, and GitHub Actions workflows (`go.yml`, `golangci-lint.yml`, `go-test-coverage.yml`, `codeql.yml`) per the Go version policy in AGENTS.md, now that Go 1.27 has been released ([#352](https://github.com/C2FO/vfs/issues/352)).
+- Updated test matrix in `go.yml` to test Go 1.26 and 1.27 (latest-1 and latest minor versions) per VFS compatibility policy.
+- Updated GitHub Actions dependencies:
+  - `actions/setup-go` from v6.3.0 to v7.0.0
+  - `actions/checkout` from v6.0.2 to v7.0.1
+  - `golangci/golangci-lint-action` from v9.2.0 to v9.3.0
+  - `vladopajic/go-test-coverage` from v2.18.3 to v2.19.0
+  - `docker/login-action` from v4.4.0 to v4.6.0
+  - `github/codeql-action` from v4.32.6 to v4.37.7
+  - `actions/create-github-app-token` from v2.2.2 to v3.2.0
+- Updated dependencies via `go get -u -t ./...` + `go mod tidy`.
+
 ## [[v7.25.0](https://github.com/C2FO/vfs/releases/tag/v7.25.0)] - 2026-08-27
 ### Added
 - `backend/s3`: Uploads and downloads now use `feature/s3/transfermanager` instead of the deprecated `feature/s3/manager`. The exported `Client` interface is unchanged, so existing custom clients and mocks keep working; the switch happens through the same internal `ListObjectsV2`-based adapter introduced for listing ([#317](https://github.com/C2FO/vfs/issues/317)).
