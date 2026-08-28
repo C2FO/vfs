@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- CI: `Integration (testcontainers)` (`integration.yml`) no longer triggers on `push` to `main`. It's a required status check on pull requests, but since it also ran on every push, `releasegen`'s post-merge CHANGELOG version-bump commit—brand new and necessarily lacking a check result at push time—was rejected by branch protection (`protected branch hook declined`), blocking all automated releases. It still runs on every PR and on the nightly schedule.
+
 ### Security
 - Updated Go version references from 1.25 to 1.26.7 in `go.mod`, `.golangci.yml`, and GitHub Actions workflows (`go.yml`, `golangci-lint.yml`, `go-test-coverage.yml`, `codeql.yml`) per the Go version policy in AGENTS.md, now that Go 1.27 has been released ([#352](https://github.com/C2FO/vfs/issues/352)).
 - Updated test matrix in `go.yml` to test Go 1.26 and 1.27 (latest-1 and latest minor versions) per VFS compatibility policy.
