@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [[v7.27.0](https://github.com/C2FO/vfs/releases/tag/v7.27.0)] - 2026-08-28
 ### Added
 - CI: Added a `Test (required)` gate job to `go.yml` that depends on the entire `test` matrix (all modules/Go versions/OSes) and fails if any matrix job didn't succeed. Added it as a required status check on `main` in place of enumerating the matrix's dynamically-named per-job checks, which change whenever a module, Go version, or OS is added/removed and can't reasonably be listed individually in branch protection.
 
