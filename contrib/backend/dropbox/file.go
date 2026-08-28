@@ -54,7 +54,8 @@ func (f *File) LastModified() (*time.Time, error) {
 	}
 
 	if fileMetadata, ok := metadata.(*files.FileMetadata); ok {
-		return &fileMetadata.ServerModified, nil
+		serverModified := time.Time(fileMetadata.ServerModified)
+		return &serverModified, nil
 	}
 
 	return nil, utils.WrapLastModifiedError(errors.New("not a file"))
@@ -530,7 +531,7 @@ func (f *File) Touch() error {
 		return utils.WrapTouchError(err)
 	}
 
-	now := time.Now().UTC().Truncate(time.Second) // Dropbox requires UTC time with second precision (no microseconds)
+	now := dropbox.DBXTime(time.Now().UTC().Truncate(time.Second)) // Dropbox requires UTC time with second precision (no microseconds)
 	uploadArg := files.NewUploadArg(f.path)
 	uploadArg.Mode = &files.WriteMode{Tagged: dropbox.Tagged{Tag: "overwrite"}}
 	uploadArg.ClientModified = &now // Explicitly set client_modified to current time
