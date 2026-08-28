@@ -6,7 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- CI: Added a `Test (required)` gate job to `go.yml` that depends on the entire `test` matrix (all modules/Go versions/OSes) and fails if any matrix job didn't succeed. Added it as a required status check on `main` in place of enumerating the matrix's dynamically-named per-job checks, which change whenever a module, Go version, or OS is added/removed and can't reasonably be listed individually in branch protection.
+
 ## [[v7.26.0](https://github.com/C2FO/vfs/releases/tag/v7.26.0)] - 2026-08-28
+
 ### Fixed
 - CI: Reverted `actions/create-github-app-token` from v3.2.0 to v2.2.2 in `releasegen.yml`, then back to v3.2.0. This was tested as a possible cause of the `releasegen` push failure below; it had no effect either way, so the action stays on v3.2.0.
 - CI: `Integration (testcontainers)` (`integration.yml`) no longer triggers on `push` to `main`. It's a required status check on pull requests, but since it also ran on every push, `releasegen`'s post-merge CHANGELOG version-bump commit—brand new and necessarily lacking a check result at push time—was rejected by branch protection (`protected branch hook declined`), blocking all automated releases. It still runs on every PR and on the nightly schedule. **This alone did not resolve the release automation deadlock; see the note below.**
