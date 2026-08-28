@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dropbox/dropbox-sdk-go-unofficial/v6/dropbox"
 	"github.com/dropbox/dropbox-sdk-go-unofficial/v6/dropbox/files"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -122,7 +123,7 @@ func (s *FileTestSuite) TestLastModified() {
 			GetMetadata(mock.Anything).
 			Return(&files.FileMetadata{
 				Metadata:       files.Metadata{Name: "file.txt"},
-				ServerModified: now,
+				ServerModified: dropbox.DBXTime(now),
 			}, nil).
 			Once()
 
