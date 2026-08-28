@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- CI: Reverted `actions/create-github-app-token` from v3.2.0 to v2.2.2 in `releasegen.yml`. After the v3 bump, `releasegen`'s post-merge CHANGELOG version-bump push to `main` started failing with `protected branch hook declined` even with the required-status-check trigger issue fixed, suggesting the v3 upgrade changed how GitHub recognizes the `releasegen-bot` app's branch-protection bypass eligibility for the resulting installation token. Isolating this to confirm before deciding on a permanent fix.
 - CI: `Integration (testcontainers)` (`integration.yml`) no longer triggers on `push` to `main`. It's a required status check on pull requests, but since it also ran on every push, `releasegen`'s post-merge CHANGELOG version-bump commit—brand new and necessarily lacking a check result at push time—was rejected by branch protection (`protected branch hook declined`), blocking all automated releases. It still runs on every PR and on the nightly schedule.
 
 ### Security
