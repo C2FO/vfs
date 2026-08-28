@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [[contrib/backend/dropbox/v1.2.0](https://github.com/C2FO/vfs/releases/tag/contrib%2Fbackend%2Fdropbox%2Fv1.2.0)] - 2026-08-28
 ### Fixed
 - Adapted to a breaking API change in `github.com/dropbox/dropbox-sdk-go-unofficial/v6` (v6.0.5 → v6.6.1), which changed `files.FileMetadata.ServerModified` and `files.CommitInfo.ClientModified` / `files.UploadArg.ClientModified` from `time.Time` to `dropbox.DBXTime` (a distinct type with the same underlying representation). `File.LastModified()` and `File.Touch()` now convert between `time.Time` and `dropbox.DBXTime` explicitly.
 
