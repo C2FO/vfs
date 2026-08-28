@@ -9,9 +9,6 @@ on:
   pull_request:
     branches:
       - main
-  push:
-    branches:
-      - main
   schedule:
     # Nightly run to catch upstream image/backend drift even without a PR.
     - cron: '0 7 * * *'
