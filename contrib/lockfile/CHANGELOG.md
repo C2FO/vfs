@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [[contrib/lockfile/v1.3.0](https://github.com/C2FO/vfs/releases/tag/contrib%2Flockfile%2Fv1.3.0)] - 2026-08-28
 ### Security
 - Updated Go version to 1.26.7 per the Go version policy in AGENTS.md ([#352](https://github.com/C2FO/vfs/issues/352)).
 - Updated core VFS dependency to v7.27.0.
