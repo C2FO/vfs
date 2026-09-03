@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- `os`: `Seek(0, io.SeekStart)` followed by `Write` appended instead of overwriting from the start. The temp file used to buffer writes was left at EOF by the initial copy, and the reposition was skipped when the cursor was zero.
 
 ## [[v7.29.0](https://github.com/C2FO/vfs/releases/tag/v7.29.0)] - 2026-08-28
 ### Security
