@@ -177,6 +177,41 @@ func (s *osFileTest) TestSeek() {
 	s.Require().NoError(s.testFile.Close())
 }
 
+func (s *osFileTest) TestSeekThenWrite() {
+	// Seek repositions the write cursor, including back to the start.
+	tests := []struct {
+		name     string
+		offset   int64
+		write    string
+		expected string
+	}{
+		{"rewind to start", 0, "HELLO", "HELLO world"},
+		{"seek into middle", 6, "there", "hello there"},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			f, err := s.tmploc.NewFile("test_files/test.txt")
+			s.Require().NoError(err)
+
+			_, err = f.Seek(tt.offset, io.SeekStart)
+			s.Require().NoError(err)
+			_, err = f.Write([]byte(tt.write))
+			s.Require().NoError(err)
+			s.Require().NoError(f.Close())
+
+			r, err := s.tmploc.NewFile("test_files/test.txt")
+			s.Require().NoError(err)
+			got, err := io.ReadAll(r)
+			s.Require().NoError(err)
+			s.Require().NoError(r.Close())
+			s.Equal(tt.expected, string(got))
+
+			s.Require().NoError(os.WriteFile(path.Join(s.tmploc.Path(), "test_files/test.txt"), []byte("hello world"), 0o600))
+		})
+	}
+}
+
 func (s *osFileTest) TestCopyToLocation() {
 	expectedText := "hello world"
 	otherFs := mocks.NewFileSystem(s.T())
