@@ -34,6 +34,22 @@ type File struct {
 	path     string
 	opts     []options.NewFileOption
 	offset   int64
+
+	// seek/read tracking, mirroring the os/s3/gs backends: used to decide whether the first Write
+	// in a session must preserve existing remote content (see tempFile below).
+	seekCalled  bool
+	readCalled  bool
+	writeCalled bool
+
+	// tempFile buffers writes locally when the existing remote content must be preserved (i.e. a
+	// Seek or Read happened before the first Write on an existing file). FTP's STOR+REST can only be
+	// relied on to overwrite-and-extend, not to reliably preserve a remote tail beyond what's
+	// written (observed against vsftpd, see the "Seek to start, Write" regression in
+	// https://github.com/C2FO/vfs/issues/365's ftp analog), so in that case the full existing
+	// content is downloaded locally, patched at the current offset, and the merged result is
+	// uploaded in full on Close - rather than streaming new bytes directly through STOR+REST and
+	// trusting the server to keep the rest of the file intact.
+	tempFile *os.File
 }
 
 // Info Functions
@@ -296,6 +312,15 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 // Delete removes the remote file.  Error is returned, if any.
 func (f *File) Delete(_ ...options.DeleteOption) error {
+	// Close first so any write-after-seek/read merge buffered in f.tempFile (see its doc comment)
+	// gets flushed and cleaned up rather than orphaned on disk. Without this, Delete would remove
+	// the remote file while leaving the local temp file behind, and a later Close call would still
+	// think it has pending content to upload - resurrecting the file that was just deleted here.
+	// This mirrors the s3/gs backends, which also call Close first in Delete for the same reason.
+	if err := f.Close(); err != nil {
+		return utils.WrapDeleteError(err)
+	}
+
 	dc, err := f.location.fileSystem.DataConn(context.TODO(), f.Location().Authority(), types.SingleOp, f)
 	if err != nil {
 		return utils.WrapDeleteError(err)
@@ -305,6 +330,36 @@ func (f *File) Delete(_ ...options.DeleteOption) error {
 
 // Close calls the underlying ftp.Response Close, if opened, and clears the internal pointer
 func (f *File) Close() error {
+	defer func() {
+		f.offset = 0
+		f.seekCalled = false
+		f.readCalled = false
+		f.writeCalled = false
+	}()
+
+	// If a write-after-seek/read merge buffered to a local temp file, upload the merged content in
+	// full now - see tempFile's doc comment.
+	if f.tempFile != nil {
+		tmp := f.tempFile
+		f.tempFile = nil
+		defer func() {
+			_ = tmp.Close()
+			_ = os.Remove(tmp.Name())
+		}()
+
+		if _, err := tmp.Seek(0, io.SeekStart); err != nil {
+			return utils.WrapCloseError(err)
+		}
+		client, err := f.location.fileSystem.Client(context.TODO(), f.Location().Authority())
+		if err != nil {
+			return utils.WrapCloseError(err)
+		}
+		if err := client.StorFrom(f.Path(), tmp, 0); err != nil {
+			return utils.WrapCloseError(err)
+		}
+		return nil
+	}
+
 	if f.location.fileSystem.dataconn != nil {
 		closeErr := f.location.fileSystem.dataconn.Close()
 		// Always clear the dataconn reference regardless of close error.
@@ -312,18 +367,31 @@ func (f *File) Close() error {
 		// Write call to nil-pointer panic instead of returning a retryable error.
 		f.location.fileSystem.dataconn = nil
 		if closeErr != nil {
-			f.offset = 0
 			return utils.WrapCloseError(closeErr)
 		}
 		f.location.fileSystem.dataconn = nil
 	}
 	// no op for unopened file
-	f.offset = 0
 	return nil
 }
 
 // Read calls the underlying ftp.File Read.
 func (f *File) Read(p []byte) (n int, err error) {
+	// If a write-after-seek/read merge is already buffering to a local temp file, read from that
+	// buffer instead of the remote dataconn - see tempFile's doc comment.
+	if f.tempFile != nil {
+		read, err := f.tempFile.Read(p)
+		f.offset += int64(read)
+		f.readCalled = true
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return read, io.EOF
+			}
+			return read, utils.WrapReadError(err)
+		}
+		return read, nil
+	}
+
 	dc, err := f.location.fileSystem.DataConn(context.TODO(), f.Location().Authority(), types.OpenRead, f)
 	if err != nil {
 		return 0, utils.WrapReadError(err)
@@ -335,18 +403,28 @@ func (f *File) Read(p []byte) (n int, err error) {
 		// because io.Copy looks for EOF to determine if it's done
 		// and doesn't support error wrapping
 		if errors.Is(err, io.EOF) {
+			f.offset += int64(read)
+			f.readCalled = true
 			return read, io.EOF
 		}
 		return read, utils.WrapReadError(err)
 	}
 
 	f.offset += int64(read)
+	f.readCalled = true
 
 	return read, nil
 }
 
 // Seek calls the underlying ftp.File Seek.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
+	// If we're already buffering to a local temp file (a write-after-seek/read merge is in
+	// progress), reposition within that temp file directly rather than touching the remote
+	// dataconn - the merge has already taken over local ownership of the content for this session.
+	if f.tempFile != nil {
+		return f.seekTempFile(offset, whence)
+	}
+
 	// ensure file exists before seeking
 	exists, err := f.Exists()
 	if err != nil {
@@ -408,12 +486,79 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		return 0, utils.WrapSeekError(err)
 	}
 
+	f.seekCalled = true
+
 	// return new offset from beginning of file
 	return f.offset, nil
 }
 
+// seekTempFile repositions within a write-after-seek/read merge's local temp file (see tempFile's
+// doc comment) rather than touching the remote dataconn - the merge has already taken over local
+// ownership of the content for this session.
+func (f *File) seekTempFile(offset int64, whence int) (int64, error) {
+	pos, err := f.tempFile.Seek(offset, whence)
+	if err != nil {
+		return 0, utils.WrapSeekError(err)
+	}
+	f.offset = pos
+	f.seekCalled = true
+	return pos, nil
+}
+
 // Write calls the underlying ftp.File Write.
 func (f *File) Write(data []byte) (res int, err error) {
+	// If Seek or Read happened before the first Write in this session, any existing remote content
+	// beyond what gets written must be preserved. FTP's STOR+REST streams new bytes directly to the
+	// server and cannot guarantee that in general (only reliably overwrites-and-extends; see
+	// tempFile's doc comment), so switch to buffering the whole file locally: download the existing
+	// content, patch it at the current offset, and upload the merged result in full on Close.
+	if !f.writeCalled && f.tempFile == nil && (f.seekCalled || f.readCalled) {
+		exists, existsErr := f.Exists()
+		if existsErr != nil {
+			return 0, utils.WrapWriteError(existsErr)
+		}
+		if exists {
+			// A preceding Seek/Read may have eagerly opened a remote dataconn at some other
+			// offset/mode. The Exists check above already closes it as a side effect (getDataConn
+			// closes any dataconn whose mode doesn't match the SingleOp mode Exists needs), leaving
+			// behind the fresh SingleOp connection Exists just opened for itself. Close that one
+			// here too, defensively, so downloadExistingContent below always opens its own fresh
+			// read connection positioned at offset 0 rather than potentially reusing this one.
+			if f.location.fileSystem.dataconn != nil {
+				_ = f.location.fileSystem.dataconn.Close()
+				f.location.fileSystem.dataconn = nil
+			}
+
+			tmp, tmpErr := f.createLocalTempFile()
+			if tmpErr != nil {
+				return 0, utils.WrapWriteError(tmpErr)
+			}
+			if dlErr := f.downloadExistingContent(tmp); dlErr != nil {
+				_ = tmp.Close()
+				_ = os.Remove(tmp.Name())
+				return 0, utils.WrapWriteError(dlErr)
+			}
+			if _, seekErr := tmp.Seek(f.offset, io.SeekStart); seekErr != nil {
+				_ = tmp.Close()
+				_ = os.Remove(tmp.Name())
+				return 0, utils.WrapWriteError(seekErr)
+			}
+
+			f.tempFile = tmp
+		}
+	}
+
+	f.writeCalled = true
+
+	if f.tempFile != nil {
+		written, werr := f.tempFile.Write(data)
+		if werr != nil {
+			return 0, utils.WrapWriteError(werr)
+		}
+		f.offset += int64(written)
+		return written, nil
+	}
+
 	dc, err := f.location.fileSystem.DataConn(context.TODO(), f.Location().Authority(), types.OpenWrite, f)
 	if err != nil {
 		return 0, utils.WrapWriteError(err)
@@ -428,6 +573,41 @@ func (f *File) Write(data []byte) (res int, err error) {
 	f.offset += offset
 
 	return b, nil
+}
+
+// downloadExistingContent downloads the full existing remote content (from offset 0, regardless
+// of f.offset) into the given local temp file, via a dedicated read dataconn. Used when a
+// write-after-seek/read merge needs the complete original content to patch locally, not just what's
+// ahead of the current cursor.
+func (f *File) downloadExistingContent(tmp *os.File) error {
+	savedOffset := f.offset
+	f.offset = 0
+	defer func() { f.offset = savedOffset }()
+
+	dc, err := f.location.fileSystem.DataConn(context.TODO(), f.Location().Authority(), types.OpenRead, f)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = dc.Close()
+		f.location.fileSystem.dataconn = nil
+	}()
+
+	buf := make([]byte, utils.TouchCopyMinBufferSize)
+	for {
+		n, rerr := dc.Read(buf)
+		if n > 0 {
+			if _, werr := tmp.Write(buf[:n]); werr != nil {
+				return werr
+			}
+		}
+		if rerr != nil {
+			if errors.Is(rerr, io.EOF) {
+				return nil
+			}
+			return rerr
+		}
+	}
 }
 
 // URI returns the File's URI as a string.

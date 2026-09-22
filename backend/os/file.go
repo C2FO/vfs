@@ -509,10 +509,9 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 			return nil, err
 		}
 
-		if f.cursorPos > 0 {
-			if _, err := tmpFile.Seek(f.cursorPos, 0); err != nil {
-				return nil, err
-			}
+		// io.Copy left the temp file at EOF, so reposition even for offset zero
+		if _, err := tmpFile.Seek(f.cursorPos, 0); err != nil {
+			return nil, err
 		}
 	}
 

@@ -225,6 +225,53 @@ func (ts *fileTestSuite) TestWrite() {
 	ts.Require().NoError(err, "Error should be nil when calling Write")
 }
 
+func (ts *fileTestSuite) TestSeekThenWrite() {
+	// Seek repositions the write cursor, including back to the start. Regression test for
+	// https://github.com/C2FO/vfs/issues/365: initWriters used to only copy the existing object into
+	// the temp writer when cursorPos != 0, so Seek(0, io.SeekStart) followed by Write replaced the
+	// whole object instead of overwriting from the start.
+	tests := []struct {
+		name     string
+		offset   int64
+		write    string
+		expected string
+	}{
+		{"rewind to start", 0, "HELLO", "HELLO world"},
+		{"seek into middle", 6, "there", "hello there"},
+	}
+
+	for _, tt := range tests {
+		ts.Run(tt.name, func() {
+			bucketName := "bucki"
+			objectName := "some/path/file.txt"
+			server := fakestorage.NewServer(
+				Objects{
+					fakestorage.Object{
+						ObjectAttrs: fakestorage.ObjectAttrs{
+							BucketName: bucketName,
+							Name:       objectName,
+						},
+						Content: []byte("hello world"),
+					},
+				},
+			)
+			defer server.Stop()
+			fs := NewFileSystem(WithClient(server.Client()))
+
+			file, err := fs.NewFile(bucketName, "/"+objectName)
+			ts.Require().NoError(err)
+
+			_, err = file.Seek(tt.offset, io.SeekStart)
+			ts.Require().NoError(err)
+			_, err = file.Write([]byte(tt.write))
+			ts.Require().NoError(err)
+			ts.Require().NoError(file.Close())
+
+			ts.Equal(tt.expected, string(fsMustReadFileName(fs, bucketName, objectName)))
+		})
+	}
+}
+
 func (ts *fileTestSuite) TestWriteWithContentType() {
 	contents := "hello world!"
 	bucketName := "bucki"

@@ -125,6 +125,13 @@ func DefaultIOTestCases() []IOTestCase {
 			ExpectedResults:   "some text",
 		},
 		{
+			Description:       "Seek to start, Write, Close, file exists",
+			Sequence:          "S(0,0);W(that);C()",
+			FileAlreadyExists: true,
+			ExpectFailure:     false,
+			ExpectedResults:   "that text",
+		},
+		{
 			Description:       "Seek, Write, Close, file exists",
 			Sequence:          "S(5,0);W(new text);C()",
 			FileAlreadyExists: true,

@@ -177,6 +177,49 @@ func (s *osFileTest) TestSeek() {
 	s.Require().NoError(s.testFile.Close())
 }
 
+func (s *osFileTest) TestSeekThenWrite() {
+	// Seek repositions the write cursor, including back to the start.
+	tests := []struct {
+		name     string
+		fixture  string
+		offset   int64
+		write    string
+		expected string
+	}{
+		{"rewind to start", "seek_then_write_rewind.txt", 0, "HELLO", "HELLO world"},
+		{"seek into middle", "seek_then_write_middle.txt", 6, "there", "hello there"},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			// Use a fixture-local file per subtest rather than the suite-wide test_files/test.txt,
+			// so a failed assertion mid-subtest can't leave shared state mutated for later subtests
+			// or other suite tests. Built and populated entirely through vfs.File (not raw os.*
+			// calls) so path handling stays correct on Windows: s.tmploc.Path() returns vfs-style
+			// paths (e.g. "/C:/Temp/...") that only vfs's own os-path translation, not the stdlib
+			// os package directly, knows how to convert to a native path.
+			f, err := s.tmploc.NewFile(path.Join("test_files", tt.fixture))
+			s.Require().NoError(err)
+			defer func() { _ = f.Delete() }()
+
+			_, err = f.Write([]byte("hello world"))
+			s.Require().NoError(err)
+			s.Require().NoError(f.Close())
+
+			_, err = f.Seek(tt.offset, io.SeekStart)
+			s.Require().NoError(err)
+			_, err = f.Write([]byte(tt.write))
+			s.Require().NoError(err)
+			s.Require().NoError(f.Close())
+
+			got, err := io.ReadAll(f)
+			s.Require().NoError(err)
+			s.Require().NoError(f.Close())
+			s.Equal(tt.expected, string(got))
+		})
+	}
+}
+
 func (s *osFileTest) TestCopyToLocation() {
 	expectedText := "hello world"
 	otherFs := mocks.NewFileSystem(s.T())

@@ -51,7 +51,7 @@ under a minute once images are cached.
 
 | Scheme | Container image | Notes |
 |--------|-----------------|-------|
-| `s3` | `minio/minio` | Registered twice: server-side encryption off and on |
+| `s3` | `quay.io/minio/minio` | Registered twice: server-side encryption off and on |
 | `azure` | `mcr.microsoft.com/azure-storage/azurite` | |
 | `gs` | `fsouza/fake-gcs-server` | |
 | `sftp` | `atmoz/sftp` | |

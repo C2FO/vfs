@@ -837,6 +837,45 @@ func (ts *fileTestSuite) TestSeekThenWriteDownloadsExistingContent() {
 	ts.Equal("Hello Bob!d!", uploaded, "the untouched prefix and suffix must come from the downloaded existing content")
 }
 
+// TestSeekToStartThenWriteDownloadsExistingContent is a regression test for
+// https://github.com/C2FO/vfs/issues/365: initWriters gated the download-existing-content step on
+// cursorPos != 0, so Seek(0, io.SeekStart) followed by Write skipped the download entirely and
+// replaced the whole object with only the newly written bytes instead of overwriting from the start.
+func (ts *fileTestSuite) TestSeekToStartThenWriteDownloadsExistingContent() {
+	existing := "Hello world!"
+
+	s3Mock := mocks.NewClient(ts.T())
+	s3Mock.EXPECT().HeadObject(matchContext, mock.IsType((*s3.HeadObjectInput)(nil))).
+		Return(&s3.HeadObjectOutput{ContentLength: aws.Int64(int64(len(existing)))}, nil)
+	s3Mock.EXPECT().GetObject(matchContext, mock.IsType((*s3.GetObjectInput)(nil)), mock.Anything).
+		Return(&s3.GetObjectOutput{
+			ContentLength: aws.Int64(int64(len(existing))),
+			Body:          io.NopCloser(strings.NewReader(existing)),
+		}, nil)
+
+	var uploaded string
+	s3Mock.EXPECT().PutObject(matchContext, mock.IsType((*s3.PutObjectInput)(nil)), mock.Anything, mock.Anything).
+		Run(func(_ context.Context, input *s3.PutObjectInput, _ ...func(*s3.Options)) {
+			b, readErr := io.ReadAll(input.Body)
+			ts.Require().NoError(readErr)
+			uploaded = string(b)
+		}).
+		Return(&s3.PutObjectOutput{}, nil)
+
+	fs := FileSystem{client: s3Mock, options: defaultOptions}
+	file, err := fs.NewFile("mybucket", "/some/file/test.txt")
+	ts.Require().NoError(err)
+
+	_, err = file.Seek(0, io.SeekStart)
+	ts.Require().NoError(err)
+
+	_, err = file.Write([]byte("HELLO"))
+	ts.Require().NoError(err)
+
+	ts.Require().NoError(file.Close())
+	ts.Equal("HELLO world!", uploaded, "the untouched suffix must come from the downloaded existing content, not just the new write")
+}
+
 // TestSeekThenWriteCloseRejectsUndersizedUploadPartitionSize covers the other place
 // resolveUploadPartSize can fail: after a Seek, getS3Writer is skipped (initWriters only calls it
 // when !seekCalled), so the upload - and this validation - is deferred until Close calls

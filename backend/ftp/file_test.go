@@ -362,6 +362,279 @@ func (ts *fileTestSuite) TestSeek() {
 	ts.Require().ErrorIs(err, os.ErrNotExist, "os error not exist expected")
 }
 
+// TestSeekToStartThenWritePreservesExistingContent is a regression test for the ftp analog of
+// https://github.com/C2FO/vfs/issues/365: Seek(0, io.SeekStart) followed by Write must preserve
+// the untouched remainder of an existing file, not just replace it with the newly written bytes.
+// FTP's STOR+REST streams new bytes directly to the server and can't be relied on to preserve a
+// remote tail beyond what's written (observed against a live vsftpd server via the testcontainers
+// module), so Write now buffers to a local temp file seeded with the full existing content in this
+// case, and uploads the merged result in full on Close.
+func (ts *fileTestSuite) TestSeekToStartThenWritePreservesExistingContent() {
+	existing := "hello world"
+
+	mockDataConn := mocks.NewDataConn(ts.T())
+	mockDataConn.EXPECT().Mode().Return(types.OpenRead)
+	mockDataConn.EXPECT().IsTimePreciseInList().Return(true)
+	dataConnGetterFunc = func(_ context.Context, _ authority.Authority, fs *FileSystem, _ *File, _ types.OpenType) (types.DataConn, error) {
+		fs.dataconn = mockDataConn
+		return mockDataConn, nil
+	}
+
+	client := mocks.NewClient(ts.T())
+	fp := "/some/path.txt"
+	auth, err := authority.NewAuthority("user@host1.com:22")
+	ts.Require().NoError(err)
+
+	ftpfile := &File{
+		location: &Location{
+			fileSystem: &FileSystem{ftpclient: client, options: Options{}},
+			authority:  auth,
+		},
+		path: fp,
+	}
+
+	// Seek(0, io.SeekStart) on an existing file: checks existence, then eagerly opens a read
+	// dataconn (unchanged pre-existing behavior).
+	mockDataConn.EXPECT().GetEntry(fp).Return(&_ftp.Entry{}, nil).Once()
+	_, err = ftpfile.Seek(0, io.SeekStart)
+	ts.Require().NoError(err)
+
+	// Write: closes the dataconn left open by Seek, re-checks existence, downloads the full
+	// existing content via a fresh read dataconn (closed afterward), then buffers the write locally
+	// rather than streaming it straight to the server.
+	mockDataConn.EXPECT().Close().Return(nil).Twice()
+	mockDataConn.EXPECT().GetEntry(fp).Return(&_ftp.Entry{}, nil).Once()
+	mockDataConn.EXPECT().Read(mock.Anything).RunAndReturn(func(p []byte) (int, error) {
+		copy(p, existing)
+		return len(existing), io.EOF
+	}).Once()
+
+	n, err := ftpfile.Write([]byte("HELLO"))
+	ts.Require().NoError(err)
+	ts.Equal(5, n)
+
+	// Close: uploads the merged content (new bytes patched in at offset 0, over the downloaded
+	// original) in full, via a single plain STOR - not a partial write relying on server-side REST.
+	var uploaded string
+	client.EXPECT().StorFrom(fp, mock.Anything, uint64(0)).RunAndReturn(func(_ string, r io.Reader, _ uint64) error {
+		b, rerr := io.ReadAll(r)
+		ts.Require().NoError(rerr)
+		uploaded = string(b)
+		return nil
+	}).Once()
+
+	ts.Require().NoError(ftpfile.Close())
+	ts.Equal("HELLO world", uploaded,
+		"the untouched suffix must come from the downloaded existing content, not just the new write")
+}
+
+// TestSeekWithinBufferedWrite covers seekTempFile: once a write-after-seek/read merge has started
+// buffering to a local temp file (see tempFile's doc comment), a subsequent Seek must reposition
+// within that local buffer - not touch the remote dataconn - so later Writes patch the right
+// offset, and Seek errors (e.g. an invalid negative absolute position) must be wrapped and
+// surfaced rather than silently ignored.
+func (ts *fileTestSuite) TestSeekWithinBufferedWrite() {
+	existing := "hello world"
+
+	mockDataConn := mocks.NewDataConn(ts.T())
+	mockDataConn.EXPECT().Mode().Return(types.OpenRead)
+	mockDataConn.EXPECT().IsTimePreciseInList().Return(true)
+	dataConnGetterFunc = func(_ context.Context, _ authority.Authority, fs *FileSystem, _ *File, _ types.OpenType) (types.DataConn, error) {
+		fs.dataconn = mockDataConn
+		return mockDataConn, nil
+	}
+
+	client := mocks.NewClient(ts.T())
+	fp := "/some/path.txt"
+	auth, err := authority.NewAuthority("user@host1.com:22")
+	ts.Require().NoError(err)
+
+	ftpfile := &File{
+		location: &Location{
+			fileSystem: &FileSystem{ftpclient: client, options: Options{}},
+			authority:  auth,
+		},
+		path: fp,
+	}
+
+	// Seek(0) + Write("HELLO") starts the merge: buffers "HELLO world" locally, cursor now at 5.
+	mockDataConn.EXPECT().GetEntry(fp).Return(&_ftp.Entry{}, nil).Once()
+	_, err = ftpfile.Seek(0, io.SeekStart)
+	ts.Require().NoError(err)
+
+	mockDataConn.EXPECT().Close().Return(nil).Twice()
+	mockDataConn.EXPECT().GetEntry(fp).Return(&_ftp.Entry{}, nil).Once()
+	mockDataConn.EXPECT().Read(mock.Anything).RunAndReturn(func(p []byte) (int, error) {
+		copy(p, existing)
+		return len(existing), io.EOF
+	}).Once()
+
+	_, err = ftpfile.Write([]byte("HELLO"))
+	ts.Require().NoError(err)
+	ts.Require().NotNil(ftpfile.tempFile, "Write should have started buffering to a local temp file")
+
+	// A Seek while already buffering must reposition within the local temp file, not the remote
+	// dataconn (no further GetEntry/Close/Read expectations are set on mockDataConn for this call).
+	pos, err := ftpfile.Seek(0, io.SeekStart)
+	ts.Require().NoError(err)
+	ts.EqualValues(0, pos)
+	ts.EqualValues(0, ftpfile.offset)
+
+	// Write again at the repositioned offset: patches the buffered content in place.
+	n, err := ftpfile.Write([]byte("MYFIL"))
+	ts.Require().NoError(err)
+	ts.Equal(5, n)
+
+	// An invalid Seek within the buffered temp file (negative absolute offset) must be wrapped and
+	// returned as an error, not silently ignored.
+	_, err = ftpfile.Seek(-1, io.SeekStart)
+	ts.Require().Error(err, "seeking to a negative absolute offset should return an error")
+
+	var uploaded string
+	client.EXPECT().StorFrom(fp, mock.Anything, uint64(0)).RunAndReturn(func(_ string, r io.Reader, _ uint64) error {
+		b, rerr := io.ReadAll(r)
+		ts.Require().NoError(rerr)
+		uploaded = string(b)
+		return nil
+	}).Once()
+
+	ts.Require().NoError(ftpfile.Close())
+	ts.Equal("MYFIL world", uploaded, "the re-seeked write must patch the buffered content at the new offset")
+}
+
+// TestReadThenWritePreservesExistingContent covers the other trigger for the write-after-seek/read
+// merge (see tempFile's doc comment): a plain Read with no Seek must also cause a subsequent Write
+// to preserve the untouched remainder of the file, since Read advances the cursor the same way
+// Seek does.
+func (ts *fileTestSuite) TestReadThenWritePreservesExistingContent() {
+	existing := "hello world"
+
+	mockDataConn := mocks.NewDataConn(ts.T())
+	dataConnGetterFunc = func(_ context.Context, _ authority.Authority, fs *FileSystem, _ *File, _ types.OpenType) (types.DataConn, error) {
+		fs.dataconn = mockDataConn
+		return mockDataConn, nil
+	}
+
+	client := mocks.NewClient(ts.T())
+	fp := "/some/path.txt"
+	auth, err := authority.NewAuthority("user@host1.com:22")
+	ts.Require().NoError(err)
+
+	ftpfile := &File{
+		location: &Location{
+			fileSystem: &FileSystem{ftpclient: client, options: Options{}},
+			authority:  auth,
+		},
+		path: fp,
+	}
+
+	// Read the first 5 bytes ("hello") - no Seek involved, leaves a read dataconn open at offset 5.
+	buf := make([]byte, 5)
+	mockDataConn.EXPECT().IsTimePreciseInList().Return(true)
+	mockDataConn.EXPECT().Read(mock.Anything).RunAndReturn(func(p []byte) (int, error) {
+		copy(p, existing)
+		return 5, nil
+	}).Once()
+	n, err := ftpfile.Read(buf)
+	ts.Require().NoError(err)
+	ts.Equal(5, n)
+	ts.Equal("hello", string(buf))
+
+	// Write at the current offset (5): closes the dataconn left open by Read, re-checks existence,
+	// downloads the full existing content via a fresh read dataconn (closed afterward), then
+	// buffers the write locally rather than streaming it straight to the server.
+	mockDataConn.EXPECT().Close().Return(nil).Twice()
+	mockDataConn.EXPECT().GetEntry(fp).Return(&_ftp.Entry{}, nil).Once()
+	mockDataConn.EXPECT().Read(mock.Anything).RunAndReturn(func(p []byte) (int, error) {
+		copy(p, existing)
+		return len(existing), io.EOF
+	}).Once()
+
+	n, err = ftpfile.Write([]byte(" THERE"))
+	ts.Require().NoError(err)
+	ts.Equal(6, n)
+
+	// Close: uploads the merged content (new bytes patched in at offset 5, over the downloaded
+	// original) in full.
+	var uploaded string
+	client.EXPECT().StorFrom(fp, mock.Anything, uint64(0)).RunAndReturn(func(_ string, r io.Reader, _ uint64) error {
+		b, rerr := io.ReadAll(r)
+		ts.Require().NoError(rerr)
+		uploaded = string(b)
+		return nil
+	}).Once()
+
+	ts.Require().NoError(ftpfile.Close())
+	ts.Equal("hello THERE", uploaded,
+		"the untouched prefix must come from the downloaded existing content, not just the new write")
+}
+
+// TestDeleteFlushesBufferedWriteBeforeRemoving is a regression test for a bug where Delete did not
+// flush a pending write-after-seek/read merge buffered in f.tempFile (see its doc comment): the
+// remote file would be deleted while the local temp file was left orphaned on disk, and a later
+// Close call would still upload the buffered content, resurrecting the file Delete had just
+// removed. Delete now closes (and thereby flushes/cleans up) any buffered write first.
+func (ts *fileTestSuite) TestDeleteFlushesBufferedWriteBeforeRemoving() {
+	existing := "hello world"
+
+	mockDataConn := mocks.NewDataConn(ts.T())
+	mockDataConn.EXPECT().Mode().Return(types.OpenRead)
+	mockDataConn.EXPECT().IsTimePreciseInList().Return(true)
+	dataConnGetterFunc = func(_ context.Context, _ authority.Authority, fs *FileSystem, _ *File, _ types.OpenType) (types.DataConn, error) {
+		fs.dataconn = mockDataConn
+		return mockDataConn, nil
+	}
+
+	client := mocks.NewClient(ts.T())
+	fp := "/some/path.txt"
+	auth, err := authority.NewAuthority("user@host1.com:22")
+	ts.Require().NoError(err)
+
+	ftpfile := &File{
+		location: &Location{
+			fileSystem: &FileSystem{ftpclient: client, options: Options{}},
+			authority:  auth,
+		},
+		path: fp,
+	}
+
+	mockDataConn.EXPECT().GetEntry(fp).Return(&_ftp.Entry{}, nil).Once()
+	_, err = ftpfile.Seek(0, io.SeekStart)
+	ts.Require().NoError(err)
+
+	mockDataConn.EXPECT().Close().Return(nil).Twice()
+	mockDataConn.EXPECT().GetEntry(fp).Return(&_ftp.Entry{}, nil).Once()
+	mockDataConn.EXPECT().Read(mock.Anything).RunAndReturn(func(p []byte) (int, error) {
+		copy(p, existing)
+		return len(existing), io.EOF
+	}).Once()
+
+	n, err := ftpfile.Write([]byte("HELLO"))
+	ts.Require().NoError(err)
+	ts.Equal(5, n)
+
+	ts.Require().NotNil(ftpfile.tempFile, "Write should have buffered to a local temp file")
+	tmpPath := ftpfile.tempFile.Name()
+	_, statErr := os.Stat(tmpPath)
+	ts.Require().NoError(statErr, "temp file should exist on disk before Delete")
+
+	var uploaded string
+	client.EXPECT().StorFrom(fp, mock.Anything, uint64(0)).RunAndReturn(func(_ string, r io.Reader, _ uint64) error {
+		b, rerr := io.ReadAll(r)
+		ts.Require().NoError(rerr)
+		uploaded = string(b)
+		return nil
+	}).Once()
+	mockDataConn.EXPECT().Delete(fp).Return(nil).Once()
+
+	ts.Require().NoError(ftpfile.Delete())
+	ts.Equal("HELLO world", uploaded, "Delete must flush the buffered write before removing the file")
+	ts.Nil(ftpfile.tempFile, "tempFile should be cleared once Delete flushes it via Close")
+
+	_, statErr = os.Stat(tmpPath)
+	ts.Require().True(os.IsNotExist(statErr), "temp file should be removed from disk once Delete flushes it")
+}
+
 func (ts *fileTestSuite) TestSeekError() {
 	mockDataConn := mocks.NewDataConn(ts.T())
 	mockDataConn.EXPECT().Mode().Return(types.OpenRead)

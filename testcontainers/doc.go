@@ -16,7 +16,7 @@ explicitly with:
 
 Each supported backend is emulated by a well-known image:
 
-	s3    -> minio/minio (registered twice: SSE-off and SSE-on)
+	s3    -> quay.io/minio/minio (registered twice: SSE-off and SSE-on)
 	azure -> mcr.microsoft.com/azure-storage/azurite
 	gs    -> fsouza/fake-gcs-server
 	sftp  -> atmoz/sftp

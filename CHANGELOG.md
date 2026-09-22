@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- `os`: `Seek(0, io.SeekStart)` followed by `Write` appended instead of overwriting from the start. The temp file used to buffer writes was left at EOF by the initial copy, and the reposition was skipped when the cursor was zero.
+- `s3`/`gs`: `Seek(0, io.SeekStart)` followed by `Write` on an existing object replaced the whole object with only the newly written bytes instead of overwriting from the start, silently discarding the untouched remainder. `initWriters` gated the download-existing-content step on `cursorPos != 0`, so the offset-zero case skipped downloading the existing object entirely. The gate is now based on whether `Seek`/`Read` was called before the first `Write`, matching the `os` backend's fix above ([#365](https://github.com/C2FO/vfs/issues/365)).
+- `ftp`: `Seek(0, io.SeekStart)` followed by `Write` on an existing file replaced the whole file with only the newly written bytes instead of overwriting from the start, silently discarding the untouched remainder. FTP writes streamed directly to the server via `STOR`+`REST`, which can't be relied on to preserve a remote tail beyond what's written (observed against a live `vsftpd` server via the `testcontainers` module). Write now buffers to a local temp file seeded with the full existing content whenever `Seek`/`Read` preceded the first `Write`, and uploads the merged result in full on `Close`, mirroring the `os`/`s3`/`gs` fixes above.
+- `ftp`: `Delete` did not flush a pending write-after-seek/read merge buffered locally by the fix above. Deleting a file mid-write left the local temp file orphaned on disk, and a subsequent `Close` call would still upload the buffered content, resurrecting the file `Delete` had just removed. `Delete` now closes the file first, flushing and cleaning up any buffered write, mirroring the existing `s3`/`gs` behavior.
+- `testcontainers`: Pin the `minio` conformance/IO container image to `quay.io/minio/minio` instead of `minio/minio`. The `minio/minio` repository no longer exists on Docker Hub, so the `testcontainers conformance` CI job failed to provision the `s3` backend container (`pull access denied for minio/minio, repository does not exist`) on every run. `quay.io/minio/minio` publishes the identical pinned tag.
 
 ## [[v7.29.0](https://github.com/C2FO/vfs/releases/tag/v7.29.0)] - 2026-08-28
 ### Security

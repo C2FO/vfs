@@ -48,7 +48,7 @@ import (
 // only publish rolling tags (:alpine and :latest respectively), so they are
 // additionally pinned by digest. Bump these deliberately.
 const (
-	minioImage     = "minio/minio:RELEASE.2025-09-07T16-13-09Z"
+	minioImage     = "quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z"
 	azuriteImage   = "mcr.microsoft.com/azure-storage/azurite:3.33.0"
 	gcsServerImage = "fsouza/fake-gcs-server:1.52.2"
 	atmozImage     = "atmoz/sftp:alpine@sha256:a6cb3eb29202ca7f57e73bb7e527286e66e0e822fff65609207c7e0ef2d135a3"

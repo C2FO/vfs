@@ -301,10 +301,17 @@ func (f *File) initWriters() error {
 			return err
 		}
 		f.tempFileWriter = tmpFile
-		if f.cursorPos != 0 {
-			// if file exists(because cursor position is non-zero), we need to copy the existing gcsWriter file to temp
-			err := f.copyToLocalTempReader(tmpFile)
-			if err != nil {
+
+		// If Seek or Read was called before this first Write, any subsequent write should edit the
+		// existing object rather than replace it, so download the existing object into the temp file
+		// first, then reposition to the current cursor. If Write is called first (no prior Seek/Read),
+		// we always overwrite, so there's nothing to copy in.
+		//
+		// This must not be gated on f.cursorPos != 0: Seek(0, io.SeekStart) on an existing object also
+		// needs the copy-in step so the untouched remainder of the object survives the write; only the
+		// *decision* to copy depends on seekCalled/readCalled, not the resulting offset.
+		if f.seekCalled || f.readCalled {
+			if err := f.copyToLocalTempReader(tmpFile); err != nil {
 				return err
 			}
 
