@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [[v7.29.1](https://github.com/C2FO/vfs/releases/tag/v7.29.1)] - 2026-09-22
 ### Fixed
 - `os`: `Seek(0, io.SeekStart)` followed by `Write` appended instead of overwriting from the start. The temp file used to buffer writes was left at EOF by the initial copy, and the reposition was skipped when the cursor was zero.
 - `s3`/`gs`: `Seek(0, io.SeekStart)` followed by `Write` on an existing object replaced the whole object with only the newly written bytes instead of overwriting from the start, silently discarding the untouched remainder. `initWriters` gated the download-existing-content step on `cursorPos != 0`, so the offset-zero case skipped downloading the existing object entirely. The gate is now based on whether `Seek`/`Read` was called before the first `Write`, matching the `os` backend's fix above ([#365](https://github.com/C2FO/vfs/issues/365)).
