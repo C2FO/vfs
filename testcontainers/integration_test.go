@@ -17,7 +17,7 @@ import (
 
 // backendTarget is a single provisioned backend to run the shared suites
 // against. name is a unique, human-readable subtest label (two targets can
-// share a scheme, e.g. minio serves s3 under both an SSE-off and an SSE-on
+// share a scheme, e.g. S3Mock serves s3 under both an SSE-off and an SSE-on
 // bucket, so scheme alone is not unique).
 type backendTarget struct {
 	name     string
@@ -71,7 +71,7 @@ func (s *containerSuite) SetupSuite() {
 }
 
 // targetName turns a VFS URI into a subtest-friendly label, e.g.
-// "s3://miniobucket/" -> "s3-miniobucket". Slashes are collapsed so the name
+// "s3://s3mockbucket/" -> "s3-s3mockbucket". Slashes are collapsed so the name
 // does not create spurious nested subtests.
 func targetName(uri string) string {
 	name := strings.NewReplacer("://", "-", "/", "-", ":", "-", "@", "-").Replace(uri)

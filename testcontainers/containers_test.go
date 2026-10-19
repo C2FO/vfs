@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
 	"net/netip"
 	"net/url"
@@ -24,7 +25,6 @@ import (
 	"github.com/moby/moby/api/types/network"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/azure/azurite"
-	"github.com/testcontainers/testcontainers-go/modules/minio"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"golang.org/x/crypto/ssh"
 	"google.golang.org/api/option"
@@ -43,12 +43,15 @@ import (
 // backend bug fixes (C2FO/vfs#346) and conformance-suite improvements
 // (C2FO/vfs#347) that it depended on.
 
-// Container images are pinned for reproducibility. minio, azurite, and
-// fake-gcs-server expose immutable version tags. atmoz/sftp and fauria/vsftpd
-// only publish rolling tags (:alpine and :latest respectively), so they are
-// additionally pinned by digest. Bump these deliberately.
+// Container images are pinned for reproducibility. s3mock, azurite, and
+// fake-gcs-server expose immutable version tags (s3mock is also pinned by digest).
+// atmoz/sftp and fauria/vsftpd only publish rolling tags (:alpine and :latest
+// respectively), so they are additionally pinned by digest. Bump these deliberately.
+//
+// The s3 backend runs against Adobe's S3Mock rather than minio: MinIO's community
+// edition is source-only and its images are no longer published.
 const (
-	minioImage     = "quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z"
+	s3mockImage    = "adobe/s3mock:5.2.3@sha256:ab01a6946750f451ca215a47e91030695b260e4003b8a5a6201d25029b8fca92"
 	azuriteImage   = "mcr.microsoft.com/azure-storage/azurite:3.33.0"
 	gcsServerImage = "fsouza/fake-gcs-server:1.52.2"
 	atmozImage     = "atmoz/sftp:alpine@sha256:a6cb3eb29202ca7f57e73bb7e527286e66e0e822fff65609207c7e0ef2d135a3"
@@ -58,7 +61,7 @@ const (
 // registerFunc provisions a container (if needed) and registers one or more
 // backends, returning their authorities (VFS URIs) for use with vfssimple. It
 // returns a slice so a single container can expose multiple test targets (e.g.
-// minio serves both the SSE-on and SSE-off configurations of the s3 backend).
+// S3Mock serves both the SSE-on and SSE-off configurations of the s3 backend).
 // It returns an error rather than asserting so that the caller can start
 // containers concurrently and fail the test from the test goroutine.
 type registerFunc func(t *testing.T) ([]string, error)
@@ -72,7 +75,7 @@ func allRegisters() []registerFunc {
 		registerAtmoz,
 		registerAzurite,
 		registerGCSServer,
-		registerMinio,
+		registerS3Mock,
 		registerFTP,
 	}
 }
@@ -83,32 +86,38 @@ func registerOS(t *testing.T) ([]string, error) {
 	return []string{fmt.Sprintf("file://%s/", filepath.ToSlash(t.TempDir()))}, nil
 }
 
-const minioRegion = "dummy"
+const (
+	s3mockPort   = "9090/tcp"
+	s3mockRegion = "us-east-1"
+)
 
-// minioKMSKey enables minio's built-in KMS so that SSE-S3 (AES256) auto
-// encryption works. Without a configured KMS, minio rejects the s3 backend's
-// default server-side-encryption headers with "501 NotImplemented". This is a
-// deliberately non-secret, all-zero key in minio's "<name>:<base64-256-bit-key>"
-// format, used only by throwaway test containers.
-const minioKMSKey = "minio-test-key:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-
-// registerMinio provisions a single minio server and registers the s3 backend
+// registerS3Mock provisions a single S3Mock server and registers the s3 backend
 // against it twice: once with server-side encryption disabled and once with the
 // default (SSE-on) configuration. This exercises both branches of the s3
-// backend's encryption handling against a real S3-compatible object store
-// without running a second container.
-func registerMinio(t *testing.T) ([]string, error) {
+// backend's encryption handling against an S3-compatible object store without
+// running a second container.
+func registerS3Mock(t *testing.T) ([]string, error) {
 	ctx := context.Background()
 
-	ctr, err := minio.Run(ctx, minioImage,
-		testcontainers.WithEnv(map[string]string{"MINIO_KMS_SECRET_KEY": minioKMSKey}),
-	)
+	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: testcontainers.ContainerRequest{
+			Image:        s3mockImage,
+			ExposedPorts: []string{s3mockPort},
+			WaitingFor:   wait.ForListeningPort(s3mockPort),
+		},
+		Started: true,
+	})
 	testcontainers.CleanupContainer(t, ctr)
 	if err != nil {
 		return nil, err
 	}
 
-	ep, err := ctr.ConnectionString(ctx)
+	host, err := ctr.Host(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	port, err := ctr.MappedPort(ctx, s3mockPort)
 	if err != nil {
 		return nil, err
 	}
@@ -119,24 +128,25 @@ func registerMinio(t *testing.T) ([]string, error) {
 	}
 
 	cli := awss3.NewFromConfig(cfg, func(opts *awss3.Options) {
-		opts.Region = minioRegion
+		opts.Region = s3mockRegion
 		opts.UsePathStyle = true
-		opts.BaseEndpoint = aws.String("http://" + ep)
-		opts.Credentials = credentials.NewStaticCredentialsProvider(ctr.Username, ctr.Password, "")
+		opts.BaseEndpoint = aws.String("http://" + net.JoinHostPort(host, port.Port()))
+		// S3Mock does not validate signatures, so any static credentials work.
+		opts.Credentials = credentials.NewStaticCredentialsProvider("test", "test", "")
 	})
 
-	for _, bucket := range []string{"miniobucket", "miniobucket-sse"} {
+	for _, bucket := range []string{"s3mockbucket", "s3mockbucket-sse"} {
 		if _, err := cli.CreateBucket(ctx, &awss3.CreateBucketInput{Bucket: aws.String(bucket)}); err != nil {
 			return nil, err
 		}
 	}
 
 	// SSE off.
-	backend.Register("s3://miniobucket/", s3.NewFileSystem(s3.WithClient(cli), s3.WithOptions(s3.Options{DisableServerSideEncryption: true})))
+	backend.Register("s3://s3mockbucket/", s3.NewFileSystem(s3.WithClient(cli), s3.WithOptions(s3.Options{DisableServerSideEncryption: true})))
 	// SSE on (default).
-	backend.Register("s3://miniobucket-sse/", s3.NewFileSystem(s3.WithClient(cli)))
+	backend.Register("s3://s3mockbucket-sse/", s3.NewFileSystem(s3.WithClient(cli)))
 
-	return []string{"s3://miniobucket/", "s3://miniobucket-sse/"}, nil
+	return []string{"s3://s3mockbucket/", "s3://s3mockbucket-sse/"}, nil
 }
 
 func registerAzurite(t *testing.T) ([]string, error) {
