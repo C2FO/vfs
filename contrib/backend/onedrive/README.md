@@ -228,6 +228,12 @@ Graph copies run asynchronously. `CopyToFile`/`CopyToLocation` wait for the copy
 Graph's monitor URL) before returning. Copies and moves overwrite an existing destination. When the
 destination folder does not exist yet, the content is streamed instead.
 
+### `%` in Folder Names
+
+When an upload creates missing parent folders, Graph percent-decodes their names twice (a folder
+named `a%20b` would be created as `a b`). To keep names literal, uploads whose parent path contains
+`%` create the missing folders explicitly first, which costs a few extra requests.
+
 ### Path Length
 
 OneDrive has a 400-character path length limit.

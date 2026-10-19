@@ -282,6 +282,154 @@ func (s *GraphClientTestSuite) TestUpload() {
 	s.Equal("7", req.Header.Get("Content-Length"))
 }
 
+type cannedResponse struct {
+	status int
+	body   string
+}
+
+// routes answers "METHOD /escaped/path" with successive canned responses, repeating the last one.
+func (s *GraphClientTestSuite) routes(routes map[string][]cannedResponse) {
+	calls := map[string]int{}
+	s.handler = func(w http.ResponseWriter, r *http.Request) {
+		key := r.Method + " " + r.URL.EscapedPath()
+		responses, ok := routes[key]
+		if !ok {
+			writeJSON(w, http.StatusNotImplemented, `{"error":{"code":"unexpected","message":"`+key+`"}}`)
+			return
+		}
+		resp := responses[min(calls[key], len(responses)-1)]
+		calls[key]++
+		writeJSON(w, resp.status, resp.body)
+	}
+}
+
+func (s *GraphClientTestSuite) TestUploadUnderPercentFolder() {
+	notFound := cannedResponse{404, `{"error":{"code":"itemNotFound"}}`}
+	tests := []struct {
+		name          string
+		itemPath      string
+		routes        map[string][]cannedResponse
+		expectedCalls []string
+		expectedBody  []string // JSON bodies of folder-creation requests, in order
+		expectedError string
+	}{
+		{
+			name:     "existing parent is addressed by ID",
+			itemPath: "a%20b/f.txt",
+			routes: map[string][]cannedResponse{
+				"GET /drives/drive1/root:/a%2520b":            {{200, `{"id":"p1","folder":{}}`}},
+				"PUT /drives/drive1/items/p1:/f.txt:/content": {{201, itemJSON}},
+			},
+			expectedCalls: []string{
+				"GET /drives/drive1/root:/a%2520b",
+				"PUT /drives/drive1/items/p1:/f.txt:/content",
+			},
+		},
+		{
+			name:     "missing ancestors are created literally",
+			itemPath: "x/a%20b/f%20g.txt",
+			routes: map[string][]cannedResponse{
+				"GET /drives/drive1/root:/x/a%2520b":                 {notFound},
+				"GET /drives/drive1/root:/x":                         {notFound},
+				"POST /drives/drive1/items/root/children":            {{201, `{"id":"px","folder":{}}`}},
+				"POST /drives/drive1/items/px/children":              {{201, `{"id":"pab","folder":{}}`}},
+				"PUT /drives/drive1/items/pab:/f%2520g.txt:/content": {{201, itemJSON}},
+			},
+			expectedCalls: []string{
+				"GET /drives/drive1/root:/x/a%2520b",
+				"GET /drives/drive1/root:/x",
+				"POST /drives/drive1/items/root/children",
+				"POST /drives/drive1/items/px/children",
+				"PUT /drives/drive1/items/pab:/f%2520g.txt:/content",
+			},
+			expectedBody: []string{
+				`{"name":"x","folder":{},"@microsoft.graph.conflictBehavior":"fail"}`,
+				`{"name":"a%20b","folder":{},"@microsoft.graph.conflictBehavior":"fail"}`,
+			},
+		},
+		{
+			name:     "folder created concurrently is looked up again",
+			itemPath: "a%20b/f.txt",
+			routes: map[string][]cannedResponse{
+				"GET /drives/drive1/root:/a%2520b":            {notFound, {200, `{"id":"p1","folder":{}}`}},
+				"POST /drives/drive1/items/root/children":     {{409, `{"error":{"code":"nameAlreadyExists"}}`}},
+				"PUT /drives/drive1/items/p1:/f.txt:/content": {{201, itemJSON}},
+			},
+			expectedCalls: []string{
+				"GET /drives/drive1/root:/a%2520b",
+				"POST /drives/drive1/items/root/children",
+				"GET /drives/drive1/root:/a%2520b",
+				"PUT /drives/drive1/items/p1:/f.txt:/content",
+			},
+			expectedBody: []string{`{"name":"a%20b","folder":{},"@microsoft.graph.conflictBehavior":"fail"}`},
+		},
+		{
+			name:     "parent that is a file is an error",
+			itemPath: "a%20b/f.txt",
+			routes: map[string][]cannedResponse{
+				"GET /drives/drive1/root:/a%2520b": {{200, `{"id":"p1","file":{}}`}},
+			},
+			expectedError: "a%20b exists and is not a folder",
+		},
+		{
+			name:     "lookup failure is returned",
+			itemPath: "a%20b/f.txt",
+			routes: map[string][]cannedResponse{
+				"GET /drives/drive1/root:/a%2520b": {{403, `{"error":{"code":"accessDenied","message":"no"}}`}},
+			},
+			expectedError: "accessDenied",
+		},
+		{
+			name:     "folder creation failure is returned",
+			itemPath: "a%20b/f.txt",
+			routes: map[string][]cannedResponse{
+				"GET /drives/drive1/root:/a%2520b":        {notFound},
+				"POST /drives/drive1/items/root/children": {{403, `{"error":{"code":"accessDenied","message":"no"}}`}},
+			},
+			expectedError: "creating folder a%20b",
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			s.requests = nil
+			s.routes(tt.routes)
+
+			_, err := s.client.Upload(context.Background(), tt.itemPath, strings.NewReader("content"))
+			if tt.expectedError != "" {
+				s.Require().Error(err)
+				s.Contains(err.Error(), tt.expectedError)
+				return
+			}
+			s.Require().NoError(err)
+
+			var calls, bodies []string
+			for _, r := range s.requests {
+				calls = append(calls, r.Method+" "+r.Path)
+				if r.Method == http.MethodPost {
+					bodies = append(bodies, r.Body)
+				}
+			}
+			s.Equal(tt.expectedCalls, calls)
+			s.Require().Len(bodies, len(tt.expectedBody))
+			for i := range bodies {
+				s.JSONEq(tt.expectedBody[i], bodies[i])
+			}
+		})
+	}
+}
+
+func (s *GraphClientTestSuite) TestCreateUploadSessionUnderPercentFolder() {
+	s.routes(map[string][]cannedResponse{
+		"GET /drives/drive1/root:/a%2520b":                           {{200, `{"id":"p1","folder":{}}`}},
+		"POST /drives/drive1/items/p1:/big.bin:/createUploadSession": {{200, `{"uploadUrl":"` + s.server.URL + `/up"}`}},
+	})
+
+	_, err := s.client.CreateUploadSession(context.Background(), "a%20b/big.bin")
+	s.Require().NoError(err)
+	s.Equal("/drives/drive1/items/p1:/big.bin:/createUploadSession", s.requests[1].Path)
+}
+
 func (s *GraphClientTestSuite) TestUploadSession() {
 	s.handler = func(w http.ResponseWriter, r *http.Request) {
 		switch {

@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -211,7 +212,7 @@ func (c *graphClient) Download(ctx context.Context, itemPath string) (io.ReadClo
 
 // Upload implements Client.
 func (c *graphClient) Upload(ctx context.Context, itemPath string, content io.ReadSeeker) (*DriveItem, error) {
-	u, err := c.itemURL(ctx, itemPath, "/content")
+	u, err := c.uploadURL(ctx, itemPath, "/content")
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +233,7 @@ func (c *graphClient) Upload(ctx context.Context, itemPath string, content io.Re
 
 // CreateUploadSession implements Client.
 func (c *graphClient) CreateUploadSession(ctx context.Context, itemPath string) (UploadSession, error) {
-	u, err := c.itemURL(ctx, itemPath, "/createUploadSession")
+	u, err := c.uploadURL(ctx, itemPath, "/createUploadSession")
 	if err != nil {
 		return nil, err
 	}
@@ -465,6 +466,85 @@ func (c *graphClient) itemURL(ctx context.Context, itemPath, suffix string) (str
 		return root + ":/" + escaped, nil
 	}
 	return root + ":/" + escaped + ":" + suffix, nil
+}
+
+// uploadURL returns the URL to upload itemPath to. When an upload auto-creates parent folders,
+// Graph percent-decodes their names twice ("a%20b/" becomes "a b/") while lookups decode once, so
+// a file uploaded under such a folder can't be found again by its path. If any parent segment
+// contains '%', the parents are created explicitly and the upload is addressed by parent ID.
+func (c *graphClient) uploadURL(ctx context.Context, itemPath, suffix string) (string, error) {
+	dir, name := path.Split(strings.Trim(itemPath, "/"))
+	if !strings.Contains(dir, "%") {
+		return c.itemURL(ctx, itemPath, suffix)
+	}
+
+	parentID, err := c.ensureFolder(ctx, strings.TrimSuffix(dir, "/"))
+	if err != nil {
+		return "", err
+	}
+
+	driveID, err := c.resolveDriveID(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return c.baseURL + "/drives/" + url.PathEscape(driveID) + "/items/" + url.PathEscape(parentID) +
+		":/" + url.PathEscape(name) + ":" + suffix, nil
+}
+
+// ensureFolder returns the ID of the folder at folderPath, creating it and any missing ancestors.
+func (c *graphClient) ensureFolder(ctx context.Context, folderPath string) (string, error) {
+	if folderPath == "" {
+		return "root", nil
+	}
+
+	item, err := c.GetItem(ctx, folderPath)
+	switch {
+	case err == nil && item.IsFolder:
+		return item.ID, nil
+	case err == nil:
+		return "", fmt.Errorf("onedrive: %s exists and is not a folder", folderPath)
+	case !errors.Is(err, ErrNotFound):
+		return "", err
+	}
+
+	parent, name := path.Split(folderPath)
+	parentID, err := c.ensureFolder(ctx, strings.TrimSuffix(parent, "/"))
+	if err != nil {
+		return "", err
+	}
+
+	driveID, err := c.resolveDriveID(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	u := c.baseURL + "/drives/" + url.PathEscape(driveID) + "/items/" + url.PathEscape(parentID) + "/children"
+	req, err := jsonRequest(http.MethodPost, u, map[string]any{
+		"name":                              name,
+		"folder":                            map[string]any{},
+		"@microsoft.graph.conflictBehavior": "fail",
+	})
+	if err != nil {
+		return "", err
+	}
+
+	var created driveItemJSON
+	_, _, err = c.call(ctx, req, &created)
+	var apiErr *apiError
+	if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusConflict {
+		// Created concurrently by another writer.
+		item, err := c.GetItem(ctx, folderPath)
+		if err != nil {
+			return "", err
+		}
+		return item.ID, nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("onedrive: creating folder %s: %w", folderPath, err)
+	}
+
+	return created.ID, nil
 }
 
 // call sends a request and, when out is non-nil and the response has a body, decodes it as JSON.
