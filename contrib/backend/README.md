@@ -169,10 +169,11 @@ for the pattern:
 
 - **Backends with a containerizable server** (object stores, SFTP/FTP, etc.):
   point the backend at a container and delegate to `backend/testsuite`.
-- **SaaS / HTTP-API backends with no emulator** (e.g. Dropbox, and the
-  in-progress OneDrive backend): stub the REST API with a
-  [WireMock](https://wiremock.org/) container. This requires the backend to
-  expose a **custom endpoint / base-URL option** so it can be aimed at the mock.
+- **SaaS / HTTP-API backends with no emulator** (e.g. Dropbox, OneDrive): stub
+  the REST API with a [WireMock](https://wiremock.org/) container. This
+  requires the backend to expose a **custom endpoint / base-URL option** so it
+  can be aimed at the mock. See
+  [`onedrive/wiremock_test.go`](onedrive/wiremock_test.go) for a worked example.
 
 Keep these tests **in your contrib module** (importing `testcontainers-go` and
 `backend/testsuite`) so the extra dependencies stay isolated from core VFS and
