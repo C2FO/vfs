@@ -219,8 +219,23 @@ The authority is always empty as OneDrive uses a single namespace per drive.
 
 ### API Rate Limits
 
-Microsoft Graph API has rate limits. The backend retries 429 (Too Many Requests) and 5xx responses,
-honoring `Retry-After` and otherwise backing off exponentially.
+Microsoft Graph API has rate limits. The backend retries throttled (429) and 503 responses for every
+request, and 408/500/502/504 responses and network errors for idempotent requests only (so a `POST`
+that may have been processed is never replayed). `Retry-After` is honored up to 5 minutes; a longer
+request fails immediately instead of retrying early, which would only prolong throttling. Otherwise
+retries back off exponentially. An interrupted upload-session chunk resumes from the offset Graph
+reports rather than failing the upload.
+
+### Folders Are Not Files
+
+`Delete`, `CopyToFile`/`CopyToLocation` and `MoveToFile`/`MoveToLocation` return an error when the
+path is a folder. Graph would otherwise delete, copy or move the folder and everything in it.
+
+### Cancellation and Timeouts
+
+VFS file operations take no `context.Context`, so requests cannot be canceled by the caller. A copy
+waits up to 10 minutes for Graph to finish. Use `WithHTTPClient` with a client `Timeout` to bound
+individual requests.
 
 ### Copy
 
@@ -244,7 +259,8 @@ OneDrive upload sessions support range writes, but for simplicity this implement
 
 ### Touch Behavior
 
-Updating timestamps on existing files may require download and re-upload for some scenarios.
+Graph has no way to update a timestamp alone, so touching an existing file downloads it and uploads
+it again. A write made by someone else between the download and the upload is overwritten.
 
 ## App Registration Setup
 
@@ -324,10 +340,12 @@ Docker and skip when it isn't available:
 go test -tags=vfsintegration -run TestWireMockTestSuite ./...
 ```
 
-### Real OneDrive Conformance Tests
+### Real OneDrive Tests
 
-`TestConformance` runs the shared VFS conformance and IO suites against a real drive. It skips unless
-credentials are configured:
+`TestConformance` runs the shared VFS conformance and IO suites against a real drive, and
+`TestRealDriveTestSuite` covers what they don't: upload sessions with large files, copy and move
+overwriting an existing file, the folder guard, and names containing characters such as `%`, `#`, `+`
+and `&`. Both skip unless credentials are configured:
 
 ```bash
 # Set credentials

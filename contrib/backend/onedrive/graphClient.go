@@ -32,7 +32,12 @@ const (
 	defaultCopyPollInterval = 500 * time.Millisecond
 	defaultCopyTimeout      = 10 * time.Minute
 	maxRetryDelay           = 30 * time.Second
+	maxRetryAfter           = 5 * time.Minute
 )
+
+// errIsFolder is returned when an operation meant for a file is pointed at a folder. Graph would
+// otherwise happily delete, move or copy the folder and everything in it.
+var errIsFolder = errors.New("onedrive: path is a folder, not a file")
 
 // graphClient implements Client against the Microsoft Graph REST API.
 type graphClient struct {
@@ -266,6 +271,10 @@ func (c *graphClient) Copy(ctx context.Context, sourcePath, destParentPath, dest
 		return err
 	}
 
+	if err := c.requireFile(ctx, sourcePath); err != nil {
+		return err
+	}
+
 	parent, err := c.GetItem(ctx, destParentPath)
 	if err != nil {
 		return fmt.Errorf("onedrive: copy destination folder: %w", err)
@@ -334,6 +343,10 @@ func (c *graphClient) waitForCopy(ctx context.Context, monitorURL string) error 
 
 // Move implements Client.
 func (c *graphClient) Move(ctx context.Context, sourcePath, destParentPath, destName string) (*DriveItem, error) {
+	if err := c.requireFile(ctx, sourcePath); err != nil {
+		return nil, err
+	}
+
 	parent, err := c.GetItem(ctx, destParentPath)
 	if err != nil {
 		return nil, fmt.Errorf("onedrive: move destination folder: %w", err)
@@ -362,6 +375,10 @@ func (c *graphClient) Move(ctx context.Context, sourcePath, destParentPath, dest
 
 // Delete implements Client.
 func (c *graphClient) Delete(ctx context.Context, itemPath string) error {
+	if err := c.requireFile(ctx, itemPath); err != nil {
+		return err
+	}
+
 	u, err := c.itemURL(ctx, itemPath, "")
 	if err != nil {
 		return err
@@ -377,8 +394,51 @@ type graphUploadSession struct {
 	uploadURL string
 }
 
-// UploadChunk implements UploadSession.
+// UploadChunk implements UploadSession. If Graph rejects the range with 416 because it already
+// received some or all of it (typically a retried request whose first response was lost), the
+// session is asked what it expects next and only the missing remainder is sent.
 func (s *graphUploadSession) UploadChunk(ctx context.Context, data []byte, offset, totalSize int64) (*DriveItem, error) {
+	item, err := s.putChunk(ctx, data, offset, totalSize)
+	var apiErr *apiError
+	if err == nil || !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusRequestedRangeNotSatisfiable {
+		return item, err
+	}
+
+	next, statusErr := s.nextExpectedOffset(ctx)
+	end := offset + int64(len(data))
+	switch {
+	case statusErr != nil || next <= offset || next > end:
+		return nil, err
+	case next == end:
+		return nil, nil //nolint:nilnil // chunk was fully received; no item until the session completes
+	}
+
+	return s.putChunk(ctx, data[next-offset:], next, totalSize)
+}
+
+// nextExpectedOffset asks the session where the next byte should start.
+func (s *graphUploadSession) nextExpectedOffset(ctx context.Context) (int64, error) {
+	var status struct {
+		NextExpectedRanges []string `json:"nextExpectedRanges"`
+	}
+	req := request{method: http.MethodGet, url: s.uploadURL, anonymous: true}
+	if _, _, err := s.client.call(ctx, req, &status); err != nil {
+		return 0, err
+	}
+	if len(status.NextExpectedRanges) == 0 {
+		return 0, errors.New("onedrive: upload session reported no expected ranges")
+	}
+
+	start, _, _ := strings.Cut(status.NextExpectedRanges[0], "-")
+	next, err := strconv.ParseInt(start, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("onedrive: parsing expected range %q: %w", status.NextExpectedRanges[0], err)
+	}
+
+	return next, nil
+}
+
+func (s *graphUploadSession) putChunk(ctx context.Context, data []byte, offset, totalSize int64) (*DriveItem, error) {
 	end := offset + int64(len(data)) - 1
 	req := request{
 		method:    http.MethodPut,
@@ -547,6 +607,19 @@ func (c *graphClient) ensureFolder(ctx context.Context, folderPath string) (stri
 	return created.ID, nil
 }
 
+// requireFile returns errIsFolder when itemPath is a folder, and the lookup error (including
+// ErrNotFound) when it can't be read.
+func (c *graphClient) requireFile(ctx context.Context, itemPath string) error {
+	item, err := c.GetItem(ctx, itemPath)
+	if err != nil {
+		return err
+	}
+	if item.IsFolder {
+		return fmt.Errorf("%w: %s", errIsFolder, itemPath)
+	}
+	return nil
+}
+
 // call sends a request and, when out is non-nil and the response has a body, decodes it as JSON.
 // It returns the response status and headers.
 func (c *graphClient) call(ctx context.Context, r request, out any) (int, http.Header, error) {
@@ -584,6 +657,14 @@ func (c *graphClient) send(ctx context.Context, r request) (*http.Response, erro
 
 		resp, err := httpClient.Do(req)
 		if err != nil {
+			// Transport failures (reset connections, timeouts) are retried only for idempotent
+			// methods, since the request may have reached Graph.
+			if attempt < c.retryCount && isIdempotent(r.method) && ctx.Err() == nil {
+				if serr := c.sleep(ctx, backoff(attempt)); serr != nil {
+					return nil, fmt.Errorf("onedrive: waiting to retry: %w", serr)
+				}
+				continue
+			}
 			return nil, fmt.Errorf("onedrive: %s request failed: %w", r.method, err)
 		}
 
@@ -591,8 +672,8 @@ func (c *graphClient) send(ctx context.Context, r request) (*http.Response, erro
 			return resp, nil
 		}
 
-		retry := isRetryable(resp.StatusCode) && attempt < c.retryCount
-		delay := retryDelay(resp, attempt)
+		delay, withinLimit := retryDelay(resp, attempt)
+		retry := withinLimit && attempt < c.retryCount && isRetryable(r.method, resp.StatusCode)
 		apiErr := newAPIError(resp)
 		if !retry {
 			return nil, apiErr
@@ -642,20 +723,40 @@ func (c *graphClient) newRequest(ctx context.Context, r request) (*http.Request,
 	return req, nil
 }
 
-func isRetryable(status int) bool {
-	switch status {
-	case http.StatusTooManyRequests, http.StatusInternalServerError, http.StatusBadGateway,
-		http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+func isIdempotent(method string) bool {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodPut, http.MethodDelete, http.MethodOptions:
 		return true
 	}
 	return false
 }
 
-func retryDelay(resp *http.Response, attempt int) time.Duration {
-	if secs, err := strconv.Atoi(resp.Header.Get("Retry-After")); err == nil && secs >= 0 {
-		return min(time.Duration(secs)*time.Second, maxRetryDelay)
+// isRetryable reports whether a response status may be retried. 429 and 503 mean Graph did not
+// process the request, so they are safe for any method; other transient statuses may have been
+// processed and are retried only for idempotent methods.
+func isRetryable(method string, status int) bool {
+	switch status {
+	case http.StatusTooManyRequests, http.StatusServiceUnavailable:
+		return true
+	case http.StatusRequestTimeout, http.StatusInternalServerError, http.StatusBadGateway, http.StatusGatewayTimeout:
+		return isIdempotent(method)
 	}
+	return false
+}
+
+func backoff(attempt int) time.Duration {
 	return min(time.Second<<attempt, maxRetryDelay)
+}
+
+// retryDelay returns how long to wait before retrying. A Retry-After from Graph is honored up to
+// maxRetryAfter; retrying sooner than asked only prolongs throttling, so a longer request reports
+// ok=false and the caller should give up instead.
+func retryDelay(resp *http.Response, attempt int) (delay time.Duration, ok bool) {
+	if secs, err := strconv.Atoi(resp.Header.Get("Retry-After")); err == nil && secs >= 0 {
+		d := time.Duration(secs) * time.Second
+		return d, d <= maxRetryAfter
+	}
+	return backoff(attempt), true
 }
 
 // newAPIError reads and closes an error response.

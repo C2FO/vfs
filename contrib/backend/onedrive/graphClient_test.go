@@ -469,6 +469,110 @@ func (s *GraphClientTestSuite) TestUploadSession() {
 	s.Equal(http.MethodDelete, s.requests[3].Method)
 }
 
+func (s *GraphClientTestSuite) TestUploadChunkResumes() {
+	type exchange struct {
+		method, contentRange string
+		status               int
+		body                 string
+	}
+	rejected := exchange{http.MethodPut, "bytes 0-9/20", 416, `{"error":{"code":"invalidRange"}}`}
+
+	tests := []struct {
+		name             string
+		exchanges        []exchange
+		expectedRanges   []string
+		expectedBodies   []string
+		expectedItem     bool
+		expectedErrorMsg string
+	}{
+		{
+			name: "sends only the missing remainder",
+			exchanges: []exchange{
+				rejected,
+				{http.MethodGet, "", 200, `{"nextExpectedRanges":["4-"]}`},
+				{http.MethodPut, "bytes 4-9/20", 202, `{}`},
+			},
+			expectedRanges: []string{"bytes 0-9/20", "", "bytes 4-9/20"},
+			expectedBodies: []string{"0123456789", "", "456789"},
+		},
+		{
+			name: "chunk already fully received",
+			exchanges: []exchange{
+				rejected,
+				{http.MethodGet, "", 200, `{"nextExpectedRanges":["10-"]}`},
+			},
+			expectedRanges: []string{"bytes 0-9/20", ""},
+			expectedBodies: []string{"0123456789", ""},
+		},
+		{
+			name:             "server expects an earlier offset",
+			exchanges:        []exchange{rejected, {http.MethodGet, "", 200, `{"nextExpectedRanges":["0-"]}`}},
+			expectedRanges:   []string{"bytes 0-9/20", ""},
+			expectedBodies:   []string{"0123456789", ""},
+			expectedErrorMsg: "invalidRange",
+		},
+		{
+			name:             "status lookup fails",
+			exchanges:        []exchange{rejected, {http.MethodGet, "", 404, `{}`}},
+			expectedRanges:   []string{"bytes 0-9/20", ""},
+			expectedBodies:   []string{"0123456789", ""},
+			expectedErrorMsg: "invalidRange",
+		},
+		{
+			name:             "status has no ranges",
+			exchanges:        []exchange{rejected, {http.MethodGet, "", 200, `{"nextExpectedRanges":[]}`}},
+			expectedRanges:   []string{"bytes 0-9/20", ""},
+			expectedBodies:   []string{"0123456789", ""},
+			expectedErrorMsg: "invalidRange",
+		},
+		{
+			name:             "status range is unparseable",
+			exchanges:        []exchange{rejected, {http.MethodGet, "", 200, `{"nextExpectedRanges":["x-"]}`}},
+			expectedRanges:   []string{"bytes 0-9/20", ""},
+			expectedBodies:   []string{"0123456789", ""},
+			expectedErrorMsg: "invalidRange",
+		},
+		{
+			name:             "other errors are not resumed",
+			exchanges:        []exchange{{http.MethodPut, "bytes 0-9/20", 400, `{"error":{"code":"badRequest"}}`}},
+			expectedRanges:   []string{"bytes 0-9/20"},
+			expectedBodies:   []string{"0123456789"},
+			expectedErrorMsg: "badRequest",
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			s.requests = nil
+			call := 0
+			s.handler = func(w http.ResponseWriter, _ *http.Request) {
+				ex := tt.exchanges[min(call, len(tt.exchanges)-1)]
+				call++
+				writeJSON(w, ex.status, ex.body)
+			}
+			session := &graphUploadSession{client: s.client, uploadURL: s.server.URL + "/upload/s"}
+
+			item, err := session.UploadChunk(context.Background(), []byte("0123456789"), 0, 20)
+			if tt.expectedErrorMsg != "" {
+				s.Require().Error(err)
+				s.Contains(err.Error(), tt.expectedErrorMsg)
+			} else {
+				s.Require().NoError(err)
+			}
+			s.Nil(item)
+
+			ranges := make([]string, 0, len(s.requests))
+			bodies := make([]string, 0, len(s.requests))
+			for _, r := range s.requests {
+				ranges = append(ranges, r.Header.Get("Content-Range"))
+				bodies = append(bodies, r.Body)
+			}
+			s.Equal(tt.expectedRanges, ranges)
+			s.Equal(tt.expectedBodies, bodies)
+		})
+	}
+}
+
 func (s *GraphClientTestSuite) TestUploadSessionErrors() {
 	s.Run("missing uploadUrl", func() {
 		s.handler = func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 200, `{}`) }
@@ -509,6 +613,8 @@ func (s *GraphClientTestSuite) copyHandler(monitor []func(http.ResponseWriter, *
 		switch {
 		case r.Method == http.MethodGet && r.URL.EscapedPath() == "/drives/drive1/root:/dest":
 			writeJSON(w, 200, `{"id":"parent1","folder":{}}`)
+		case r.Method == http.MethodGet && r.URL.EscapedPath() == "/drives/drive1/root:/src/a.txt":
+			writeJSON(w, 200, itemJSON)
 		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, ":/copy"):
 			w.Header().Set("Location", s.server.URL+"/monitor/1")
 			w.WriteHeader(http.StatusAccepted)
@@ -558,11 +664,11 @@ func (s *GraphClientTestSuite) TestCopy() {
 			s.Require().NoError(err)
 			s.Len(s.sleeps, tt.expectedSleeps)
 
-			copyReq := s.requests[1]
+			copyReq := s.requests[2]
 			s.Equal("/drives/drive1/root:/src/a.txt:/copy", copyReq.Path)
 			s.Equal(replaceOnConflict, copyReq.Query)
 			s.JSONEq(`{"parentReference":{"driveId":"drive1","id":"parent1"},"name":"b.txt"}`, copyReq.Body)
-			for _, r := range s.requests[2:] {
+			for _, r := range s.requests[3:] {
 				s.Empty(r.Header.Get("Authorization"), "monitor URLs are unauthenticated")
 			}
 		})
@@ -571,10 +677,17 @@ func (s *GraphClientTestSuite) TestCopy() {
 
 func (s *GraphClientTestSuite) TestCopyErrors() {
 	s.Run("destination folder missing", func() {
-		s.handler = func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 404, `{}`) }
+		s.handler = func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/drives/drive1/root:/a.txt" {
+				writeJSON(w, 200, itemJSON)
+				return
+			}
+			writeJSON(w, 404, `{}`)
+		}
 
 		err := s.client.Copy(context.Background(), "a.txt", "nope", "a.txt")
 		s.Require().ErrorIs(err, ErrNotFound)
+		s.Contains(err.Error(), "copy destination folder")
 	})
 
 	s.Run("no monitor location", func() {
@@ -599,25 +712,26 @@ func (s *GraphClientTestSuite) TestCopyErrors() {
 		c.copyTimeout = time.Nanosecond
 		c.sleep = sleepContext
 
-		err := c.Copy(context.Background(), "a.txt", "dest", "a.txt")
+		err := c.Copy(context.Background(), "src/a.txt", "dest", "a.txt")
 		s.Require().ErrorIs(err, context.DeadlineExceeded)
 	})
 }
 
 func (s *GraphClientTestSuite) TestMove() {
 	s.handler = func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/drives/drive1/root:/dest":
 			writeJSON(w, 200, `{"id":"parent1","folder":{}}`)
-			return
+		default:
+			writeJSON(w, 200, itemJSON)
 		}
-		writeJSON(w, 200, itemJSON)
 	}
 
 	item, err := s.client.Move(context.Background(), "src/a.txt", "dest", "b.txt")
 	s.Require().NoError(err)
 	s.Equal("item1", item.ID)
 
-	req := s.requests[1]
+	req := s.requests[2]
 	s.Equal(http.MethodPatch, req.Method)
 	s.Equal("/drives/drive1/root:/src/a.txt", req.Path)
 	s.Equal(replaceOnConflict, req.Query)
@@ -625,10 +739,17 @@ func (s *GraphClientTestSuite) TestMove() {
 }
 
 func (s *GraphClientTestSuite) TestMoveDestinationMissing() {
-	s.handler = func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 404, `{}`) }
+	s.handler = func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/drives/drive1/root:/a.txt" {
+			writeJSON(w, 200, itemJSON)
+			return
+		}
+		writeJSON(w, 404, `{}`)
+	}
 
 	_, err := s.client.Move(context.Background(), "a.txt", "nope", "a.txt")
 	s.Require().ErrorIs(err, ErrNotFound)
+	s.Contains(err.Error(), "move destination folder")
 }
 
 func (s *GraphClientTestSuite) TestDelete() {
@@ -652,7 +773,45 @@ func (s *GraphClientTestSuite) TestDelete() {
 				return
 			}
 			s.Require().NoError(err)
-			s.Equal(http.MethodDelete, s.requests[0].Method)
+			s.Equal(http.MethodGet, s.requests[0].Method, "type is checked first")
+			s.Equal(http.MethodDelete, s.requests[1].Method)
+		})
+	}
+}
+
+func (s *GraphClientTestSuite) TestFolderGuard() {
+	s.handler = func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/drives/drive1/root:/dir":
+			writeJSON(w, 200, `{"id":"d1","name":"dir","folder":{"childCount":3}}`)
+		case "/drives/drive1/root:/dest":
+			writeJSON(w, 200, `{"id":"parent1","folder":{}}`)
+		default:
+			writeJSON(w, 200, itemJSON)
+		}
+	}
+
+	tests := []struct {
+		name string
+		fn   func() error
+	}{
+		{name: "delete", fn: func() error { return s.client.Delete(context.Background(), "dir") }},
+		{name: "copy", fn: func() error { return s.client.Copy(context.Background(), "dir", "dest", "dir") }},
+		{name: "move", fn: func() error {
+			_, err := s.client.Move(context.Background(), "dir", "dest", "dir")
+			return err
+		}},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			s.requests = nil
+
+			err := tt.fn()
+			s.Require().ErrorIs(err, errIsFolder)
+			for _, r := range s.requests {
+				s.Equal(http.MethodGet, r.Method, "folder must never be modified")
+			}
 		})
 	}
 }
@@ -733,9 +892,76 @@ func (s *GraphClientTestSuite) TestTokenFailure() {
 func (s *GraphClientTestSuite) TestTransportFailure() {
 	s.server.Close()
 
-	_, err := s.client.GetItem(context.Background(), "a.txt")
-	s.Require().Error(err)
-	s.Contains(err.Error(), "GET request failed")
+	tests := []struct {
+		name           string
+		method         string
+		expectedSleeps []time.Duration
+	}{
+		{name: "idempotent request is retried", method: http.MethodGet,
+			expectedSleeps: []time.Duration{time.Second, 2 * time.Second}},
+		{name: "non-idempotent request is not retried", method: http.MethodPost},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			s.sleeps = nil
+
+			_, _, err := s.client.call(context.Background(), request{method: tt.method, url: s.server.URL + "/x"}, nil)
+			s.Require().Error(err)
+			s.Contains(err.Error(), tt.method+" request failed")
+			s.Equal(tt.expectedSleeps, s.sleeps)
+		})
+	}
+
+	s.Run("canceled context is not retried", func() {
+		s.sleeps = nil
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		_, err := s.client.GetItem(ctx, "a.txt")
+		s.Require().Error(err)
+		s.Empty(s.sleeps)
+	})
+}
+
+func (s *GraphClientTestSuite) TestRetryPolicy() {
+	tests := []struct {
+		name          string
+		method        string
+		statuses      []int
+		retryAfter    string
+		expectedCalls int
+	}{
+		{name: "POST throttled is retried", method: http.MethodPost, statuses: []int{429, 200}, expectedCalls: 2},
+		{name: "POST 503 is retried", method: http.MethodPost, statuses: []int{503, 200}, expectedCalls: 2},
+		{name: "POST 500 may have been processed", method: http.MethodPost, statuses: []int{500, 200}, expectedCalls: 1},
+		{name: "PATCH 502 may have been processed", method: http.MethodPatch, statuses: []int{502, 200}, expectedCalls: 1},
+		{name: "GET 500 is retried", method: http.MethodGet, statuses: []int{500, 200}, expectedCalls: 2},
+		{name: "DELETE 504 is retried", method: http.MethodDelete, statuses: []int{504, 200}, expectedCalls: 2},
+		{name: "PUT 408 is retried", method: http.MethodPut, statuses: []int{408, 200}, expectedCalls: 2},
+		{name: "Retry-After within the cap is honored", method: http.MethodGet, statuses: []int{429, 200},
+			retryAfter: "300", expectedCalls: 2},
+		{name: "Retry-After beyond the cap fails fast", method: http.MethodGet, statuses: []int{429, 200},
+			retryAfter: "301", expectedCalls: 1},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			s.requests = nil
+			call := 0
+			s.handler = func(w http.ResponseWriter, _ *http.Request) {
+				status := tt.statuses[min(call, len(tt.statuses)-1)]
+				call++
+				if tt.retryAfter != "" {
+					w.Header().Set("Retry-After", tt.retryAfter)
+				}
+				writeJSON(w, status, `{}`)
+			}
+
+			_, _, _ = s.client.call(context.Background(), request{method: tt.method, url: s.server.URL + "/x"}, nil)
+			s.Len(s.requests, tt.expectedCalls)
+		})
+	}
 }
 
 func (s *GraphClientTestSuite) TestNewGraphClientDefaults() {
@@ -762,11 +988,13 @@ func (s *GraphClientTestSuite) TestRetryDelay() {
 		retryAfter string
 		attempt    int
 		expected   time.Duration
+		expectedOK bool
 	}{
-		{name: "Retry-After seconds", retryAfter: "3", expected: 3 * time.Second},
-		{name: "Retry-After capped", retryAfter: "3600", expected: maxRetryDelay},
-		{name: "unparseable Retry-After falls back to backoff", retryAfter: "soon", attempt: 2, expected: 4 * time.Second},
-		{name: "backoff capped", attempt: 10, expected: maxRetryDelay},
+		{name: "Retry-After seconds", retryAfter: "3", expected: 3 * time.Second, expectedOK: true},
+		{name: "Retry-After longer than the old backoff cap is honored", retryAfter: "120", expected: 2 * time.Minute, expectedOK: true},
+		{name: "Retry-After beyond the limit gives up", retryAfter: "3600", expected: time.Hour},
+		{name: "unparseable Retry-After falls back to backoff", retryAfter: "soon", attempt: 2, expected: 4 * time.Second, expectedOK: true},
+		{name: "backoff capped", attempt: 10, expected: maxRetryDelay, expectedOK: true},
 	}
 
 	for _, tt := range tests {
@@ -775,7 +1003,9 @@ func (s *GraphClientTestSuite) TestRetryDelay() {
 			if tt.retryAfter != "" {
 				resp.Header.Set("Retry-After", tt.retryAfter)
 			}
-			s.Equal(tt.expected, retryDelay(resp, tt.attempt))
+			delay, ok := retryDelay(resp, tt.attempt)
+			s.Equal(tt.expected, delay)
+			s.Equal(tt.expectedOK, ok)
 		})
 	}
 }

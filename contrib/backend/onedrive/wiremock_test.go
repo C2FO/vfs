@@ -271,6 +271,7 @@ func (s *WireMockTestSuite) TestListFollowsPagination() {
 
 func (s *WireMockTestSuite) TestCopyPollsMonitorUntilComplete() {
 	s.stubJSON(http.MethodGet, drivePath+"/root:/archive", 200, `{"id":"archive1","folder":{}}`)
+	s.stubJSON(http.MethodGet, drivePath+"/root:/docs/report.txt", 200, reportJSON)
 	s.stubJSON(http.MethodPost, drivePath+"/root:/docs/report.txt:/copy", 202, "",
 		withQuery("@microsoft.graph.conflictBehavior", "replace"),
 		withHeader("Location", s.root+"/monitor/copy1"))
@@ -309,6 +310,7 @@ func (s *WireMockTestSuite) TestCopyToMissingFolderStreams() {
 
 func (s *WireMockTestSuite) TestMove() {
 	s.stubJSON(http.MethodGet, drivePath+"/root:/archive", 200, `{"id":"archive1","folder":{}}`)
+	s.stubJSON(http.MethodGet, drivePath+"/root:/docs/report.txt", 200, reportJSON)
 	s.stubJSON(http.MethodPatch, drivePath+"/root:/docs/report.txt", 200, reportJSON,
 		withQuery("@microsoft.graph.conflictBehavior", "replace"))
 
@@ -322,10 +324,34 @@ func (s *WireMockTestSuite) TestMove() {
 }
 
 func (s *WireMockTestSuite) TestDelete() {
+	s.stubJSON(http.MethodGet, drivePath+"/root:/docs/report.txt", 200, reportJSON)
 	s.stubJSON(http.MethodDelete, drivePath+"/root:/docs/report.txt", 204, "")
 
 	s.Require().NoError(s.file("/docs/report.txt").Delete())
 	s.Len(s.received(http.MethodDelete, drivePath+"/root:/docs/report.txt"), 1)
+}
+
+func (s *WireMockTestSuite) TestFolderIsNeverDeletedMovedOrCopied() {
+	s.stubJSON(http.MethodGet, drivePath+"/root:/docs", 200, `{"id":"d1","name":"docs","folder":{"childCount":2}}`)
+	s.stubJSON(http.MethodGet, drivePath+"/root:/archive", 200, `{"id":"archive1","folder":{}}`)
+	s.stubJSON(http.MethodDelete, drivePath+"/root:/docs", 204, "")
+	s.stubJSON(http.MethodPatch, drivePath+"/root:/docs", 200, reportJSON)
+	s.stubJSON(http.MethodPost, drivePath+"/root:/docs:/copy", 202, "")
+	f := s.file("/docs")
+
+	exists, err := f.Exists()
+	s.Require().NoError(err)
+	s.False(exists, "a folder is not a file")
+
+	s.Require().ErrorIs(f.Delete(), errIsFolder)
+	_, err = f.MoveToLocation(s.location("/archive/"))
+	s.Require().ErrorIs(err, errIsFolder)
+	_, err = f.CopyToLocation(s.location("/archive/"))
+	s.Require().ErrorIs(err, errIsFolder)
+
+	s.Empty(s.received(http.MethodDelete, drivePath+"/root:/docs"))
+	s.Empty(s.received(http.MethodPatch, drivePath+"/root:/docs"))
+	s.Empty(s.received(http.MethodPost, drivePath+"/root:/docs:/copy"))
 }
 
 func (s *WireMockTestSuite) TestTouchReuploadsExistingContent() {
