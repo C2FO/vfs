@@ -8,6 +8,7 @@ This directory contains community-contributed VFS backends that are not official
 |---------|--------|-------------|
 | [Dropbox](./dropbox/README.md) | `dbx://` | Dropbox cloud storage |
 | [OneDrive](./onedrive/README.md) | `onedrive://` | Microsoft OneDrive and SharePoint document libraries via the Graph API |
+| [Google Drive](./gdrive/README.md) | `gdrive://` | Google Drive (My Drive and shared drives) via the Drive v3 API |
 
 ## Using a Community Backend
 
@@ -17,11 +18,12 @@ Community backends are **not** automatically registered. You must explicitly imp
 import (
     "github.com/c2fo/vfs/v7/vfssimple"
     _ "github.com/c2fo/vfs/contrib/backend/dropbox"  // registers dbx:// scheme
+    _ "github.com/c2fo/vfs/contrib/backend/gdrive"   // registers gdrive:// scheme
     _ "github.com/c2fo/vfs/contrib/backend/onedrive" // registers onedrive:// scheme
 )
 
 func main() {
-    // Now dbx:// and onedrive:// URIs work with vfssimple
+    // Now dbx://, gdrive:// and onedrive:// URIs work with vfssimple
     file, err := vfssimple.NewFile("dbx:///path/to/file.txt")
     // ...
 }
@@ -176,11 +178,17 @@ for the pattern:
 
 - **Backends with a containerizable server** (object stores, SFTP/FTP, etc.):
   point the backend at a container and delegate to `backend/testsuite`.
-- **SaaS / HTTP-API backends with no emulator** (e.g. Dropbox, OneDrive): stub
-  the REST API with a [WireMock](https://wiremock.org/) container. This
-  requires the backend to expose a **custom endpoint / base-URL option** so it
-  can be aimed at the mock. See
-  [`onedrive/wiremock_test.go`](onedrive/wiremock_test.go) for a worked example.
+- **SaaS / HTTP-API backends with no emulator** (e.g. Dropbox, OneDrive, Google
+  Drive): stub the REST API with a [WireMock](https://wiremock.org/) container.
+  This requires the backend to expose a **custom endpoint / base-URL option** so
+  it can be aimed at the mock. See
+  [`onedrive/wiremock_test.go`](onedrive/wiremock_test.go) and
+  [`gdrive/wiremock_test.go`](gdrive/wiremock_test.go) for worked examples.
+  `gdrive` additionally runs the full conformance suites on every `go test`
+  against an in-process fake of the API
+  ([`gdrive/fakedrive_test.go`](gdrive/fakedrive_test.go)), which is useful when
+  the service's data model (IDs, duplicate names) needs real stateful behavior
+  that WireMock can't give.
 
 Keep these tests **in your contrib module** (importing `testcontainers-go` and
 `backend/testsuite`) so the extra dependencies stay isolated from core VFS and
