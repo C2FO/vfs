@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [[contrib/backend/onedrive/v0.1.0](https://github.com/C2FO/vfs/releases/tag/contrib%2Fbackend%2Fonedrive%2Fv0.1.0)] - 2026-10-21
 ### Fixed
 - A failed upload on `Close` keeps the written content so `Close` can be retried; `Delete` discards it.
 - The upload-session chunk that reaches the end of the file must return the committed file, otherwise the file is looked up and `Close` fails unless it has the full size. A `WithChunkSize` above Graph's 60 MiB limit fails before the upload starts.
