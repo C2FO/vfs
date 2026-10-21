@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [[v7.30.0](https://github.com/C2FO/vfs/releases/tag/v7.30.0)] - 2026-10-21
 ### Added
 - Initial commit of the Google Drive community-contributed backend (`gdrive://`, module `contrib/backend/gdrive`), backed by a small Drive v3 REST client over `net/http` with `golang.org/x/oauth2` authentication (access token, token source, service account, Application Default Credentials, device code). The authority selects a shared drive; an empty authority is My Drive. Because Drive is ID-addressed and permits duplicate names, paths are resolved by walking folders by name, operations on a path that matches more than one item fail with `ErrAmbiguous`, and file operations refuse folders. A permanent delete in a shared drive that Drive answers with 404 (a content manager cannot delete permanently) falls back to trashing. See `contrib/backend/gdrive/DESIGN.md` for the full set of VFS semantic decisions. Includes unit tests with mockery mocks, the shared conformance/IO suites run against an in-process fake Drive, WireMock testcontainers tests (`vfsintegration`), and credentialed real-drive tests.
 
