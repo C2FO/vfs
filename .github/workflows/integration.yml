@@ -58,3 +58,7 @@ jobs:
       - name: Run OneDrive WireMock tests
         working-directory: contrib/backend/onedrive
         run: go test -tags=vfsintegration -race -timeout 10m ./...
+
+      - name: Run Google Drive WireMock tests
+        working-directory: contrib/backend/gdrive
+        run: go test -tags=vfsintegration -race -timeout 10m ./...
