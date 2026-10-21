@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- `testcontainers`: Replaced the `minio` conformance/IO container with Adobe's `adobe/s3mock` (pinned by tag and digest) for the `s3` backend. MinIO's community edition is now source-only and its images are no longer published (`quay.io/minio/minio` and `minio/minio` both refuse anonymous pulls), so the `testcontainers conformance` CI job failed to provision the `s3` container on every run, including the nightly run on `main`. Both the SSE-off and SSE-on `s3` configurations still run the full conformance and IO suites. Dropped the `testcontainers-go/modules/minio` dependency.
+
+### Documentation
+- Listed the new OneDrive contrib backend in the README, and pointed the contrib backend guide at its WireMock tests as the example for HTTP-API backends.
+- CI: The `Integration (testcontainers)` workflow now also runs the OneDrive contrib module's WireMock tests.
 
 ## [[v7.29.1](https://github.com/C2FO/vfs/releases/tag/v7.29.1)] - 2026-09-22
 ### Fixed

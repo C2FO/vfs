@@ -7,6 +7,7 @@ This directory contains community-contributed VFS backends that are not official
 | Backend | Scheme | Description |
 |---------|--------|-------------|
 | [Dropbox](./dropbox/README.md) | `dbx://` | Dropbox cloud storage |
+| [OneDrive](./onedrive/README.md) | `onedrive://` | Microsoft OneDrive and SharePoint document libraries via the Graph API |
 
 ## Using a Community Backend
 
@@ -15,15 +16,21 @@ Community backends are **not** automatically registered. You must explicitly imp
 ```go
 import (
     "github.com/c2fo/vfs/v7/vfssimple"
-    _ "github.com/c2fo/vfs/contrib/backend/dropbox" // registers dbx:// scheme
+    _ "github.com/c2fo/vfs/contrib/backend/dropbox"  // registers dbx:// scheme
+    _ "github.com/c2fo/vfs/contrib/backend/onedrive" // registers onedrive:// scheme
 )
 
 func main() {
-    // Now dbx:// URIs work with vfssimple
+    // Now dbx:// and onedrive:// URIs work with vfssimple
     file, err := vfssimple.NewFile("dbx:///path/to/file.txt")
     // ...
 }
 ```
+
+Each contrib backend is its own Go module, so `go get` the ones you use, for example
+`go get github.com/c2fo/vfs/contrib/backend/onedrive`. The OneDrive backend needs credentials, such as
+`VFS_ONEDRIVE_ACCESS_TOKEN`, in the environment to be used through `vfssimple`; see its
+[README](./onedrive/README.md).
 
 ## Contributing a New Backend
 
@@ -169,10 +176,11 @@ for the pattern:
 
 - **Backends with a containerizable server** (object stores, SFTP/FTP, etc.):
   point the backend at a container and delegate to `backend/testsuite`.
-- **SaaS / HTTP-API backends with no emulator** (e.g. Dropbox, and the
-  in-progress OneDrive backend): stub the REST API with a
-  [WireMock](https://wiremock.org/) container. This requires the backend to
-  expose a **custom endpoint / base-URL option** so it can be aimed at the mock.
+- **SaaS / HTTP-API backends with no emulator** (e.g. Dropbox, OneDrive): stub
+  the REST API with a [WireMock](https://wiremock.org/) container. This
+  requires the backend to expose a **custom endpoint / base-URL option** so it
+  can be aimed at the mock. See
+  [`onedrive/wiremock_test.go`](onedrive/wiremock_test.go) for a worked example.
 
 Keep these tests **in your contrib module** (importing `testcontainers-go` and
 `backend/testsuite`) so the extra dependencies stay isolated from core VFS and

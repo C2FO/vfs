@@ -16,7 +16,6 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/azure v0.44.0
-	github.com/testcontainers/testcontainers-go/modules/minio v0.44.0
 	golang.org/x/crypto v0.55.0
 	golang.org/x/sync v0.22.0
 	google.golang.org/api v0.295.0

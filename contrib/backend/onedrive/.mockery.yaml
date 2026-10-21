@@ -1,0 +1,10 @@
+dir: mocks
+structname: '{{.InterfaceName}}'
+filename: '{{.InterfaceName}}.go'
+pkgname: mocks
+template: testify
+packages:
+  github.com/c2fo/vfs/contrib/backend/onedrive/types:
+    interfaces:
+      Client: {}
+      UploadSession: {}

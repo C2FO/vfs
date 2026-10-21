@@ -88,6 +88,7 @@ This snippet shows the basic setup: an osFile is created from a URI and written 
 These backends are maintained in `contrib/backend/` as separate Go modules:
 
 * [Dropbox backend](contrib/backend/dropbox/README.md) - Dropbox cloud storage
+* [OneDrive backend](contrib/backend/onedrive/README.md) - Microsoft OneDrive/SharePoint via Graph API
 
 See [contrib/backend/README.md](contrib/backend/README.md) for guidelines on contributing new backends.
 
