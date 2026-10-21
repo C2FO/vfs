@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [[contrib/backend/gdrive/v0.1.0](https://github.com/C2FO/vfs/releases/tag/contrib%2Fbackend%2Fgdrive%2Fv0.1.0)] - 2026-10-21
 ### Fixed
 - POST requests (folder create, new-file upload, copy) are no longer retried on 429, 503, or a rate-limit 403, because Drive can apply the request and still return those statuses.
 - A resumable upload stops when a 308 does not advance the received offset, and the chunk that reaches the file size fails if Drive does not return a file resource.
