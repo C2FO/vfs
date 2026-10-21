@@ -457,16 +457,19 @@ func isGet(r *http.Request) bool { return r.Method == http.MethodGet }
 func (s *DriveClientTestSuite) TestNonIdempotentRequestsRetryOnlyThrottling() {
 	s.upload("r/f.txt", "x")
 
-	// POST (create upload) with a 500 must not be retried: it could have created the file.
-	s.drive.fault(&fakeFault{match: func(r *http.Request) bool { return r.Method == http.MethodPost }, status: 500, times: 1})
-	_, err := s.client.Upload(s.ctx, "r/new.txt", strings.NewReader("y"))
-	s.Require().Error(err)
+	// A POST that Drive applied and then answered 500, 429, or 503 must not be sent again.
+	for _, status := range []int{http.StatusInternalServerError, http.StatusTooManyRequests, http.StatusServiceUnavailable} {
+		s.drive.faults = nil
+		s.drive.fault(&fakeFault{match: isPost, status: status, times: 1})
+		before := s.countRequests("POST ")
 
-	// but a 429 on POST is safe to retry
-	s.drive.fault(&fakeFault{match: func(r *http.Request) bool { return r.Method == http.MethodPost }, status: 429, times: 1})
-	_, err = s.client.Upload(s.ctx, "r/new.txt", strings.NewReader("y"))
-	s.Require().NoError(err)
+		_, err := s.client.Upload(s.ctx, "r/new.txt", strings.NewReader("y"))
+		s.Require().Error(err)
+		s.Equal(1, s.countRequests("POST ")-before, "status %d", status)
+	}
 }
+
+func isPost(r *http.Request) bool { return r.Method == http.MethodPost }
 
 func (s *DriveClientTestSuite) TestStaleFolderCacheRecovers() {
 	s.upload("cache/f.txt", "x")
@@ -622,6 +625,30 @@ func (s *DriveClientTestSuite) TestMissingFileKeepsFolderCache() {
 	_, err = s.client.GetItem(s.ctx, "keep/missing.txt")
 	s.Require().ErrorIs(err, ErrNotFound)
 	s.Len(s.drive.requestLog()[before:], 2, "walk to the folder plus the lookup")
+}
+
+func (s *DriveClientTestSuite) TestMissingDescendantOfCachedFolderKeepsCache() {
+	s.upload("keep/f.txt", "x")
+	before := len(s.drive.requestLog())
+
+	_, err := s.client.GetItem(s.ctx, "keep/missing/child.txt")
+	s.Require().ErrorIs(err, ErrNotFound)
+
+	_, ok := s.client.cachedFolder("keep")
+	s.True(ok, "a missing child of a live cached folder must not flush the cache")
+	s.Len(s.drive.requestLog()[before:], 2, "one lookup plus one check that the cached folder still exists")
+}
+
+func (s *DriveClientTestSuite) TestFolderSharingNameWithFileIsAmbiguous() {
+	s.drive.addFolder("reports")
+	s.drive.addFile("root", "reports", []byte("not a folder"))
+
+	_, err := s.client.GetItem(s.ctx, "reports/q1.csv")
+	s.Require().ErrorIs(err, ErrAmbiguous)
+
+	_, err = s.client.Upload(s.ctx, "reports/q1.csv", strings.NewReader("x"))
+	s.Require().ErrorIs(err, ErrAmbiguous)
+	s.Equal(1, s.drive.liveFiles(), "the ambiguous name was not written into")
 }
 
 func (s *DriveClientTestSuite) TestStaleCachedFolderDetectedOnResolve() {

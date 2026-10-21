@@ -238,28 +238,32 @@ func (c *driveClient) invalidate() {
 	clear(c.folders)
 }
 
-// folderChild picks the single folder named name from a lookup result.
-func folderChild(items []Item, name string) (*Item, error) {
-	var folder *Item
-	nonFolders := 0
-	for i := range items {
-		if !items[i].IsFolder {
-			nonFolders++
-			continue
+// cachedPrefix returns the deepest cached folder ID along folderPath.
+func (c *driveClient) cachedPrefix(folderPath string) (string, bool) {
+	segs := folderSegments(folderPath)
+	for i := len(segs); i > 0; i-- {
+		if id, ok := c.cachedFolder(strings.Join(segs[:i], "/")); ok {
+			return id, true
 		}
-		if folder != nil {
-			return nil, fmt.Errorf("%w: folder %q", ErrAmbiguous, name)
-		}
-		folder = &items[i]
 	}
+	return "", false
+}
 
-	if folder == nil && nonFolders > 0 {
-		return nil, fmt.Errorf("%w: %q", ErrNotFolder, name)
-	}
-	if folder == nil {
+// folderChild returns the folder named name. The name must match exactly one item, and that item
+// must be a folder: a folder that shares its name with a file is ErrAmbiguous, because a path cannot
+// say which one it means.
+func folderChild(items []Item, name string) (*Item, error) {
+	switch len(items) {
+	case 0:
 		return nil, fmt.Errorf("%w: folder %q", ErrNotFound, name)
+	case 1:
+		if !items[0].IsFolder {
+			return nil, fmt.Errorf("%w: %q", ErrNotFolder, name)
+		}
+		return &items[0], nil
+	default:
+		return nil, fmt.Errorf("%w: folder %q", ErrAmbiguous, name)
 	}
-	return folder, nil
 }
 
 // resolveFolder returns the ID of the folder at folderPath, and whether any part of it came from the
@@ -359,11 +363,15 @@ func (c *driveClient) folderGone(ctx context.Context, id string) (bool, error) {
 // dropped and fn run once more. fn must therefore be safe to repeat after it failed with ErrNotFound.
 func (c *driveClient) withFolder(ctx context.Context, folderPath string, create bool, fn func(folderID string) error) error {
 	id, fromCache, err := c.resolveFolder(ctx, folderPath, create)
-	if err != nil && !fromCache {
-		return err
-	}
-
-	if err == nil {
+	if err != nil {
+		stale, serr := c.cachedFolderStale(ctx, folderPath, fromCache, err)
+		if serr != nil {
+			return serr
+		}
+		if !stale {
+			return err
+		}
+	} else {
 		err = fn(id)
 		if !fromCache || !errors.Is(err, ErrNotFound) {
 			return err
@@ -376,8 +384,6 @@ func (c *driveClient) withFolder(ctx context.Context, folderPath string, create 
 		if !gone {
 			return err
 		}
-	} else if !errors.Is(err, ErrNotFound) {
-		return err
 	}
 
 	c.invalidate()
@@ -386,6 +392,19 @@ func (c *driveClient) withFolder(ctx context.Context, folderPath string, create 
 		return err
 	}
 	return fn(id)
+}
+
+// cachedFolderStale reports whether err is a not-found from a path that used a cached folder ID
+// which has since been deleted. A cached folder that still exists is left in the cache.
+func (c *driveClient) cachedFolderStale(ctx context.Context, folderPath string, fromCache bool, err error) (bool, error) {
+	if !fromCache || !errors.Is(err, ErrNotFound) {
+		return false, nil
+	}
+	cachedID, ok := c.cachedPrefix(folderPath)
+	if !ok {
+		return false, nil
+	}
+	return c.folderGone(ctx, cachedID)
 }
 
 // rootItem is the synthetic item for the drive root.
@@ -707,6 +726,17 @@ func (s *uploadSession) UploadChunk(ctx context.Context, data []byte, offset int
 			}
 		} else if item != nil {
 			return item, nil
+		} else if next == offset {
+			// A 308 that reports no new bytes, including one with no Range header, must not spin.
+			// A status query after a failed PUT can legitimately report the same offset.
+			if failures >= s.client.retryCount {
+				return nil, fmt.Errorf("gdrive: upload session made no progress at offset %d", offset)
+			}
+			failures++
+			if serr := s.client.sleep(ctx, backoff(failures-1)); serr != nil {
+				return nil, serr
+			}
+			continue
 		}
 
 		if next < offset || next > end {
@@ -715,6 +745,9 @@ func (s *uploadSession) UploadChunk(ctx context.Context, data []byte, offset int
 		offset = next
 	}
 
+	if end >= s.total {
+		return nil, fmt.Errorf("gdrive: upload session accepted %d bytes but did not finish the file", s.total)
+	}
 	return nil, nil
 }
 

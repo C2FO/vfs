@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- POST requests (folder create, new-file upload, copy) are no longer retried on 429, 503, or a rate-limit 403, because Drive can apply the request and still return those statuses.
+- A resumable upload stops when a 308 does not advance the received offset, and the chunk that reaches the file size fails if Drive does not return a file resource.
+- Transport errors no longer include the resumable upload session ID. A folder that shares its name with a file is `ErrAmbiguous`. A missing child of a cached folder no longer flushes the folder cache.
+
 ### Added
 - Initial commit of the Google Drive community-contributed backend (`gdrive://`), backed by a small Drive v3 REST client over `net/http` with `golang.org/x/oauth2` authentication (access token, token source, service account, Application Default Credentials, device code), `drive` or `drive.file` scope, shared drive selection via the location authority, and `WithBaseURL`/`WithHTTPClient` for proxies or test servers.
 - Documented VFS semantics for Drive's ID-based model in `DESIGN.md`: path resolution with a folder-ID cache, `ErrAmbiguous` for duplicate names, a folder guard on file operations, permanent delete by default (`WithTrashOnDelete` to trash), `ErrNotDownloadable`/`WithExportMimeType` for Google-native files, multipart and resumable uploads.

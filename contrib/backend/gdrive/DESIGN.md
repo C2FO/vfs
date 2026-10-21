@@ -25,8 +25,11 @@ shared drives). Names are escaped for the query language (`\` and `'`). Resolved
 are cached for one minute; a file is always re-resolved so external edits are never masked. When an
 operation reports not-found while relying on a cached folder ID, the folder is checked
 (`files.get fields=id,trashed`); only if it is deleted or trashed is the cache dropped and the
-operation re-run once. A plain miss therefore costs one request and leaves the cache intact. A
-segment that resolves to a file fails with `ErrNotFolder`, which `Exists`/`List` treat as absent.
+operation re-run once. That includes a missing child of a cached folder: the cached folder is
+checked, and when it still exists the not-found is returned with the cache left intact. A plain miss
+therefore costs one request. A segment that resolves to a file fails with `ErrNotFolder`, which
+`Exists`/`List` treat as absent. A segment that matches more than one item, including a folder that
+shares its name with a file, fails with `ErrAmbiguous`.
 
 Folder creation is serialized per client (re-checking the cache and re-listing under the lock), so
 parallel writers in one process share a new folder rather than each creating a same-named duplicate.
@@ -75,9 +78,12 @@ file). `Close` uploads when anything was written. This provides all 18 Read/Writ
 
 Uploads up to 5 MiB use a single `uploadType=multipart` request. Larger files use
 `uploadType=resumable` in chunks that are a multiple of 256 KiB (default 8 MiB); the session
-answers `308` for intermediate chunks and `200/201` after the last. Chunk PUTs bypass the generic
-retry loop: after a transient failure (5xx, 408, 429, rate-limit 403, transport error) the session is
-queried (`Content-Range: bytes */total`) and only the missing bytes are sent, up to the retry count.
+answers `308` for intermediate chunks and `200/201` after the last. A `308` that does not advance
+the received offset counts against the retry limit, and the chunk that reaches the file's total must
+come back with a file resource. Chunk PUTs bypass the generic retry loop: after a transient failure
+(5xx, 408, 429, rate-limit 403, transport error) the session is queried
+(`Content-Range: bytes */total`) and only the missing bytes are sent, up to the retry count.
+`429`, `503`, and rate-limit `403` responses are retried only for idempotent methods.
 
 ## Timeouts and logging
 
@@ -86,8 +92,8 @@ the whole exchange; for downloads it covers the wait for headers and then acts a
 between body reads, so long downloads only fail when they stall. A timeout surfaces as `ErrTimeout`
 and is retried like any transport error. The opt-in `RequestLogger` callback receives one
 `RequestLog` per attempt (method, URL, attempt, status, duration, error). The caller maps that onto
-its own logger. Resumable session `upload_id`s are redacted there and in error messages, and the
-`Authorization` header is never included.
+its own logger. Resumable session `upload_id`s are redacted from logged URLs, from `*url.Error`
+values, and from other error messages, and the `Authorization` header is never included.
 
 ## Touch
 

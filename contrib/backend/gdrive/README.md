@@ -119,8 +119,9 @@ decisions is in [DESIGN.md](./DESIGN.md); the ones that matter in practice:
   the session is asked how much it received and only the rest is sent (up to `WithRetryCount` times).
 - **`Touch`** creates an empty file, or sets the modification time of an existing one without touching content.
 - **Rate limits.** `429`, `503` and Drive's rate-limit `403` responses are retried with backoff
-  (honoring `Retry-After`). Other server errors are retried only for idempotent requests, so a create is
-  never duplicated.
+  (honoring `Retry-After`) for idempotent requests only. A create, a new-file upload, and a copy are
+  not retried: Drive can apply the POST and still return one of those statuses, and a second POST
+  would leave two items with the same name.
 - **Concurrent writers.** Folder creation is serialized within one `FileSystem`, so parallel writes into
   a new folder share it. Drive itself has no locking and no atomic create-if-absent by name, so two
   *processes* creating the same new path at once can still produce duplicates, which then surface as

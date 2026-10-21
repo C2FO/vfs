@@ -74,8 +74,8 @@ func jsonRequest(method, u string, v any) (request, error) {
 }
 
 // do sends a request, retrying transient failures, and returns a 2xx response whose body the caller
-// must close. Only idempotent methods retry transport errors, 5xx and 408; every method retries 429,
-// 503 and Drive's rate-limit 403s.
+// must close. Only idempotent methods are retried. Drive can apply a POST and still answer 429 or
+// 503, so retrying a folder create, a new-file upload, or a copy could create a second item.
 func (c *driveClient) do(ctx context.Context, r request) (*http.Response, error) {
 	for attempt := 0; ; attempt++ {
 		resp, err := c.send(ctx, r, attempt)
@@ -116,6 +116,7 @@ func (c *driveClient) finalError(r request, apiErr *apiError, err error) error {
 func (c *driveClient) send(ctx context.Context, r request, attempt int) (*http.Response, error) {
 	start := time.Now()
 	resp, err := c.sendTimed(ctx, r)
+	err = redactErr(err)
 	c.logRequest(ctx, r, attempt, start, resp, err)
 	return resp, err
 }
@@ -239,6 +240,16 @@ func (c *driveClient) logRequest(ctx context.Context, r request, attempt int, st
 	c.logger(ctx, rec)
 }
 
+// redactErr removes an upload session ID from a *url.Error. http.Client.Do puts the raw request URL
+// in that error, and the session ID authorizes writes to the upload.
+func redactErr(err error) error {
+	var uerr *url.Error
+	if err == nil || !errors.As(err, &uerr) {
+		return err
+	}
+	return fmt.Errorf("%s %q: %w", uerr.Op, redactURL(uerr.URL), uerr.Err)
+}
+
 // redactURL drops the upload session ID, which authorizes writes to the session, from a URL meant
 // for logs or error messages.
 func redactURL(raw string) string {
@@ -286,15 +297,16 @@ func backoff(attempt int) time.Duration {
 }
 
 func retryableStatus(method string, e *apiError) bool {
+	if !isIdempotent(method) {
+		return false
+	}
 	switch e.StatusCode {
-	case http.StatusTooManyRequests, http.StatusServiceUnavailable:
+	case http.StatusTooManyRequests, http.StatusServiceUnavailable, http.StatusRequestTimeout:
 		return true
 	case http.StatusForbidden:
 		return isRateLimitReason(e.Reason)
-	case http.StatusRequestTimeout:
-		return isIdempotent(method)
 	}
-	return e.StatusCode >= 500 && isIdempotent(method)
+	return e.StatusCode >= 500
 }
 
 func isRateLimitReason(reason string) bool {
