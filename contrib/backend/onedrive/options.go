@@ -55,8 +55,9 @@ type Options struct {
 	// SiteID is the SharePoint site ID for accessing site drives.
 	SiteID string
 
-	// ChunkSize is the upload-session chunk size for files larger than 4MB (default: 5MB).
-	// Graph requires a multiple of 320KiB, so it is rounded down to one (minimum 320KiB).
+	// ChunkSize is the upload-session chunk size for files larger than 4MB (default: 5MiB).
+	// Graph requires a multiple of 320KiB, so it is rounded down to one (minimum 320KiB), and
+	// rejects chunks above 60MiB, which fail the upload locally.
 	ChunkSize int64
 
 	// TempDir is the directory for temporary files used during read/write operations.
@@ -66,8 +67,8 @@ type Options struct {
 	// RetryCount is the number of times a throttled (429) or transient 5xx request is retried (default: 3).
 	RetryCount int
 
-	// BaseURL is the Microsoft Graph endpoint (default: DefaultBaseURL). Override it for national
-	// clouds or to point the backend at a mock server in tests.
+	// BaseURL is the Microsoft Graph endpoint (default: DefaultBaseURL). Override it to point the
+	// backend at a mock server or proxy; token acquisition still uses the public cloud.
 	BaseURL string
 
 	// HTTPClient is used for all Graph requests (default: http.DefaultClient).

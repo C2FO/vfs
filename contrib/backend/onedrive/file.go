@@ -20,6 +20,9 @@ const (
 	// maxSimpleUploadSize is Graph's limit for a single-request upload.
 	maxSimpleUploadSize = 4 * 1024 * 1024
 
+	// maxUploadChunkSize is Graph's limit for a single upload-session fragment.
+	maxUploadChunkSize = 60 * 1024 * 1024
+
 	// uploadChunkMultiple is the granularity Graph requires for every upload-session chunk except the last.
 	uploadChunkMultiple = 320 * 1024
 )
@@ -169,19 +172,20 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 }
 
 // Close uploads any written content and releases local resources.
+//
+// When the upload fails, the written content and its temp file are kept so the caller can retry
+// Close. A caller that abandons the write instead must call Delete, which discards the local
+// content and removes the remote file (a file that was never uploaded reports not found, after
+// the local content has already been discarded).
 func (f *File) Close() error {
-	var uploadErr error
 	if f.writeCalled && f.tempFile != nil {
-		uploadErr = f.upload(f.tempFile)
+		if err := f.upload(f.tempFile); err != nil {
+			return utils.WrapCloseError(err)
+		}
 	}
 
-	cleanupErr := f.reset()
-
-	if uploadErr != nil {
-		return utils.WrapCloseError(uploadErr)
-	}
-	if cleanupErr != nil {
-		return utils.WrapCloseError(cleanupErr)
+	if err := f.reset(); err != nil {
+		return utils.WrapCloseError(err)
 	}
 
 	return nil
@@ -239,8 +243,14 @@ func (f *File) CopyToFile(targetFile vfs.File) (err error) {
 	}
 
 	defer func() {
-		if cerr := targetFile.Close(); cerr != nil && err == nil {
-			err = utils.WrapCopyToFileError(cerr)
+		if cerr := targetFile.Close(); cerr != nil {
+			// The copy is over, so nobody can retry Close; release the retained temp file.
+			if tf, ok := targetFile.(*File); ok {
+				_ = tf.reset()
+			}
+			if err == nil {
+				err = utils.WrapCopyToFileError(cerr)
+			}
 		}
 		if cerr := f.Close(); cerr != nil && err == nil {
 			err = utils.WrapCopyToFileError(cerr)
@@ -257,8 +267,10 @@ func (f *File) CopyToFile(targetFile vfs.File) (err error) {
 		if err == nil {
 			return nil
 		}
-		// Copy needs an existing destination folder; a streamed upload creates missing folders.
-		if !errors.Is(err, ErrNotFound) {
+		// Copy needs an existing destination folder, and personal accounts ignore
+		// conflictBehavior=replace and fail on an existing target. A streamed upload creates
+		// missing folders and overwrites in place on every account type.
+		if !errors.Is(err, ErrNotFound) && !errors.Is(err, errNameConflict) {
 			return utils.WrapCopyToFileError(err)
 		}
 	}
@@ -300,8 +312,9 @@ func (f *File) MoveToFile(targetFile vfs.File) error {
 		if err == nil {
 			return nil
 		}
-		// Move needs an existing destination folder; copy-then-delete creates missing folders.
-		if !errors.Is(err, ErrNotFound) {
+		// Move needs an existing destination folder and, on personal accounts, a free target
+		// name; copy-then-delete handles both.
+		if !errors.Is(err, ErrNotFound) && !errors.Is(err, errNameConflict) {
 			return utils.WrapMoveToFileError(err)
 		}
 	}
@@ -425,12 +438,18 @@ func (f *File) upload(src *os.File) error {
 func (f *File) chunkedUpload(client Client, src *os.File, size int64) error {
 	ctx := context.Background()
 
+	configured := f.location.fileSystem.options.ChunkSize
+	if configured > maxUploadChunkSize {
+		return fmt.Errorf("onedrive: chunk size %d exceeds Graph's maximum of %d bytes", configured, maxUploadChunkSize)
+	}
+
 	session, err := client.CreateUploadSession(ctx, f.oneDrivePath())
 	if err != nil {
 		return err
 	}
 
-	chunk := make([]byte, chunkSize(f.location.fileSystem.options.ChunkSize))
+	var item *DriveItem
+	chunk := make([]byte, chunkSize(configured))
 	for offset := int64(0); offset < size; {
 		n, err := src.ReadAt(chunk, offset)
 		if err != nil && !errors.Is(err, io.EOF) {
@@ -442,11 +461,30 @@ func (f *File) chunkedUpload(client Client, src *os.File, size int64) error {
 			return fmt.Errorf("onedrive: temp file shorter than expected %d bytes", size)
 		}
 
-		if _, err := session.UploadChunk(ctx, chunk[:n], offset, size); err != nil {
+		if item, err = session.UploadChunk(ctx, chunk[:n], offset, size); err != nil {
 			_ = session.Cancel(ctx)
 			return err
 		}
 		offset += int64(n)
+	}
+
+	return f.verifyCommitted(ctx, client, item, size)
+}
+
+// verifyCommitted confirms the session committed the file. The chunk that reaches the end must
+// return the new item; when it does not (a 202, or a range Graph had already received), the file
+// is looked up and must have the full size.
+func (f *File) verifyCommitted(ctx context.Context, client Client, item *DriveItem, size int64) error {
+	if item != nil {
+		return nil
+	}
+
+	found, err := client.GetItem(ctx, f.oneDrivePath())
+	if err != nil {
+		return fmt.Errorf("onedrive: upload session did not return the new file: %w", err)
+	}
+	if found.Size != size {
+		return fmt.Errorf("onedrive: upload session left %s at %d bytes, expected %d", f.Path(), found.Size, size)
 	}
 
 	return nil

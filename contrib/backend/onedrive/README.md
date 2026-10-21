@@ -144,7 +144,7 @@ fs := onedrive.NewFileSystem(
 
 ### Drive Selection
 
-By default, the backend accesses the authenticated user's OneDrive. For application permissions, you must specify which drive to access:
+By default, the backend accesses the authenticated user's OneDrive. Client credentials have no signed-in user, so they must specify which drive to access (without one, the first operation fails with an error naming `WithUserDrive`, `WithSiteDrive`, and `WithDriveID`):
 
 #### Access a Specific User's Drive
 
@@ -185,10 +185,10 @@ fs := onedrive.NewFileSystem(
 | `WithUserDrive(userID)` | Access a specific user's drive | - |
 | `WithSiteDrive(siteID, driveID)` | Access a SharePoint site drive | - |
 | `WithDriveID(driveID)` | Access a specific drive by ID | - |
-| `WithChunkSize(size)` | Chunk size for large file uploads (rounded down to a multiple of 320 KiB) | 5 MiB |
+| `WithChunkSize(size)` | Chunk size for large file uploads (rounded down to a multiple of 320 KiB, at most 60 MiB) | 5 MiB |
 | `WithTempDir(dir)` | Temporary directory for buffering | os.TempDir() |
 | `WithRetryCount(count)` | Retry attempts for 429 and 5xx responses | 3 |
-| `WithBaseURL(url)` | Graph API base URL (national clouds, proxies, or a test server) | `https://graph.microsoft.com/v1.0` |
+| `WithBaseURL(url)` | Graph API base URL (proxies or a test server; token acquisition stays on the public cloud, so national clouds are not supported) | `https://graph.microsoft.com/v1.0` |
 | `WithHTTPClient(client)` | HTTP client used for all Graph requests | `http.DefaultClient` |
 | `WithClient(client)` | Custom `Client` implementation (for testing) | - |
 
@@ -242,6 +242,21 @@ individual requests.
 Graph copies run asynchronously. `CopyToFile`/`CopyToLocation` wait for the copy to finish (polling
 Graph's monitor URL) before returning. Copies and moves overwrite an existing destination. When the
 destination folder does not exist yet, the content is streamed instead.
+
+Native copies and moves ask Graph to replace an existing target with `conflictBehavior=replace`.
+Microsoft documents that parameter as unsupported for personal OneDrive accounts; when Graph reports
+`nameAlreadyExists`, the backend falls back to a streamed copy (or copy-then-delete for a move),
+which overwrites in place on every account type. On work/school drives Graph's replace deletes the
+existing item, so the target loses its version history and takes the destination folder's
+permissions; a streamed overwrite keeps the item and adds a version.
+
+### Closing After a Failed Upload
+
+When the upload on `Close` fails, the written content stays in its temp file so `Close` can be
+retried. To abandon the write instead, call `Delete`, which discards the local content (and removes
+the remote file, reporting not found if it was never uploaded). The final upload-session chunk must
+return the committed file; otherwise the backend looks it up and fails the `Close` unless it has the
+full size.
 
 ### `%` in Folder Names
 

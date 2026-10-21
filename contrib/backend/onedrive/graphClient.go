@@ -17,6 +17,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 )
 
 const (
@@ -39,6 +40,20 @@ const (
 // otherwise happily delete, move or copy the folder and everything in it.
 var errIsFolder = errors.New("onedrive: path is a folder, not a file")
 
+// errNameConflict is matched (via errors.Is) by Graph's nameAlreadyExists failures, which personal
+// OneDrive accounts return for a copy or move onto an existing name because they ignore
+// conflictBehavior=replace.
+var errNameConflict = errors.New("onedrive: an item with that name already exists")
+
+// errDriveRequired is returned when app-only credentials have no drive to address; /me/drive only
+// exists for a signed-in user.
+var errDriveRequired = errors.New(
+	"onedrive: client credentials have no signed-in user, so a drive is required: " +
+		"use WithUserDrive, WithSiteDrive, or WithDriveID")
+
+// tokenRefreshSkew is how long before expiry a cached access token is replaced.
+const tokenRefreshSkew = 5 * time.Minute
+
 // graphClient implements Client against the Microsoft Graph REST API.
 type graphClient struct {
 	baseURL    string
@@ -55,6 +70,13 @@ type graphClient struct {
 	sleep            func(ctx context.Context, d time.Duration) error
 
 	driveMu sync.Mutex
+
+	// appOnly is true for client-credentials auth, which has no /me drive.
+	appOnly bool
+
+	tokenMu sync.Mutex
+	token   azcore.AccessToken
+	now     func() time.Time
 }
 
 func newGraphClient(cred azcore.TokenCredential, opts *Options) *graphClient {
@@ -68,7 +90,7 @@ func newGraphClient(cred azcore.TokenCredential, opts *Options) *graphClient {
 		baseURL = DefaultBaseURL
 	}
 
-	return &graphClient{
+	gc := &graphClient{
 		baseURL:          strings.TrimSuffix(baseURL, "/"),
 		httpClient:       httpClient,
 		cred:             cred,
@@ -79,7 +101,11 @@ func newGraphClient(cred azcore.TokenCredential, opts *Options) *graphClient {
 		copyPollInterval: defaultCopyPollInterval,
 		copyTimeout:      defaultCopyTimeout,
 		sleep:            sleepContext,
+		now:              time.Now,
 	}
+	_, gc.appOnly = cred.(*azidentity.ClientSecretCredential)
+
+	return gc
 }
 
 func sleepContext(ctx context.Context, d time.Duration) error {
@@ -107,9 +133,16 @@ func (e *apiError) Error() string {
 	return fmt.Sprintf("onedrive: graph request failed with status %d (%s): %s", e.StatusCode, e.Code, e.Message)
 }
 
-// Is makes errors.Is(err, ErrNotFound) true for 404 responses.
+// Is makes errors.Is(err, ErrNotFound) true for 404 responses and errors.Is(err, errNameConflict)
+// true for nameAlreadyExists.
 func (e *apiError) Is(target error) bool {
-	return target == ErrNotFound && e.StatusCode == http.StatusNotFound
+	switch target {
+	case ErrNotFound:
+		return e.StatusCode == http.StatusNotFound
+	case errNameConflict:
+		return e.Code == "nameAlreadyExists"
+	}
+	return false
 }
 
 type driveItemJSON struct {
@@ -332,7 +365,8 @@ func (c *graphClient) waitForCopy(ctx context.Context, monitorURL string) error 
 			return nil
 		}
 		if status.Status == "failed" {
-			return fmt.Errorf("onedrive: copy failed (%s): %s", status.Error.Code, status.Error.Message)
+			failure := &apiError{Code: status.Error.Code, Message: status.Error.Message}
+			return fmt.Errorf("onedrive: copy failed (%s): %s: %w", status.Error.Code, status.Error.Message, failure)
 		}
 
 		if err := c.sleep(ctx, c.copyPollInterval); err != nil {
@@ -485,6 +519,8 @@ func (c *graphClient) resolveDriveID(ctx context.Context) (string, error) {
 		u = c.baseURL + "/sites/" + url.PathEscape(c.siteID) + "/drive"
 	case c.userID != "":
 		u = c.baseURL + "/users/" + url.PathEscape(c.userID) + "/drive"
+	case c.appOnly:
+		return "", errDriveRequired
 	default:
 		u = c.baseURL + "/me/drive"
 	}
@@ -597,6 +633,9 @@ func (c *graphClient) ensureFolder(ctx context.Context, folderPath string) (stri
 		item, err := c.GetItem(ctx, folderPath)
 		if err != nil {
 			return "", err
+		}
+		if !item.IsFolder {
+			return "", fmt.Errorf("onedrive: %s exists and is not a folder", folderPath)
 		}
 		return item.ID, nil
 	}
@@ -713,14 +752,33 @@ func (c *graphClient) newRequest(ctx context.Context, r request) (*http.Request,
 	}
 
 	if !r.anonymous {
-		token, err := c.cred.GetToken(ctx, policy.TokenRequestOptions{Scopes: []string{graphScope}})
+		token, err := c.accessToken(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("onedrive: acquiring access token: %w", err)
 		}
-		req.Header.Set("Authorization", "Bearer "+token.Token)
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
 	return req, nil
+}
+
+// accessToken returns a cached token until shortly before it expires. Some credentials, notably
+// the Azure CLI and PowerShell ones, run a subprocess on every GetToken call.
+func (c *graphClient) accessToken(ctx context.Context) (string, error) {
+	c.tokenMu.Lock()
+	defer c.tokenMu.Unlock()
+
+	if c.token.Token != "" && c.now().Add(tokenRefreshSkew).Before(c.token.ExpiresOn) {
+		return c.token.Token, nil
+	}
+
+	token, err := c.cred.GetToken(ctx, policy.TokenRequestOptions{Scopes: []string{graphScope}})
+	if err != nil {
+		return "", err
+	}
+	c.token = token
+
+	return token.Token, nil
 }
 
 func isIdempotent(method string) bool {

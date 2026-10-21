@@ -24,6 +24,20 @@ const (
 	optionNameHTTPClient         = "httpClient"
 )
 
+// clearAuth resets every authentication setting so that the last authentication option applied
+// is the one used, whatever was applied before it.
+func clearAuth(o *Options) {
+	o.AccessToken = ""
+	o.TenantID = ""
+	o.ClientID = ""
+	o.ClientSecret = ""
+	o.UseDefaultCredential = false
+	o.UseDeviceCode = false
+	o.DeviceCodeCallback = nil
+	o.UseInteractiveBrowser = false
+	o.RedirectURL = ""
+}
+
 // WithAccessToken sets the OAuth2 access token for OneDrive API authentication.
 func WithAccessToken(token string) options.NewFileSystemOption[FileSystem] {
 	return &accessTokenOpt{token: token}
@@ -34,6 +48,7 @@ type accessTokenOpt struct {
 }
 
 func (o *accessTokenOpt) Apply(fs *FileSystem) {
+	clearAuth(&fs.options)
 	fs.options.AccessToken = o.token
 }
 
@@ -57,6 +72,7 @@ type clientCredentialsOpt struct {
 }
 
 func (o *clientCredentialsOpt) Apply(fs *FileSystem) {
+	clearAuth(&fs.options)
 	fs.options.TenantID = o.tenantID
 	fs.options.ClientID = o.clientID
 	fs.options.ClientSecret = o.clientSecret
@@ -75,6 +91,7 @@ func WithDefaultCredential() options.NewFileSystemOption[FileSystem] {
 type defaultCredentialOpt struct{}
 
 func (o *defaultCredentialOpt) Apply(fs *FileSystem) {
+	clearAuth(&fs.options)
 	fs.options.UseDefaultCredential = true
 }
 
@@ -109,6 +126,7 @@ type deviceCodeOpt struct {
 }
 
 func (o *deviceCodeOpt) Apply(fs *FileSystem) {
+	clearAuth(&fs.options)
 	fs.options.ClientID = o.clientID
 	if o.tenantID != "" {
 		fs.options.TenantID = o.tenantID
@@ -149,6 +167,7 @@ type interactiveBrowserOpt struct {
 }
 
 func (o *interactiveBrowserOpt) Apply(fs *FileSystem) {
+	clearAuth(&fs.options)
 	fs.options.ClientID = o.clientID
 	if o.tenantID != "" {
 		fs.options.TenantID = o.tenantID
@@ -223,7 +242,8 @@ func (o *driveIDOpt) NewFileSystemOptionName() string {
 
 // WithChunkSize sets the chunk size for uploading large files.
 // Files larger than 4MB are uploaded using upload sessions with this chunk size.
-// Default is 4MB.
+// Default is 5MiB. The size is rounded down to a multiple of 320KiB, and Graph accepts at most
+// 60MiB per chunk; a larger size makes an upload fail before it starts.
 func WithChunkSize(size int64) options.NewFileSystemOption[FileSystem] {
 	return &chunkSizeOpt{size: size}
 }
@@ -276,8 +296,9 @@ func (o *retryCountOpt) NewFileSystemOptionName() string {
 	return optionNameRetryCount
 }
 
-// WithBaseURL overrides the Microsoft Graph endpoint, e.g. for a national cloud
-// ("https://graph.microsoft.us/v1.0") or a mock server in tests.
+// WithBaseURL overrides the Microsoft Graph endpoint, e.g. to target a mock server or proxy.
+// Only the Graph host changes: access tokens are still requested for the public cloud's Graph
+// scope from the public Azure AD authority, so national clouds are not supported.
 func WithBaseURL(baseURL string) options.NewFileSystemOption[FileSystem] {
 	return &baseURLOpt{baseURL: baseURL}
 }

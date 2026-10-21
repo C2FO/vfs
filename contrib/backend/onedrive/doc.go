@@ -32,7 +32,8 @@
 // # Authentication
 //
 // The backend calls the Microsoft Graph REST API directly over net/http. WithBaseURL and
-// WithHTTPClient override the endpoint and transport (for national clouds, proxies, or tests).
+// WithHTTPClient override the endpoint and transport (for proxies or tests). Token acquisition always
+// uses the public Azure cloud, so national clouds are not supported.
 //
 // OneDrive backend supports multiple authentication methods via Azure Identity:
 //

@@ -14,6 +14,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -364,6 +365,15 @@ func (s *GraphClientTestSuite) TestUploadUnderPercentFolder() {
 			expectedBody: []string{`{"name":"a%20b","folder":{},"@microsoft.graph.conflictBehavior":"fail"}`},
 		},
 		{
+			name:     "folder name taken by a file concurrently is an error",
+			itemPath: "a%20b/f.txt",
+			routes: map[string][]cannedResponse{
+				"GET /drives/drive1/root:/a%2520b":        {notFound, {200, `{"id":"p1","file":{}}`}},
+				"POST /drives/drive1/items/root/children": {{409, `{"error":{"code":"nameAlreadyExists"}}`}},
+			},
+			expectedError: "a%20b exists and is not a folder",
+		},
+		{
 			name:     "parent that is a file is an error",
 			itemPath: "a%20b/f.txt",
 			routes: map[string][]cannedResponse{
@@ -639,15 +649,22 @@ func (s *GraphClientTestSuite) TestCopy() {
 		writeJSON(w, 200, `{"status":"failed","error":{"code":"quotaLimitReached","message":"full"}}`)
 	}
 
+	nameConflict := func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, 200, `{"status":"failed","error":{"code":"nameAlreadyExists","message":"exists"}}`)
+	}
+
 	tests := []struct {
-		name           string
-		monitor        []monitorStep
-		expectedSleeps int
-		expectedError  string
+		name             string
+		monitor          []monitorStep
+		expectedSleeps   int
+		expectedError    string
+		expectedConflict bool
 	}{
 		{name: "polls until completed", monitor: []monitorStep{inProgress, inProgress, completed}, expectedSleeps: 2},
 		{name: "redirect means completed", monitor: []monitorStep{inProgress, redirect}, expectedSleeps: 1},
 		{name: "failed status", monitor: []monitorStep{failed}, expectedError: "quotaLimitReached"},
+		{name: "name conflict is detectable", monitor: []monitorStep{nameConflict}, expectedError: "nameAlreadyExists",
+			expectedConflict: true},
 	}
 
 	for _, tt := range tests {
@@ -659,6 +676,7 @@ func (s *GraphClientTestSuite) TestCopy() {
 			if tt.expectedError != "" {
 				s.Require().Error(err)
 				s.Contains(err.Error(), tt.expectedError)
+				s.Equal(tt.expectedConflict, errors.Is(err, errNameConflict))
 				return
 			}
 			s.Require().NoError(err)
@@ -979,7 +997,82 @@ func (s *GraphClientTestSuite) TestAPIErrorMessage() {
 		"onedrive: graph request failed with status 409 (nameAlreadyExists): exists",
 		(&apiError{StatusCode: 409, Code: "nameAlreadyExists", Message: "exists"}).Error(),
 	)
-	s.NotErrorIs(&apiError{StatusCode: 409}, ErrNotFound)
+	s.Require().NotErrorIs(&apiError{StatusCode: 409}, ErrNotFound)
+	s.Require().ErrorIs(&apiError{StatusCode: 409, Code: "nameAlreadyExists"}, errNameConflict)
+	s.Require().NotErrorIs(&apiError{StatusCode: 409, Code: "other"}, errNameConflict)
+}
+
+func (s *GraphClientTestSuite) TestClientCredentialsNeedADrive() {
+	cred, err := azidentity.NewClientSecretCredential("tenant", "client", "secret", nil)
+	s.Require().NoError(err)
+
+	tests := []struct {
+		name     string
+		opts     Options
+		expected bool
+	}{
+		{name: "no drive configured", opts: Options{}, expected: true},
+		{name: "drive id configured", opts: Options{DriveID: "d"}},
+	}
+
+	for i := range tests {
+		tt := &tests[i]
+		s.Run(tt.name, func() {
+			s.requests = nil
+			s.handler = func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 200, `{"id":"drive-from-graph"}`) }
+			opts := tt.opts
+			opts.BaseURL = s.server.URL
+
+			_, err := newGraphClient(cred, &opts).resolveDriveID(context.Background())
+			if tt.expected {
+				s.Require().ErrorIs(err, errDriveRequired)
+				s.Contains(err.Error(), "WithUserDrive")
+				s.Empty(s.requests, "fails before a request")
+				return
+			}
+			s.Require().NoError(err)
+		})
+	}
+}
+
+type countingCredential struct {
+	calls     int
+	expiresIn time.Duration
+	now       func() time.Time
+}
+
+func (c *countingCredential) GetToken(context.Context, policy.TokenRequestOptions) (azcore.AccessToken, error) {
+	c.calls++
+	return azcore.AccessToken{Token: fmt.Sprintf("token-%d", c.calls), ExpiresOn: c.now().Add(c.expiresIn)}, nil
+}
+
+func (s *GraphClientTestSuite) TestAccessTokenIsCached() {
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	cred := &countingCredential{expiresIn: time.Hour, now: func() time.Time { return now }}
+	c := newGraphClient(cred, &Options{})
+	c.now = func() time.Time { return now }
+
+	tests := []struct {
+		name          string
+		advance       time.Duration
+		expectedToken string
+	}{
+		{name: "first call fetches", expectedToken: "token-1"},
+		{name: "second call reuses", expectedToken: "token-1"},
+		{name: "reused until the refresh window", advance: 54 * time.Minute, expectedToken: "token-1"},
+		{name: "refreshed inside the window", advance: time.Minute, expectedToken: "token-2"},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			now = now.Add(tt.advance)
+
+			token, err := c.accessToken(context.Background())
+			s.Require().NoError(err)
+			s.Equal(tt.expectedToken, token)
+		})
+	}
+	s.Equal(2, cred.calls)
 }
 
 func (s *GraphClientTestSuite) TestRetryDelay() {

@@ -147,6 +147,18 @@ func (s *FileSystemTestSuite) TestCredentialSelection() {
 		{name: "access token wins over other options", opts: []options.NewFileSystemOption[FileSystem]{
 			WithDeviceCode("client", "", nil), WithAccessToken("tok"),
 		}, expectedType: staticTokenCredential("")},
+		{name: "device code after client credentials wins", opts: []options.NewFileSystemOption[FileSystem]{
+			WithClientCredentials("tenant", "client", "secret"), WithDeviceCode("client", "", nil),
+		}, expectedType: &azidentity.DeviceCodeCredential{}},
+		{name: "interactive browser after client credentials wins", opts: []options.NewFileSystemOption[FileSystem]{
+			WithClientCredentials("tenant", "client", "secret"), WithInteractiveBrowser("client", "", ""),
+		}, expectedType: &azidentity.InteractiveBrowserCredential{}},
+		{name: "client credentials after device code wins", opts: []options.NewFileSystemOption[FileSystem]{
+			WithDeviceCode("client", "", nil), WithClientCredentials("tenant", "client", "secret"),
+		}, expectedType: &azidentity.ClientSecretCredential{}},
+		{name: "device code after access token wins", opts: []options.NewFileSystemOption[FileSystem]{
+			WithAccessToken("tok"), WithDeviceCode("client", "", nil),
+		}, expectedType: &azidentity.DeviceCodeCredential{}},
 		{name: "access token from environment", env: map[string]string{"VFS_ONEDRIVE_ACCESS_TOKEN": "env-tok"},
 			expectedType: staticTokenCredential("")},
 		{name: "client credentials from environment", env: map[string]string{

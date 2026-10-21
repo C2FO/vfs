@@ -3,6 +3,7 @@ package onedrive
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -294,12 +295,34 @@ func (s *FileTestSuite) TestCloseWithoutWriteDoesNotUpload() {
 	s.Require().NoError(s.file.Close(), "Close is idempotent")
 }
 
-func (s *FileTestSuite) TestCloseUploadFailure() {
-	s.client.EXPECT().Upload(mock.Anything, "dir/file.txt", mock.Anything).Return(nil, errors.New("quota"))
+func (s *FileTestSuite) TestCloseUploadFailureCanBeRetried() {
+	s.client.EXPECT().Upload(mock.Anything, "dir/file.txt", withContent("x")).Return(nil, errors.New("quota")).Once()
+	s.expectUpload("dir/file.txt", "x")
 
 	_, err := s.file.Write([]byte("x"))
 	s.Require().NoError(err)
 	s.Require().ErrorContains(s.file.Close(), "quota")
+	s.Require().NoError(s.file.Close(), "the written content is kept for a retry")
+}
+
+func (s *FileTestSuite) TestDeleteDiscardsContentRetainedByFailedClose() {
+	s.client.EXPECT().Upload(mock.Anything, "dir/file.txt", mock.Anything).Return(nil, errors.New("quota")).Once()
+	s.client.EXPECT().Delete(mock.Anything, "dir/file.txt").Return(&apiError{StatusCode: 404}).Once()
+
+	_, err := s.file.Write([]byte("x"))
+	s.Require().NoError(err)
+	s.Require().ErrorContains(s.file.Close(), "quota")
+	s.Require().ErrorIs(s.file.Delete(), ErrNotFound, "never uploaded, so nothing remote to delete")
+	s.Require().NoError(s.file.Close(), "nothing is left to upload")
+}
+
+func (s *FileTestSuite) TestCopyToFileReleasesTargetAfterFailedClose() {
+	target := s.newFile("/new/copy.txt")
+	s.client.EXPECT().Copy(mock.Anything, "dir/file.txt", "new", "copy.txt").Return(&apiError{StatusCode: 404})
+	s.expectDownload("payload")
+	s.client.EXPECT().Upload(mock.Anything, "new/copy.txt", withContent("payload")).Return(nil, errors.New("quota")).Once()
+
+	s.Require().ErrorContains(s.file.CopyToFile(target), "quota")
 }
 
 func (s *FileTestSuite) TestLargeFileUsesUploadSession() {
@@ -314,6 +337,9 @@ func (s *FileTestSuite) TestLargeFileUsesUploadSession() {
 			s.Require().Equal(uploaded, offset, "chunks are contiguous")
 			s.Require().LessOrEqual(len(data), uploadChunkMultiple)
 			uploaded += int64(len(data))
+			if uploaded == size {
+				return &DriveItem{Size: size}, nil
+			}
 			return nil, nil
 		})
 
@@ -321,6 +347,68 @@ func (s *FileTestSuite) TestLargeFileUsesUploadSession() {
 	s.Require().NoError(err)
 	s.Require().NoError(s.file.Close())
 	s.Equal(int64(size), uploaded)
+}
+
+func (s *FileTestSuite) TestLargeFileFinalChunkWithoutItem() {
+	const size = maxSimpleUploadSize + 1
+	tests := []struct {
+		name          string
+		lookup        func()
+		expectedError string
+	}{
+		{
+			name: "file found at full size",
+			lookup: func() {
+				s.client.EXPECT().GetItem(mock.Anything, "dir/file.txt").Return(&DriveItem{Size: size}, nil).Once()
+			},
+		},
+		{
+			name: "file found at a different size",
+			lookup: func() {
+				s.client.EXPECT().GetItem(mock.Anything, "dir/file.txt").Return(&DriveItem{Size: 5}, nil).Once()
+			},
+			expectedError: "expected 4194305",
+		},
+		{
+			name: "file not found",
+			lookup: func() {
+				s.client.EXPECT().GetItem(mock.Anything, "dir/file.txt").Return(nil, &apiError{StatusCode: 404}).Once()
+			},
+			expectedError: "did not return the new file",
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			s.fs.options.ChunkSize = 16 * uploadChunkMultiple
+			session := mocks.NewUploadSession(s.T())
+			s.client.EXPECT().CreateUploadSession(mock.Anything, "dir/file.txt").Return(session, nil).Once()
+			session.EXPECT().UploadChunk(mock.Anything, mock.Anything, mock.Anything, int64(size)).Return(nil, nil)
+			tt.lookup()
+
+			f := s.newFile("/dir/file.txt")
+			_, err := f.Write(make([]byte, size))
+			s.Require().NoError(err)
+			if tt.expectedError == "" {
+				s.Require().NoError(f.Close())
+				return
+			}
+			s.Require().ErrorContains(f.Close(), tt.expectedError)
+			s.client.EXPECT().Delete(mock.Anything, "dir/file.txt").Return(nil).Once()
+			s.Require().NoError(f.Delete())
+		})
+	}
+}
+
+func (s *FileTestSuite) TestLargeFileChunkSizeAboveGraphLimit() {
+	s.fs.options.ChunkSize = maxUploadChunkSize + 1
+
+	_, err := s.file.Write(make([]byte, maxSimpleUploadSize+1))
+	s.Require().NoError(err)
+	s.Require().ErrorContains(s.file.Close(), "exceeds Graph's maximum")
+
+	s.client.EXPECT().Delete(mock.Anything, "dir/file.txt").Return(nil).Once()
+	s.Require().NoError(s.file.Delete())
 }
 
 func (s *FileTestSuite) TestLargeFileUploadErrors() {
@@ -331,6 +419,8 @@ func (s *FileTestSuite) TestLargeFileUploadErrors() {
 		_, err := f.Write(make([]byte, maxSimpleUploadSize+1))
 		s.Require().NoError(err)
 		s.Require().ErrorContains(f.Close(), "no session")
+		s.client.EXPECT().Delete(mock.Anything, "dir/file.txt").Return(nil).Once()
+		s.Require().NoError(f.Delete())
 	})
 
 	s.Run("chunk failure cancels session", func() {
@@ -343,6 +433,8 @@ func (s *FileTestSuite) TestLargeFileUploadErrors() {
 		_, err := f.Write(make([]byte, maxSimpleUploadSize+1))
 		s.Require().NoError(err)
 		s.Require().ErrorContains(f.Close(), "chunk failed")
+		s.client.EXPECT().Delete(mock.Anything, "dir/file.txt").Return(nil).Once()
+		s.Require().NoError(f.Delete())
 	})
 }
 
@@ -436,6 +528,31 @@ func (s *FileTestSuite) TestCopyToFileMissingDestinationFolderStreams() {
 	s.expectUpload("new/folder/copy.txt", "payload")
 
 	s.Require().NoError(s.file.CopyToFile(target))
+}
+
+func (s *FileTestSuite) TestCopyAndMoveOntoExistingNameStream() {
+	conflict := fmt.Errorf("copy failed: %w", &apiError{Code: "nameAlreadyExists"})
+
+	s.Run("copy", func() {
+		target := s.newFile("/other/copy.txt")
+		s.client.EXPECT().Copy(mock.Anything, "dir/file.txt", "other", "copy.txt").Return(conflict).Once()
+		s.expectDownload("payload")
+		s.expectUpload("other/copy.txt", "payload")
+
+		s.Require().NoError(s.file.CopyToFile(target))
+	})
+
+	s.Run("move", func() {
+		target := s.newFile("/other/moved.txt")
+		s.client.EXPECT().Move(mock.Anything, "dir/file.txt", "other", "moved.txt").
+			Return(nil, &apiError{StatusCode: 409, Code: "nameAlreadyExists"}).Once()
+		s.client.EXPECT().Copy(mock.Anything, "dir/file.txt", "other", "moved.txt").Return(conflict).Once()
+		s.expectDownload("payload")
+		s.expectUpload("other/moved.txt", "payload")
+		s.client.EXPECT().Delete(mock.Anything, "dir/file.txt").Return(nil).Once()
+
+		s.Require().NoError(s.file.MoveToFile(target))
+	})
 }
 
 func (s *FileTestSuite) TestCopyToFileNativeError() {
@@ -550,4 +667,5 @@ func (s *FileTestSuite) TestOperationsWithoutCredentials() {
 	_, err = f.Write([]byte("x"))
 	s.Require().NoError(err)
 	s.Require().ErrorIs(f.Close(), errCredentialsRequired)
+	s.Require().ErrorIs(f.Delete(), errCredentialsRequired, "Delete discards the retained write")
 }
