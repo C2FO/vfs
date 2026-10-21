@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [[v7.29.2](https://github.com/C2FO/vfs/releases/tag/v7.29.2)] - 2026-10-21
 ### Fixed
 - `testcontainers`: Replaced the `minio` conformance/IO container with Adobe's `adobe/s3mock` (pinned by tag and digest) for the `s3` backend. MinIO's community edition is now source-only and its images are no longer published (`quay.io/minio/minio` and `minio/minio` both refuse anonymous pulls), so the `testcontainers conformance` CI job failed to provision the `s3` container on every run, including the nightly run on `main`. Both the SSE-off and SSE-on `s3` configurations still run the full conformance and IO suites. Dropped the `testcontainers-go/modules/minio` dependency.
 
