@@ -1,7 +1,19 @@
 package gs
 
 import (
+	"context"
+	"errors"
+	"fmt"
+
+	"cloud.google.com/go/storage"
+	"google.golang.org/api/impersonate"
 	"google.golang.org/api/option"
+)
+
+const cloudPlatformScope = "https://www.googleapis.com/auth/cloud-platform"
+
+var errAPIKeyWithImpersonation = errors.New(
+	"cannot combine APIKey with ImpersonateServiceAccount: an API key can't impersonate a service account",
 )
 
 // Options holds Google Cloud Storage -specific options.  Currently only client options are used.
@@ -11,9 +23,17 @@ type Options struct {
 	Endpoint       string   `json:"endpoint,omitempty"`
 	Scopes         []string `json:"withoutAuthentication,omitempty"`
 	FileBufferSize int      `json:"fileBufferSize,omitempty"` // Buffer Size In Bytes Used with utils.TouchCopyBuffered
+	// ImpersonateServiceAccount is the email of a service account to impersonate. The base identity is CredentialFile
+	// if set, otherwise Application Default Credentials. It can't be combined with APIKey, and Endpoint and Scopes are
+	// ignored when it's set.
+	ImpersonateServiceAccount string `json:"impersonateServiceAccount,omitempty"`
 }
 
-func parseClientOptions(opts Options) []option.ClientOption {
+func parseClientOptions(ctx context.Context, opts Options) ([]option.ClientOption, error) {
+	if opts.ImpersonateServiceAccount != "" {
+		return impersonationClientOptions(ctx, opts)
+	}
+
 	var googleClientOpts []option.ClientOption
 	switch {
 	case opts.APIKey != "":
@@ -27,5 +47,27 @@ func parseClientOptions(opts Options) []option.ClientOption {
 		googleClientOpts = append(googleClientOpts, option.WithScopes(opts.Scopes...))
 	}
 
-	return googleClientOpts
+	return googleClientOpts, nil
+}
+
+func impersonationClientOptions(ctx context.Context, opts Options) ([]option.ClientOption, error) {
+	if opts.APIKey != "" {
+		return nil, errAPIKeyWithImpersonation
+	}
+
+	var baseOpts []option.ClientOption
+	if opts.CredentialFile != "" {
+		//nolint:staticcheck // Deprecated but functional
+		baseOpts = append(baseOpts, option.WithCredentialsFile(opts.CredentialFile))
+	}
+
+	ts, err := impersonate.CredentialsTokenSource(ctx, impersonate.CredentialsConfig{
+		TargetPrincipal: opts.ImpersonateServiceAccount,
+		Scopes:          []string{storage.ScopeFullControl, cloudPlatformScope},
+	}, baseOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("unable to impersonate service account %s: %w", opts.ImpersonateServiceAccount, err)
+	}
+
+	return []option.ClientOption{option.WithTokenSource(ts)}, nil
 }
