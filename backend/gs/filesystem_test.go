@@ -162,6 +162,9 @@ func (c *mockClientCreator) NewClient(ctx context.Context, opts ...option.Client
 }
 
 func (s *fileSystemSuite) TestClient() {
+	credentialFile, err := writeAuthorizedUserCredentials(s.T().TempDir())
+	s.Require().NoError(err)
+
 	testCases := []struct {
 		name         string
 		setup        func() *FileSystem
@@ -198,6 +201,29 @@ func (s *fileSystemSuite) TestClient() {
 			expectError:  true,
 			expectNotNil: false,
 		},
+		{
+			name: "Impersonation with ADC base",
+			setup: func() *FileSystem {
+				s.T().Setenv("GOOGLE_APPLICATION_CREDENTIALS", credentialFile)
+				return NewFileSystem(
+					WithContext(s.T().Context()),
+					WithOptions(Options{ImpersonateServiceAccount: testServiceAccount}),
+				)
+			},
+			expectError:  false,
+			expectNotNil: true,
+		},
+		{
+			name: "Impersonation with APIKey",
+			setup: func() *FileSystem {
+				return NewFileSystem(
+					WithContext(s.T().Context()),
+					WithOptions(Options{ImpersonateServiceAccount: testServiceAccount, APIKey: "test-api-key"}),
+				)
+			},
+			expectError:  true,
+			expectNotNil: false,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -217,6 +243,41 @@ func (s *fileSystemSuite) TestClient() {
 			} else {
 				s.Nil(client)
 			}
+		})
+	}
+}
+
+func (s *fileSystemSuite) TestGetClient() {
+	credentialFile, err := writeAuthorizedUserCredentials(s.T().TempDir())
+	s.Require().NoError(err)
+
+	tests := []struct {
+		name        string
+		input       Options
+		expectedErr error
+	}{
+		{
+			name:  "Impersonation with credential file base",
+			input: Options{ImpersonateServiceAccount: testServiceAccount, CredentialFile: credentialFile},
+		},
+		{
+			name:        "Impersonation with APIKey",
+			input:       Options{ImpersonateServiceAccount: testServiceAccount, APIKey: "test-api-key"},
+			expectedErr: errAPIKeyWithImpersonation,
+		},
+	}
+
+	for _, tt := range tests { //nolint:gocritic // rangeValCopy
+		s.Run(tt.name, func() {
+			client, err := GetClient(s.T().Context(), tt.input)
+			if tt.expectedErr != nil {
+				s.Require().ErrorIs(err, tt.expectedErr)
+				s.Nil(client)
+				return
+			}
+			s.Require().NoError(err)
+			s.Require().NotNil(client)
+			s.NoError(client.Close())
 		})
 	}
 }

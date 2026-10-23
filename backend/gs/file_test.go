@@ -581,27 +581,87 @@ func (ts *fileTestSuite) TestMoveAndCopyBuffered() {
 	}
 }
 
-func (ts *fileTestSuite) TestIsSameAuth_SameCredentialFile() {
-	fs := NewFileSystem(WithOptions(Options{CredentialFile: "/path/to/creds.json"}))
+func (ts *fileTestSuite) TestIsSameAuth() {
+	const otherServiceAccount = "other@test-project.iam.gserviceaccount.com"
 
-	src, err := fs.NewFile("bucket-a", "/source.txt")
-	ts.Require().NoError(err)
-	tgt, err := fs.NewFile("bucket-b", "/target.txt")
-	ts.Require().NoError(err)
+	tests := []struct {
+		name          string
+		sourceOptions Options
+		targetOptions Options
+		expected      bool
+	}{
+		{
+			name:          "Same service account, both without a credential file",
+			sourceOptions: Options{ImpersonateServiceAccount: testServiceAccount},
+			targetOptions: Options{ImpersonateServiceAccount: testServiceAccount},
+			expected:      true,
+		},
+		{
+			name:          "Same service account, same credential file",
+			sourceOptions: Options{ImpersonateServiceAccount: testServiceAccount, CredentialFile: "/path/to/creds.json"},
+			targetOptions: Options{ImpersonateServiceAccount: testServiceAccount, CredentialFile: "/path/to/creds.json"},
+			expected:      true,
+		},
+		{
+			name:          "Different service accounts",
+			sourceOptions: Options{ImpersonateServiceAccount: testServiceAccount},
+			targetOptions: Options{ImpersonateServiceAccount: otherServiceAccount},
+			expected:      false,
+		},
+		{
+			name:          "Same service account, different credential files",
+			sourceOptions: Options{ImpersonateServiceAccount: testServiceAccount, CredentialFile: "/path/to/source-creds.json"},
+			targetOptions: Options{ImpersonateServiceAccount: testServiceAccount, CredentialFile: "/path/to/target-creds.json"},
+			expected:      false,
+		},
+		{
+			name:          "Same service account, only one side has a credential file",
+			sourceOptions: Options{ImpersonateServiceAccount: testServiceAccount, CredentialFile: "/path/to/creds.json"},
+			targetOptions: Options{ImpersonateServiceAccount: testServiceAccount},
+			expected:      false,
+		},
+		{
+			name:          "Only the source impersonates, same credential file",
+			sourceOptions: Options{ImpersonateServiceAccount: testServiceAccount, CredentialFile: "/path/to/creds.json"},
+			targetOptions: Options{CredentialFile: "/path/to/creds.json"},
+			expected:      false,
+		},
+		{
+			name:          "Only the target impersonates, same credential file",
+			sourceOptions: Options{CredentialFile: "/path/to/creds.json"},
+			targetOptions: Options{ImpersonateServiceAccount: testServiceAccount, CredentialFile: "/path/to/creds.json"},
+			expected:      false,
+		},
+		{
+			name:          "Same credential file, no impersonation",
+			sourceOptions: Options{CredentialFile: "/path/to/creds.json"},
+			targetOptions: Options{CredentialFile: "/path/to/creds.json"},
+			expected:      true,
+		},
+		{
+			name:          "Different credential files, no impersonation",
+			sourceOptions: Options{CredentialFile: "/path/to/source-creds.json"},
+			targetOptions: Options{CredentialFile: "/path/to/target-creds.json"},
+			expected:      false,
+		},
+		{
+			name:          "Same APIKey",
+			sourceOptions: Options{APIKey: "test-api-key"},
+			targetOptions: Options{APIKey: "test-api-key"},
+			expected:      true,
+		},
+	}
 
-	ts.True(src.(*File).isSameAuth(&tgt.(*File).location.fileSystem.options))
-}
+	for _, tt := range tests { //nolint:gocritic // rangeValCopy
+		ts.Run(tt.name, func() {
+			src, err := NewFileSystem(WithOptions(tt.sourceOptions)).NewFile("bucket-a", "/source.txt")
+			ts.Require().NoError(err)
+			tgt, err := NewFileSystem(WithOptions(tt.targetOptions)).NewFile("bucket-b", "/target.txt")
+			ts.Require().NoError(err)
 
-func (ts *fileTestSuite) TestIsSameAuth_DifferentCredentialFile() {
-	sourceFs := NewFileSystem(WithOptions(Options{CredentialFile: "/path/to/source-creds.json"}))
-	targetFs := NewFileSystem(WithOptions(Options{CredentialFile: "/path/to/target-creds.json"}))
-
-	src, err := sourceFs.NewFile("bucket-a", "/source.txt")
-	ts.Require().NoError(err)
-	tgt, err := targetFs.NewFile("bucket-b", "/target.txt")
-	ts.Require().NoError(err)
-
-	ts.False(src.(*File).isSameAuth(&tgt.(*File).location.fileSystem.options))
+			ts.Equal(tt.expected, src.(*File).isSameAuth(&tgt.(*File).location.fileSystem.options))
+		})
+	}
 }
 
 func (ts *fileTestSuite) TestCopyToFileDifferentAuth() {
