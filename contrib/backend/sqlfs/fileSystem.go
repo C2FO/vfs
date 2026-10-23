@@ -27,6 +27,8 @@ const (
 	stateStaged     = 0
 	statePublished  = 1
 	stateSuperseded = 2
+	// stateReclaiming marks a revision that Cleanup has claimed for deletion; it never persists past the transaction.
+	stateReclaiming = 3
 )
 
 const (
@@ -160,14 +162,20 @@ func (fsys *FileSystem) opCtx(parent context.Context) (context.Context, context.
 
 // inTx runs fn in a transaction, retrying the whole transaction on transient database errors or when fn returns
 // errRetry. fn must be safe to run more than once.
-func (fsys *FileSystem) inTx(op string, fn func(ctx context.Context, tx txn) error) error {
+func (fsys *FileSystem) inTx(parent context.Context, op string, fn func(ctx context.Context, tx txn) error) error {
 	var err error
 	for attempt := range maxTxAttempts {
 		if attempt > 0 {
 			jitter := time.Duration(rand.IntN(10)) * time.Millisecond //nolint:gosec // jitter does not need a secure source
-			time.Sleep(time.Duration(attempt)*10*time.Millisecond + jitter)
+			timer := time.NewTimer(time.Duration(attempt)*10*time.Millisecond + jitter)
+			select {
+			case <-parent.Done():
+				timer.Stop()
+				return fsys.wrapErr(op, context.Cause(parent))
+			case <-timer.C:
+			}
 		}
-		err = fsys.runTx(fn)
+		err = fsys.runTx(parent, fn)
 		if err == nil {
 			return nil
 		}
@@ -178,8 +186,8 @@ func (fsys *FileSystem) inTx(op string, fn func(ctx context.Context, tx txn) err
 	return fsys.wrapErr(op, err)
 }
 
-func (fsys *FileSystem) runTx(fn func(ctx context.Context, tx txn) error) error {
-	ctx, cancel := fsys.opCtx(context.Background())
+func (fsys *FileSystem) runTx(parent context.Context, fn func(ctx context.Context, tx txn) error) error {
+	ctx, cancel := fsys.opCtx(parent)
 	defer cancel()
 
 	tx, err := fsys.q.BeginTx(ctx, nil)
@@ -237,6 +245,9 @@ func (fsys *FileSystem) lookupFile(ctx context.Context, q Execer, ns, dir, name 
 	if err != nil {
 		return nil, err
 	}
+	if r.chunkSize < MinChunkSize || r.chunkSize > MaxChunkSize {
+		return nil, fmt.Errorf("%w: file %s/%s has invalid chunk size %d", ErrCorrupt, dir, name, r.chunkSize)
+	}
 	return &r, nil
 }
 
@@ -270,9 +281,9 @@ func (fsys *FileSystem) ValidateSchema(ctx context.Context) error {
 
 // EnsureSchema creates or upgrades the schema to the version supported by this module. It is idempotent, safe to
 // run concurrently, and never performs destructive changes.
-func (fsys *FileSystem) EnsureSchema(_ context.Context) error {
+func (fsys *FileSystem) EnsureSchema(ctx context.Context) error {
 	latest := fsys.latestVersion()
-	return fsys.inTx("ensure schema", func(ctx context.Context, tx txn) error {
+	return fsys.inTx(ctx, "ensure schema", func(ctx context.Context, tx txn) error {
 		if err := fsys.dialect.LockSchema(ctx, tx); err != nil {
 			return err
 		}
@@ -291,7 +302,7 @@ func (fsys *FileSystem) EnsureSchema(_ context.Context) error {
 			if int64(m.Version) <= v.Int64 {
 				continue
 			}
-			for _, stmt := range renderMigration(m, fsys.prefix) {
+			for _, stmt := range renderMigration(m, fsys.prefix, fsys.dialect.QuoteIdentifier) {
 				if _, err := tx.ExecContext(ctx, stmt); err != nil {
 					return fmt.Errorf("migration %d: %w", m.Version, err)
 				}

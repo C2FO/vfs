@@ -259,3 +259,55 @@ func TestPostgresCleanup(t *testing.T) {
 	require.Equal(t, 1, revisions, "only the published revision of gc.bin remains")
 	require.True(t, bytes.Equal(pattern(20000), get(t, fsys, "/gc.bin")))
 }
+
+func TestPostgresAcceptedTablePrefixes(t *testing.T) {
+	_, db := newPostgresFS(t)
+	// PostgreSQL folds unquoted identifiers to lower case, so mixed-case prefixes only work if migrations quote them.
+	for _, prefix := range []string{"1_pg_", "PgApp_", "UPPER"} {
+		fsys, err := sqlfs.NewFileSystem(sqlfs.WithDB(db), sqlfs.WithDialect(sqlfs.PostgreSQL()), sqlfs.WithTablePrefix(prefix))
+		require.NoError(t, err)
+		require.NoError(t, fsys.EnsureSchema(t.Context()))
+		require.NoError(t, fsys.ValidateSchema(t.Context()))
+		put(t, fsys, "/p.txt", []byte(prefix))
+		require.Equal(t, prefix, string(get(t, fsys, "/p.txt")))
+	}
+}
+
+func TestPostgresMoveAndDeleteGuardGenerations(t *testing.T) {
+	fsys, _ := newPostgresFS(t)
+	put(t, fsys, "/a.txt", []byte("a"))
+
+	const movers = 6
+	errs := make([]error, movers)
+	var wg sync.WaitGroup
+	for i := range movers {
+		wg.Go(func() {
+			src, err := fsys.NewFile(testNS, "/a.txt")
+			if err != nil {
+				errs[i] = err
+				return
+			}
+			dst, err := fsys.NewFile(testNS, fmt.Sprintf("/moved-%d.txt", i))
+			if err != nil {
+				errs[i] = err
+				return
+			}
+			errs[i] = src.MoveToFile(dst)
+		})
+	}
+	wg.Wait()
+
+	succeeded := 0
+	for _, err := range errs {
+		if err == nil {
+			succeeded++
+		}
+	}
+	require.Equal(t, 1, succeeded, "only one move may consume the source path")
+
+	loc, err := fsys.NewLocation(testNS, "/")
+	require.NoError(t, err)
+	names, err := loc.List()
+	require.NoError(t, err)
+	require.Len(t, names, 1, "the moved file must exist exactly once")
+}

@@ -30,6 +30,8 @@ type recordingQuerier struct {
 	mu         sync.Mutex
 	queries    []string
 	failCommit error
+	// beforeBegin, if set, runs before each transaction starts.
+	beforeBegin func()
 }
 
 func (r *recordingQuerier) record(q string) {
@@ -66,6 +68,9 @@ func (r *recordingQuerier) QueryRowContext(ctx context.Context, q string, args .
 }
 
 func (r *recordingQuerier) BeginTx(ctx context.Context, o *sql.TxOptions) (txn, error) {
+	if r.beforeBegin != nil {
+		r.beforeBegin()
+	}
 	tx, err := r.querier.BeginTx(ctx, o)
 	if err != nil {
 		return nil, err
@@ -371,6 +376,66 @@ func (s *TransientTestSuite) TestUnavailableDatabase() {
 }
 
 func (s *TransientTestSuite) TestRenderMigrationPrefix() {
-	stmts := renderMigration(Migration{Version: 1, SQL: "CREATE TABLE vfs_a (x INT);\nINSERT INTO vfs_a VALUES (1);\n"}, "app_")
-	s.Equal([]string{"CREATE TABLE app_a (x INT)", "INSERT INTO app_a VALUES (1)"}, stmts)
+	m := Migration{Version: 1, SQL: "CREATE TABLE vfs_a (x INT);\nINSERT INTO vfs_a VALUES (1);\n"}
+	stmts := renderMigration(m, "App_", SQLite().QuoteIdentifier)
+	s.Equal([]string{`CREATE TABLE "App_a" (x INT)`, `INSERT INTO "App_a" VALUES (1)`}, stmts)
+}
+
+func (s *FaultTestSuite) TestCleanupSkipsRevisionRenewedAfterSelection() {
+	fsys, err := NewFileSystem(withQuerier(s.rec), WithDialect(SQLite()), WithChunkSize(faultChunk),
+		WithStagingRetention(time.Nanosecond))
+	s.Require().NoError(err)
+
+	w, err := fsys.NewFile("documents", "/renewed.txt")
+	s.Require().NoError(err)
+	_, err = w.Write([]byte("in progress"))
+	s.Require().NoError(err)
+	s.Require().NoError(w.(*File).flush())
+	time.Sleep(3 * time.Millisecond)
+
+	// The writer renews its staged revision after Cleanup selected it but before Cleanup's transaction begins.
+	s.rec.beforeBegin = func() {
+		_, execErr := s.db.Exec("UPDATE vfs_revisions SET expires_at = ? WHERE state = 0", nowNanos()+int64(time.Hour))
+		s.Require().NoError(execErr)
+		s.rec.beforeBegin = nil
+	}
+	stats, err := fsys.Cleanup(s.T().Context())
+	s.Require().NoError(err)
+	s.Zero(stats.StagedRemoved, "a renewed writer must not be counted or removed")
+
+	var chunks int
+	s.Require().NoError(s.db.QueryRow("SELECT COUNT(*) FROM vfs_chunks").Scan(&chunks))
+	s.Equal(1, chunks, "the active writer's chunks must survive")
+	s.Require().NoError(w.Close())
+}
+
+func (s *FaultTestSuite) TestDeleteVersionRefusesChangedSource() {
+	s.put(s.plain, "/mv.txt", []byte("v1"))
+	src, err := s.plain.NewFile("documents", "/mv.txt")
+	s.Require().NoError(err)
+	f := src.(*File)
+	s.Require().NoError(f.pin())
+	observed := f.tok.row
+
+	s.put(s.plain, "/mv.txt", []byte("v2 written while the move was streaming"))
+
+	err = f.deleteVersion(observed)
+	s.Require().ErrorIs(err, ErrConflict)
+	got, err := s.plain.NewFile("documents", "/mv.txt")
+	s.Require().NoError(err)
+	b, err := io.ReadAll(got)
+	s.Require().NoError(err)
+	s.Equal("v2 written while the move was streaming", string(b), "the newer content must not be deleted")
+}
+
+func (s *FaultTestSuite) TestInTxStopsRetryWaitOnCancel() {
+	ctx, cancel := context.WithCancel(s.T().Context())
+	attempts := 0
+	cancel()
+	err := s.plain.inTx(ctx, "test", func(context.Context, txn) error {
+		attempts++
+		return errRetry
+	})
+	s.Require().ErrorIs(err, context.Canceled)
+	s.LessOrEqual(attempts, 1)
 }

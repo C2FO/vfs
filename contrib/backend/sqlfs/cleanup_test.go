@@ -131,6 +131,32 @@ func (s *CleanupTestSuite) TestReclaimedRevisionReportsConflict() {
 	s.Require().ErrorIs(err, sqlfs.ErrConflict, "must not return empty or mixed content")
 }
 
+func (s *CleanupTestSuite) TestBufferedWritesKeepRevisionAlive() {
+	var fsys *sqlfs.FileSystem
+	fsys, s.db = newSQLiteEnv(s.T(), sqlfs.WithChunkSize(testChunk), sqlfs.WithStagingRetention(600*time.Millisecond))
+
+	w, err := fsys.NewFile(testNS, "/steady.log")
+	s.Require().NoError(err)
+	// Small appends stay inside one buffered chunk, so nothing is flushed, yet the writer is clearly active.
+	for range 14 {
+		_, err = w.Write([]byte("record\n"))
+		s.Require().NoError(err)
+		time.Sleep(60 * time.Millisecond)
+		stats, cleanupErr := fsys.Cleanup(s.T().Context())
+		s.Require().NoError(cleanupErr)
+		s.Zero(stats.StagedRemoved)
+	}
+	s.Require().NoError(w.Close())
+	s.Len(get(s.T(), fsys, "/steady.log"), 14*len("record\n"))
+}
+
+func (s *CleanupTestSuite) TestEnsureSchemaHonorsContext() {
+	fsys := newSQLiteBare(s.T())
+	ctx, cancel := context.WithCancel(s.T().Context())
+	cancel()
+	s.Require().ErrorIs(fsys.EnsureSchema(ctx), context.Canceled)
+}
+
 func (s *CleanupTestSuite) TestCancelledContext() {
 	var fsys *sqlfs.FileSystem
 	fsys, s.db = newSQLiteEnv(s.T(), sqlfs.WithRevisionRetention(time.Nanosecond))

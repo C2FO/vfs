@@ -56,6 +56,7 @@ type File struct {
 	staged     string
 	stagedSize int64
 	stagedCS   int
+	lastBeat   int64 // nanoseconds of the last staged-revision heartbeat
 	wbuf       writeBuf
 }
 
@@ -200,7 +201,7 @@ func (f *File) beginWrite() error {
 		cs, size = f.tok.row.chunkSize, f.tok.row.size
 	}
 	now := nowNanos()
-	err := fsys.inTx("begin write "+f.URI(), func(ctx context.Context, tx txn) error {
+	err := fsys.inTx(context.Background(), "begin write "+f.URI(), func(ctx context.Context, tx txn) error {
 		if overlay {
 			var one int
 			err := tx.QueryRowContext(ctx, fsys.qs.selRevExists, f.tok.row.revisionID).Scan(&one)
@@ -216,15 +217,19 @@ func (f *File) beginWrite() error {
 			return err
 		}
 		if overlay {
-			_, err := tx.ExecContext(ctx, fsys.qs.copyChunks, id, f.tok.row.revisionID)
-			return err
+			if _, err := tx.ExecContext(ctx, fsys.qs.copyChunks, id, f.tok.row.revisionID); err != nil {
+				return err
+			}
+			// Cleanup removes a revision's chunks and row together, so if the source row still exists after the copy,
+			// the copy saw all of its chunks.
+			return revisionStillExists(ctx, tx, fsys, f.tok.row.revisionID, ErrConflict)
 		}
 		return nil
 	})
 	if err != nil {
 		return err
 	}
-	f.writing, f.staged, f.stagedSize, f.stagedCS = true, id, size, cs
+	f.writing, f.staged, f.stagedSize, f.stagedCS, f.lastBeat = true, id, size, cs, now
 	f.wbuf, f.rbuf = writeBuf{}, readBuf{}
 	return nil
 }
@@ -241,6 +246,9 @@ func (f *File) Write(p []byte) (int, error) {
 		return 0, utils.WrapWriteError(fmt.Errorf("sqlfs: write to %s would exceed the maximum file size of %d bytes", f.URI(), limit))
 	}
 
+	if f.stagedCS < MinChunkSize || f.stagedCS > MaxChunkSize {
+		return 0, utils.WrapWriteError(fmt.Errorf("%w: invalid chunk size %d for %s", ErrCorrupt, f.stagedCS, f.URI()))
+	}
 	cs := int64(f.stagedCS)
 	written := 0
 	for written < len(p) {
@@ -248,7 +256,7 @@ func (f *File) Write(p []byte) (int, error) {
 		if err := f.loadWriteChunk(idx); err != nil {
 			return written, utils.WrapWriteError(fsys.wrapErr("write "+f.URI(), err))
 		}
-		n := min(len(p)-written, int(cs)-off)
+		n := min(len(p)-written, f.stagedCS-off)
 		if need := off + n; len(f.wbuf.data) < need {
 			f.wbuf.data = append(f.wbuf.data, make([]byte, need-len(f.wbuf.data))...)
 		}
@@ -259,7 +267,38 @@ func (f *File) Write(p []byte) (int, error) {
 		f.stagedSize = max(f.stagedSize, f.cursor)
 	}
 	f.rbuf.valid = false
+	// Renew the staged revision's expiry on a cadence tied to the retention period, even when writes only hit the
+	// buffered chunk, so that retention measures idle time rather than the interval between flushes.
+	if now := nowNanos(); now-f.lastBeat >= fsys.stagingRetention.Nanoseconds()/4 {
+		if err := f.heartbeat(now); err != nil {
+			return written, utils.WrapWriteError(fsys.wrapErr("write "+f.URI(), err))
+		}
+	}
 	return written, nil
+}
+
+// heartbeat extends the staged revision's expiry. It fails with ErrConflict if Cleanup already reclaimed it.
+func (f *File) heartbeat(now int64) error {
+	fsys := f.fsys()
+	n, err := fsys.exec(context.Background(), fsys.qs.heartbeat, now+fsys.stagingRetention.Nanoseconds(), f.staged)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return fmt.Errorf("%w: staged content was reclaimed", ErrConflict)
+	}
+	f.lastBeat = now
+	return nil
+}
+
+// revisionStillExists fails with err (wrapped with context) if the revision row is gone.
+func revisionStillExists(ctx context.Context, tx txn, fsys *FileSystem, id string, sentinel error) error {
+	var one int
+	err := tx.QueryRowContext(ctx, fsys.qs.selRevExists, id).Scan(&one)
+	if errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("%w: source content was reclaimed during the operation", sentinel)
+	}
+	return err
 }
 
 // loadWriteChunk makes chunk idx of the staged revision the write buffer, flushing the previous one if needed.
@@ -290,12 +329,8 @@ func (f *File) flush() error {
 		return nil
 	}
 	fsys := f.fsys()
-	n, err := fsys.exec(context.Background(), fsys.qs.heartbeat, nowNanos()+fsys.stagingRetention.Nanoseconds(), f.staged)
-	if err != nil {
+	if err := f.heartbeat(nowNanos()); err != nil {
 		return err
-	}
-	if n == 0 {
-		return fmt.Errorf("%w: staged content was reclaimed", ErrConflict)
 	}
 	if _, err := fsys.exec(context.Background(), fsys.qs.upsertChunk, f.staged, f.wbuf.idx, f.wbuf.data); err != nil {
 		return err
@@ -323,7 +358,7 @@ func (f *File) publish() error {
 		return fsys.wrapErr("close "+f.URI(), err)
 	}
 	size, fileID := f.stagedSize, newID()
-	return fsys.inTx("close "+f.URI(), func(ctx context.Context, tx txn) error {
+	return fsys.inTx(context.Background(), "close "+f.URI(), func(ctx context.Context, tx txn) error {
 		now := nowNanos()
 		n, err := execRows(ctx, tx, fsys.qs.publishRevision, size, f.staged)
 		if err != nil {
@@ -360,7 +395,7 @@ func (f *File) Abort() error {
 	if f.writing {
 		fsys := f.fsys()
 		staged := f.staged
-		err = fsys.inTx("abort "+f.URI(), func(ctx context.Context, tx txn) error {
+		err = fsys.inTx(context.Background(), "abort "+f.URI(), func(ctx context.Context, tx txn) error {
 			if _, err := tx.ExecContext(ctx, fsys.qs.delChunks, staged); err != nil {
 				return err
 			}
@@ -425,7 +460,7 @@ func (f *File) published() (*fileRow, error) {
 // Touch creates an empty file if none exists, otherwise updates its modification time.
 func (f *File) Touch() error {
 	fsys := f.fsys()
-	err := fsys.inTx("touch "+f.URI(), func(ctx context.Context, tx txn) error {
+	err := fsys.inTx(context.Background(), "touch "+f.URI(), func(ctx context.Context, tx txn) error {
 		row, err := fsys.lookupFile(ctx, tx, f.ns(), f.dir(), f.base())
 		if err != nil {
 			return err
@@ -456,7 +491,7 @@ func (f *File) Touch() error {
 // Delete removes the file. Deleting a file that does not exist returns an error wrapping fs.ErrNotExist.
 func (f *File) Delete(_ ...options.DeleteOption) error {
 	fsys := f.fsys()
-	err := fsys.inTx("delete "+f.URI(), func(ctx context.Context, tx txn) error {
+	err := fsys.inTx(context.Background(), "delete "+f.URI(), func(ctx context.Context, tx txn) error {
 		row, err := fsys.lookupFile(ctx, tx, f.ns(), f.dir(), f.base())
 		if err != nil {
 			return err
@@ -464,7 +499,7 @@ func (f *File) Delete(_ ...options.DeleteOption) error {
 		if row == nil {
 			return f.notFound()
 		}
-		n, err := execRows(ctx, tx, fsys.qs.delFile, row.id)
+		n, err := execRows(ctx, tx, fsys.qs.delFile, row.id, row.generation)
 		if err != nil {
 			return err
 		}
@@ -547,7 +582,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 // move is a single atomic metadata change.
 func (f *File) MoveToFile(file vfs.File) error {
 	if dst, ok := f.sameInstance(file); ok {
-		if err := f.prepareTransfer(false); err != nil {
+		if err := f.prepareTransfer(true); err != nil {
 			return utils.WrapMoveToFileError(err)
 		}
 		err := f.moveNative(dst)
@@ -561,13 +596,35 @@ func (f *File) MoveToFile(file vfs.File) error {
 	if err := f.prepareTransfer(true); err != nil {
 		return utils.WrapMoveToFileError(err)
 	}
+	// Remember the exact version being copied so that only that version is removed afterwards.
+	if err := f.pin(); err != nil {
+		return utils.WrapMoveToFileError(err)
+	}
+	copied := f.tok
 	if err := f.streamTo(file); err != nil {
 		return utils.WrapMoveToFileError(err)
 	}
-	if err := f.Delete(); err != nil {
+	if err := f.deleteVersion(copied.row); err != nil {
 		return utils.WrapMoveToFileError(err)
 	}
 	return nil
+}
+
+// deleteVersion removes the file only if it is still the given version. If it changed since, nothing is deleted and
+// ErrConflict is returned.
+func (f *File) deleteVersion(row fileRow) error {
+	fsys := f.fsys()
+	return fsys.inTx(context.Background(), "delete "+f.URI(), func(ctx context.Context, tx txn) error {
+		n, err := execRows(ctx, tx, fsys.qs.delFile, row.id, row.generation)
+		if err != nil {
+			return err
+		}
+		if n == 0 {
+			return fmt.Errorf("%w: %s changed while it was being moved", ErrConflict, f.URI())
+		}
+		_, err = tx.ExecContext(ctx, fsys.qs.supersede, nowNanos(), row.revisionID)
+		return err
+	})
 }
 
 // MoveToLocation moves the file into location, keeping its name, and returns the new file.
@@ -596,7 +653,7 @@ func (f *File) streamTo(file vfs.File) error {
 // copyNative copies the source's published content to dst entirely inside the database.
 func (f *File) copyNative(dst *File) error {
 	fsys := f.fsys()
-	return fsys.inTx("copy "+f.URI(), func(ctx context.Context, tx txn) error {
+	return fsys.inTx(context.Background(), "copy "+f.URI(), func(ctx context.Context, tx txn) error {
 		src, err := fsys.lookupFile(ctx, tx, f.ns(), f.dir(), f.base())
 		if err != nil {
 			return err
@@ -609,6 +666,11 @@ func (f *File) copyNative(dst *File) error {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, fsys.qs.copyChunks, rev, src.revisionID); err != nil {
+			return err
+		}
+		// If Cleanup reclaimed the source between the lookup and the copy, the copy is empty; start over so the
+		// lookup finds the current revision (or reports the file gone).
+		if err := revisionStillExists(ctx, tx, fsys, src.revisionID, errRetry); err != nil {
 			return err
 		}
 		tgt, err := fsys.lookupFile(ctx, tx, dst.ns(), dst.dir(), dst.base())
@@ -639,7 +701,7 @@ func (f *File) copyNative(dst *File) error {
 // moveNative moves the source's metadata row to dst's path in one transaction.
 func (f *File) moveNative(dst *File) error {
 	fsys := f.fsys()
-	return fsys.inTx("move "+f.URI(), func(ctx context.Context, tx txn) error {
+	return fsys.inTx(context.Background(), "move "+f.URI(), func(ctx context.Context, tx txn) error {
 		src, err := fsys.lookupFile(ctx, tx, f.ns(), f.dir(), f.base())
 		if err != nil {
 			return err
@@ -655,7 +717,7 @@ func (f *File) moveNative(dst *File) error {
 			if tgt.id == src.id {
 				return nil
 			}
-			n, err := execRows(ctx, tx, fsys.qs.delFile, tgt.id)
+			n, err := execRows(ctx, tx, fsys.qs.delFile, tgt.id, tgt.generation)
 			if err != nil {
 				return err
 			}
@@ -666,7 +728,7 @@ func (f *File) moveNative(dst *File) error {
 				return err
 			}
 		}
-		n, err := execRows(ctx, tx, fsys.qs.moveFile, dst.ns(), dst.dir(), dst.base(), src.id)
+		n, err := execRows(ctx, tx, fsys.qs.moveFile, dst.ns(), dst.dir(), dst.base(), src.id, src.generation)
 		if err != nil {
 			if fsys.isUnique(err) {
 				return errRetry

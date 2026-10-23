@@ -18,6 +18,7 @@ type queries struct {
 	updFilePublish    string
 	insFile           string
 	delFile           string
+	claimRevision     string
 	touchFile         string
 	moveFile          string
 	list              string
@@ -51,12 +52,16 @@ SELECT ?, chunk_index, data FROM %[1]s WHERE revision_id = ?`, chunks)),
 WHERE id = ? AND generation = ?`, files)),
 		insFile: rb(fmt.Sprintf(`INSERT INTO %s (id, namespace, dir, name, revision_id, size, created_at, modified_at, generation)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`, files)),
-		delFile:   rb(fmt.Sprintf("DELETE FROM %s WHERE id = ?", files)),
+		delFile:   rb(fmt.Sprintf("DELETE FROM %s WHERE id = ? AND generation = ?", files)),
 		touchFile: rb(fmt.Sprintf("UPDATE %s SET modified_at = ?, generation = generation + 1 WHERE id = ?", files)),
-		moveFile:  rb(fmt.Sprintf("UPDATE %s SET namespace = ?, dir = ?, name = ?, generation = generation + 1 WHERE id = ?", files)),
-		list:      rb(fmt.Sprintf("SELECT name FROM %s WHERE namespace = ? AND dir = ? ORDER BY name", files)),
+		moveFile: rb(fmt.Sprintf("UPDATE %s SET namespace = ?, dir = ?, name = ?, generation = generation + 1 WHERE id = ? AND generation = ?",
+			files)),
+		list: rb(fmt.Sprintf("SELECT name FROM %s WHERE namespace = ? AND dir = ? ORDER BY name", files)),
 		selCleanup: rb(fmt.Sprintf(`SELECT id, state FROM %s
 WHERE (state = %d AND expires_at < ?) OR (state = %d AND superseded_at < ?) LIMIT ?`, revs, stateStaged, stateSuperseded)),
+		claimRevision: rb(fmt.Sprintf(`UPDATE %s SET state = %d
+WHERE id = ? AND ((state = %d AND expires_at < ?) OR (state = %d AND superseded_at < ?))`,
+			revs, stateReclaiming, stateStaged, stateSuperseded)),
 		delChunks:   rb(fmt.Sprintf("DELETE FROM %s WHERE revision_id = ?", chunks)),
 		delRevision: rb(fmt.Sprintf("DELETE FROM %s WHERE id = ?", revs)),
 	}

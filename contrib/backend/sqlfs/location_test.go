@@ -218,6 +218,28 @@ func (s *LocationTestSuite) TestTablePrefixIsolation() {
 	s.False(ok)
 }
 
+func (s *LocationTestSuite) TestAcceptedTablePrefixesWork() {
+	tests := []struct {
+		name   string
+		prefix string
+	}{
+		{name: "leading digit", prefix: "1_"},
+		{name: "mixed case", prefix: "App_"},
+		{name: "upper case", prefix: "FILES"},
+		{name: "single underscore", prefix: "_"},
+	}
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			fsys, err := sqlfs.NewFileSystem(sqlfs.WithDB(s.db), sqlfs.WithDialect(sqlfs.SQLite()), sqlfs.WithTablePrefix(tt.prefix))
+			s.Require().NoError(err)
+			s.Require().NoError(fsys.EnsureSchema(s.T().Context()))
+			s.Require().NoError(fsys.ValidateSchema(s.T().Context()))
+			put(s.T(), fsys, "/p.txt", []byte(tt.prefix))
+			s.Equal(tt.prefix, string(get(s.T(), fsys, "/p.txt")))
+		})
+	}
+}
+
 func (s *LocationTestSuite) TestExists() {
 	loc, err := s.fs.NewLocation(testNS, "/never/used/")
 	s.Require().NoError(err)

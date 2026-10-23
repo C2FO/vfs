@@ -30,13 +30,31 @@ func (fsys *FileSystem) Cleanup(ctx context.Context) (CleanupStats, error) {
 		if len(batch) == 0 {
 			return stats, nil
 		}
-		err = fsys.inTx("cleanup", func(ctx context.Context, tx txn) error {
+		var staged, superseded int
+		err = fsys.inTx(ctx, "cleanup", func(ctx context.Context, tx txn) error {
+			staged, superseded = 0, 0
 			for _, c := range batch {
+				// Claiming rechecks eligibility atomically and locks the revision row, so a writer that renewed or
+				// published it after selection makes the claim a no-op, and a writer that tries afterwards waits and
+				// then finds the revision reclaimed.
+				now := nowNanos()
+				claimed, err := execRows(ctx, tx, fsys.qs.claimRevision, c.id, now, now-fsys.revisionRetention.Nanoseconds())
+				if err != nil {
+					return err
+				}
+				if claimed == 0 {
+					continue
+				}
 				if _, err := tx.ExecContext(ctx, fsys.qs.delChunks, c.id); err != nil {
 					return err
 				}
 				if _, err := tx.ExecContext(ctx, fsys.qs.delRevision, c.id); err != nil {
 					return err
+				}
+				if c.state == stateStaged {
+					staged++
+				} else {
+					superseded++
 				}
 			}
 			return nil
@@ -44,13 +62,8 @@ func (fsys *FileSystem) Cleanup(ctx context.Context) (CleanupStats, error) {
 		if err != nil {
 			return stats, err
 		}
-		for _, c := range batch {
-			if c.state == stateStaged {
-				stats.StagedRemoved++
-			} else {
-				stats.SupersededRemoved++
-			}
-		}
+		stats.StagedRemoved += staged
+		stats.SupersededRemoved += superseded
 	}
 }
 

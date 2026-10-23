@@ -66,7 +66,8 @@ Only the pragmas matter; any SQLite driver works with `sqlfs.SQLite()`.
 Run `EnsureSchema` from a migration job or a privileged startup step. The runtime account only needs
 `SELECT`, `INSERT`, `UPDATE` and `DELETE` on the four tables (`<prefix>schema`, `<prefix>revisions`, `<prefix>files`,
 `<prefix>chunks`). Migrations are embedded in the package under `migrations/<dialect>/` if you prefer to apply them
-with your own tool; replace the literal `vfs_` prefix with yours.
+with your own tool; replace each literal `vfs_` identifier with your prefix. `EnsureSchema` double-quotes every table
+and index name, so if your prefix has uppercase letters or starts with a digit, quote the names the same way.
 
 ## Options
 

@@ -63,6 +63,7 @@ func (s *DialectTestSuite) TestPostgreSQLClassify() {
 		{name: "unique violation", err: stateError{"23505"}, expected: sqlfs.KindUniqueViolation},
 		{name: "serialization failure", err: stateError{"40001"}, expected: sqlfs.KindRetryable},
 		{name: "deadlock", err: stateError{"40P01"}, expected: sqlfs.KindRetryable},
+		{name: "lock timeout", err: stateError{"55P03"}, expected: sqlfs.KindRetryable},
 		{name: "connection exception", err: stateError{"08006"}, expected: sqlfs.KindUnavailable},
 		{name: "admin shutdown", err: stateError{"57P01"}, expected: sqlfs.KindUnavailable},
 		{name: "other state", err: stateError{"42P01"}, expected: sqlfs.KindOther},

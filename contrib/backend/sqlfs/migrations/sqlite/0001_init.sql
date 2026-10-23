@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS vfs_files (
     generation  BIGINT      NOT NULL,
     UNIQUE (namespace, dir, name)
 );
+CREATE INDEX IF NOT EXISTS vfs_files_revision_idx ON vfs_files (revision_id);
 CREATE TABLE IF NOT EXISTS vfs_chunks (
     revision_id VARCHAR(32) NOT NULL REFERENCES vfs_revisions (id),
     chunk_index BIGINT      NOT NULL,

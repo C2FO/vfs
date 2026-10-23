@@ -569,6 +569,25 @@ func (s *FileTestSuite) TestMove() {
 	})
 }
 
+func (s *FileTestSuite) TestNativeMoveRequiresCursorAtStart() {
+	put(s.T(), s.fs, "/mc/src.txt", []byte("0123456789"))
+	f := s.file("/mc/src.txt")
+	_, err := f.Seek(3, io.SeekStart)
+	s.Require().NoError(err)
+	s.Require().ErrorIs(f.MoveToFile(s.file("/mc/dst.txt")), vfs.ErrCopyToNotPossible)
+	ok, err := s.file("/mc/src.txt").Exists()
+	s.Require().NoError(err)
+	s.True(ok, "a refused move must leave the source in place")
+}
+
+func (s *FileTestSuite) TestInvalidStoredChunkSizeIsCorrupt() {
+	put(s.T(), s.fs, "/bad.bin", []byte("data"))
+	_, err := s.db.Exec("UPDATE vfs_revisions SET chunk_size = 1")
+	s.Require().NoError(err)
+	_, err = s.file("/bad.bin").Size()
+	s.Require().ErrorIs(err, sqlfs.ErrCorrupt)
+}
+
 func (s *FileTestSuite) TestSameInstanceCopyAndMoveDoNotStreamContent() {
 	// Copies and moves within one instance happen in the database, so the content must remain correct even though
 	// the application never reads it; see FaultTestSuite for the assertion that no chunk read is issued.
