@@ -77,6 +77,43 @@ found:
 
 See https://cloud.google.com/docs/authentication/production for more auth info
 
+### Service Account Impersonation
+
+Set `ImpersonateServiceAccount` to have [Client()](#func-filesystem-client) build the storage client with short-lived
+tokens for that service account, requested by a base identity, instead of using the base identity's own access:
+
+```go
+fs := gs.NewFileSystem(
+    gs.WithOptions(
+        gs.Options{
+            ImpersonateServiceAccount: "target-sa@my-project.iam.gserviceaccount.com",
+        },
+    ),
+)
+```
+
+The same option decoded from JSON:
+
+```json
+{"impersonateServiceAccount": "target-sa@my-project.iam.gserviceaccount.com"}
+```
+
+The base identity is `CredentialFile` if set, otherwise Application Default Credentials resolved as described above.
+ADC can be any supported credential type, including an `external_account` (Workload Identity Federation) config
+referenced by `GOOGLE_APPLICATION_CREDENTIALS`, so impersonation also works outside GKE and GCE. The base identity
+needs the Service Account Token Creator role (`roles/iam.serviceAccountTokenCreator`) on the target service account.
+
+Impersonated tokens use the storage client's default scopes (`devstorage.full_control` and `cloud-platform`).
+`Endpoint` and `Scopes` are ignored when `ImpersonateServiceAccount` is set. Combining it with `APIKey` makes
+[Client()](#func-filesystem-client) return an error, because an API key can't impersonate a service account.
+
+Copies between gs filesystems with the same `ImpersonateServiceAccount` and the same `CredentialFile` (or neither has
+one) are done server-side.
+
+Anyone who can set `ImpersonateServiceAccount` can act as any service account the base identity is allowed to
+impersonate. If your application builds `Options` from user-supplied input, restrict which service accounts may be
+named.
+
 ### See Also
 
 See: https://github.com/googleapis/google-cloud-go/tree/master/storage
@@ -429,6 +466,11 @@ type Options struct {
 	CredentialFile string   `json:"credentialFilePath,omitempty"`
 	Endpoint       string   `json:"endpoint,omitempty"`
 	Scopes         []string `json:"withoutAuthentication,omitempty"`
+	FileBufferSize int      `json:"fileBufferSize,omitempty"` // Buffer Size In Bytes Used with utils.TouchCopyBuffered
+	// ImpersonateServiceAccount is the email of a service account to impersonate. The base identity is CredentialFile
+	// if set, otherwise Application Default Credentials. It can't be combined with APIKey, and Endpoint and Scopes are
+	// ignored when it's set.
+	ImpersonateServiceAccount string `json:"impersonateServiceAccount,omitempty"`
 }
 ```
 

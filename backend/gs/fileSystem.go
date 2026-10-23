@@ -123,7 +123,10 @@ func (fs *FileSystem) Scheme() string {
 // See Overview for authentication resolution
 func (fs *FileSystem) Client() (*storage.Client, error) {
 	if fs.client == nil {
-		gsClientOpts := parseClientOptions(fs.options)
+		gsClientOpts, err := parseClientOptions(fs.ctx, fs.options)
+		if err != nil {
+			return nil, err
+		}
 		client, err := fs.clientCreator.NewClient(fs.ctx, gsClientOpts...)
 		if err != nil {
 			return nil, err
@@ -202,7 +205,10 @@ func init() {
 
 // GetClient returns a new Google Cloud Storage client with the provided context and Options.
 func GetClient(ctx context.Context, opts Options) (*storage.Client, error) {
-	gsClientOpts := parseClientOptions(opts)
+	gsClientOpts, err := parseClientOptions(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
 	creator := &defaultClientCreator{}
 	return creator.NewClient(ctx, gsClientOpts...)
 }

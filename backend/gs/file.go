@@ -644,6 +644,10 @@ func (f *File) isSameAuth(opts *Options) bool {
 		return true
 	}
 
+	if opts != nil && (opts.ImpersonateServiceAccount != "" || fOptions.ImpersonateServiceAccount != "") {
+		return opts.ImpersonateServiceAccount == fOptions.ImpersonateServiceAccount && opts.CredentialFile == fOptions.CredentialFile
+	}
+
 	if opts != nil && opts.CredentialFile != "" && opts.CredentialFile == fOptions.CredentialFile {
 		return true
 	}
