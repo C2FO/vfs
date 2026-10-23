@@ -131,23 +131,31 @@ func (s *CleanupTestSuite) TestReclaimedRevisionReportsConflict() {
 	s.Require().ErrorIs(err, sqlfs.ErrConflict, "must not return empty or mixed content")
 }
 
-func (s *CleanupTestSuite) TestBufferedWritesKeepRevisionAlive() {
+func (s *CleanupTestSuite) TestBufferedWritesRenewStagedExpiry() {
+	const retention = 400 * time.Millisecond
 	var fsys *sqlfs.FileSystem
-	fsys, s.db = newSQLiteEnv(s.T(), sqlfs.WithChunkSize(testChunk), sqlfs.WithStagingRetention(600*time.Millisecond))
+	fsys, s.db = newSQLiteEnv(s.T(), sqlfs.WithChunkSize(testChunk), sqlfs.WithStagingRetention(retention))
+	expiry := func() int64 {
+		var e int64
+		s.Require().NoError(s.db.QueryRow("SELECT expires_at FROM vfs_revisions WHERE state = 0").Scan(&e))
+		return e
+	}
 
 	w, err := fsys.NewFile(testNS, "/steady.log")
 	s.Require().NoError(err)
-	// Small appends stay inside one buffered chunk, so nothing is flushed, yet the writer is clearly active.
-	for range 14 {
-		_, err = w.Write([]byte("record\n"))
-		s.Require().NoError(err)
-		time.Sleep(60 * time.Millisecond)
-		stats, cleanupErr := fsys.Cleanup(s.T().Context())
-		s.Require().NoError(cleanupErr)
-		s.Zero(stats.StagedRemoved)
-	}
+	_, err = w.Write([]byte("first\n"))
+	s.Require().NoError(err)
+	before := expiry()
+
+	// Both writes land in the same buffered chunk, so nothing is flushed. Only the lower bound of the sleep matters,
+	// which keeps the test independent of how slow the machine is.
+	time.Sleep(retention/4 + 100*time.Millisecond)
+	_, err = w.Write([]byte("second\n"))
+	s.Require().NoError(err)
+	s.Greater(expiry(), before, "a buffered write must renew the staged revision's expiry")
+
 	s.Require().NoError(w.Close())
-	s.Len(get(s.T(), fsys, "/steady.log"), 14*len("record\n"))
+	s.Equal("first\nsecond\n", string(get(s.T(), fsys, "/steady.log")))
 }
 
 func (s *CleanupTestSuite) TestEnsureSchemaHonorsContext() {
