@@ -62,3 +62,7 @@ jobs:
       - name: Run Google Drive WireMock tests
         working-directory: contrib/backend/gdrive
         run: go test -tags=vfsintegration -race -timeout 10m ./...
+
+      - name: Run SQL FS PostgreSQL tests
+        working-directory: contrib/backend/sqlfs
+        run: go test -tags=vfsintegration -race -timeout 10m ./...
