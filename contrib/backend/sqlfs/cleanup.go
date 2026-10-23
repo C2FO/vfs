@@ -30,46 +30,52 @@ func (fsys *FileSystem) Cleanup(ctx context.Context) (CleanupStats, error) {
 		if len(batch) == 0 {
 			return stats, nil
 		}
-		var staged, superseded int
-		err = fsys.inTx(ctx, "cleanup", func(ctx context.Context, tx txn) error {
-			staged, superseded = 0, 0
-			for _, c := range batch {
-				// Claiming rechecks eligibility atomically and locks the revision row, so a writer that renewed or
-				// published it after selection makes the claim a no-op, and a writer that tries afterwards waits and
-				// then finds the revision reclaimed.
-				now := nowNanos()
-				claimed, err := execRows(ctx, tx, fsys.qs.claimRevision, c.id, now, now-fsys.revisionRetention.Nanoseconds())
-				if err != nil {
-					return err
-				}
-				if claimed == 0 {
-					continue
-				}
-				if _, err := tx.ExecContext(ctx, fsys.qs.delChunks, c.id); err != nil {
-					return err
-				}
-				if _, err := tx.ExecContext(ctx, fsys.qs.delRevision, c.id); err != nil {
-					return err
-				}
-				if c.state == stateStaged {
-					staged++
-				} else {
-					superseded++
-				}
+		for _, c := range batch {
+			if err := ctx.Err(); err != nil {
+				return stats, fmt.Errorf("sqlfs: cleanup: %w", err)
 			}
-			return nil
-		})
-		if err != nil {
-			return stats, err
+			removed, err := fsys.reclaim(ctx, c)
+			if err != nil {
+				return stats, err
+			}
+			switch {
+			case !removed:
+			case c.state == stateStaged:
+				stats.StagedRemoved++
+			default:
+				stats.SupersededRemoved++
+			}
 		}
-		stats.StagedRemoved += staged
-		stats.SupersededRemoved += superseded
 	}
 }
 
+// reclaim removes one candidate revision in its own transaction, so a large revision neither holds locks on others
+// nor makes a whole batch roll back. It reports false if the revision was no longer eligible.
+func (fsys *FileSystem) reclaim(ctx context.Context, c cleanupCandidate) (bool, error) {
+	var removed bool
+	err := fsys.inTx(ctx, "cleanup", func(ctx context.Context, tx txn) error {
+		removed = false
+		// Claiming rechecks eligibility atomically and locks the revision row, so a writer that renewed or published
+		// it after selection makes the claim a no-op, and a writer that tries afterwards waits and then finds the
+		// revision reclaimed.
+		now := nowNanos()
+		claimed, err := execRows(ctx, tx, fsys.qs.claimRevision, c.id, now, now-fsys.revisionRetention.Nanoseconds())
+		if err != nil || claimed == 0 {
+			return err
+		}
+		if err := fsys.deleteRevision(ctx, tx, c.id, c.chunkSize); err != nil {
+			return err
+		}
+		removed = true
+		return nil
+	})
+	return removed, err
+}
+
 type cleanupCandidate struct {
-	id    string
-	state int
+	id        string
+	state     int
+	chunkSize int
 }
 
 func (fsys *FileSystem) cleanupCandidates(ctx context.Context) ([]cleanupCandidate, error) {
@@ -85,7 +91,7 @@ func (fsys *FileSystem) cleanupCandidates(ctx context.Context) ([]cleanupCandida
 	var out []cleanupCandidate
 	for rows.Next() {
 		var c cleanupCandidate
-		if err := rows.Scan(&c.id, &c.state); err != nil {
+		if err := rows.Scan(&c.id, &c.state, &c.chunkSize); err != nil {
 			return nil, err
 		}
 		out = append(out, c)

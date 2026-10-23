@@ -51,17 +51,19 @@ func (l *Location) List() ([]string, error) {
 }
 
 // ListByPrefix returns the names of files whose names begin with prefix. A prefix containing a slash is resolved
-// relative to the location, so "sub/pre" lists files beginning with "pre" in the "sub" directory.
+// relative to the location, so "sub/pre" lists files beginning with "pre" in the "sub" directory, and "sub/" lists
+// every file in it.
 //
 // The prefix is matched case-sensitively in the application rather than with SQL LIKE, whose case sensitivity and
 // wildcard handling differ between databases.
 func (l *Location) ListByPrefix(prefix string) ([]string, error) {
-	if strings.Contains(prefix, "/") {
-		sub, err := l.NewLocation(utils.EnsureTrailingSlash(path.Dir(prefix)))
+	if i := strings.LastIndex(prefix, "/"); i >= 0 {
+		// Split by hand: path.Base drops a trailing slash, which would turn "sub/" into a prefix of "sub".
+		sub, err := l.NewLocation(prefix[:i+1])
 		if err != nil {
 			return nil, err
 		}
-		return sub.ListByPrefix(path.Base(prefix))
+		return sub.ListByPrefix(prefix[i+1:])
 	}
 	return l.filter(func(n string) bool { return strings.HasPrefix(n, prefix) })
 }

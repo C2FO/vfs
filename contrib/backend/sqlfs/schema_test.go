@@ -2,6 +2,7 @@ package sqlfs_test
 
 import (
 	"database/sql"
+	"strings"
 	"sync"
 	"testing"
 
@@ -47,6 +48,35 @@ func (s *SchemaTestSuite) TestValidateMissingSchemaDoesNotCreate() {
 	var n int
 	s.Require().NoError(s.db.QueryRow("SELECT COUNT(*) FROM sqlite_master").Scan(&n))
 	s.Zero(n, "ValidateSchema must not modify the database")
+}
+
+func (s *SchemaTestSuite) TestForeignKeysRequired() {
+	// SQLite leaves foreign keys off unless the DSN enables them.
+	db, err := sql.Open("sqlite", strings.Replace(s.dsn, "&_pragma=foreign_keys(1)", "", 1))
+	s.Require().NoError(err)
+	s.T().Cleanup(func() { _ = db.Close() })
+	fsys, err := sqlfs.NewFileSystem(sqlfs.WithDB(db), sqlfs.WithDialect(sqlfs.SQLite()))
+	s.Require().NoError(err)
+
+	err = fsys.EnsureSchema(s.T().Context())
+	s.Require().ErrorIs(err, sqlfs.ErrInvalidConfig)
+	s.Contains(err.Error(), "foreign key")
+
+	s.Require().NoError(s.fs.EnsureSchema(s.T().Context()), "a correctly configured connection creates the schema")
+	err = fsys.ValidateSchema(s.T().Context())
+	s.Require().ErrorIs(err, sqlfs.ErrInvalidConfig)
+	s.Contains(err.Error(), "foreign key")
+}
+
+func (s *SchemaTestSuite) TestValidateReportsNonSchemaErrorsAsThemselves() {
+	db := s.open()
+	fsys, err := sqlfs.NewFileSystem(sqlfs.WithDB(db), sqlfs.WithDialect(sqlfs.SQLite()))
+	s.Require().NoError(err)
+	s.Require().NoError(db.Close())
+
+	err = fsys.ValidateSchema(s.T().Context())
+	s.Require().Error(err)
+	s.NotErrorIs(err, sqlfs.ErrInvalidSchema, "a closed database is not a missing schema")
 }
 
 func (s *SchemaTestSuite) TestEnsureFreshAndRepeated() {

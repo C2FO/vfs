@@ -95,6 +95,21 @@ func (s *ConfigTestSuite) TestNewFileSystem() {
 			expectedError: "maximum file size",
 		},
 		{
+			name:          "zero staging retention",
+			opts:          func() []opt { return s.base(sqlfs.WithStagingRetention(0)) },
+			expectedError: "retention periods must be positive",
+		},
+		{
+			name:          "zero revision retention",
+			opts:          func() []opt { return s.base(sqlfs.WithRevisionRetention(0)) },
+			expectedError: "retention periods must be positive",
+		},
+		{
+			name:          "negative retention",
+			opts:          func() []opt { return s.base(sqlfs.WithRevisionRetention(-time.Second)) },
+			expectedError: "retention periods must be positive",
+		},
+		{
 			name:          "negative timeout",
 			opts:          func() []opt { return s.base(sqlfs.WithOperationTimeout(-time.Second)) },
 			expectedError: "durations",

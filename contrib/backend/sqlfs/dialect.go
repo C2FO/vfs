@@ -20,6 +20,11 @@ const (
 	KindRetryable
 	// KindUnavailable means the database could not be reached.
 	KindUnavailable
+	// KindForeignKeyViolation is a foreign key constraint violation, such as writing a chunk for a revision that
+	// Cleanup already removed.
+	KindForeignKeyViolation
+	// KindUndefinedTable means a referenced table does not exist, which the engine reports as a missing schema.
+	KindUndefinedTable
 )
 
 // Migration is one versioned schema step. SQL holds one or more statements separated by a line that ends in a
@@ -51,11 +56,19 @@ type Dialect interface {
 	// UpsertChunk returns an insert-or-replace statement for the chunks table taking (revision_id, chunk_index,
 	// data) as "?" parameters.
 	UpsertChunk(chunksTable string) string
-	// LockSchema serializes concurrent schema initialization for the life of tx. It may be a no-op when the
-	// database serializes writers on its own.
-	LockSchema(ctx context.Context, tx Execer) error
-	// Classify reports how the engine should treat err.
+	// LockSchema serializes concurrent initialization of the schema with the given table prefix for the life of
+	// tx. It may be a no-op when the database serializes writers on its own.
+	LockSchema(ctx context.Context, tx Execer, prefix string) error
+	// Classify reports how the engine should treat err. Report KindUndefinedTable for a missing table so that
+	// ValidateSchema can return ErrInvalidSchema, and KindForeignKeyViolation so that writes to reclaimed content
+	// fail with ErrConflict.
 	Classify(err error) ErrorKind
+}
+
+// SessionValidator may be implemented by a Dialect to verify connection settings the engine depends on. EnsureSchema
+// and ValidateSchema call it and fail with ErrInvalidConfig when it returns an error.
+type SessionValidator interface {
+	ValidateSession(ctx context.Context, q Execer) error
 }
 
 // txn is a database transaction.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql/driver"
 	"errors"
+	"hash/fnv"
 	"net"
 	"strconv"
 	"strings"
@@ -42,11 +43,16 @@ func (postgresDialect) UpsertChunk(t string) string {
 		"ON CONFLICT (revision_id, chunk_index) DO UPDATE SET data = EXCLUDED.data"
 }
 
-// schemaLockKey is an arbitrary constant identifying the schema-initialization advisory lock.
-const schemaLockKey = 0x7366_6673 // "sffs"
+// schemaLockKey derives the schema-initialization advisory lock key from the table prefix, so that filesystems with
+// different prefixes in one database do not wait on each other.
+func schemaLockKey(prefix string) int64 {
+	h := fnv.New64a()
+	_, _ = h.Write([]byte("sqlfs:schema:" + prefix))
+	return int64(h.Sum64())
+}
 
-func (postgresDialect) LockSchema(ctx context.Context, tx Execer) error {
-	_, err := tx.ExecContext(ctx, "SELECT pg_advisory_xact_lock($1)", schemaLockKey)
+func (postgresDialect) LockSchema(ctx context.Context, tx Execer, prefix string) error {
+	_, err := tx.ExecContext(ctx, "SELECT pg_advisory_xact_lock($1)", schemaLockKey(prefix))
 	return err
 }
 
@@ -60,6 +66,10 @@ func (postgresDialect) Classify(err error) ErrorKind {
 		switch {
 		case code == "23505":
 			return KindUniqueViolation
+		case code == "23503":
+			return KindForeignKeyViolation
+		case code == "42P01": // undefined_table
+			return KindUndefinedTable
 		case code == "40001", code == "40P01", code == "55P03": // serialization, deadlock, lock timeout
 			return KindRetryable
 		case strings.HasPrefix(code, "08"), code == "57P01", code == "57P02", code == "57P03":

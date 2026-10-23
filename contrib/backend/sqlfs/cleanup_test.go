@@ -51,8 +51,34 @@ func (s *CleanupTestSuite) TestCrashedWriterIsRemoved() {
 	s.Equal("published", string(get(s.T(), fsys, "/w.txt")), "published content is untouched")
 	s.Zero(s.count("SELECT COUNT(*) FROM vfs_revisions WHERE state = 0"))
 
+	n, err := crashed.Write([]byte("more"))
+	s.Require().ErrorIs(err, sqlfs.ErrConflict, "writing to reclaimed staged content fails")
+	s.Zero(n, "no bytes are reported as accepted when the staged content is gone")
+
 	err = crashed.Close()
 	s.Require().ErrorIs(err, sqlfs.ErrConflict, "a reclaimed writer must fail instead of publishing partial data")
+}
+
+func (s *CleanupTestSuite) TestSparseRevisionIsFullyRemoved() {
+	var fsys *sqlfs.FileSystem
+	fsys, s.db = newSQLiteEnv(s.T(), sqlfs.WithChunkSize(testChunk), sqlfs.WithRevisionRetention(time.Nanosecond))
+	f, err := fsys.NewFile(testNS, "/sparse.bin")
+	s.Require().NoError(err)
+	_, err = f.Write([]byte("head"))
+	s.Require().NoError(err)
+	_, err = f.Seek(1000*testChunk, io.SeekStart)
+	s.Require().NoError(err)
+	_, err = f.Write([]byte("tail"))
+	s.Require().NoError(err)
+	s.Require().NoError(f.Close())
+	s.Require().NoError(f.Delete())
+	settle()
+
+	stats, err := fsys.Cleanup(s.T().Context())
+	s.Require().NoError(err)
+	s.Equal(1, stats.SupersededRemoved)
+	s.Zero(s.count("SELECT COUNT(*) FROM vfs_chunks"))
+	s.Zero(s.count("SELECT COUNT(*) FROM vfs_revisions"))
 }
 
 func (s *CleanupTestSuite) TestActiveWriterIsKept() {

@@ -311,3 +311,11 @@ func TestPostgresMoveAndDeleteGuardGenerations(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, names, 1, "the moved file must exist exactly once")
 }
+
+func TestPostgresValidateMissingSchema(t *testing.T) {
+	_, db := newPostgresFS(t)
+	fsys, err := sqlfs.NewFileSystem(sqlfs.WithDB(db), sqlfs.WithDialect(sqlfs.PostgreSQL()),
+		sqlfs.WithTablePrefix(fmt.Sprintf("absent%d_", pgPrefixSeq.Add(1))))
+	require.NoError(t, err)
+	require.ErrorIs(t, fsys.ValidateSchema(t.Context()), sqlfs.ErrInvalidSchema, "an undefined table is a missing schema")
+}

@@ -15,7 +15,7 @@ const (
 	// MinChunkSize and MaxChunkSize bound WithChunkSize.
 	MinChunkSize = 4 << 10
 	MaxChunkSize = 64 << 20
-	// DefaultOperationTimeout bounds each database round trip.
+	// DefaultOperationTimeout bounds each database statement.
 	DefaultOperationTimeout = 30 * time.Second
 	// DefaultStagingRetention is how long an unfinished write may go without activity before Cleanup removes it.
 	DefaultStagingRetention = 24 * time.Hour
@@ -67,18 +67,21 @@ func WithMaxFileSize(size int64) options.NewFileSystemOption[FileSystem] {
 	return newOption("maxFileSize", func(fs *FileSystem) { fs.maxFileSize = size })
 }
 
-// WithOperationTimeout bounds each database round trip. Zero disables the timeout. Default 30 seconds.
+// WithOperationTimeout bounds each database statement, including each statement inside a transaction, and the wait
+// to begin a transaction. Bulk chunk copies and deletes are split into statements of bounded size so that large files
+// do not exceed it. Zero disables the timeout. Default 30 seconds.
 func WithOperationTimeout(d time.Duration) options.NewFileSystemOption[FileSystem] {
 	return newOption("operationTimeout", func(fs *FileSystem) { fs.opTimeout = d })
 }
 
-// WithStagingRetention sets how long an unfinished write may be idle before Cleanup removes it. Default 24 hours.
+// WithStagingRetention sets how long an unfinished write may be idle before Cleanup removes it. It must be positive.
+// Default 24 hours.
 func WithStagingRetention(d time.Duration) options.NewFileSystemOption[FileSystem] {
 	return newOption("stagingRetention", func(fs *FileSystem) { fs.stagingRetention = d })
 }
 
-// WithRevisionRetention sets how long replaced or deleted content is kept so that in-progress readers can finish.
-// Default one hour.
+// WithRevisionRetention sets how long replaced or deleted content is kept so that in-progress readers can finish. It
+// must be positive. Default one hour.
 func WithRevisionRetention(d time.Duration) options.NewFileSystemOption[FileSystem] {
 	return newOption("revisionRetention", func(fs *FileSystem) { fs.revisionRetention = d })
 }

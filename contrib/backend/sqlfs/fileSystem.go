@@ -37,6 +37,10 @@ const (
 	tableNameFormat = `^[A-Za-z0-9_]{1,32}$`
 )
 
+// statementBytes bounds the chunk data a single bulk copy or delete statement touches, so that each statement of an
+// operation on a large file fits within the operation timeout. It is a variable so tests can lower it.
+var statementBytes = 64 << 20
+
 var prefixPattern = regexp.MustCompile(tableNameFormat)
 
 var (
@@ -94,8 +98,11 @@ func (fsys *FileSystem) validate() error {
 		return fmt.Errorf("%w: chunk size must be between %d and %d bytes", ErrInvalidConfig, MinChunkSize, MaxChunkSize)
 	case fsys.maxFileSize < 0:
 		return fmt.Errorf("%w: maximum file size must not be negative", ErrInvalidConfig)
-	case fsys.opTimeout < 0, fsys.stagingRetention < 0, fsys.revisionRetention < 0:
+	case fsys.opTimeout < 0:
 		return fmt.Errorf("%w: durations must not be negative", ErrInvalidConfig)
+	case fsys.stagingRetention <= 0, fsys.revisionRetention <= 0:
+		// Zero would let Cleanup reclaim in-progress writes and reads immediately.
+		return fmt.Errorf("%w: retention periods must be positive", ErrInvalidConfig)
 	}
 	return nil
 }
@@ -187,18 +194,105 @@ func (fsys *FileSystem) inTx(parent context.Context, op string, fn func(ctx cont
 }
 
 func (fsys *FileSystem) runTx(parent context.Context, fn func(ctx context.Context, tx txn) error) error {
-	ctx, cancel := fsys.opCtx(parent)
-	defer cancel()
-
-	tx, err := fsys.q.BeginTx(ctx, nil)
+	ctx, tx, cancel, err := fsys.beginTx(parent)
 	if err != nil {
 		return err
 	}
+	defer cancel()
 	if err := fn(ctx, tx); err != nil {
 		_ = tx.Rollback()
 		return err
 	}
 	return tx.Commit()
+}
+
+// beginTx starts a transaction whose statements are each bounded by the operation timeout. The transaction itself is
+// bound to parent rather than to a single timeout, so a transaction made of many bounded statements is not cut short.
+// Waiting to begin (for a pooled connection or a database lock) is bounded by the operation timeout too.
+func (fsys *FileSystem) beginTx(parent context.Context) (context.Context, txn, context.CancelFunc, error) {
+	ctx, cancel := context.WithCancel(parent)
+	var timer *time.Timer
+	if fsys.opTimeout > 0 {
+		timer = time.AfterFunc(fsys.opTimeout, cancel)
+	}
+	tx, err := fsys.q.BeginTx(ctx, nil)
+	if timer != nil && !timer.Stop() {
+		// The timer fired, so the transaction context is canceled or about to be.
+		if err == nil {
+			_ = tx.Rollback()
+		}
+		cancel()
+		return nil, nil, nil, fmt.Errorf("begin transaction: %w", ErrTimeout)
+	}
+	if err != nil {
+		cancel()
+		return nil, nil, nil, err
+	}
+	return ctx, timedTxn{txn: tx, fsys: fsys}, cancel, nil
+}
+
+// timedTxn bounds each statement executed in a transaction by the operation timeout. Single-row queries are bounded
+// by scanRow, which can keep its context alive until the row is scanned.
+type timedTxn struct {
+	txn
+	fsys *FileSystem
+}
+
+func (t timedTxn) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	ctx, cancel := t.fsys.opCtx(ctx)
+	defer cancel()
+	return t.txn.ExecContext(ctx, query, args...)
+}
+
+// scanRow runs a single-row query bounded by the operation timeout and scans the result into dest.
+func (fsys *FileSystem) scanRow(ctx context.Context, q Execer, query string, args []any, dest ...any) error {
+	ctx, cancel := fsys.opCtx(ctx)
+	defer cancel()
+	return q.QueryRowContext(ctx, query, args...).Scan(dest...)
+}
+
+// chunksPerStatement returns how many chunks of size cs one bulk statement may touch.
+func chunksPerStatement(cs int) int64 {
+	return int64(max(1, statementBytes/max(cs, 1)))
+}
+
+// copyChunks copies every chunk of revision src into revision dst, in statements of bounded size. Sparse revisions
+// are handled by jumping to the next stored chunk rather than scanning empty index ranges.
+func (fsys *FileSystem) copyChunks(ctx context.Context, tx txn, dst, src string, cs int) error {
+	step := chunksPerStatement(cs)
+	for from := int64(0); ; {
+		var next sql.NullInt64
+		if err := fsys.scanRow(ctx, tx, fsys.qs.minChunkFrom, []any{src, from}, &next); err != nil {
+			return err
+		}
+		if !next.Valid {
+			return nil
+		}
+		if _, err := tx.ExecContext(ctx, fsys.qs.copyChunksRange, dst, src, next.Int64, next.Int64+step); err != nil {
+			return err
+		}
+		from = next.Int64 + step
+	}
+}
+
+// deleteRevision removes a revision's chunks, in statements of bounded size, and then the revision row. The caller
+// must already have claimed the revision so that no writer or reader can be using it.
+func (fsys *FileSystem) deleteRevision(ctx context.Context, tx txn, id string, cs int) error {
+	step := chunksPerStatement(cs)
+	for {
+		var next sql.NullInt64
+		if err := fsys.scanRow(ctx, tx, fsys.qs.minChunk, []any{id}, &next); err != nil {
+			return err
+		}
+		if !next.Valid {
+			break
+		}
+		if _, err := tx.ExecContext(ctx, fsys.qs.delChunksRange, id, next.Int64, next.Int64+step); err != nil {
+			return err
+		}
+	}
+	_, err := tx.ExecContext(ctx, fsys.qs.delRevision, id)
+	return err
 }
 
 // exec runs a single statement outside a transaction and returns the rows affected.
@@ -234,11 +328,9 @@ type fileRow struct {
 
 // lookupFile returns the published row for a path, or nil if no file exists.
 func (fsys *FileSystem) lookupFile(ctx context.Context, q Execer, ns, dir, name string) (*fileRow, error) {
-	ctx, cancel := fsys.opCtx(ctx)
-	defer cancel()
 	var r fileRow
-	err := q.QueryRowContext(ctx, fsys.qs.selFile, ns, dir, name).
-		Scan(&r.id, &r.revisionID, &r.size, &r.modifiedAt, &r.generation, &r.chunkSize)
+	err := fsys.scanRow(ctx, q, fsys.qs.selFile, []any{ns, dir, name},
+		&r.id, &r.revisionID, &r.size, &r.modifiedAt, &r.generation, &r.chunkSize)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil //nolint:nilnil // nil row means "no such file"
 	}
@@ -260,11 +352,11 @@ func (fsys *FileSystem) ValidateSchema(ctx context.Context) error {
 
 	var v sql.NullInt64
 	if err := fsys.q.QueryRowContext(ctx, fsys.qs.selVersion).Scan(&v); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) ||
-			fsys.dialect.Classify(err) == KindUnavailable {
-			return fsys.wrapErr("validate schema", err)
+		if fsys.dialect.Classify(err) == KindUndefinedTable {
+			return fmt.Errorf("sqlfs: validate schema: %w: schema not found (run EnsureSchema): %w", ErrInvalidSchema, err)
 		}
-		return fmt.Errorf("sqlfs: validate schema: %w: schema not found (run EnsureSchema): %w", ErrInvalidSchema, err)
+		// Anything else (permissions, connectivity, timeouts) is reported as itself rather than as a missing schema.
+		return fsys.wrapErr("validate schema", err)
 	}
 	switch {
 	case !v.Valid || v.Int64 == 0:
@@ -276,7 +368,19 @@ func (fsys *FileSystem) ValidateSchema(ctx context.Context) error {
 		return fmt.Errorf("sqlfs: validate schema: %w: database schema version %d is older than %d (run EnsureSchema)",
 			ErrInvalidSchema, v.Int64, latest)
 	}
+	if err := fsys.validateSession(ctx, fsys.q); err != nil {
+		return fsys.wrapErr("validate schema", err)
+	}
 	return nil
+}
+
+// validateSession runs the dialect's session checks, if it has any.
+func (fsys *FileSystem) validateSession(ctx context.Context, q Execer) error {
+	v, ok := fsys.dialect.(SessionValidator)
+	if !ok {
+		return nil
+	}
+	return v.ValidateSession(ctx, q)
 }
 
 // EnsureSchema creates or upgrades the schema to the version supported by this module. It is idempotent, safe to
@@ -284,14 +388,17 @@ func (fsys *FileSystem) ValidateSchema(ctx context.Context) error {
 func (fsys *FileSystem) EnsureSchema(ctx context.Context) error {
 	latest := fsys.latestVersion()
 	return fsys.inTx(ctx, "ensure schema", func(ctx context.Context, tx txn) error {
-		if err := fsys.dialect.LockSchema(ctx, tx); err != nil {
+		if err := fsys.validateSession(ctx, tx); err != nil {
+			return err
+		}
+		if err := fsys.dialect.LockSchema(ctx, tx, fsys.prefix); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, fsys.qs.createSchemaTable); err != nil {
 			return err
 		}
 		var v sql.NullInt64
-		if err := tx.QueryRowContext(ctx, fsys.qs.selVersion).Scan(&v); err != nil {
+		if err := fsys.scanRow(ctx, tx, fsys.qs.selVersion, nil, &v); err != nil {
 			return err
 		}
 		if int(v.Int64) > latest {

@@ -136,6 +136,8 @@ func (s *LocationTestSuite) TestListing() {
 			expected: []string{"a_b.txt"}},
 		{name: "prefix with relative directory", list: func() ([]string, error) { return loc.ListByPrefix("sub/nes") },
 			expected: []string{"nested.txt"}},
+		{name: "prefix that is only a directory", list: func() ([]string, error) { return loc.ListByPrefix("sub/") },
+			expected: []string{"nested.txt"}},
 		{name: "regex filter", list: func() ([]string, error) { return loc.ListByRegex(regexp.MustCompile(`^file\d\.txt$`)) },
 			expected: []string{"file1.txt", "file2.txt"}},
 		{name: "regex without matches", list: func() ([]string, error) { return loc.ListByRegex(regexp.MustCompile(`Z`)) },

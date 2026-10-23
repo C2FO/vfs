@@ -30,6 +30,11 @@ type recordingQuerier struct {
 	mu         sync.Mutex
 	queries    []string
 	failCommit error
+	// lostCommit, if set, commits the transaction and then reports this error, as when a connection drops after
+	// the database committed.
+	lostCommit error
+	// execDelay, if set, delays every statement executed in a transaction.
+	execDelay time.Duration
 	// beforeBegin, if set, runs before each transaction starts.
 	beforeBegin func()
 }
@@ -38,6 +43,24 @@ func (r *recordingQuerier) record(q string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.queries = append(r.queries, q)
+}
+
+func (r *recordingQuerier) seenContaining(sub string) int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	n := 0
+	for _, q := range r.queries {
+		if strings.Contains(q, sub) {
+			n++
+		}
+	}
+	return n
+}
+
+func (r *recordingQuerier) reset() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.queries = nil
 }
 
 func (r *recordingQuerier) seen(prefix string) int {
@@ -85,6 +108,13 @@ type recordingTxn struct {
 
 func (t *recordingTxn) ExecContext(ctx context.Context, q string, args ...any) (sql.Result, error) {
 	t.r.record(q)
+	if t.r.execDelay > 0 {
+		select {
+		case <-time.After(t.r.execDelay):
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
 	return t.txn.ExecContext(ctx, q, args...)
 }
 
@@ -102,6 +132,12 @@ func (t *recordingTxn) Commit() error {
 	if t.r.failCommit != nil {
 		_ = t.Rollback()
 		return t.r.failCommit
+	}
+	if t.r.lostCommit != nil {
+		if err := t.txn.Commit(); err != nil {
+			return err
+		}
+		return t.r.lostCommit
 	}
 	return t.txn.Commit()
 }
@@ -381,6 +417,32 @@ func (s *TransientTestSuite) TestRenderMigrationPrefix() {
 	s.Equal([]string{`CREATE TABLE "App_a" (x INT)`, `INSERT INTO "App_a" VALUES (1)`}, stmts)
 }
 
+func (s *TransientTestSuite) TestRenderMigrationLineEndings() {
+	expected := []string{`CREATE TABLE "vfs_a" (x INT)`, `INSERT INTO "vfs_a" VALUES (1)`}
+	for name, sqlText := range map[string]string{
+		"crlf":                "CREATE TABLE vfs_a (x INT);\r\nINSERT INTO vfs_a VALUES (1);\r\n",
+		"trailing blanks":     "CREATE TABLE vfs_a (x INT);  \nINSERT INTO vfs_a VALUES (1);\t\n",
+		"no final newline":    "CREATE TABLE vfs_a (x INT);\nINSERT INTO vfs_a VALUES (1);",
+		"embedded migrations": "",
+	} {
+		s.Run(name, func() {
+			if sqlText == "" {
+				for _, d := range []Dialect{SQLite(), PostgreSQL()} {
+					crlf := strings.ReplaceAll(d.Migrations()[0].SQL, "\n", "\r\n")
+					s.Equal(renderMigration(d.Migrations()[0], "vfs_", d.QuoteIdentifier),
+						renderMigration(Migration{Version: 1, SQL: crlf}, "vfs_", d.QuoteIdentifier))
+				}
+				return
+			}
+			s.Equal(expected, renderMigration(Migration{Version: 1, SQL: sqlText}, "vfs_", SQLite().QuoteIdentifier))
+		})
+	}
+}
+
+func (s *TransientTestSuite) TestSchemaLockKeyDependsOnPrefix() {
+	s.NotEqual(schemaLockKey("vfs_"), schemaLockKey("app_"))
+}
+
 func (s *FaultTestSuite) TestCleanupSkipsRevisionRenewedAfterSelection() {
 	fsys, err := NewFileSystem(withQuerier(s.rec), WithDialect(SQLite()), WithChunkSize(faultChunk),
 		WithStagingRetention(time.Nanosecond))
@@ -438,4 +500,102 @@ func (s *FaultTestSuite) TestInTxStopsRetryWaitOnCancel() {
 	})
 	s.Require().ErrorIs(err, context.Canceled)
 	s.LessOrEqual(attempts, 1)
+}
+
+func (s *FaultTestSuite) TestLostCommitThenAbortKeepsPublishedContent() {
+	s.put(s.plain, "/lost.txt", []byte("original"))
+	f, err := s.fs.NewFile("documents", "/lost.txt")
+	s.Require().NoError(err)
+	_, err = f.Write([]byte("replacement"))
+	s.Require().NoError(err)
+
+	s.rec.lostCommit = errors.New("connection reset after commit")
+	s.Require().Error(f.Close(), "the caller cannot tell the commit succeeded")
+	s.rec.lostCommit = nil
+
+	s.Require().NoError(f.(*File).Abort())
+	s.Equal("replacement", string(s.get(s.plain, "/lost.txt")), "Abort must not remove published content")
+	var chunks int
+	s.Require().NoError(s.db.QueryRow("SELECT COUNT(*) FROM vfs_chunks c JOIN vfs_files f ON f.revision_id = c.revision_id").Scan(&chunks))
+	s.Equal(1, chunks)
+}
+
+func (s *FaultTestSuite) TestLostCommitThenCloseRetrySucceeds() {
+	f, err := s.fs.NewFile("documents", "/retry.txt")
+	s.Require().NoError(err)
+	_, err = f.Write([]byte("content"))
+	s.Require().NoError(err)
+
+	s.rec.lostCommit = errors.New("timeout after commit")
+	s.Require().Error(f.Close())
+	s.rec.lostCommit = nil
+
+	s.Require().NoError(f.Close(), "retrying Close after a lost commit reports success")
+	s.Equal("content", string(s.get(s.plain, "/retry.txt")))
+	var revisions int
+	s.Require().NoError(s.db.QueryRow("SELECT COUNT(*) FROM vfs_revisions").Scan(&revisions))
+	s.Equal(1, revisions, "content was published exactly once")
+}
+
+func (s *FaultTestSuite) TestTimeoutBoundsEachStatementNotTheTransaction() {
+	const timeout = 200 * time.Millisecond
+	fsys, err := NewFileSystem(withQuerier(s.rec), WithDialect(SQLite()), WithChunkSize(faultChunk),
+		WithOperationTimeout(timeout))
+	s.Require().NoError(err)
+	f, err := fsys.NewFile("documents", "/slow.txt")
+	s.Require().NoError(err)
+	_, err = f.Write([]byte("v1"))
+	s.Require().NoError(err)
+
+	// Publishing a new file runs two statements in one transaction; together they exceed the timeout.
+	s.rec.execDelay = timeout * 2 / 3
+	s.Require().NoError(f.Close(), "a transaction of individually bounded statements is not cut short")
+	s.rec.execDelay = 0
+}
+
+func (s *FaultTestSuite) TestSlowStatementInTransactionTimesOut() {
+	fsys, err := NewFileSystem(withQuerier(s.rec), WithDialect(SQLite()), WithChunkSize(faultChunk),
+		WithOperationTimeout(50*time.Millisecond))
+	s.Require().NoError(err)
+	f, err := fsys.NewFile("documents", "/stuck.txt")
+	s.Require().NoError(err)
+
+	s.rec.execDelay = time.Second
+	err = f.Touch()
+	s.rec.execDelay = 0
+	s.Require().ErrorIs(err, ErrTimeout)
+}
+
+func (s *FaultTestSuite) TestBulkChunkStatementsAreBounded() {
+	defer func(old int) { statementBytes = old }(statementBytes)
+	statementBytes = 2 * faultChunk // two chunks per statement
+
+	content := bytes.Repeat([]byte("x"), 5*faultChunk)
+	s.put(s.fs, "/bulk.bin", content)
+	src, err := s.fs.NewFile("documents", "/bulk.bin")
+	s.Require().NoError(err)
+	dst, err := s.fs.NewFile("documents", "/bulk-copy.bin")
+	s.Require().NoError(err)
+
+	s.rec.reset()
+	s.Require().NoError(src.CopyToFile(dst))
+	s.Equal(3, s.rec.seenContaining("SELECT ?, chunk_index, data"), "5 chunks copied in statements of at most 2")
+	s.True(bytes.Equal(content, s.get(s.plain, "/bulk-copy.bin")))
+
+	fsys, err := NewFileSystem(withQuerier(s.rec), WithDialect(SQLite()), WithChunkSize(faultChunk),
+		WithRevisionRetention(time.Nanosecond))
+	s.Require().NoError(err)
+	gone, err := fsys.NewFile("documents", "/bulk.bin")
+	s.Require().NoError(err)
+	s.Require().NoError(gone.Delete())
+	time.Sleep(3 * time.Millisecond)
+
+	s.rec.reset()
+	stats, err := fsys.Cleanup(s.T().Context())
+	s.Require().NoError(err)
+	s.Equal(1, stats.SupersededRemoved)
+	s.Equal(3, s.rec.seenContaining("DELETE FROM \"vfs_chunks\""), "5 chunks deleted in statements of at most 2")
+	var chunks int
+	s.Require().NoError(s.db.QueryRow("SELECT COUNT(*) FROM vfs_chunks").Scan(&chunks))
+	s.Equal(5, chunks, "only the copy's chunks remain")
 }

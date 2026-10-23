@@ -400,6 +400,58 @@ func (s *FileTestSuite) TestMaxFileSize() {
 	s.Len(get(s.T(), s.fs, "/limit.txt"), 10, "published content is unchanged")
 }
 
+func (s *FileTestSuite) TestTouchDoesNotConflictWithWriters() {
+	put(s.T(), s.fs, "/t.txt", []byte("original"))
+
+	other := s.file("/t.txt")
+	_, err := other.Write([]byte("from another handle"))
+	s.Require().NoError(err)
+	s.Require().NoError(s.file("/t.txt").Touch())
+	s.Require().NoError(other.Close(), "a timestamp update is not a conflicting change")
+	s.Equal("from another handle", string(get(s.T(), s.fs, "/t.txt")))
+
+	same := s.file("/t.txt")
+	_, err = same.Write([]byte("same handle"))
+	s.Require().NoError(err)
+	s.Require().NoError(same.Touch())
+	s.Require().NoError(same.Close(), "touching the file being written must not invalidate the handle")
+	s.Equal("same handle", string(get(s.T(), s.fs, "/t.txt")))
+}
+
+func (s *FileTestSuite) TestDeleteDiscardsStagedWrites() {
+	put(s.T(), s.fs, "/del.txt", []byte("original"))
+	f := s.file("/del.txt")
+	_, err := f.Write([]byte("staged"))
+	s.Require().NoError(err)
+	s.Require().NoError(f.Delete())
+	s.Zero(s.count("SELECT COUNT(*) FROM vfs_revisions WHERE state = 0"), "staged revision removed with the handle")
+}
+
+func (s *FileTestSuite) TestPinnedHandleCopiesAndMovesWhatItRead() {
+	put(s.T(), s.fs, "/pin.txt", []byte("original"))
+	src := s.file("/pin.txt")
+	b := make([]byte, 3)
+	_, err := io.ReadFull(src, b)
+	s.Require().NoError(err)
+	put(s.T(), s.fs, "/pin.txt", []byte("replacement"))
+	_, err = src.Seek(0, io.SeekStart)
+	s.Require().NoError(err)
+	s.Require().NoError(src.CopyToFile(s.file("/pin-copy.txt")))
+	s.Equal("original", string(get(s.T(), s.fs, "/pin-copy.txt")), "copy matches the revision the handle read")
+
+	mover := s.file("/pin.txt")
+	_, err = io.ReadFull(mover, b)
+	s.Require().NoError(err)
+	put(s.T(), s.fs, "/pin.txt", []byte("newer still"))
+	_, err = mover.Seek(0, io.SeekStart)
+	s.Require().NoError(err)
+	s.Require().ErrorIs(mover.MoveToFile(s.file("/pin-moved.txt")), sqlfs.ErrConflict)
+	s.Equal("newer still", string(get(s.T(), s.fs, "/pin.txt")), "nothing moved")
+	ok, err := s.file("/pin-moved.txt").Exists()
+	s.Require().NoError(err)
+	s.False(ok)
+}
+
 func (s *FileTestSuite) TestTouch() {
 	f := s.file("/touch.txt")
 	s.Require().NoError(f.Touch())

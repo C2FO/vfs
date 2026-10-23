@@ -51,7 +51,8 @@ file:/path/files.db?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)&_txlock=i
 ```
 
 * `busy_timeout` avoids immediate `SQLITE_BUSY` failures between writers.
-* `foreign_keys(1)` enforces the chunk to revision relationship.
+* `foreign_keys(1)` enforces the chunk to revision relationship. It is **required**: `EnsureSchema` and
+  `ValidateSchema` return `ErrInvalidConfig` when foreign keys are off.
 * `_txlock=immediate` takes the write lock when a transaction begins, so write transactions do not fail midway.
 
 Only the pragmas matter; any SQLite driver works with `sqlfs.SQLite()`.
@@ -60,8 +61,8 @@ Only the pragmas matter; any SQLite driver works with `sqlfs.SQLite()`.
 
 | Method | Purpose |
 |--------|---------|
-| `EnsureSchema(ctx)` | Creates or upgrades the tables. Safe to call concurrently from several processes (PostgreSQL takes an advisory lock). |
-| `ValidateSchema(ctx)` | Read-only check that the schema exists and is the version this build understands. Use it at startup when the runtime user cannot run DDL. |
+| `EnsureSchema(ctx)` | Creates or upgrades the tables. Safe to call concurrently from several processes (PostgreSQL takes an advisory lock per table prefix). |
+| `ValidateSchema(ctx)` | Read-only check that the schema exists and is the version this build understands, and that required connection settings (SQLite foreign keys) are on. Use it at startup when the runtime user cannot run DDL. Errors other than a missing table, such as permission or connection failures, are returned as themselves rather than as `ErrInvalidSchema`. |
 
 Run `EnsureSchema` from a migration job or a privileged startup step. The runtime account only needs
 `SELECT`, `INSERT`, `UPDATE` and `DELETE` on the four tables (`<prefix>schema`, `<prefix>revisions`, `<prefix>files`,
@@ -78,22 +79,34 @@ and index name, so if your prefix has uppercase letters or starts with a digit, 
 | `WithTablePrefix(p)` | `vfs_` | 1-32 characters of `A-Za-z0-9_`. |
 | `WithChunkSize(n)` | 1 MiB | 4 KiB to 64 MiB. Existing content keeps the size it was written with. |
 | `WithMaxFileSize(n)` | unlimited | Writes beyond the limit fail. |
-| `WithOperationTimeout(d)` | 30s | Bounds each database round trip; exceeding it returns `ErrTimeout`. |
-| `WithStagingRetention(d)` | 24h | Idle time before `Cleanup` removes an abandoned write. |
-| `WithRevisionRetention(d)` | 1h | How long replaced or deleted content stays readable for in-progress readers. |
+| `WithOperationTimeout(d)` | 30s | Bounds each database statement (including each statement inside a transaction) and the wait to begin a transaction; exceeding it returns `ErrTimeout`. Bulk chunk copies and deletes are split into statements of at most 64 MiB of chunk data. `0` disables it. |
+| `WithStagingRetention(d)` | 24h | Idle time before `Cleanup` removes an abandoned write. Must be positive. |
+| `WithRevisionRetention(d)` | 1h | How long replaced or deleted content stays readable for in-progress readers. Must be positive. |
 
 ## Semantics
 
 * **Atomic publish.** Writes accumulate in a staged revision and become visible only on `Close`. A crashed writer
-  never exposes partial content. `Abort` discards a write explicitly.
+  never exposes partial content. `Abort` discards a write explicitly. If `Close` fails, the handle keeps its staged
+  writes so `Close` can be retried; a retry after a commit whose result was lost (for example a timeout) succeeds
+  without publishing twice, and `Abort` never removes content that was already published.
 * **Stable reads.** A reader is pinned to the revision it opened, so replacing the file does not corrupt a read in
   progress. If the pinned content is reclaimed by `Cleanup` before the reader finishes, reads fail with `ErrConflict`.
-* **Optimistic concurrency.** Each file has a generation counter. If another writer replaced the file after yours
-  started, `Close` returns `ErrConflict` (`ErrAlreadyExists` when two creators race). Re-read and retry:
+* **Optimistic concurrency.** Each file has a generation counter. If another writer replaced, moved or deleted the
+  file after yours started, `Close` returns `ErrConflict` (`ErrAlreadyExists` when two creators race). `Touch` only
+  updates the modification time and does not cause conflicts. A conflicted handle cannot publish, so call `Abort` on
+  it (otherwise its staged content lingers until `Cleanup` passes the staging retention), then re-read and retry with
+  a new handle:
 
   ```go
   for range 3 {
-      if err = update(); !errors.Is(err, sqlfs.ErrConflict) { break }
+      f, _ := fsys.NewFile("documents", "/reports/q1.txt")
+      if err = update(f); err == nil {
+          err = f.Close()
+      }
+      if !errors.Is(err, sqlfs.ErrConflict) {
+          break
+      }
+      _ = f.(*sqlfs.File).Abort()
   }
   ```
 
@@ -101,7 +114,9 @@ and index name, so if your prefix has uppercase letters or starts with a digit, 
   copying the untouched chunks inside the database. Otherwise the write replaces the content.
 * **Sparse writes.** Seeking past the end and writing leaves a hole that reads as zeros; only touched chunks are stored.
 * **Server-side copy and move.** Within one `FileSystem`, copy is an in-database chunk copy and move is a metadata
-  update; no content crosses the wire. Copies to or from other backends stream.
+  update; no content crosses the wire. Copies to or from other backends stream. A source handle that has already
+  read or sought copies the revision it is pinned to, and a move fails with `ErrConflict` if the file changed since
+  the handle observed it. Staged writes on a destination handle are discarded.
 
 ## Cleanup
 
@@ -112,8 +127,8 @@ or a ticker in one process is enough; it is safe to run concurrently):
 stats, err := fsys.Cleanup(ctx)
 ```
 
-sqlfs starts no background goroutines. Cleanup works in small batches and honors context cancellation, so it can be
-interrupted and resumed.
+sqlfs starts no background goroutines. Cleanup removes each revision in its own transaction, deletes chunks in bounded
+statements, and honors context cancellation, so it can be interrupted and resumed.
 
 ## Errors
 
