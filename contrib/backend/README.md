@@ -9,6 +9,7 @@ This directory contains community-contributed VFS backends that are not official
 | [Dropbox](./dropbox/README.md) | `dbx://` | Dropbox cloud storage |
 | [OneDrive](./onedrive/README.md) | `onedrive://` | Microsoft OneDrive and SharePoint document libraries via the Graph API |
 | [Google Drive](./gdrive/README.md) | `gdrive://` | Google Drive (My Drive and shared drives) via the Drive v3 API |
+| [SQL FS](./sqlfs/README.md) | `sqlfs://` | Files stored in PostgreSQL or SQLite through `database/sql`. Not auto-registered: build a `FileSystem` and call `backend.Register(sqlfs.Scheme, fsys)` |
 
 ## Using a Community Backend
 

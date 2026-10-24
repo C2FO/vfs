@@ -1,0 +1,2 @@
+# Embedded migrations are split on line endings; keep them LF on every platform.
+*.sql text eol=lf

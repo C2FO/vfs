@@ -89,6 +89,7 @@ These backends are maintained in `contrib/backend/` as separate Go modules:
 
 * [Dropbox backend](contrib/backend/dropbox/README.md) - Dropbox cloud storage
 * [OneDrive backend](contrib/backend/onedrive/README.md) - Microsoft OneDrive/SharePoint via Graph API
+* [SQL FS backend](contrib/backend/sqlfs/README.md) - Files stored in PostgreSQL or SQLite through `database/sql` (registered explicitly, not on import)
 
 See [contrib/backend/README.md](contrib/backend/README.md) for guidelines on contributing new backends.
 

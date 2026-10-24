@@ -1,0 +1,11 @@
+# The querier and txn interfaces are unexported, so their mocks live in this package (test files only).
+dir: '{{.InterfaceDir}}'
+pkgname: sqlfs
+filename: 'mock_{{.InterfaceName}}_test.go'
+structname: 'mock{{.InterfaceName | firstUpper}}'
+template: testify
+packages:
+  github.com/c2fo/vfs/contrib/backend/sqlfs:
+    interfaces:
+      querier: {}
+      txn: {}
