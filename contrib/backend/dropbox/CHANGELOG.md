@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Documentation
+- Automated test coverage (no production code change): `testsuite.RunConformanceTests` and `RunIOTests` now run in ordinary `go test` (no credentials, Docker, or build tag) against an in-process stateful fake of the Dropbox API, for both the simple `upload` path and the chunked `upload_session/*` path, including `list_folder/continue` pagination ([#349](https://github.com/C2FO/vfs/issues/349)).
 
 ## [[contrib/backend/dropbox/v1.2.0](https://github.com/C2FO/vfs/releases/tag/contrib%2Fbackend%2Fdropbox%2Fv1.2.0)] - 2026-08-28
 ### Fixed
