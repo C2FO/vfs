@@ -318,6 +318,19 @@ func (s *optionsSuite) routeDefaultTransportTo(srv *httptest.Server) {
 	s.T().Cleanup(func() { http.DefaultTransport = original })
 }
 
+// startFakeGoogleAPIs points Application Default Credentials at adcFile and serves fake through a TLS test server that
+// receives every STS, IAM, and GCS request until the test ends.
+func (s *optionsSuite) startFakeGoogleAPIs(adcFile string, fake *fakeGoogleAPIs) {
+	s.T().Setenv("GOOGLE_APPLICATION_CREDENTIALS", adcFile)
+	// Keep the libraries from adding lookups or client certificates that the fake can't serve.
+	s.T().Setenv("GOOGLE_AUTH_TRUST_BOUNDARY_ENABLED", "")
+	s.T().Setenv("GOOGLE_API_USE_CLIENT_CERTIFICATE", "false")
+
+	srv := httptest.NewTLSServer(fake)
+	s.T().Cleanup(srv.Close)
+	s.routeDefaultTransportTo(srv)
+}
+
 func (s *optionsSuite) TestParseClientOptionsTokenExchange() {
 	dir := s.T().TempDir()
 	authorizedUserFile, err := writeAuthorizedUserCredentials(dir)
@@ -334,6 +347,9 @@ func (s *optionsSuite) TestParseClientOptionsTokenExchange() {
 		expectedIAMAuth string
 		expectedGCSAuth string
 		expectedErr     string
+		// cancelBuildContext cancels the context given to parseClientOptions before the first token is requested,
+		// since the resulting client is cached and used long after it was built.
+		cancelBuildContext bool
 	}{
 		{
 			name:            "external_account base exchanges its subject token with STS, then impersonates",
@@ -341,6 +357,14 @@ func (s *optionsSuite) TestParseClientOptionsTokenExchange() {
 			expectSTS:       true,
 			expectedIAMAuth: "Bearer " + fakeSTSToken,
 			expectedGCSAuth: "Bearer " + fakeImpersonatedToken,
+		},
+		{
+			name:               "token refresh still works after the build context is canceled",
+			adcFile:            externalAccountFile,
+			cancelBuildContext: true,
+			expectSTS:          true,
+			expectedIAMAuth:    "Bearer " + fakeSTSToken,
+			expectedGCSAuth:    "Bearer " + fakeImpersonatedToken,
 		},
 		{
 			name:            "authorized_user base refreshes its token, then impersonates",
@@ -367,18 +391,16 @@ func (s *optionsSuite) TestParseClientOptionsTokenExchange() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			s.T().Setenv("GOOGLE_APPLICATION_CREDENTIALS", tt.adcFile)
-			// Keep the libraries from adding lookups or client certificates that the fake can't serve.
-			s.T().Setenv("GOOGLE_AUTH_TRUST_BOUNDARY_ENABLED", "")
-			s.T().Setenv("GOOGLE_API_USE_CLIENT_CERTIFICATE", "false")
-
 			fake := &fakeGoogleAPIs{stsStatus: tt.stsStatus, iamStatus: tt.iamStatus}
-			srv := httptest.NewTLSServer(fake)
-			s.T().Cleanup(srv.Close)
-			s.routeDefaultTransportTo(srv)
+			s.startFakeGoogleAPIs(tt.adcFile, fake)
 
-			opts, err := parseClientOptions(s.T().Context(), Options{ImpersonateServiceAccount: testServiceAccount})
+			buildCtx, cancelBuild := context.WithCancel(s.T().Context())
+			defer cancelBuild()
+			opts, err := parseClientOptions(buildCtx, Options{ImpersonateServiceAccount: testServiceAccount})
 			s.Require().NoError(err)
+			if tt.cancelBuildContext {
+				cancelBuild()
+			}
 			client, _, err := htransport.NewClient(s.T().Context(), opts...)
 			s.Require().NoError(err)
 			req, err := http.NewRequestWithContext(s.T().Context(), http.MethodGet, testBucketURL, http.NoBody)
@@ -411,38 +433,6 @@ func (s *optionsSuite) TestParseClientOptionsTokenExchange() {
 			s.Equal(tt.expectedGCSAuth, got.gcsAuth)
 		})
 	}
-}
-
-// TestParseClientOptionsOutlivesBuildContext verifies the impersonated token source keeps refreshing after the context
-// passed to parseClientOptions is canceled, since the resulting client is cached and reused long after construction.
-func (s *optionsSuite) TestParseClientOptionsOutlivesBuildContext() {
-	dir := s.T().TempDir()
-	externalAccountFile, err := writeExternalAccountCredentials(dir)
-	s.Require().NoError(err)
-
-	s.T().Setenv("GOOGLE_APPLICATION_CREDENTIALS", externalAccountFile)
-	s.T().Setenv("GOOGLE_AUTH_TRUST_BOUNDARY_ENABLED", "")
-	s.T().Setenv("GOOGLE_API_USE_CLIENT_CERTIFICATE", "false")
-
-	fake := &fakeGoogleAPIs{}
-	srv := httptest.NewTLSServer(fake)
-	s.T().Cleanup(srv.Close)
-	s.routeDefaultTransportTo(srv)
-
-	buildCtx, cancel := context.WithCancel(s.T().Context())
-	opts, err := parseClientOptions(buildCtx, Options{ImpersonateServiceAccount: testServiceAccount})
-	s.Require().NoError(err)
-	cancel()
-
-	client, _, err := htransport.NewClient(s.T().Context(), opts...)
-	s.Require().NoError(err)
-	req, err := http.NewRequestWithContext(s.T().Context(), http.MethodGet, testBucketURL, http.NoBody)
-	s.Require().NoError(err)
-
-	resp, err := client.Do(req)
-	s.Require().NoError(err)
-	s.Require().NoError(resp.Body.Close())
-	s.Equal(http.StatusOK, resp.StatusCode)
 }
 
 func (s *optionsSuite) TestOptionsJSONDecoding() {
