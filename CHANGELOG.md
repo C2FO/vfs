@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- `gs`: Impersonated token refresh no longer fails with `context canceled` when the context passed to `GetClient` (or `FileSystem.Client()`) is canceled after the client is built.
 
 ## [[v7.32.0](https://github.com/C2FO/vfs/releases/tag/v7.32.0)] - 2026-10-24
 ### Added

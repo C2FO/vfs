@@ -413,6 +413,38 @@ func (s *optionsSuite) TestParseClientOptionsTokenExchange() {
 	}
 }
 
+// TestParseClientOptionsOutlivesBuildContext verifies the impersonated token source keeps refreshing after the context
+// passed to parseClientOptions is canceled, since the resulting client is cached and reused long after construction.
+func (s *optionsSuite) TestParseClientOptionsOutlivesBuildContext() {
+	dir := s.T().TempDir()
+	externalAccountFile, err := writeExternalAccountCredentials(dir)
+	s.Require().NoError(err)
+
+	s.T().Setenv("GOOGLE_APPLICATION_CREDENTIALS", externalAccountFile)
+	s.T().Setenv("GOOGLE_AUTH_TRUST_BOUNDARY_ENABLED", "")
+	s.T().Setenv("GOOGLE_API_USE_CLIENT_CERTIFICATE", "false")
+
+	fake := &fakeGoogleAPIs{}
+	srv := httptest.NewTLSServer(fake)
+	s.T().Cleanup(srv.Close)
+	s.routeDefaultTransportTo(srv)
+
+	buildCtx, cancel := context.WithCancel(s.T().Context())
+	opts, err := parseClientOptions(buildCtx, Options{ImpersonateServiceAccount: testServiceAccount})
+	s.Require().NoError(err)
+	cancel()
+
+	client, _, err := htransport.NewClient(s.T().Context(), opts...)
+	s.Require().NoError(err)
+	req, err := http.NewRequestWithContext(s.T().Context(), http.MethodGet, testBucketURL, http.NoBody)
+	s.Require().NoError(err)
+
+	resp, err := client.Do(req)
+	s.Require().NoError(err)
+	s.Require().NoError(resp.Body.Close())
+	s.Equal(http.StatusOK, resp.StatusCode)
+}
+
 func (s *optionsSuite) TestOptionsJSONDecoding() {
 	tests := []struct {
 		name     string

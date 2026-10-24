@@ -61,7 +61,9 @@ func impersonationClientOptions(ctx context.Context, opts Options) ([]option.Cli
 		baseOpts = append(baseOpts, option.WithCredentialsFile(opts.CredentialFile))
 	}
 
-	ts, err := impersonate.CredentialsTokenSource(ctx, impersonate.CredentialsConfig{
+	// The token source is cached on the client and refreshes tokens long after this call returns, and the Google
+	// libraries reuse the construction context for those refreshes, so it must not be tied to ctx's cancellation.
+	ts, err := impersonate.CredentialsTokenSource(context.WithoutCancel(ctx), impersonate.CredentialsConfig{
 		TargetPrincipal: opts.ImpersonateServiceAccount,
 		Scopes:          []string{storage.ScopeFullControl, cloudPlatformScope},
 	}, baseOpts...)
