@@ -90,14 +90,15 @@ that implements the VFS interfaces can be driven by `RunConformanceTests` /
    core backends.
 
 2. **SaaS / HTTP-API backends with no local emulator** (e.g. Dropbox, and the
-   in-progress OneDrive backend). These have no "server" image to run, but their
-   REST APIs can be stubbed with a
-   [WireMock](https://wiremock.org/) container
-   (there is a WireMock testcontainers module and image). This works **only if
-   the backend can be pointed at a custom base URL/endpoint** — a prerequisite
-   the backend must expose in its options. With that in place, a WireMock
-   container serving recorded/stubbed responses lets the same conformance suites
-   run with no credentials.
+   in-progress OneDrive backend). These have no "server" image to run, and the
+   conformance suites are stateful (upload, list, move, read back, delete), so a
+   request-matching stub such as WireMock is the wrong tool for them. Instead,
+   write a small **stateful in-process fake** of the REST API with
+   `httptest.Server` and aim the backend at it — no credentials, Docker, or build
+   tag required. This works **only if the backend can be pointed at the fake**
+   (a custom base URL/endpoint option or an injectable client). Reserve WireMock
+   or recorded stubs for **stateless error-path fidelity** (`404`, `429` +
+   `Retry-After`, expired tokens, 5xx retries).
 
 ### Where the test should live
 
