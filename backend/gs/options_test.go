@@ -406,7 +406,7 @@ func (s *optionsSuite) TestParseClientOptionsTokenExchange() {
 			req, err := http.NewRequestWithContext(s.T().Context(), http.MethodGet, testBucketURL, http.NoBody)
 			s.Require().NoError(err)
 
-			resp, err := client.Do(req) //nolint:gosec // G704: testBucketURL is a constant served by the fake
+			resp, err := client.Do(req) //nolint:gosec,nolintlint // G704: constant URL, only some Go toolchains report it
 			if tt.expectedErr != "" {
 				s.Require().ErrorContains(err, tt.expectedErr)
 			} else {
