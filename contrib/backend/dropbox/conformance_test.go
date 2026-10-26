@@ -7,10 +7,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/dropbox/dropbox-sdk-go-unofficial/v6/dropbox/files"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/backend/testsuite"
 	"github.com/c2fo/vfs/v7/options"
 )
@@ -29,10 +33,10 @@ var conformanceModes = []struct {
 	{
 		name: "ChunkedUpload",
 		opts: []options.NewFileSystemOption[FileSystem]{
-			// Small enough that the suites' tiny fixtures still go through upload_session/*,
-			// and not a divisor of the fixtures so the final chunk is short.
-			WithMaxSimpleUploadSize(8),
-			WithChunkSize(5),
+			// A zero threshold sends every non-empty write through upload_session/*, however small
+			// the suites' fixtures are. The chunk size does not divide them, so final chunks are short.
+			WithMaxSimpleUploadSize(0),
+			WithChunkSize(2),
 		},
 		chunked: true,
 	},
@@ -53,7 +57,7 @@ func TestFakeConformance(t *testing.T) {
 			// Matches the credentialed integration test.
 			testsuite.RunConformanceTests(t, loc, testsuite.ConformanceOptions{SkipTouchTimestampTest: true})
 
-			assertUploadRoutes(t, fake, mode.chunked)
+			t.Run("UploadRoutes", func(t *testing.T) { verifyUploadRoutes(t, fake, loc, mode.chunked) })
 		})
 	}
 }
@@ -72,27 +76,38 @@ func TestFakeIOConformance(t *testing.T) {
 
 			testsuite.RunIOTests(t, loc)
 
-			assertUploadRoutes(t, fake, mode.chunked)
+			t.Run("UploadRoutes", func(t *testing.T) { verifyUploadRoutes(t, fake, loc, mode.chunked) })
 		})
 	}
 }
 
-func assertUploadRoutes(t *testing.T, fake *fakeDropbox, chunked bool) {
+// verifyUploadRoutes performs its own write so it is independent of which suite cases ran, then
+// asserts which upload routes that write used.
+func verifyUploadRoutes(t *testing.T, fake *fakeDropbox, loc vfs.Location, chunked bool) {
 	t.Helper()
+	routes := []string{"upload", "upload_session/start", "upload_session/append_v2", "upload_session/finish"}
+	before := map[string]int{}
+	for _, r := range routes {
+		before[r] = fake.calls(r)
+	}
+
+	f, err := loc.NewFile("route-check.txt")
+	require.NoError(t, err)
+	_, err = f.Write([]byte("route check payload"))
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	t.Cleanup(func() { _ = f.Delete() })
+
+	delta := func(r string) int { return fake.calls(r) - before[r] }
 	if chunked {
-		for _, route := range []string{"upload_session/start", "upload_session/append_v2", "upload_session/finish"} {
-			if fake.calls(route) == 0 {
-				t.Errorf("expected chunked path to exercise %s", route)
-			}
-		}
+		assert.Zero(t, delta("upload"), "chunked mode must not use the simple route")
+		assert.Positive(t, delta("upload_session/start"))
+		assert.Positive(t, delta("upload_session/append_v2"), "payload spans several chunks")
+		assert.Positive(t, delta("upload_session/finish"))
 		return
 	}
-	if fake.calls("upload") == 0 {
-		t.Error("expected simple path to exercise upload")
-	}
-	if fake.calls("upload_session/start") != 0 {
-		t.Error("simple upload mode must not start upload sessions")
-	}
+	assert.Positive(t, delta("upload"))
+	assert.Zero(t, delta("upload_session/start"), "simple mode must not start upload sessions")
 }
 
 // FakeServerTestSuite verifies the fake rejects what the real API would reject, so that
@@ -240,6 +255,57 @@ func (s *FakeServerTestSuite) TestAddModeConflicts() {
 	s.Require().NotNil(apiErr.EndpointError.Path)
 	s.Require().NotNil(apiErr.EndpointError.Path.Reason)
 	s.Equal(files.WriteErrorConflict, apiErr.EndpointError.Path.Reason.Tag)
+}
+
+func (s *FakeServerTestSuite) TestSessionFinishAddModeConflictIsTyped() {
+	arg := files.NewUploadArg("/exists.txt")
+	arg.Mode = &files.WriteMode{}
+	arg.Mode.Tag = fakeWriteModeOvwr
+	_, err := s.client.Upload(arg, bytes.NewReader([]byte("one")))
+	s.Require().NoError(err)
+
+	start, err := s.client.UploadSessionStart(files.NewUploadSessionStartArg(), bytes.NewReader([]byte("two")))
+	s.Require().NoError(err)
+
+	commit := files.NewCommitInfo("/exists.txt")
+	commit.Mode = &files.WriteMode{}
+	commit.Mode.Tag = fakeWriteModeAdd
+	_, err = s.client.UploadSessionFinish(
+		files.NewUploadSessionFinishArg(files.NewUploadSessionCursor(start.SessionId, 3), commit), nil)
+	s.Require().Error(err)
+
+	var apiErr files.UploadSessionFinishAPIError
+	s.Require().ErrorAs(err, &apiErr)
+	s.Require().NotNil(apiErr.EndpointError)
+	s.Require().NotNil(apiErr.EndpointError.Path, "finish nests the WriteError directly under path")
+	s.Equal(files.WriteErrorConflict, apiErr.EndpointError.Path.Tag)
+}
+
+func (s *FakeServerTestSuite) TestChunkedTouch() {
+	fs := NewFileSystem(WithClient(s.client), WithMaxSimpleUploadSize(1024), WithChunkSize(256))
+	payload := bytes.Repeat([]byte("touch me "), 400)
+
+	f, err := fs.NewFile("", "/touch/payload.bin")
+	s.Require().NoError(err)
+	_, err = f.Write(payload)
+	s.Require().NoError(err)
+	s.Require().NoError(f.Close())
+
+	starts := s.fake.calls("upload_session/start")
+	s.Require().NoError(f.Touch())
+	s.Require().NoError(f.Close())
+	s.Equal(starts+1, s.fake.calls("upload_session/start"), "touching a large file re-uploads it through a session")
+
+	cm, ok := s.fake.clientModified("/touch/payload.bin")
+	s.Require().True(ok)
+	s.WithinDuration(time.Now(), cm, time.Minute, "Touch sets client_modified")
+
+	got, err := fs.NewFile("", "/touch/payload.bin")
+	s.Require().NoError(err)
+	read, err := io.ReadAll(got)
+	s.Require().NoError(err)
+	s.Require().NoError(got.Close())
+	s.Equal(payload, read, "content is unchanged by Touch")
 }
 
 func (s *FakeServerTestSuite) TestListPagination() {

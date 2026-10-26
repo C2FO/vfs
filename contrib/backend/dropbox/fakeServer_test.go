@@ -517,13 +517,22 @@ func (f *fakeDropbox) download(w http.ResponseWriter, arg []byte) {
 	_, _ = w.Write(e.data)
 }
 
+// commitError writes a 409 for a failed commit. The real API nests the WriteError differently per
+// route: upload wraps it in UploadWriteFailed ({"path":{"reason":...}} flattened under the tag),
+// while upload_session/finish carries it directly under "path".
+func commitError(w http.ResponseWriter, session bool, summary string, writeErr map[string]any) {
+	if session {
+		apiError(w, summary, map[string]any{".tag": "path", "path": writeErr})
+		return
+	}
+	apiError(w, summary, map[string]any{".tag": "path", "reason": writeErr})
+}
+
 // commit writes data to path honoring mode, returning false after writing a conflict error.
-func (f *fakeDropbox) commit(w http.ResponseWriter, path, mode string, clientModified *time.Time, data []byte) bool {
+// session selects the error shape of upload_session/finish rather than upload.
+func (f *fakeDropbox) commit(w http.ResponseWriter, session bool, path, mode string, clientModified *time.Time, data []byte) bool {
 	if !validPath(path) || path == "" {
-		apiError(w, "path/malformed_path/.", map[string]any{
-			".tag":   "path",
-			"reason": map[string]any{".tag": fakeTagMalformed},
-		})
+		commitError(w, session, "path/malformed_path/.", map[string]any{".tag": fakeTagMalformed})
 		return false
 	}
 	key := normalize(path)
@@ -533,10 +542,8 @@ func (f *fakeDropbox) commit(w http.ResponseWriter, path, mode string, clientMod
 		if exists && existing.isFolder {
 			conflict = fakeConflictFolder
 		}
-		apiError(w, "path/conflict/"+conflict+"/..", map[string]any{
-			".tag":   "path",
-			"reason": map[string]any{".tag": fakeTagConflict, fakeTagConflict: map[string]any{".tag": conflict}},
-		})
+		commitError(w, session, "path/conflict/"+conflict+"/..",
+			map[string]any{".tag": fakeTagConflict, fakeTagConflict: map[string]any{".tag": conflict}})
 		return false
 	}
 
@@ -578,7 +585,7 @@ func (f *fakeDropbox) upload(w http.ResponseWriter, r *http.Request, arg []byte)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if !f.commit(w, in.Path, modeOf(in.Mode), clientModifiedOf(in.ClientModified), body) {
+	if !f.commit(w, false, in.Path, modeOf(in.Mode), clientModifiedOf(in.ClientModified), body) {
 		return
 	}
 	writeJSON(w, http.StatusOK, f.entries[normalize(in.Path)].metadata(f.idFor(normalize(in.Path))))
@@ -647,7 +654,7 @@ func (f *fakeDropbox) sessionFinish(w http.ResponseWriter, r *http.Request, arg 
 		return
 	}
 	data := append(append([]byte(nil), sess.data...), body...)
-	if !f.commit(w, in.Commit.Path, modeOf(in.Commit.Mode), clientModifiedOf(in.Commit.ClientModified), data) {
+	if !f.commit(w, true, in.Commit.Path, modeOf(in.Commit.Mode), clientModifiedOf(in.Commit.ClientModified), data) {
 		return
 	}
 	delete(f.sessions, in.Cursor.SessionId)
@@ -661,4 +668,15 @@ func (f *fakeDropbox) seedFolder(displayPath string) {
 	displayPath = strings.TrimSuffix(displayPath, "/")
 	f.ensureParents(displayPath)
 	f.entries[normalize(displayPath)] = &fakeEntry{displayPath: displayPath, isFolder: true}
+}
+
+// clientModified returns the stored client_modified of a file, for asserting Touch behavior.
+func (f *fakeDropbox) clientModified(displayPath string) (time.Time, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.entries[normalize(displayPath)]
+	if !ok || e.isFolder {
+		return time.Time{}, false
+	}
+	return e.clientModified, true
 }
