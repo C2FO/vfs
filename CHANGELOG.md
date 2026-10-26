@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- OS backend: `Read`, `Seek` and copying from a file no longer open it read/write (`O_RDWR|O_CREATE`), so files the process cannot write to can now be read ([#76](https://github.com/C2FO/vfs/issues/76)). Writing is unchanged: it still stages to a temp file and renames over the original on `Close`.
 
 ## [[v7.32.2](https://github.com/C2FO/vfs/releases/tag/v7.32.2)] - 2026-10-26
 ### Documentation
