@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [[v7.32.5](https://github.com/C2FO/vfs/releases/tag/v7.32.5)] - 2026-10-26
 ### Documentation
 - The API pages in `docs/` are now generated from the Go doc comments with gomarkdoc (`make docs`), and a new `Docs` workflow (`make docs-check`) fails PRs whose docs are out of date. This adds 100+ previously missing symbols (such as `WithClient`, `WithOptions`, `GetClient`, `Location.Authority`, `File.Touch`, and the `gs` retry wrappers), and adds pages for the core interfaces (`docs/vfs.md`), `utils/authority`, and `options/newfile`.
 - `s3`: The package documentation is attached to the package again, so the full usage, authentication, and role-assumption docs appear on pkg.go.dev.
