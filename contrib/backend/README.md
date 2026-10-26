@@ -30,6 +30,9 @@ func main() {
 }
 ```
 
+SQL FS is the exception: it does not register itself on import. Build a `FileSystem` with your `*sql.DB` and call
+`backend.Register(sqlfs.Scheme, fsys)`; see its [README](./sqlfs/README.md).
+
 Each contrib backend is its own Go module, so `go get` the ones you use, for example
 `go get github.com/c2fo/vfs/contrib/backend/onedrive`. The OneDrive backend needs credentials, such as
 `VFS_ONEDRIVE_ACCESS_TOKEN`, in the environment to be used through `vfssimple`; see its
@@ -68,10 +71,10 @@ Each contrib backend has its own `go.mod` for independent versioning:
 ```go
 module github.com/c2fo/vfs/contrib/backend/yourbackend
 
-go 1.24
+go 1.26.7  // same go directive as core VFS
 
 require (
-    github.com/c2fo/vfs/v7 v7.13.0  // Depend on core VFS
+    github.com/c2fo/vfs/v7 v7.32.2  // a published core VFS version
     // ... your backend's dependencies
 )
 ```
@@ -101,7 +104,7 @@ func init() {
 
 #### Unit Tests
 - Use `testify.Suite` with mocked dependencies
-- Use **Mockery** for generating mocks: add entry to root `.mockery.yaml`
+- Use **Mockery** (v3) for generating mocks: add a `.mockery.yaml` to your module (see `gdrive/`, `onedrive/`, or `sqlfs/`); Dropbox's mocks are configured in the repository root `.mockery.yaml`
 
 #### Integration Tests (Conformance Tests)
 
@@ -111,7 +114,7 @@ See the full documentation: [docs/conformance_tests.md](../../docs/conformance_t
 
 **What's tested:**
 - `RunConformanceTests` — FileSystem, Location, and File interface compliance
-- `RunIOTests` — 18 different Read/Write/Seek sequences
+- `RunIOTests` — the Read/Write/Seek sequences in `DefaultIOTestCases()` (19 cases)
 
 **Example conformance test:**
 
@@ -179,8 +182,8 @@ for the pattern:
 
 - **Backends with a containerizable server** (object stores, SFTP/FTP, etc.):
   point the backend at a container and delegate to `backend/testsuite`.
-- **SaaS / HTTP-API backends with no emulator** (e.g. Dropbox, OneDrive, Google
-  Drive): write a small **stateful in-process fake** of the REST API (an
+- **SaaS / HTTP-API backends with no emulator** (e.g. Dropbox and Google
+  Drive; OneDrive currently has WireMock tests only): write a small **stateful in-process fake** of the REST API (an
   `httptest.Server`) and run the conformance suites against it on every
   `go test` — no credentials, Docker, or build tag. The conformance suites are
   inherently stateful (upload, list, move, read back, delete), which a

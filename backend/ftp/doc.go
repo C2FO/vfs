@@ -42,7 +42,7 @@ would have to be cast as ftp.FileSystem to use them.
 		  fs = ftp.NewFileSystem(ftp.WithClient(client))
 
 		  fs = ftp.NewFileSystem(
-			  fs.WithOptions(
+			  ftp.WithOptions(
 				  ftp.Options{
 				      Password: "s3cr3t",
 				      DisableEPSV: true,
@@ -73,7 +73,7 @@ cause issues when attempting to use those files with functions such as io.CopyBu
 The provided CopyToFile and CopyToLocation functions should be used instead in these instances.
 
 	// initialize a location using bob@ftp.acme.com
-	_, _ := os.Setenv("VFS_FTP_PASSWORD", "somepass")
+	_ = os.Setenv("VFS_FTP_PASSWORD", "somepass")
 	someLocation, _ := vfssimple.NewLocation("ftp://bob@ftp.acme.com/some/path/")
 
 	// open some existing file
@@ -88,8 +88,8 @@ The provided CopyToFile and CopyToLocation functions should be used instead in t
 
 	// CopyToFile/CopyToLocation, however, will work as expected because we copy to an
 	// intermediate local file, thereby making the Read / Write to the remote files sequential.
-	// MoveToFile/MoveToLocation are unaffected since they essentially just an FTP "RENAME".
-	err := oldFile.CopyToFile(newFile)
+	// MoveToFile/MoveToLocation are unaffected since they are essentially just an FTP "RENAME".
+	err = oldFile.CopyToFile(newFile)
 
 # Authentication
 
@@ -97,7 +97,7 @@ Authentication, by default, occurs automatically when Client() is called. Since 
 auth is handled slightly differently than other vfs backends (except SFTP).
 
 A client is initialized lazily, meaning we only make a connection to the server at the last moment, so we are free to modify
-options until then.  The authenticated session is closed any time WithOption() or WithClient() occurs.
+options until then.  The authenticated session is closed any time WithOptions() or WithClient() occurs.
 
 ## USERNAME
 
@@ -106,7 +106,7 @@ User may only be set in the URI authority section.
 	 scheme             host
 	 __/             ___/____  port
 	/  \            /        \ /\
-	ftp://someuser@server.com:22/path/to/file.txt
+	ftp://someuser@server.com:21/path/to/file.txt
 	       \____________________/ \______________/
 	       \______/       \               \
 	           /     authority section    path
@@ -125,7 +125,7 @@ and Options.Password, if set, overrides env var.
 The ftp backend supports the following FTP protocols: FTP (unencrypted), FTPS (implicit TLS), and FTPES (explicit TLS).  Protocol can be set
 by env var *VFS_FTP_PROTOCOL* or in Options.Protocol.  Options values take precedence over env vars.
 
-By default, FTPS and FTPS will use the following TLS configuration but can be overridden(recommended) with Options.TLSConfig:
+By default, FTPS and FTPES will use the following TLS configuration but can be overridden(recommended) with Options.TLSConfig:
 
 	tlsConfig := &tls.Config{
 		MinVersion:         tls.VersionTLS12,

@@ -3,7 +3,6 @@
 [![GitHub tag](https://img.shields.io/github/tag/c2fo/vfs.svg?style=flat)](https://github.com/c2fo/vfs/releases)
 [![GoDoc](https://pkg.go.dev/badge/github.com/c2fo/vfs/v7?utm_source=godoc)](https://pkg.go.dev/github.com/c2fo/vfs/v7)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
-[![Go Report Card](https://goreportcard.com/badge/github.com/c2fo/vfs/v7)](https://goreportcard.com/report/github.com/c2fo/vfs/v7)
 [![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)
 [![Last Commit](https://img.shields.io/github/last-commit/c2fo/vfs)](https://github.com/c2fo/vfs/commits/main)
 
@@ -26,7 +25,7 @@ for hybrid or evolving storage requirements.
 
 ## Installation
 ```bash
-go get -u github.com/c2fo/vfs/v7
+go get github.com/c2fo/vfs/v7
 ```
 
 ## Quick Start
@@ -70,6 +69,9 @@ This snippet shows the basic setup: an osFile is created from a URI and written 
 * See the [GoDoc](https://pkg.go.dev/github.com/c2fo/vfs/v7) for deeper technical details, backend-specific options, and additional APIs.
 * Specialized operations like copying between S3 locations or advanced configs (e.g. Azure credentials) are documented in each backend doc.
 
+The pages in `docs/` are generated from the Go doc comments with `make docs`:
+
+* [vfs](docs/vfs.md) - core `FileSystem`, `Location`, and `File` interfaces
 * [vfscp](docs/vfscp.md)
 * [vfssimple](docs/vfssimple.md)
 * [backend](docs/backend.md)
@@ -81,7 +83,11 @@ This snippet shows the basic setup: an osFile is created from a URI and written 
     * [ftp backend](docs/ftp.md)
     * [azure backend](docs/azure.md)
     * [conformance tests](docs/conformance_tests.md)
+* [options](docs/options.md)
+    * [delete options](docs/delete_options.md)
+    * [new file options](docs/newfile_options.md)
 * [utils](docs/utils.md)
+    * [authority](docs/authority.md)
 
 ### Community Contributed Backends
 
@@ -89,6 +95,7 @@ These backends are maintained in `contrib/backend/` as separate Go modules:
 
 * [Dropbox backend](contrib/backend/dropbox/README.md) - Dropbox cloud storage
 * [OneDrive backend](contrib/backend/onedrive/README.md) - Microsoft OneDrive/SharePoint via Graph API
+* [Google Drive backend](contrib/backend/gdrive/README.md) - Google Drive (My Drive and shared drives) via the Drive v3 API
 * [SQL FS backend](contrib/backend/sqlfs/README.md) - Files stored in PostgreSQL or SQLite through `database/sql` (registered explicitly, not on import)
 
 See [contrib/backend/README.md](contrib/backend/README.md) for guidelines on contributing new backends.
@@ -96,7 +103,8 @@ See [contrib/backend/README.md](contrib/backend/README.md) for guidelines on con
 ## Additional Tools
 
 *   [lockfile](contrib/lockfile/README.md): Provides distributed locking mechanisms using vfs backends.
-*   [vfsevents](contrib/vfsevents/README.md): Production-ready file event monitoring with support for real-time notifications, retry logic, and multiple watcher types (VFS polling, S3 events, GCS events).
+*   [vfsevents](contrib/vfsevents/README.md): Production-ready file event monitoring with support for real-time notifications, retry logic, and multiple watcher types (VFS polling, local fsnotify, S3 events, GCS events).
+*   [testcontainers](testcontainers/README.md): Runs the shared backend conformance suites against real servers in disposable Docker containers.
 
 ## FAQ
 
@@ -135,7 +143,7 @@ these changes to the S3 backend:
   `https://my-storage-account-name.core.windows.net/my-container-name/path/to/file.txt`.
 
 #### GS Backend
-- The `Options.Retry` field, with the now deprecated `vfs.Retry` type, has been moved to `gs.FileSystem` as the new `gs.Retyer`
+- The `Options.Retry` field, with the now deprecated `vfs.Retry` type, has been moved to `gs.FileSystem` as the new `gs.Retryer`
   type.  It is now set via `gs.NewFileSystem` function using functional option `gs.WithRetryer`.  All previous `vfs.Retry`
   usage has been replaced with `gs.WithRetryer`.  Update your code to use the new `gs.WithRetryer` functional option.
 
@@ -144,13 +152,13 @@ Some methods in the *Location* and *FileSystem* interfaces have been deprecated 
 They will be removed in a future release. Update your code to use the new methods.  See [#235](https://github.com/C2FO/vfs/issues/235).
 - `location.Volume()` method which returns the authority as a string has been deprecated in favor of the `location.Authority()` method which
   returns an `authority.Authority` struct. Update your code to use the `Authority().String()` method instead of `Volume()`.
-- `location.ChangeDir()` method ash been deprecated in favor of the existing `location.NewLocation()` method. Update your code to use the
+- `location.ChangeDir()` method has been deprecated in favor of the existing `location.NewLocation()` method. Update your code to use the
   `NewLocation()` method instead of `ChangeDir()`.
 - `vfs.Options` struct has been deprecated in favor of using backend-specific structs.
 - `filesystem.Retry()` method has been deprecated in favor of using backend-specific functional options, such as `gs.WithRetryer`.
 
-Additionally, we have added functional option interface, `FileSystemOption`, to allow for more flexible configuration
-of backends. This interface allows for more complex configuration options to be passed to the via the `NewFileSystem` function.
+Additionally, we have added functional option interface, `NewFileSystemOption`, to allow for more flexible configuration
+of backends. This interface allows for more complex configuration options to be passed via the `NewFileSystem` function.
 This will replace backend-specific chainable functions that require casting the filesystem to the backend type first. See [#238](https://github.com/C2FO/vfs/issues/238).
 
 ### Upgrading from v5 to v6

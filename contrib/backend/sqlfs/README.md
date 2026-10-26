@@ -127,6 +127,9 @@ or a ticker in one process is enough; it is safe to run concurrently):
 stats, err := fsys.Cleanup(ctx)
 ```
 
+`Cleanup` returns a `CleanupStats` with `StagedRemoved` (abandoned writes removed) and `SupersededRemoved` (replaced or
+deleted revisions removed after the revision retention). The counts are filled in even when it returns an error.
+
 sqlfs starts no background goroutines. Cleanup removes each revision in its own transaction, deletes chunks in bounded
 statements, and honors context cancellation, so it can be interrupted and resumed.
 

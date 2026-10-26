@@ -14,25 +14,24 @@ In this way, a caller of vfs backends can simply load the backend file system (a
 	)
 
 	func main() {
-	   var err error
-	   var osfile, s3file vfs.File
-
 	    // THEN begin using the file systems
-	    osfile, err = backend.Backend(os.Scheme).NewFile("", "/path/to/file.txt")
+	    osfile, err := backend.Backend(os.Scheme).NewFile("", "/path/to/file.txt")
 	    if err != nil {
 	        panic(err)
 	    }
 
-	    s3file, err = backend.Backend(s3.Scheme).NewFile("mybucket", "/some/file.txt")
+	    s3file, err := backend.Backend(s3.Scheme).NewFile("mybucket", "/some/file.txt")
 	    if err != nil {
 	        panic(err)
 	    }
 
-	    err = osfile.CopyTo(s3file)
+	    err = osfile.CopyToFile(s3file)
 	    if err != nil {
 	        panic(err)
 	    }
 	}
+
+To load every core backend at once, import github.com/c2fo/vfs/v7/backend/all.
 
 # Development
 
@@ -47,17 +46,19 @@ Then ensure it registers itself on load:
 	    "github.com/c2fo/vfs/v7/backend"
 	)
 
+	const Scheme = "exfs"
+
 	// IMPLEMENT vfs interfaces
 	...
 
 	// register backend
 	func init() {
-	    backend.Register("exfs", &MyExoticFileSystem{})
+	    backend.Register(Scheme, &MyExoticFileSystem{})
 	}
 
-Then do use it in some other package do
+Then to use it in some other package:
 
-	package MyExoticFileSystem
+	package main
 
 	import(
 	    "github.com/c2fo/vfs/v7/backend"
@@ -67,10 +68,40 @@ Then do use it in some other package do
 	...
 
 	func useNewBackend() error {
-	    myExoticFs, err = backend.Backend(myexoticfilesystem.Scheme)
+	    myExoticFs := backend.Backend(myexoticfilesystem.Scheme)
 	    ...
 	}
 
-That's it.  Simple.
+# Testing a Backend
+
+To verify your backend implementation is correct, run the shared conformance suites from
+github.com/c2fo/vfs/v7/backend/testsuite against it:
+
+	//go:build vfsintegration
+
+	package myexoticfilesystem
+
+	import (
+	    "testing"
+
+	    "github.com/c2fo/vfs/v7/backend/testsuite"
+	)
+
+	func TestConformance(t *testing.T) {
+	    fs := NewFileSystem() // pass any options your backend needs
+	    location, err := fs.NewLocation("", "/test-path/")
+	    if err != nil {
+	        t.Fatal(err)
+	    }
+	    testsuite.RunConformanceTests(t, location)
+	    testsuite.RunIOTests(t, location)
+	}
+
+Run with:
+
+	go test -v -tags=vfsintegration ./...
+
+See docs/conformance_tests.md in the repository for details, including how to run the suites against
+Docker containers with the testcontainers module.
 */
 package backend

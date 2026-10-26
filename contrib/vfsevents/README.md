@@ -28,7 +28,7 @@ const (
 	EventCreated EventType = iota
 	EventDeleted
 	EventModified
-	EventRenamed
+	EventRenamed // Reserved; not emitted by the current watchers
 	EventUnknown
 )
 
@@ -78,6 +78,8 @@ type Watcher interface {
 }
 ```
 
+`EventRenamed` is reserved for future use; none of the current watchers emit it. For example, the FSNotify watcher reports a rename as `EventDeleted` for the old path.
+
 ## Advanced Configuration
 
 The library supports advanced configuration through functional options:
@@ -93,6 +95,12 @@ vfsevents.WithEventFilter(func(e Event) bool {
 // Status callbacks - receive watcher status updates
 vfsevents.WithStatusCallback(func(status WatcherStatus) {
     log.Printf("Events processed: %d, Running: %v", status.EventsProcessed, status.Running)
+})
+
+// Metrics collection - register a WatcherMetrics callback (events per second, latency, error rate, etc.)
+// Note: the built-in watchers accept this option but do not currently invoke the collector.
+vfsevents.WithMetricsCollector(func(metrics WatcherMetrics) {
+    log.Printf("Events/sec: %.2f, Error rate: %.2f", metrics.EventsPerSecond, metrics.ErrorRate)
 })
 
 // Retry configuration - handle transient failures gracefully
@@ -137,7 +145,7 @@ The `vfsevents` library provides four production-ready watcher implementations, 
 - **Best for**: Production S3 workflows, serverless architectures
 - **Latency**: Near real-time (seconds)
 - **Platforms**: Amazon S3 with SQS integration
-- **Features**: Native S3 event notifications, automatic retry, message filtering
+- **Features**: Native S3 event notifications, SQS long polling, receive-count limit that drops repeatedly failing (poison) messages, event filtering
 
 ### GCSEvents Watcher
 **Real-time Google Cloud Storage monitoring via Pub/Sub**
@@ -156,9 +164,9 @@ The `vfsevents` library provides four production-ready watcher implementations, 
 | **Local Files** | ✅ | ✅ | ❌ | ❌ |
 | **Cloud Storage** | ❌ | ✅ | ✅ (S3) | ✅ (GCS) |
 | **Network FS** | ❌ | ✅ | ❌ | ❌ |
-| **Recursive** | ✅ | ❌ | ✅ | ✅ |
+| **Recursive** | ✅ | ❌ | N/A (bucket-wide) | N/A (bucket-wide) |
 | **Event Filtering** | ✅ | ✅ | ✅ | ✅ |
-| **Retry Logic** | N/A | ✅ | ✅ | ✅ |
+| **Retry Logic** | N/A | ✅ | ❌ (receive-count limit) | ✅ |
 | **Cross-Platform** | ✅ | ✅ | ✅ | ✅ |
 
 ## Usage Examples
@@ -172,6 +180,8 @@ import (
     "context"
     "fmt"
     "log"
+    "strings"
+    "time"
 
     "github.com/c2fo/vfs/contrib/vfsevents"
     "github.com/c2fo/vfs/contrib/vfsevents/watchers/fsnotify"
@@ -328,8 +338,8 @@ func main() {
         if bucketName, exists := event.Metadata["bucketName"]; exists {
             fmt.Printf("Bucket: %s\n", bucketName)
         }
-        if eventType, exists := event.Metadata["eventType"]; exists {
-            fmt.Printf("S3 Event Type: %s\n", eventType)
+        if eventName, exists := event.Metadata["eventName"]; exists {
+            fmt.Printf("S3 Event Name: %s\n", eventName)
         }
     }
 
@@ -375,7 +385,7 @@ func main() {
         fmt.Printf("GCS Event: %s on %s\n", event.Type.String(), event.URI)
 
         // Access GCS-specific metadata
-        if objectName, exists := event.Metadata["objectName"]; exists {
+        if objectName, exists := event.Metadata["object"]; exists {
             fmt.Printf("Object: %s\n", objectName)
         }
     }
@@ -400,12 +410,13 @@ func main() {
 
 ## Examples
 
-See the [watchers](./watchers) directory for comprehensive usage examples including:
-- Basic file monitoring with VFS Poller
-- Real-time S3 event processing
-- GCS event handling with file operations
-- Production-ready file processing pipelines
-- FSNotify watcher usage examples
+See each watcher's README for configuration details and further examples:
+- [FSNotify Watcher](./watchers/fsnotify/README.md)
+- [VFS Poller](./watchers/vfspoller/README.md)
+- [S3Events Watcher](./watchers/s3events/README.md)
+- [GCSEvents Watcher](./watchers/gcsevents/README.md)
+
+The `_test.go` files in each watcher package also demonstrate usage, such as the debouncing example in [watchers/fsnotify/example_debounce_test.go](./watchers/fsnotify/example_debounce_test.go).
 
 ## Contributing
 

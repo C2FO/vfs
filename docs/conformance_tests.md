@@ -93,6 +93,8 @@ func TestIOConformance(t *testing.T) {
         t.Fatalf("failed to create test location: %v", err)
     }
 
+    // FTP-like backends can pass options here too, e.g.
+    // testsuite.RunIOTests(t, location, testsuite.ConformanceOptions{SkipFTPSpecificTests: true})
     testsuite.RunIOTests(t, location)
 }
 ```
@@ -148,7 +150,7 @@ Each backend has its own `conformance_test.go` that directly instantiates the ba
 ```bash
 # Test a specific backend
 export VFS_S3_BUCKET="my-bucket"
-export VFS_S3_TEST_PATH="/vfs-test/"
+export VFS_S3_TEST_PATH="/vfs-integration-test/"  # optional; this is the default
 go test -v -tags=vfsintegration ./backend/s3
 
 # Test the mem backend (no env vars needed)
@@ -170,6 +172,8 @@ The `backend/testsuite` package includes test runners that use `vfssimple` and `
 export VFS_INTEGRATION_LOCATIONS="file:///tmp/vfs_test/;mem://A/path/to/;s3://mybucket/test/"
 go test -v -tags=vfsintegration ./backend/testsuite
 ```
+
+If `VFS_INTEGRATION_LOCATIONS` is empty, these runners have no locations to test and pass without running anything.
 
 **Benefits:**
 - Convenient for CI pipelines that test all configured backends
@@ -217,7 +221,7 @@ go test -v -tags=vfsintegration ./backend/testsuite
 
 ### IO Tests (`RunIOTests`)
 
-Tests 18 different Read/Write/Seek sequences including:
+Runs the Read/Write/Seek sequences defined in `DefaultIOTestCases()` (19 cases), including:
 
 - Read, Close (file exists / doesn't exist)
 - Read, Seek, Read, Close
@@ -240,9 +244,11 @@ VFS_<BACKEND>_<CONFIG_NAME>
 ```
 
 Examples:
-- `VFS_S3_ACCESS_KEY_ID`
+- `VFS_S3_BUCKET`
 - `VFS_AZURE_STORAGE_ACCOUNT`
 - `VFS_DROPBOX_ACCESS_TOKEN`
+
+Each backend's `conformance_test.go` lists the variables it reads in its header comment.
 
 ### Test Path Isolation
 

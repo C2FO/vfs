@@ -9,14 +9,11 @@ It can be initialized using the backend registry:
 
 	import(
 	    "github.com/c2fo/vfs/v7/backend"
-	    _ "github.com/c2fo/vfs/v7/backend/os"
+	    _os "github.com/c2fo/vfs/v7/backend/os"
 	)
 
 	func UseFs() error {
-	    fs, err := backend.NewFileSystem(os.Scheme)
-	    if err != nil {
-	        return err
-	    }
+	    fs := backend.Backend(_os.Scheme)
 	    // Use fs
 	    ...
 	}

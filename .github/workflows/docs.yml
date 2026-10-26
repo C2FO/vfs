@@ -1,0 +1,41 @@
+name: Docs
+
+# Fails when the generated API docs in docs/ no longer match the Go doc comments.
+# Fix by running `make docs` and committing the result.
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**.go'
+      - 'docs/**'
+      - 'Makefile'
+      - '.gomarkdoc.yml'
+      - '.gomarkdoc/**'
+      - '.github/workflows/docs.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  docs-check:
+    name: Generated docs are up to date
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.26'
+          check-latest: true
+          cache: false
+
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check generated docs
+        run: make docs-check

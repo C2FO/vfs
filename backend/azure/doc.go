@@ -3,7 +3,7 @@ Package azure Microsoft Azure Blob Storage VFS Implementation
 
 # Usage
 
-Rely on github.com/c2fo/vfs/backend
+Rely on github.com/c2fo/vfs/v7/backend
 
 	import(
 	    "github.com/c2fo/vfs/v7/backend"
@@ -24,37 +24,47 @@ Or call directly:
 	    ...
 	}
 
-azure can be augmented with the following implementation-specific methods.  Backend returns vfs.FileSystem interface so it
-would have to be cast as azure.FileSystem to use the following:
+azure can be configured with functional options passed to NewFileSystem:
 
-		func DoSomething() {
-		    ...
+	func DoSomething() {
+	    ...
 
-		    fs = azure.NewFileSystem(
-		        azure.WithOptions(
-		            azure.Options{
-		                AccountName: "...",
-		                AccountKey: "...
-		            },
-	            ),
-		    )
+	    // to pass in client options
+	    fs := azure.NewFileSystem(
+	        azure.WithOptions(
+	            azure.Options{
+	                AccountName: "...",
+	                AccountKey:  "...",
+	            },
+	        ),
+	    )
 
-		    // to pass specific client, for instance mock client
-		    mockClient := mocks.NewClient(t)
-		    fs = azure.NewFileSystem(azure.WithClient(mockClient))
-		}
+	    // to pass specific client, for instance mock client
+	    mockClient := mocks.NewClient(t)
+	    fs = azure.NewFileSystem(azure.WithClient(mockClient))
+	}
 
 # Authentication
 
-Authentication, by default, occurs automatically when Client() is called. It looks for credentials in the following places,
-preferring the first location found:
+Authentication, by default, occurs automatically when Client() is called. NewFileSystem populates Options from the
+following environment variables, and any values passed with WithOptions replace them:
 
- 1. When the ENV vars VFS_AZURE_ENV_NAME, VFS_AZURE_STORAGE_ACCOUNT, VFS_AZURE_TENANT_ID, VFS_AZURE_CLIENT_ID, and
-    VFS_AZURE_CLIENT_SECRET, authentication is performed using an OAuth Token Authenticator.  This will allow access
-    to containers from multiple storage accounts.
- 2. The ENV vars VFS_AZURE_STORAGE_ACCOUNT and VFS_AZURE_STORAGE_KEY, a shared key authenticator is used.  This will
-    allow access to any containers owned by the designated storage account.
- 3. If none of the above are present, then no credentials are used and only publicly accessible blobs
-    will be available
+  - VFS_AZURE_SERVICE_URL (Options.ServiceURL)
+  - VFS_AZURE_STORAGE_ACCOUNT (Options.AccountName)
+  - VFS_AZURE_STORAGE_ACCESS_KEY (Options.AccountKey)
+  - VFS_AZURE_TENANT_ID (Options.TenantID)
+  - VFS_AZURE_CLIENT_ID (Options.ClientID)
+  - VFS_AZURE_CLIENT_SECRET (Options.ClientSecret)
+
+Credentials are then chosen in the following order, preferring the first match:
+
+ 1. If TenantID, ClientID, and ClientSecret are set, a service principal (client secret) token credential is used.
+    This allows access to containers across multiple storage accounts.
+ 2. If AccountName and AccountKey are set, a shared key credential is used.  This allows access to any containers
+    owned by that storage account.
+ 3. Otherwise no credentials are used and only publicly accessible blobs will be available.
+
+If ServiceURL is empty, it defaults to https://<AccountName>.blob.core.windows.net (or https://blob.core.windows.net
+when AccountName is also empty).
 */
 package azure

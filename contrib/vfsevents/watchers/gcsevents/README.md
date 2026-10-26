@@ -50,33 +50,65 @@ Each event includes comprehensive metadata:
 - **eventType**: Original GCS event type
 - **generation**: Object generation number
 - **overwroteGeneration**: Present for overwrites (indicates which generation was replaced)
-- **overwrittenByGeneration**: Present for suppressed delete/archive events
-- **eventTime**: When the event occurred
+- **eventTime**: When the event occurred (from the Pub/Sub message attributes, if present)
+
+Delete/archive events that carry `overwrittenByGeneration` are suppressed, so emitted events never include that key.
 
 ## Usage
 
 ```go
-import "github.com/c2fo/vfs/contrib/vfsevents/watchers/gcsevents"
+package main
 
-// Create watcher
-watcher, err := gcsevents.NewGCSWatcher("my-project", "my-subscription")
-if err != nil {
-    log.Fatal(err)
+import (
+    "context"
+    "fmt"
+    "log"
+
+    "github.com/c2fo/vfs/contrib/vfsevents"
+    "github.com/c2fo/vfs/contrib/vfsevents/watchers/gcsevents"
+)
+
+func main() {
+    // Create watcher
+    watcher, err := gcsevents.NewGCSWatcher("my-project", "my-subscription")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    handler := func(event vfsevents.Event) {
+        fmt.Printf("Event: %s on %s\n", event.Type, event.URI)
+    }
+
+    errHandler := func(err error) {
+        log.Printf("GCS watcher error: %v", err)
+    }
+
+    // Start watching with retry logic
+    ctx := context.Background()
+    err = watcher.Start(ctx, handler, errHandler,
+        vfsevents.WithRetryConfig(vfsevents.DefaultRetryConfig()),
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    defer watcher.Stop()
+    select {}
 }
-
-// Start watching
-err = watcher.Start(ctx, func(event vfsevents.Event) error {
-    fmt.Printf("Event: %s on %s\n", event.Type, event.Path)
-    return nil
-})
 ```
 
 ## Configuration
 
-The watcher supports various configuration options through functional options:
+### Watcher Options
 
-- Retry configuration for handling transient errors
-- Custom Pub/Sub client settings
-- Event filtering and processing options
+```go
+func WithPubSubClient(client PubSubClient) Option
+```
+
+`WithPubSubClient` sets a custom Pub/Sub client. Any type implementing the `PubSubClient` interface (`Receive(ctx, func(context.Context, *pubsub.Message)) error`) is accepted, such as a `*pubsub.Subscriber` from `cloud.google.com/go/pubsub/v2`. This is useful for testing or custom client configuration. When omitted, `NewGCSWatcher` creates a client for `projects/{project}/subscriptions/{subscription}`.
+
+### Start and Stop Options
+
+`Start` accepts `vfsevents.StartOption` values for retry configuration (`WithRetryConfig`, `WithMaxRetries`, `WithRetryBackoff`, `WithRetryableErrors`), event filtering (`WithEventFilter`), and status callbacks (`WithStatusCallback`). `Stop` accepts `vfsevents.StopOption` values (`WithTimeout`, default 30 seconds, and `WithForceStop`).
 
 See the package documentation for detailed configuration options.
