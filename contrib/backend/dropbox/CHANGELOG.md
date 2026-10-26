@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [[contrib/backend/dropbox/v1.2.1](https://github.com/C2FO/vfs/releases/tag/contrib%2Fbackend%2Fdropbox%2Fv1.2.1)] - 2026-10-26
+### Documentation
+- Automated test coverage (no production code change): `testsuite.RunConformanceTests` and `RunIOTests` now run in ordinary `go test` (no credentials, Docker, or build tag) against an in-process stateful fake of the Dropbox API, for both the simple `upload` path and the chunked `upload_session/*` path, including `list_folder/continue` pagination ([#349](https://github.com/C2FO/vfs/issues/349)).
+
 ## [[contrib/backend/dropbox/v1.2.0](https://github.com/C2FO/vfs/releases/tag/contrib%2Fbackend%2Fdropbox%2Fv1.2.0)] - 2026-08-28
 ### Fixed
 - Adapted to a breaking API change in `github.com/dropbox/dropbox-sdk-go-unofficial/v6` (v6.0.5 → v6.6.1), which changed `files.FileMetadata.ServerModified` and `files.CommitInfo.ClientModified` / `files.UploadArg.ClientModified` from `time.Time` to `dropbox.DBXTime` (a distinct type with the same underlying representation). `File.LastModified()` and `File.Touch()` now convert between `time.Time` and `dropbox.DBXTime` explicitly.

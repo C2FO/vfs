@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [[v7.32.2](https://github.com/C2FO/vfs/releases/tag/v7.32.2)] - 2026-10-26
+### Documentation
+- Updated `contrib/backend/README.md` and `testcontainers/README.md` to recommend a stateful in-process fake for conformance testing of SaaS/HTTP-API backends (WireMock or recorded stubs for stateless error paths), based on the new Dropbox fake ([#349](https://github.com/C2FO/vfs/issues/349)).
+
+## [[v7.32.1](https://github.com/C2FO/vfs/releases/tag/v7.32.1)] - 2026-10-26
+### Fixed
+- `gs`: Impersonated token refresh no longer fails with `context canceled` when the context passed to `GetClient` is canceled after the client is built.
+
 ## [[v7.32.0](https://github.com/C2FO/vfs/releases/tag/v7.32.0)] - 2026-10-24
 ### Added
 - Initial commit of the SQL FS community-contributed backend (`sqlfs://`, module `contrib/backend/sqlfs`), storing files as chunked, immutable revisions in PostgreSQL or SQLite through `database/sql`. The backend imports no database driver, does not register itself (construct a `FileSystem` and call `backend.Register`), publishes writes atomically on `Close`, pins readers to a revision, detects concurrent replacement with `ErrConflict`, and performs same-instance copy and move inside the database. Schema creation (`EnsureSchema`) and garbage collection (`Cleanup`) are explicit. Includes the shared conformance/IO suites on SQLite and PostgreSQL (`vfsintegration`, testcontainers).

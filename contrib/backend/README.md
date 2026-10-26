@@ -180,16 +180,20 @@ for the pattern:
 - **Backends with a containerizable server** (object stores, SFTP/FTP, etc.):
   point the backend at a container and delegate to `backend/testsuite`.
 - **SaaS / HTTP-API backends with no emulator** (e.g. Dropbox, OneDrive, Google
-  Drive): stub the REST API with a [WireMock](https://wiremock.org/) container.
-  This requires the backend to expose a **custom endpoint / base-URL option** so
-  it can be aimed at the mock. See
+  Drive): write a small **stateful in-process fake** of the REST API (an
+  `httptest.Server`) and run the conformance suites against it on every
+  `go test` — no credentials, Docker, or build tag. The conformance suites are
+  inherently stateful (upload, list, move, read back, delete), which a
+  request-matching stub such as WireMock cannot express without brittle scenario
+  state machines. The backend needs a way to be aimed at the fake (a custom
+  endpoint/base-URL option, or an injectable client such as `WithClient`). See
+  [`dropbox/fakeServer_test.go`](dropbox/fakeServer_test.go) and
+  [`gdrive/fakedrive_test.go`](gdrive/fakedrive_test.go) for worked examples.
+  Use a [WireMock](https://wiremock.org/) container or plain recorded stubs for
+  **stateless error-path fidelity** instead (`404`, `429` + `Retry-After`,
+  expired tokens, 5xx retries); see
   [`onedrive/wiremock_test.go`](onedrive/wiremock_test.go) and
-  [`gdrive/wiremock_test.go`](gdrive/wiremock_test.go) for worked examples.
-  `gdrive` additionally runs the full conformance suites on every `go test`
-  against an in-process fake of the API
-  ([`gdrive/fakedrive_test.go`](gdrive/fakedrive_test.go)), which is useful when
-  the service's data model (IDs, duplicate names) needs real stateful behavior
-  that WireMock can't give.
+  [`gdrive/wiremock_test.go`](gdrive/wiremock_test.go).
 
 Keep these tests **in your contrib module** (importing `testcontainers-go` and
 `backend/testsuite`) so the extra dependencies stay isolated from core VFS and
