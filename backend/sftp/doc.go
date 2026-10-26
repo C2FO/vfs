@@ -38,10 +38,10 @@ would have to be cast as sftp.FileSystem to use them.
 		  fs = fs.(*sftp.FileSystem)
 
 		  // to pass specific client
-		  sshClient, err := ssh.Dial("tcp", "myuser@server.com:22", &ssh.ClientConfig{
+		  sshClient, err := ssh.Dial("tcp", "server.com:22", &ssh.ClientConfig{
 			  User:            "someuser",
 			  Auth:            []ssh.AuthMethod{ssh.Password("mypassword")},
-			  HostKeyCallback: ssh.InsecureIgnoreHostKey,
+			  HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		  })
 		  #handle error
 		  client, err := _sftp.NewClient(sshClient)
@@ -52,11 +52,11 @@ would have to be cast as sftp.FileSystem to use them.
 		  // to pass in client options. See Options for more info.  Note that changes to Options will make nil any client.
 		  // This behavior ensures that changes to settings will get applied to a newly created client.
 		  fs = sftp.NewFileSystem(
-			  WithOptions(
+			  sftp.WithOptions(
 			      sftp.Options{
 				      KeyFilePath:   "/home/Bob/.ssh/id_rsa",
 				      KeyPassphrase: "s3cr3t",
-				      KnownHostsCallback: ssh.InsecureIgnoreHostKey,
+				      KnownHostsCallback: ssh.InsecureIgnoreHostKey(),
 			      },
 			  ),
 		  )
@@ -64,13 +64,13 @@ would have to be cast as sftp.FileSystem to use them.
 		  location, err := fs.NewLocation("myuser@server.com:22", "/some/path/")
 		  #handle error
 
-		  file := location.NewFile("myfile.txt")
+		  file, err := location.NewFile("myfile.txt")
 		  #handle error
 
-		  _, err := file.Write([]bytes("some text")
+		  _, err = file.Write([]byte("some text"))
 		  #handle error
 
-		  err := file.Close()
+		  err = file.Close()
 		  #handle error
 	  }
 
@@ -80,8 +80,11 @@ Authentication, by default, occurs automatically when Client() is called. Since 
 auth is handled slightly differently than other vfs backends.
 
 A client is initialized lazily, meaning we only make a connection to the server at the last moment so we are free to modify
-options until then.  The authenticated session is closed any time WithOption(), WithClient(), or Close() occurs.  Currently,
+options until then.  The authenticated session is closed any time WithOptions(), WithClient(), or Close() occurs.  Currently,
 that means that closing a file belonging to an fs will break the connection of any other open file on the same fs.
+
+Each new FileSystem instance opens its own connection to the remote server.  Servers limit how many connections they
+accept, so reuse a FileSystem rather than creating many of them.
 
 # USERNAME
 

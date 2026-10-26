@@ -27,6 +27,9 @@ go get github.com/c2fo/vfs/contrib/backend/onedrive
 
 ```go
 import (
+    "fmt"
+    "log"
+
     "github.com/c2fo/vfs/contrib/backend/onedrive"
 )
 
@@ -52,6 +55,20 @@ func main() {
         fmt.Println(file)
     }
 }
+```
+
+### Using vfssimple
+
+Importing the package registers the `onedrive` scheme. The registered filesystem has no auth
+options, so it authenticates from the [environment variables](#environment-variables):
+
+```go
+import (
+    _ "github.com/c2fo/vfs/contrib/backend/onedrive"
+    "github.com/c2fo/vfs/v7/vfssimple"
+)
+
+f, err := vfssimple.NewFile("onedrive:///Documents/report.txt")
 ```
 
 ### Authentication Methods
@@ -173,6 +190,8 @@ fs := onedrive.NewFileSystem(
 | `"common"` | Both personal and work/school (user chooses) |
 | `"your-tenant-id"` | Specific Azure AD tenant (work/school only) |
 
+For `WithDeviceCode` and `WithInteractiveBrowser`, an empty tenant ID defaults to `"common"`.
+
 ### Configuration Options
 
 | Option | Description | Default |
@@ -187,7 +206,7 @@ fs := onedrive.NewFileSystem(
 | `WithDriveID(driveID)` | Access a specific drive by ID | - |
 | `WithChunkSize(size)` | Chunk size for large file uploads (rounded down to a multiple of 320 KiB, at most 60 MiB) | 5 MiB |
 | `WithTempDir(dir)` | Temporary directory for buffering | os.TempDir() |
-| `WithRetryCount(count)` | Retry attempts for 429 and 5xx responses | 3 |
+| `WithRetryCount(count)` | Retry attempts for throttled and transient failures (see [API Rate Limits](#api-rate-limits)) | 3 |
 | `WithBaseURL(url)` | Graph API base URL (proxies or a test server; token acquisition stays on the public cloud, so national clouds are not supported) | `https://graph.microsoft.com/v1.0` |
 | `WithHTTPClient(client)` | HTTP client used for all Graph requests | `http.DefaultClient` |
 | `WithClient(client)` | Custom `Client` implementation (for testing) | - |
@@ -203,12 +222,18 @@ The authority is always empty as OneDrive uses a single namespace per drive.
 
 ## Environment Variables
 
+When no authentication option is set (for example, the filesystem registered for `vfssimple`), the
+backend uses `VFS_ONEDRIVE_ACCESS_TOKEN` if set, otherwise client credentials when all three of
+`VFS_ONEDRIVE_TENANT_ID`, `VFS_ONEDRIVE_CLIENT_ID` and `VFS_ONEDRIVE_CLIENT_SECRET` are set.
+
 | Variable | Description |
 |----------|-------------|
 | `VFS_ONEDRIVE_ACCESS_TOKEN` | OAuth2 access token |
 | `VFS_ONEDRIVE_TENANT_ID` | Azure AD tenant ID |
 | `VFS_ONEDRIVE_CLIENT_ID` | Azure AD application ID |
 | `VFS_ONEDRIVE_CLIENT_SECRET` | Azure AD application secret |
+
+The real OneDrive tests read additional variables; see [Real OneDrive Tests](#real-onedrive-tests).
 
 ## Limitations
 
@@ -341,7 +366,9 @@ go test ./...
 ```
 
 Unit tests use mockery mocks of `types.Client` (regenerate with `mockery` from this directory) and an
-`httptest` server for the Graph REST client.
+`httptest` server for the Graph REST client. There is no in-process fake that runs the shared
+conformance suites on every `go test`; the WireMock tests and the real-drive conformance tests below
+both require `-tags=vfsintegration`.
 
 ### WireMock Integration Tests
 
@@ -360,18 +387,25 @@ go test -tags=vfsintegration -run TestWireMockTestSuite ./...
 `TestConformance` runs the shared VFS conformance and IO suites against a real drive, and
 `TestRealDriveTestSuite` covers what they don't: upload sessions with large files, copy and move
 overwriting an existing file, the folder guard, and names containing characters such as `%`, `#`, `+`
-and `&`. Both skip unless credentials are configured:
+and `&`. Both skip unless credentials are configured.
+
+`VFS_ONEDRIVE_AUTH_TYPE` selects `token`, `credentials`, `devicecode`, or `browser`. When unset, the
+tests use `token` if `VFS_ONEDRIVE_ACCESS_TOKEN` is set, `credentials` if the client ID, secret and
+tenant ID are all set, and otherwise `devicecode` if only `VFS_ONEDRIVE_CLIENT_ID` is set. In the tests,
+the device code and browser flows default the tenant to `consumers`.
 
 ```bash
 # Set credentials
 export VFS_ONEDRIVE_ACCESS_TOKEN="your-token"
-# OR
+# OR (work/school, client credentials)
 export VFS_ONEDRIVE_TENANT_ID="your-tenant"
 export VFS_ONEDRIVE_CLIENT_ID="your-client-id"
 export VFS_ONEDRIVE_CLIENT_SECRET="your-secret"
+# OR (personal account, device code flow)
+export VFS_ONEDRIVE_CLIENT_ID="your-client-id"
 
-# Optional: custom test path
-export VFS_ONEDRIVE_TEST_PATH="/vfs-integration-test/"
+# Optional: custom test path (default /vfs-test/)
+export VFS_ONEDRIVE_TEST_PATH="/vfs-test/"
 
 # Run conformance tests
 go test -v -tags=vfsintegration ./... -run TestConformance

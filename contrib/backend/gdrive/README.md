@@ -13,6 +13,8 @@ go get github.com/c2fo/vfs/contrib/backend/gdrive
 
 ```go
 import (
+    "log"
+
     "github.com/c2fo/vfs/contrib/backend/gdrive"
 )
 
@@ -40,6 +42,11 @@ func main() {
 Through `vfssimple` (import the package for its registration side effect and set `VFS_GDRIVE_ACCESS_TOKEN`):
 
 ```go
+import (
+    _ "github.com/c2fo/vfs/contrib/backend/gdrive"
+    "github.com/c2fo/vfs/v7/vfssimple"
+)
+
 f, err := vfssimple.NewFile("gdrive:///Reports/2026/summary.txt")
 ```
 
@@ -58,7 +65,7 @@ f, err := vfssimple.NewFile("gdrive:///Reports/2026/summary.txt")
 | `WithTokenSource(ts)` | any `oauth2.TokenSource` (handles refresh) |
 | `WithServiceAccountJSON(key)` | a service account key; share the target folder or shared drive with the account's email address |
 | `WithDefaultCredentials()` | Google Application Default Credentials |
-| `WithDeviceCode(id, secret, cb)` | OAuth2 device flow; the OAuth client must be of the "TVs and Limited Input devices" type |
+| `WithDeviceCode(id, secret, cb)` | OAuth2 device flow; the OAuth client must be of the "TVs and Limited Input devices" type. `cb` is `func(ctx context.Context, verificationURL, userCode string) error` and shows the code to the user; if nil, they are printed to stdout |
 
 With no credential option, `VFS_GDRIVE_ACCESS_TOKEN` is used when set.
 
@@ -135,6 +142,7 @@ structure by other clients (such as a rename) may take up to the TTL to be notic
 
 ```bash
 # Unit tests, plus the shared conformance + IO suites against an in-process fake Drive
+# (TestConformanceFakeDrive and TestConformanceFakeSharedDrive)
 go test ./...
 
 # Wire-protocol tests against a WireMock container (needs Docker)
@@ -144,6 +152,16 @@ go test -tags=vfsintegration -run TestWireMockTestSuite ./...
 VFS_GDRIVE_ACCESS_TOKEN=... go test -v -tags=vfsintegration -run 'TestConformance|TestRealDrive' ./...
 ```
 
-The conformance suite expects its base location (`VFS_GDRIVE_TEST_PATH`, default `/vfs-test/`) to exist;
-the real-drive test creates it. Real-drive tests create and delete files under that path and a unique
-`vfs-realtest-*` folder.
+Real-drive tests read these variables:
+
+| Variable | Purpose |
+|----------|---------|
+| `VFS_GDRIVE_AUTH_TYPE` | `token`, `serviceaccount`, `devicecode`, or `adc`; when unset, picked from whichever of the variables below is set (`adc` must be chosen explicitly) |
+| `VFS_GDRIVE_ACCESS_TOKEN` | OAuth2 access token with the drive scope (`token`) |
+| `VFS_GDRIVE_SERVICE_ACCOUNT_FILE` | path to a service account key file (`serviceaccount`); the account needs access to the drive or folder under test |
+| `VFS_GDRIVE_CLIENT_ID`, `VFS_GDRIVE_CLIENT_SECRET` | OAuth client of the "TVs and Limited Input devices" type (`devicecode`) |
+| `VFS_GDRIVE_DRIVE_ID` | shared drive to test in (default: My Drive) |
+| `VFS_GDRIVE_TEST_PATH` | base path for the conformance tests (default `/vfs-test/`) |
+
+`TestConformance` creates the base folder if it does not exist. Real-drive tests create and delete files
+under that path and a unique `vfs-realtest-*` folder.

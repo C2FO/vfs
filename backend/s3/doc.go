@@ -1,5 +1,3 @@
-package s3
-
 /*
 Package s3 - AWS S3 VFS implementation using AWS SDK for Go v2.
 
@@ -26,8 +24,7 @@ Or call directly:
 	    ...
 	}
 
-s3 can be augmented with the following implementation-specific methods.  Backend returns vfs.FileSystem interface so it
-would have to be cast as s3.FileSystem to use the following:
+s3 can be configured with functional options passed to NewFileSystem:
 
 	func DoSomething() {
 	    ...
@@ -153,3 +150,4 @@ https://aws.github.io/aws-sdk-go-v2/docs/
 
 See: https://github.com/aws/aws-sdk-go-v2/tree/main/service/s3
 */
+package s3

@@ -47,12 +47,12 @@ type Options struct {
 // NewOptions creates a new Options struct by populating values from environment variables.
 //
 //	Env Vars:
+//	  *VFS_AZURE_SERVICE_URL
 //	  *VFS_AZURE_STORAGE_ACCOUNT
 //	  *VFS_AZURE_STORAGE_ACCESS_KEY
 //	  *VFS_AZURE_TENANT_ID
 //	  *VFS_AZURE_CLIENT_ID
 //	  *VFS_AZURE_CLIENT_SECRET
-//	  *VFS_AZURE_ENV_NAME
 func NewOptions() *Options {
 	return &Options{
 		ServiceURL:             os.Getenv("VFS_AZURE_SERVICE_URL"),

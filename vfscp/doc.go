@@ -1,7 +1,7 @@
 /*
 vfscp copies a file from one place to another, even between supported remote systems.
 Complete URI (scheme:// authority/path) required except for local file system.
-See github.com/c2fo/vfs docs for authentication.
+See each backend's documentation in github.com/c2fo/vfs/v7/backend for authentication.
 
 # Usage
 
@@ -16,7 +16,7 @@ Local OS URI's can be expressed without a scheme:
 
 	vfscp /some/local/file.txt s3://mybucket/path/to/myfile.txt
 
-But may also be use the full scheme uri:
+But may also use the full scheme URI:
 
 	vfscp file:///some/local/file.txt s3://mybucket/path/to/myfile.txt
 

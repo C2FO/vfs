@@ -26,16 +26,13 @@ go get github.com/c2fo/vfs/contrib/backend/dropbox
 package main
 
 import (
-    "fmt"
-    "io"
-    "os"
-
     "github.com/c2fo/vfs/v7/backend"
-    _ "github.com/c2fo/vfs/contrib/backend/dropbox"
+    "github.com/c2fo/vfs/contrib/backend/dropbox"
 )
 
 func main() {
-    // Get Dropbox filesystem from backend registry
+    // Get Dropbox filesystem from backend registry.
+    // The registered filesystem reads its token from VFS_DROPBOX_ACCESS_TOKEN.
     fs := backend.Backend(dropbox.Scheme)
     
     // Create a file
@@ -64,6 +61,9 @@ func main() {
 package main
 
 import (
+    "fmt"
+    "os"
+
     "github.com/c2fo/vfs/contrib/backend/dropbox"
 )
 
@@ -112,7 +112,8 @@ The Dropbox backend supports two authentication methods: **Access Tokens** (for 
 - Perfect for local development and testing
 
 **Cons**:
-- Token doesn't expire (security risk if leaked)
+- Console-generated tokens may be short-lived; OAuth2 refresh tokens are preferred for production
+- Grants full access to your account if leaked
 - Only works for your Dropbox account
 - Not suitable for multi-user applications
 
@@ -195,7 +196,7 @@ var oauth2Config = &oauth2.Config{
         TokenURL: "https://api.dropboxapi.com/oauth2/token",
     },
     RedirectURL: "https://yourapp.com/auth/dropbox/callback",
-    Scopes:      []string{"files.content.read", "files.content.write"},
+    Scopes:      []string{"files.metadata.read", "files.content.read", "files.content.write"},
 }
 
 // Redirect user to Dropbox authorization page
@@ -299,7 +300,7 @@ fs := dropbox.NewFileSystem(
 
 ### WithAccessToken
 
-Sets the OAuth2 access token for API authentication (required).
+Sets the OAuth2 access token for API authentication. If not set, the backend falls back to the `VFS_DROPBOX_ACCESS_TOKEN` environment variable (this is how the filesystem registered for `backend.Backend(dropbox.Scheme)` authenticates). One of the two is required.
 
 ```go
 fs := dropbox.NewFileSystem(
@@ -315,6 +316,17 @@ Sets the chunk size for uploading large files. Default is 4MB.
 fs := dropbox.NewFileSystem(
     dropbox.WithAccessToken(token),
     dropbox.WithChunkSize(8 * 1024 * 1024), // 8MB chunks
+)
+```
+
+### WithMaxSimpleUploadSize
+
+Sets the file size above which chunked upload sessions are used instead of a single upload. Default is 150MB (the Dropbox simple upload limit). Lowering it is mainly useful for testing.
+
+```go
+fs := dropbox.NewFileSystem(
+    dropbox.WithAccessToken(token),
+    dropbox.WithMaxSimpleUploadSize(16 * 1024 * 1024), // chunk anything over 16MB
 )
 ```
 
@@ -582,27 +594,35 @@ Common error scenarios:
 
 ### Unit Tests
 
+The Dropbox backend is its own Go module, so run tests from its directory:
+
 ```bash
+cd contrib/backend/dropbox
+
 # Run all unit tests
-go test -v ./contrib/backend/dropbox/
+go test -v ./...
 
 # Run specific test suite
-go test -v ./contrib/backend/dropbox/ -run TestFileSystemTestSuite
+go test -v ./... -run TestFileSystemTestSuite
 ```
+
+Every `go test` run also includes `TestFakeConformance` and `TestFakeIOConformance`, which run the shared VFS conformance suites against an in-process fake Dropbox API (no credentials needed).
 
 ### Integration Tests
 
-Integration tests require a real Dropbox access token:
+Integration tests (`integration_test.go`, build tag `vfsintegration`) require a real Dropbox access token:
 
 ```bash
+cd contrib/backend/dropbox
+
 # Set your access token
 export VFS_DROPBOX_ACCESS_TOKEN="your-token-here"
 
-# Set test location
-export VFS_INTEGRATION_LOCATIONS="dbx:///vfs-test/"
+# Optional: base path for tests (defaults to /vfs-test/)
+export VFS_DROPBOX_TEST_PATH="/vfs-test/"
 
 # Run integration tests
-go test -v ./backend/testsuite/ -run TestIOSuite
+go test -v -tags=vfsintegration -run 'TestConformance|TestIOConformance' ./...
 ```
 
 ## Thread Safety

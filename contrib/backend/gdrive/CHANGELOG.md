@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Documentation
+- Fixed README examples and documented the `WithDeviceCode` callback, the fake-drive conformance tests, and the real-drive test environment variables.
 
 ## [[contrib/backend/gdrive/v0.2.0](https://github.com/C2FO/vfs/releases/tag/contrib%2Fbackend%2Fgdrive%2Fv0.2.0)] - 2026-10-26
 ### Security

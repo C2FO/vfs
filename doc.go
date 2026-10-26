@@ -38,13 +38,7 @@ What we needed/wanted was the following(and more):
 
 # Install
 
-Pre 1.17:
-
-	go get -u github.com/c2fo/vfs/v7
-
-Post 1.17:
-
-	go install -u github.com/c2fo/vfs/v7
+	go get github.com/c2fo/vfs/v7
 
 # Upgrading
 
@@ -55,10 +49,10 @@ Please review these changes and update your code accordingly to ensure compatibi
 # S3 Backend
 
 The project now uses the [aws-sdk-go-v2] library instead of the deprecated, EOL
-[aws-sdk-go]. This update necessitated a these to the S3 backend:
+[aws-sdk-go]. This update necessitated these changes to the S3 backend:
 
   - The S3 backend's filesystem.Client() function now returns an `s3.Client` which is a subset of AWS's sdk v2 functionality.
-    This change may require updates to your code if you were relying client functionality not directly required by the s3
+    This change may require updates to your code if you were relying on client functionality not directly required by the s3
     vfs backend.
 
   - The `Option.Retry` field is now an `aws.Retryer` instead of a `request.Retry`. Ensure that your Option logic is compatible
@@ -87,7 +81,7 @@ See https://github.com/C2FO/vfs/issues/235.
     location.Authority() method which returns an authority.Authority struct. Update your code to use the
     Authority().String() method instead of Volume().
 
-  - location.ChangeDir() method ash been deprecated in favor of the existing location.NewLocation() method. Update
+  - location.ChangeDir() method has been deprecated in favor of the existing location.NewLocation() method. Update
     your code to use the NewLocation() method instead of ChangeDir().
 
   - vfs.Options struct has been deprecated in favor of using backend-specific structs.
@@ -112,9 +106,10 @@ becomes
 
 # Usage
 
-We provide vfssimple as basic way of initializing file system backends (see each implementation's docs about authentication).
-vfssimple pulls in every c2fo/vfs backend.  If you need to reduce the backend requirements (and app memory footprint) or
-add a third party backend, you'll need to implement your own "factory".  See backend doc for more info.
+We provide vfssimple as a basic way of initializing file system backends (see each implementation's docs about authentication).
+vfssimple pulls in every core c2fo/vfs backend.  If you need to reduce the backend requirements (and app memory footprint) or
+add a community or third-party backend, import only the backends you need and use the backend package's registry.
+See the backend package docs for more info.
 
 You can then use those file systems to initialize locations which you'll be referencing frequently, or initialize files directly
 
@@ -149,21 +144,22 @@ File's io.* interfaces may be used directly:
 	byteCount, err := io.Copy(gsFile, reader)
 	err := gsFile.Close()
 
-# Third-party Backends
+# Community Backends
 
-* none so far
+Community-contributed backends live in separate Go modules under contrib/backend and must be imported explicitly:
+Dropbox (dbx://), Google Drive (gdrive://), OneDrive (onedrive://), and SQL FS (sqlfs://).
+See https://github.com/C2FO/vfs/tree/main/contrib/backend for details and contribution guidelines.
 
 Feel free to send a pull request if you want to add your backend to the list.
 
 # Ideas
+
 See https://github.com/C2FO/vfs/discussions
 
   - Provide better List() functionality with more abstracted filtering and paging (iterator?) Return File structs vs URIs?
   - Add better/any context.Context() support
-  - Standardize errors (sentinel errors?) and utilize error wrapping
-  - Implement (functional options)[https://dave.cheney.net/2014/10/17/functional-options-for-friendly-apis] vs empty interface vfs.Options
 
-Contributing
+# Contributing
 
  1. Fork it (<https://github.com/c2fo/vfs/fork>)
  2. Create your feature branch (`git checkout -b feature/fooBar`)
@@ -173,7 +169,7 @@ Contributing
 
 # License
 
-Distributed under the MIT license. See `http://github.com/c2fo/vfs/License.md for more information.
+Distributed under the MIT license. See https://github.com/C2FO/vfs/blob/main/LICENSE.md for more information.
 
 # Definitions
 

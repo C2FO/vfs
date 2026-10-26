@@ -4,11 +4,13 @@
 
 ## Installation
 
-To install the package, use the following command:
+The `s3events` package is part of the `github.com/c2fo/vfs/contrib/vfsevents` module. To install it, use the following command:
 
 ```bash
-go get github.com/c2fo/vfs/contrib/vfsevents/watchers/s3events
+go get github.com/c2fo/vfs/contrib/vfsevents
 ```
+
+Then import `github.com/c2fo/vfs/contrib/vfsevents/watchers/s3events`.
 
 ## Usage
 
@@ -21,17 +23,19 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"time"
 
 	"github.com/c2fo/vfs/contrib/vfsevents"
 	"github.com/c2fo/vfs/contrib/vfsevents/watchers/s3events"
 )
 
 func main() {
-	// Initialize the S3Watcher
+	// Initialize the S3Watcher. Without WithSqsClient, an SQS client is created
+	// from the default AWS configuration.
 	watcher, err := s3events.NewS3Watcher(
 		"https://sqs.us-east-1.amazonaws.com/123456789012/my-queue",
-		s3events.WithSqsClient(customSqsClient),
 		s3events.WithReceivedCount(10),
 	)
 	if err != nil {
@@ -52,31 +56,36 @@ func main() {
 	ctx := context.Background()
 	err = watcher.Start(ctx, handler, errHandler)
 	if err != nil {
-		log.Fatal(fmt.Errorf("error starting watcher: %v\n", err))
+		log.Fatal(fmt.Errorf("error starting watcher: %w", err))
 	}
 
 	// Run the watcher for 2 minutes
 	time.Sleep(2 * time.Minute)
-	watcher.Stop()
+	if err := watcher.Stop(); err != nil {
+		log.Printf("error stopping watcher: %v", err)
+	}
 }
+```
 
 ## Event Mapping
 
 The S3 watcher provides **semantic accuracy** in event mapping by using operation-based logic to distinguish between different types of S3 operations:
 
+Event names are matched exactly as they appear in the notification's `eventName` field (without the `s3:` prefix used in bucket notification configuration). Any other event name is ignored.
+
 | S3 Event Type | VFS Event Type | Description |
 |---|---|---|
-| `s3:ObjectCreated:Put` | `EventCreated` | Direct file uploads (typically new files) |
-| `s3:ObjectCreated:Post` | `EventCreated` | Form-based uploads (typically new files) |
-| `s3:ObjectCreated:Copy` | `EventModified` | Copy operations (often overwrites/modifications) |
-| `s3:ObjectCreated:CompleteMultipartUpload` | `EventModified` | Large uploads (often significant changes) |
-| `s3:ObjectCreated:*` | `EventCreated` | Wildcard for broad compatibility |
-| `s3:ObjectRestore:Post` | `EventModified` | Restore initiation from Glacier |
-| `s3:ObjectRestore:Completed` | `EventModified` | Restore completion (object available) |
-| `s3:ObjectRestore:Delete` | `EventDeleted` | Temporary restored copy expires |
-| `s3:ObjectRemoved:Delete` | `EventDeleted` | Object deletion |
-| `s3:ObjectRemoved:DeleteMarkerCreated` | `EventDeleted` | Versioned object deletion |
-| `s3:ObjectRemoved:*` | `EventDeleted` | Wildcard deletion events |
+| `ObjectCreated:Put` | `EventCreated` | Direct file uploads (typically new files) |
+| `ObjectCreated:Post` | `EventCreated` | Form-based uploads (typically new files) |
+| `ObjectCreated:Copy` | `EventModified` | Copy operations (often overwrites/modifications) |
+| `ObjectCreated:CompleteMultipartUpload` | `EventModified` | Large uploads (often significant changes) |
+| `ObjectCreated:*` | `EventCreated` | Wildcard for broad compatibility |
+| `ObjectRestore:Post` | `EventModified` | Restore initiation from Glacier |
+| `ObjectRestore:Completed` | `EventModified` | Restore completion (object available) |
+| `ObjectRestore:Delete` | `EventDeleted` | Temporary restored copy expires |
+| `ObjectRemoved:Delete` | `EventDeleted` | Object deletion |
+| `ObjectRemoved:DeleteMarkerCreated` | `EventDeleted` | Versioned object deletion |
+| `ObjectRemoved:*` | `EventDeleted` | Wildcard deletion events |
 
 ### Semantic Accuracy Approach
 
@@ -95,7 +104,7 @@ Each event includes rich metadata to provide additional context:
 event.Metadata = map[string]string{
     "bucketName":  "my-bucket",           // S3 bucket name
     "key":         "path/to/file.txt",    // Object key/path
-    "eventName":   "s3:ObjectCreated:Copy", // Original S3 event name
+    "eventName":   "ObjectCreated:Copy",  // Original S3 event name
     "region":      "us-east-1",           // AWS region
     "eventTime":   "2023-01-01T12:00:00.000Z", // Event timestamp
     "operation":   "copy",                // Operation type (put, post, copy, multipart, restore, delete)
@@ -144,36 +153,36 @@ event.Metadata = map[string]string{
 #### NewS3Watcher
 
 ```go
-func NewS3Watcher(queueURL string) (*S3Watcher, error)
+func NewS3Watcher(queueURL string, opts ...Option) (*S3Watcher, error)
 ```
 
-`NewS3Watcher` initializes an `S3Watcher` with the given SQS queue URL.
+`NewS3Watcher` initializes an `S3Watcher` with the given SQS queue URL. If no SQS client is supplied via `WithSqsClient`, one is created from the default AWS configuration.
 
 #### Start
 
 ```go
-func (w *S3Watcher) Start(ctx context.Context, handler vfsevents.HandlerFunc, errHandler func(error)) error
+func (w *S3Watcher) Start(ctx context.Context, handler vfsevents.HandlerFunc, errHandler vfsevents.ErrorHandlerFunc, opts ...vfsevents.StartOption) error
 ```
 
-`Start` begins watching the SQS queue for S3 events and triggers the handler on events. It also takes an error handler to handle any errors that occur during polling. The polling process can be stopped by calling `Stop`.
+`Start` begins watching the SQS queue for S3 events and triggers the handler on events. It also takes an error handler to handle any errors that occur during polling. Optional `vfsevents.StartOption` values (such as `WithEventFilter` and `WithStatusCallback`) configure advanced behavior. The polling process can be stopped by calling `Stop`.
 
 #### Stop
 
 ```go
-func (w *S3Watcher) Stop() error
+func (w *S3Watcher) Stop(opts ...vfsevents.StopOption) error
 ```
 
-`Stop` stops the watcher.
+`Stop` stops the watcher. By default it waits up to 30 seconds for the polling goroutine to exit; use `vfsevents.WithTimeout` to change this or `vfsevents.WithForceStop` to return immediately.
 
 ### Options
 #### WithSqsClient
+```go
+func WithSqsClient(client SqsClient) Option
 ```
-func WithSqsClient(client *sqs.SQS) Option
-```
-`WithSqsClient` sets a custom SQS client for the watcher. This is useful for testing or if you want to use a specific SQS client configuration.
+`WithSqsClient` sets a custom SQS client for the watcher. Any type implementing the `SqsClient` interface (`ReceiveMessage` and `DeleteMessage`) is accepted, including `*sqs.Client` from the AWS SDK for Go v2. This is useful for testing or if you want to use a specific SQS client configuration.
 
 #### WithReceivedCount
 ```go
 func WithReceivedCount(count uint) Option
 ```
-`WithReceivedCount` sets the number of times a message should be received before it is deleted. This is used as a protective measure to prevent infinite retry loops for unprocessable messages.
+`WithReceivedCount` sets the maximum number of times a message may be received (default: 5). Messages whose SQS `ApproximateReceiveCount` exceeds this threshold are deleted from the queue without being processed. This is used as a protective measure to prevent infinite retry loops for unprocessable messages.

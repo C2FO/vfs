@@ -101,10 +101,12 @@ Maximum number of files to track in memory cache.
 - **Behavior**: When exceeded, oldest files are removed from cache
 
 ### WithCleanupAge(duration)
-Frequency for cleaning up deleted files from cache to prevent memory leaks.
+Maximum age of entries in the file cache, measured from when the poller first saw each file. Cleanup runs during a poll roughly every `cleanupAge/2` and removes entries older than `cleanupAge`.
 - **Default**: 24 hours
 - **Recommended**: 12-48 hours depending on file turnover rate
-- **Trade-off**: Shorter intervals = more frequent cleanup but slightly higher CPU usage
+- **Trade-off**: Shorter ages = smaller cache but more files dropped from tracking
+
+The cache is bounded by two mechanisms: `WithMaxFiles` (oldest entries are evicted when the count is exceeded) and `WithCleanupAge` (entries older than the age are evicted). Deleted files are removed from the cache as soon as a poll no longer lists them. If an evicted entry belongs to a file that still exists, the poller reports it as `Created` again on the next poll.
 
 ## Retry Configuration
 
@@ -189,6 +191,8 @@ The VFS Poller detects three types of file events:
 2. **Modified**: Existing files change (detected via LastModified time or file size)
 3. **Deleted**: Files are removed from the directory
 
+Changes are detected by calling `location.List()` on each poll, which returns only the files directly in the location. Subdirectories are not watched recursively.
+
 ## Performance Tuning
 
 ### For Small Directories (< 100 files)
@@ -272,18 +276,18 @@ func NewPoller(location vfs.Location, opts ...Option) (*Poller, error)
 #### Start
 
 ```go
-func (s *Poller) Start(ctx context.Context, handler vfsevents.HandlerFunc, errHandler vfsevents.ErrorHandlerFunc) error
+func (p *Poller) Start(ctx context.Context, handler vfsevents.HandlerFunc, errHandler vfsevents.ErrorHandlerFunc, opts ...vfsevents.StartOption) error
 ```
 
-`Start` begins polling the location for file changes and triggers the handler on events.. It also takes an error handler to handle any errors that occur during polling.  The polling process can be stopped by calling `Stop`.
+`Start` begins polling the location for file changes and triggers the handler on events. It also takes an error handler to handle any errors that occur during polling. Optional `vfsevents.StartOption` values (such as `WithRetryConfig`, `WithEventFilter`, and `WithStatusCallback`) configure advanced behavior. The polling process can be stopped by calling `Stop`.
 
 #### Stop
 
 ```go
-func (s *Poller) Stop() error
+func (p *Poller) Stop(opts ...vfsevents.StopOption) error
 ```
 
-`Stop` stops the polling process.
+`Stop` stops the polling process. By default it waits up to 30 seconds for the polling goroutine to exit; use `vfsevents.WithTimeout` to change this or `vfsevents.WithForceStop` to return immediately.
 
 ### Options
 

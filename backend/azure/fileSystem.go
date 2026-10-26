@@ -28,8 +28,8 @@ type FileSystem struct {
 	client  Client
 }
 
-// NewFileSystem creates a new default FileSystem.  This will set the options options.AccountName and
-// options.AccountKey with the env variables AZURE_STORAGE_ACCOUNT and AZURE_STORAGE_ACCESS_KEY respectively.
+// NewFileSystem creates a new default FileSystem.  Options are initialized from environment variables by NewOptions
+// (for example, AccountName and AccountKey from VFS_AZURE_STORAGE_ACCOUNT and VFS_AZURE_STORAGE_ACCESS_KEY).
 func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) *FileSystem {
 	fs := &FileSystem{
 		options: NewOptions(),

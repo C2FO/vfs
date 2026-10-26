@@ -9,7 +9,7 @@ This package provides a simple yet powerful way to coordinate access to files ac
 ### Key Features
 
 - **Portable**: Works with any VFS backend that supports basic file operations
-- **Advisory Locking**: Uses sidecar `.lock` files with atomic creation
+- **Advisory Locking**: Uses sidecar `.lock` files written via a temp file and move (see [Implementation Details](#implementation-details) for atomicity caveats)
 - **Metadata Support**: Includes timestamp, PID, hostname, and optional TTL
 - **Stale Lock Detection**: Automatic detection and handling of stale locks
 - **TTL Support**: Optional time-to-live for locks
@@ -102,10 +102,10 @@ err := lockfile.WithLock(f, func(f vfs.File) error {
     }
 
     // Process the data
-    processed, err := processData(data)
-    if err != nil {
+    if err := processData(data); err != nil {
         return fmt.Errorf("failed to process data: %w", err)
     }
+
     // Create archive vfs.File
     archiveFile, err := f.Location().NewFile("archive/" + f.Name())
     if err != nil {
@@ -192,39 +192,32 @@ The lockfile utility works by:
 
 1. Creating a companion `.lock` file next to the target file
 2. Writing metadata (timestamp, PID, hostname, TTL) to the lock file
-3. Using atomic file operations to ensure consistency
+3. Writing the metadata to a temporary file and moving it into place, which is atomic only where the backend supports an atomic rename/replace (the existence check before creation is a separate step, so acquisition itself is not atomic)
 4. Checking for stale locks based on TTL
 5. Allowing lock stealing when appropriate
 
 ## Backend-Specific Considerations
 
-### S3 and Eventual Consistency
+### S3 and Other Object Stores
 
-When using S3, be aware of its eventual consistency model:
+Amazon S3 has provided strong read-after-write consistency for PUTs, overwrites, deletes, and LIST operations since December 2020, so a lock file written by one process is visible to subsequent reads from other processes. Other object stores or S3-compatible services may offer weaker guarantees; check your provider's consistency model.
 
-1. **Read-After-Write Consistency**:
-   - New objects (PUTs) are immediately available
-   - Updates to existing objects (PUTs) may take time to propagate
-   - Deletes may take time to propagate
+1. **Implications for Locking**:
+   - Strong consistency does not make acquisition atomic. This implementation does not use a conditional "create if not exists" write: `Acquire` checks for an existing lock and then writes a new one, so two processes that check at the same moment can both believe they acquired the lock
+   - Object stores have no native rename; the temp-file-then-move write is implemented as a copy followed by a delete rather than an atomic rename
 
-2. **Implications for Locking**:
-   - A successful lock acquisition may not be immediately visible to all readers
-   - Multiple processes might temporarily see different lock states
-   - Deleted locks might still appear to exist for some time
-
-3. **Mitigation Strategies**:
+2. **Mitigation Strategies**:
    ```go
-   // Use longer TTLs to account for propagation delays
+   // Use TTLs so a lock left by a crashed process eventually becomes stale
    lock, err := lockfile.NewLock(f, lockfile.WithTTL(10 * time.Minute))
 
    // Implement retry logic with exponential backoff
-   var err error
    for i := range 3 {
        if err = lock.Acquire(); err == nil {
            break
        }
        if errors.Is(err, lockfile.ErrLockAlreadyHeld) {
-           // Wait longer between retries to allow for consistency
+           // Back off before retrying
            time.Sleep(time.Second * time.Duration(math.Pow(2, float64(i))))
            continue
        }
@@ -232,10 +225,10 @@ When using S3, be aware of its eventual consistency model:
    }
    ```
 
-4. **Best Practices for S3**:
-   - Use longer TTLs than you would with local filesystems
+3. **Best Practices for S3**:
+   - Use TTLs appropriate to your processing time
    - Implement retry logic with exponential backoff
-   - Consider using S3's strong consistency features where available
+   - Make downstream processing idempotent, since the check-then-create race can occasionally let two processes proceed
    - Monitor for lock contention and adjust TTLs accordingly
 
 ## Limitations
@@ -243,7 +236,7 @@ When using S3, be aware of its eventual consistency model:
 - This is an **advisory lock** - it only works if all processes respect the lock
 - Network partitions or process crashes may leave stale locks
 - Not suitable for high-contention scenarios (consider Redis or other distributed locks)
-- S3's eventual consistency may affect lock visibility and reliability
+- Lock acquisition is check-then-create, not atomic, so concurrent acquirers can race (especially on object stores such as S3 and GCS)
 
 ## Contributing
 

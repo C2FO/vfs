@@ -1,4 +1,3 @@
-// Package s3 implements vfs.FileSystem for AWS S3.
 package s3
 
 import (

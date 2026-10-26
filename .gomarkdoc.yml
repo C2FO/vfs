@@ -1,0 +1,7 @@
+# gomarkdoc configuration used by `make docs` and `make docs-check`.
+# The type/func template overrides drop source-line links so generated docs
+# don't change every time code shifts within a file.
+embed: true
+templateFile:
+  type: .gomarkdoc/type.gotxt
+  func: .gomarkdoc/func.gotxt

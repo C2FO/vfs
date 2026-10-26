@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Documentation
+- The API pages in `docs/` are now generated from the Go doc comments with gomarkdoc (`make docs`), and a new `Docs` workflow (`make docs-check`) fails PRs whose docs are out of date. This adds 100+ previously missing symbols (such as `WithClient`, `WithOptions`, `GetClient`, `Location.Authority`, `File.Touch`, and the `gs` retry wrappers), and adds pages for the core interfaces (`docs/vfs.md`), `utils/authority`, and `options/newfile`.
+- `s3`: The package documentation is attached to the package again, so the full usage, authentication, and role-assumption docs appear on pkg.go.dev.
+- `azure`: The authentication docs now list the environment variables the backend actually reads (`VFS_AZURE_STORAGE_ACCESS_KEY`, `VFS_AZURE_SERVICE_URL`) and the order in which credentials are chosen.
+- Fixed examples in the package docs that did not compile or used removed APIs (`backend`, `os`, `gs`, `azure`, `ftp`, `sftp`, `options`), and removed outdated install instructions and the "no third-party backends" note from the core package docs.
+- `README.md`: Added the Google Drive backend and `testcontainers`, linked the new docs pages, removed the retired Go Report Card badge, and fixed typos.
+- `contrib/backend/README.md` and `docs/conformance_tests.md`: Corrected the IO conformance case count (19), the example `go.mod`, mockery setup, S3 test defaults, and the per-backend environment variables; noted that SQL FS registers explicitly and that an empty `VFS_INTEGRATION_LOCATIONS` runs nothing.
+- `testcontainers/README.md`: Corrected when the integration workflow runs and noted that it also runs the contrib container tests.
 
 ## [[v7.32.4](https://github.com/C2FO/vfs/releases/tag/v7.32.4)] - 2026-10-26
 ### Documentation

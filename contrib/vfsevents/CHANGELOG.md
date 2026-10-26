@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Documentation
+- Fixed README examples that did not compile or read the wrong metadata keys, documented `WithMetricsCollector`, marked `EventRenamed` as reserved, and corrected the watcher comparison table and the S3, GCS, fsnotify, and VFS poller API and behavior notes.
 
 ## [[contrib/vfsevents/v1.4.1](https://github.com/C2FO/vfs/releases/tag/contrib%2Fvfsevents%2Fv1.4.1)] - 2026-08-28
 ### Fixed

@@ -65,8 +65,10 @@ Exact image tags/digests are pinned in
 
 A dedicated `Integration (testcontainers)` workflow
 ([`.github/workflows/integration.yml`](../.github/workflows/integration.yml))
-runs this module on every PR and on `main`, so backend conformance is validated
-automatically without manual setup or credentials.
+runs this module on every PR to `main`, nightly, and on manual dispatch, so
+backend conformance is validated automatically without manual setup or
+credentials. The same workflow also runs the container-based tests that live in
+contrib modules (OneDrive and Google Drive WireMock tests, SQL FS on PostgreSQL).
 
 ## This is not a published module
 

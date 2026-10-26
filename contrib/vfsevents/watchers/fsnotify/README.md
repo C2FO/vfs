@@ -18,6 +18,8 @@ The FSNotify watcher provides real-time filesystem event monitoring for local di
 - **Modified**: Existing files are modified (write operations, chmod)
 - **Deleted**: Files or directories are removed or renamed
 
+Renames are reported as `Deleted` for the old path (`EventRenamed` is never emitted). fsnotify reports the new name as a separate create event, which surfaces as `Created` when the destination is in a watched directory.
+
 ## Basic Usage
 
 ```go
@@ -27,7 +29,6 @@ import (
     "context"
     "fmt"
     "log"
-    "time"
 
     "github.com/c2fo/vfs/contrib/vfsevents"
     "github.com/c2fo/vfs/contrib/vfsevents/watchers/fsnotify"
@@ -157,6 +158,8 @@ watcher, err := fsnotify.NewFSNotifyWatcher(location,
 ### Event Filtering
 
 ```go
+import "strings"
+
 // Start with event filtering - only process .txt and .log files
 err := watcher.Start(ctx, eventHandler, errorHandler,
     vfsevents.WithEventFilter(func(e vfsevents.Event) bool {
@@ -261,7 +264,7 @@ eventHandler := func(event vfsevents.Event) {
 ```
 
 Available metadata fields:
-- `path`: Local filesystem path
+- `path`: Native local filesystem path as reported by fsnotify. For consolidated debounced events (`fsnotify_op` is `"multiple"`), this is the event's VFS URI (same as `event.URI`), not the OS path.
 - `fsnotify_op`: Raw fsnotify operation (CREATE, WRITE, REMOVE, RENAME, CHMOD) or "multiple" for debounced events
 
 ## Performance Characteristics
@@ -292,7 +295,7 @@ Available metadata fields:
 ### Windows (ReadDirectoryChangesW)
 - Good performance
 - Supports all event types
-- Native recursive watching support
+- Recursive watching requires manual directory traversal (the watcher walks subdirectories and adds a watch for each, as on other platforms)
 
 ## Limitations
 
