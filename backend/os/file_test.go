@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -800,6 +801,188 @@ func (s *osFileTest) TestAreSameVolumeOrDevice() {
 	same, err = areSameVolumeOrDevice(dir1, dir1)
 	s.Require().NoError(err)
 	s.True(same, "same path should be same device")
+}
+
+const readOnlyContent = "hello world"
+
+// newReadOnlyFile creates a 0400 file under readonly/ in the test location and returns it.
+func (s *osFileTest) newReadOnlyFile(name string) vfs.File {
+	f, err := s.tmploc.NewFile(path.Join("readonly", name))
+	s.Require().NoError(err)
+	s.Require().NoError(os.MkdirAll(filepath.Dir(osFilePath(f.(*File))), 0750))
+	s.Require().NoError(os.WriteFile(osFilePath(f.(*File)), []byte(readOnlyContent), 0400))
+	return f
+}
+
+func (s *osFileTest) TestReadOnlyFile() {
+	if os.Geteuid() == 0 {
+		s.T().Skip("permission checks are bypassed when running as root")
+	}
+
+	const original = readOnlyContent
+	tests := []struct {
+		name          string
+		fileName      string
+		run           func(f vfs.File) (string, error)
+		expected      string
+		skipOnWindows bool
+	}{
+		{
+			name:     "Read",
+			fileName: "read.txt",
+			run: func(f vfs.File) (string, error) {
+				b, err := io.ReadAll(f)
+				return string(b), err
+			},
+			expected: original,
+		},
+		{
+			name:     "Seek then read",
+			fileName: "seek.txt",
+			run: func(f vfs.File) (string, error) {
+				if _, err := f.Seek(6, io.SeekStart); err != nil {
+					return "", err
+				}
+				b, err := io.ReadAll(f)
+				return string(b), err
+			},
+			expected: "world",
+		},
+		{
+			name:     "Copy to another file",
+			fileName: "copy.txt",
+			run: func(f vfs.File) (string, error) {
+				dst, err := s.tmploc.NewFile("readonly/copy_dst.txt")
+				if err != nil {
+					return "", err
+				}
+				if err := f.CopyToFile(dst); err != nil {
+					return "", err
+				}
+				b, err := os.ReadFile(osFilePath(dst.(*File)))
+				return string(b), err
+			},
+			expected: original,
+		},
+		{
+			name:     "Copy to location",
+			fileName: "copyloc.txt",
+			run: func(f vfs.File) (string, error) {
+				loc, err := s.tmploc.NewLocation("readonly/copyloc_dst/")
+				if err != nil {
+					return "", err
+				}
+				dst, err := f.CopyToLocation(loc)
+				if err != nil {
+					return "", err
+				}
+				b, err := os.ReadFile(osFilePath(dst.(*File)))
+				return string(b), err
+			},
+			expected: original,
+		},
+		{
+			name:     "Write, close replaces the file without a prior read or seek",
+			fileName: "overwrite.txt",
+			run: func(f vfs.File) (string, error) {
+				if _, err := f.Write([]byte("replaced")); err != nil {
+					return "", err
+				}
+				if err := f.Close(); err != nil {
+					return "", err
+				}
+				b, err := os.ReadFile(osFilePath(f.(*File)))
+				return string(b), err
+			},
+			expected: "replaced",
+			// Windows refuses to rename over a file carrying the read-only attribute.
+			skipOnWindows: true,
+		},
+		{
+			name:     "Seek, write, close replaces the file via temp file and rename",
+			fileName: "edit.txt",
+			run: func(f vfs.File) (string, error) {
+				if _, err := f.Seek(6, io.SeekStart); err != nil {
+					return "", err
+				}
+				if _, err := f.Write([]byte("there")); err != nil {
+					return "", err
+				}
+				if err := f.Close(); err != nil {
+					return "", err
+				}
+				b, err := os.ReadFile(osFilePath(f.(*File)))
+				return string(b), err
+			},
+			expected: "hello there",
+			// Windows refuses to rename over a file carrying the read-only attribute.
+			skipOnWindows: true,
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			if tt.skipOnWindows && runtime.GOOS == "windows" {
+				s.T().Skip("read-only attribute blocks replacing the file on Windows")
+			}
+			f := s.newReadOnlyFile(tt.fileName)
+			got, err := tt.run(f)
+			s.Require().NoError(err)
+			s.Equal(tt.expected, got)
+			s.Require().NoError(f.Close())
+		})
+	}
+}
+
+func (s *osFileTest) TestReadOnlyFileEdgeCases() {
+	if os.Geteuid() == 0 {
+		s.T().Skip("permission checks are bypassed when running as root")
+	}
+
+	s.Run("Reading a missing file still errors and does not create it", func() {
+		f, err := s.tmploc.NewFile("readonly/missing.txt")
+		s.Require().NoError(err)
+		_, err = io.ReadAll(f)
+		s.Require().Error(err)
+		exists, err := f.Exists()
+		s.Require().NoError(err)
+		s.False(exists)
+		s.Require().NoError(f.Close())
+	})
+
+	s.Run("Read does not change the file mode or contents", func() {
+		f := s.newReadOnlyFile("unchanged.txt")
+		// Windows reports read-only files as 0444 rather than 0400, so compare against the actual mode.
+		before, err := os.Stat(osFilePath(f.(*File)))
+		s.Require().NoError(err)
+
+		_, err = io.ReadAll(f)
+		s.Require().NoError(err)
+		s.Require().NoError(f.Close())
+
+		after, err := os.Stat(osFilePath(f.(*File)))
+		s.Require().NoError(err)
+		s.Equal(before.Mode().Perm(), after.Mode().Perm())
+		s.Zero(after.Mode().Perm()&0o222, "file must remain non-writable")
+		b, err := os.ReadFile(osFilePath(f.(*File)))
+		s.Require().NoError(err)
+		s.Equal(readOnlyContent, string(b))
+	})
+
+	s.Run("Replacing a read-only file leaves no temp file behind", func() {
+		if runtime.GOOS == "windows" {
+			s.T().Skip("read-only attribute blocks replacing the file on Windows")
+		}
+		tempDir := s.T().TempDir()
+		f := s.newReadOnlyFile("notemp.txt")
+		f.(*File).tempDir = tempDir
+		_, err := f.Write([]byte("replaced"))
+		s.Require().NoError(err)
+		s.Require().NoError(f.Close())
+		entries, err := os.ReadDir(tempDir)
+		s.Require().NoError(err)
+		s.Empty(entries)
+	})
 }
 
 func TestOSFile(t *testing.T) {
