@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Documentation
+- Updated `AGENTS.md` to match the current repository: Go 1.26/1.27 version policy with patch-level guidance, all workflows and modules (testcontainers, gdrive, onedrive, sqlfs), releasegen-driven releases, per-module CHANGELOGs with the `Documentation`/`Performance` types, mockery v3 config, `-race`, and required check gates. Added guidance on open source hygiene (no internal references or AI attribution), integration testing, functional-option dependency injection, Windows pitfalls, `go get -u` raising the `go` directive, and PR/review-comment handling.
 
 ## [[v7.32.2](https://github.com/C2FO/vfs/releases/tag/v7.32.2)] - 2026-10-26
 ### Documentation
