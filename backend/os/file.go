@@ -20,8 +20,21 @@ const osCrossDeviceLinkError = "invalid cross-device link"
 
 type opener func(filePath string) (*os.File, error)
 
+// openMode selects how the original (non-temp) os file is opened.
+type openMode int
+
+const (
+	// openModeReadWriteCreate opens with O_RDWR|O_CREATE, creating parent directories as needed. Used when the file
+	// may not exist yet.
+	openModeReadWriteCreate openMode = iota
+	// openModeReadOnly opens an existing file with O_RDONLY. It never creates anything and needs no write access.
+	openModeReadOnly
+)
+
 // File implements vfs.File interface for os fs.
 type File struct {
+	// file is the handle to the original file. It may have been opened read-only (see openModeReadOnly), so nothing
+	// may write through it; writes always go to tempFile and replace the original on Close.
 	file        *os.File
 	location    *Location
 	name        string
@@ -97,8 +110,17 @@ func (f *File) Close() error {
 			return utils.WrapCloseError(err)
 		}
 
-		// get original (os) file, open it if it has not been opened
-		finalFile, err := f.getInternalFile(false)
+		// get original (os) file, open it if it has not been opened. Only its name is needed for the rename, so an
+		// existing file is opened read-only: replacing it requires write access to its directory, not to the file.
+		mode := openModeReadWriteCreate
+		exists, err := f.Exists()
+		if err != nil {
+			return utils.WrapCloseError(err)
+		}
+		if exists {
+			mode = openModeReadOnly
+		}
+		finalFile, err := f.getInternalFile(mode)
 		if err != nil {
 			return utils.WrapCloseError(err)
 		}
@@ -133,7 +155,7 @@ func (f *File) Read(p []byte) (int, error) {
 		}
 	}
 	// get the file we need, either tempFile or original file (opened read-only; reading must not require write access)
-	useFile, err := f.getInternalFile(true)
+	useFile, err := f.getInternalFile(openModeReadOnly)
 	if err != nil {
 		return 0, utils.WrapReadError(err)
 	}
@@ -168,7 +190,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	if !exists && !f.useTempFile {
 		return 0, utils.WrapSeekError(errors.New("cannot seek on non-existent file"))
 	}
-	useFile, err := f.getInternalFile(true)
+	useFile, err := f.getInternalFile(openModeReadOnly)
 	if err != nil {
 		return 0, utils.WrapSeekError(err)
 	}
@@ -202,7 +224,7 @@ func (f *File) Write(p []byte) (n int, err error) {
 	// useTempFile prevents the immediate update of the file until we Close()
 	f.useTempFile = true
 
-	useFile, err := f.getInternalFile(false)
+	useFile, err := f.getInternalFile(openModeReadWriteCreate)
 	if err != nil {
 		return 0, utils.WrapWriteError(err)
 	}
@@ -422,11 +444,11 @@ func openOSFileReadOnly(filePath string) (*os.File, error) {
 	return os.Open(filePath) //nolint:gosec
 }
 
-// openOriginal opens the underlying (non-temp) os file, read-only or read/write/create. A custom fileOpener, if set,
+// openOriginal opens the underlying (non-temp) os file in the given mode. A custom fileOpener, if set,
 // overrides the default for both modes.
-func (f *File) openOriginal(readOnly bool) (*os.File, error) {
+func (f *File) openOriginal(mode openMode) (*os.File, error) {
 	openFunc := openOSFile
-	if readOnly {
+	if mode == openModeReadOnly {
 		openFunc = openOSFileReadOnly
 	}
 	if f.fileOpener != nil {
@@ -451,13 +473,13 @@ func ensureDir(location vfs.Location) error {
 // If cursor is (0,0), just begin writing to new temp file.
 // No need to copy original first.
 //
-// readOnly applies only when the original file (not the temp file) is returned. When true, the original is opened
-// with os.O_RDONLY and is never created, so files the process cannot write to can still be read and seeked.
-func (f *File) getInternalFile(readOnly bool) (*os.File, error) {
+// mode applies only when the original file (not the temp file) is returned and it is not already open; an open handle
+// keeps the mode it was first opened with.
+func (f *File) getInternalFile(mode openMode) (*os.File, error) {
 	// this is the use case of vfs.file
 	if !f.useTempFile {
 		if f.file == nil {
-			finalFile, err := f.openOriginal(readOnly)
+			finalFile, err := f.openOriginal(mode)
 			if err != nil {
 				return nil, err
 			}
@@ -512,7 +534,7 @@ func (f *File) copyToLocalTempReader() (*os.File, error) {
 	}
 	if exists && (f.seekCalled || f.readCalled) {
 		// the original is only read here, so it must not require write access
-		actualFile, err := f.openOriginal(true)
+		actualFile, err := f.openOriginal(openModeReadOnly)
 		if err != nil {
 			return nil, err
 		}
