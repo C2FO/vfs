@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documentation
 - Updated `AGENTS.md` to match the current repository: Go 1.26/1.27 version policy with patch-level guidance, all workflows and modules (testcontainers, gdrive, onedrive, sqlfs), releasegen-driven releases, per-module CHANGELOGs with the `Documentation`/`Performance` types, mockery v3 config, `-race`, and required check gates. Added guidance on open source hygiene (no internal references or AI attribution), integration testing, functional-option dependency injection, Windows pitfalls, `go get -u` raising the `go` directive, and PR/review-comment handling.
 
+## [[v7.32.3](https://github.com/C2FO/vfs/releases/tag/v7.32.3)] - 2026-10-26
+### Fixed
+- OS backend: `Read`, `Seek` and copying from a file no longer open it read/write (`O_RDWR|O_CREATE`), and `Close` opens an existing file read-only when replacing it, so files the process cannot write to can now be read, and (where their directory is writable) replaced ([#76](https://github.com/C2FO/vfs/issues/76)). Writes still stage to a temp file and rename over the original on `Close`.
+
 ## [[v7.32.2](https://github.com/C2FO/vfs/releases/tag/v7.32.2)] - 2026-10-26
 ### Documentation
 - Updated `contrib/backend/README.md` and `testcontainers/README.md` to recommend a stateful in-process fake for conformance testing of SaaS/HTTP-API backends (WireMock or recorded stubs for stateless error paths), based on the new Dropbox fake ([#349](https://github.com/C2FO/vfs/issues/349)).
