@@ -3,12 +3,27 @@
 This document provides guidelines for AI agents working on the VFS repository, including upgrade policies, dependency management, and maintenance procedures.
 
 ## Table of Contents
+- [Open Source Hygiene](#open-source-hygiene)
 - [Development Guidelines](#development-guidelines)
+- [Integration Testing](#integration-testing)
 - [CHANGELOG and PR Process](#changelog-and-pr-process)
+- [Pull Requests and Code Review](#pull-requests-and-code-review)
 - [Go Version Policy](#go-version-policy)
 - [Dependency Upgrades](#dependency-upgrades)
 - [GitHub Actions Maintenance](#github-actions-maintenance)
 - [Module Management](#module-management)
+- [CI/CD Configuration](#cicd-configuration)
+
+---
+
+## Open Source Hygiene
+
+VFS is a public, open source project.
+
+- **Never reference internal company details** in code, comments, commit messages, PR descriptions, or issues. This includes internal ticket IDs (e.g. Jira keys), internal service names, private repositories, bucket names, hostnames, and customer names.
+- Describe the problem in terms of VFS behavior instead. If the work came from an internal ticket, open a GitHub issue and reference that.
+- **Do not add AI attribution** anywhere: no `Co-authored-by:` trailers for AI tools, no "Generated with ..." lines, and no AI mentions in commits, PR descriptions, issues, code comments, or docs.
+- Do not commit local planning or tooling artifacts such as `openspec/`, `graphify-out/`, scratch plan documents, or editor/agent config directories.
 
 ---
 
@@ -19,10 +34,11 @@ This document provides guidelines for AI agents working on the VFS repository, i
 #### Mandatory Test Coverage
 - **All new code MUST have tests**
 - Aim for coverage as close to 100% as is practicable
-- Minimum thresholds (enforced by CI):
+- Minimum thresholds (enforced by CI via `.testcoverage.yml`):
   - **Total project coverage:** 80%
   - **Package coverage:** 63%
   - **File coverage:** 52%
+- Thresholds only ratchet up. Never lower one to make CI pass; add tests instead.
 
 #### Test Organization
 - **Use `testify/suite` for organizing related tests**
@@ -43,10 +59,10 @@ This document provides guidelines for AI agents working on the VFS repository, i
   - Example:
     ```go
     tests := []struct {
-        name          string
-        input         string
+        name           string
+        input          string
         expectedOutput string
-        expectedError string
+        expectedError  string
     }{
         {
             name:           "Success case - normal operation",
@@ -59,7 +75,7 @@ This document provides guidelines for AI agents working on the VFS repository, i
             expectedError: "expected error message",
         },
     }
-    
+
     for _, tt := range tests {
         s.Run(tt.name, func() {
             result, err := functionUnderTest(tt.input)
@@ -74,18 +90,25 @@ This document provides guidelines for AI agents working on the VFS repository, i
     }
     ```
 
-#### Integration Tests
-- Use build tag `vfsintegration` for integration tests
-- Run with: `go test -tags=vfsintegration ./...`
-- Integration tests may require external services or credentials
+#### Race Detection
+- CI runs `go test -race ./...` for every module. Run it locally before pushing concurrency-related changes.
+
+#### Cross-Platform Behavior
+CI runs on Linux, macOS, and Windows. Common Windows pitfalls:
+- `file://` URIs for drive-letter paths have the form `file:///C:/path/...`. Convert between URIs and native paths explicitly rather than stripping or prepending `file://`.
+- `-race` requires cgo, and cgo on Windows needs a valid, writable `TEMP`/`TMP`. The Windows TMPDIR step in `go.yml` must use PowerShell syntax when writing to `$GITHUB_ENV`.
 
 ### Code Quality
 
 #### Linting
 - **All code MUST pass `golangci-lint`**
-- Run before committing: `make lint`
+- Run before committing: `make lint` (runs every module with `--build-tags=vfsintegration`)
 - Configuration: `.golangci.yml`
 - Linter runs on all modules independently in CI
+- `nolintlint` is enabled: only add a `//nolint:<linter>` directive when that linter actually reports the line, and always include a reason
+
+#### Pre-commit Hook
+- `.prenup.yaml` configures [prenup](https://github.com/c2fo/prenup) to run tests, `golangci-lint`, and `releasegen validate` on the modules touched by a commit.
 
 #### Code Style
 - Follow standard Go idioms and conventions
@@ -100,10 +123,13 @@ This document provides guidelines for AI agents working on the VFS repository, i
 - Provide meaningful error messages with context
 - Never ignore error return values
 
-### Interface Design
+### API and Interface Design
 - Prefer small, focused interfaces over large ones
 - Define interfaces in consuming packages, not implementing packages
-- Use dependency injection for testability
+- **Inject dependencies through functional options** on the backend constructor (e.g. `NewFileSystem(opts...)`), not through replaceable package-level globals
+- Keep option patterns uniform across backends. General options apply to every backend; backend-specific options live in that backend's package.
+- Do not force a specific logging library on users. Accept a minimal interface or callback instead.
+- Avoid breaking changes to the v7 public API. When a breaking change is unavoidable, it must be planned and called out as a `BREAKING CHANGE` in the CHANGELOG.
 
 ### File Organization
 - Group related functionality in packages
@@ -113,10 +139,9 @@ This document provides guidelines for AI agents working on the VFS repository, i
 
 ### Mocking
 - **Use `mockery` v3 for generating mocks with EXPECT() pattern**
-- **No manual mocks or fakes** (unless absolutely necessary)
+- **No manual mocks or fakes** (unless absolutely necessary; see [Integration Testing](#integration-testing) for stateful HTTP fakes)
 - **Prefer EXPECT() pattern for mock setup** for better readability and type safety
-- Place mocks in dedicated `mocks/` subdirectories
-- Generate mocks with: `//go:generate mockery --name=InterfaceName --output=./mocks`
+- Mocks are configured in `.mockery.yaml` and generated into `mocks/` subdirectories. Add new interfaces to `.mockery.yaml` and run `mockery`.
 - Example EXPECT() usage:
   ```go
   mockClient := mocks.NewMockSQSClient(t)
@@ -129,13 +154,37 @@ This document provides guidelines for AI agents working on the VFS repository, i
 - All exported types, functions, and methods must have godoc comments
 - Include usage examples for complex functionality
 - Update README.md when adding new features
+- A new backend needs its own `README.md`, plus a link from the root `README.md` (and from `contrib/backend/README.md` for contrib backends)
 - Document breaking changes in CHANGELOG.md
 
-### Performance
-- Implement graceful shutdown with timeouts
+### Resource Management
 - Use context for cancellation throughout
 - Prevent resource leaks with proper cleanup (use `defer`)
 - Be mindful of goroutine lifecycle and synchronization
+
+---
+
+## Integration Testing
+
+### Build Tag
+- Integration tests use the build tag `vfsintegration`
+- Run with: `go test -tags=vfsintegration ./...`
+- Tests that need credentials read them from environment variables and **skip** when they are not set
+
+### Conformance Suites
+- `backend/testsuite` provides shared conformance and IO conformance suites. Every backend, core or contrib, should run them.
+- See `docs/conformance_tests.md` for details.
+
+### testcontainers
+- The `testcontainers/` module runs the conformance suites against real servers in disposable Docker containers. It runs in `integration.yml` (Linux only) on PRs and nightly.
+- Prefer testcontainers for any backend with a self-hostable server (S3-compatible, SFTP, FTP, Azure, GCS emulators, PostgreSQL, etc.).
+- SaaS/HTTP-API backends (Dropbox, OneDrive, Google Drive) should use a stateful in-process fake for conformance; use WireMock or recorded stubs only for stateless error paths. See `contrib/backend/README.md` and `testcontainers/README.md`.
+- Pin container images by digest and apply the same [10-day rule](#update-policy) used for GitHub Actions.
+- Locally, Docker is provided by Colima. Make sure it is running before running these tests.
+
+### Real-Service Tests
+- Tests against real accounts (e.g. `VFS_INTEGRATION_LOCATIONS="s3://bucket/path/"`, OneDrive, Google Drive) are run manually with credentials.
+- When a test uses interactive auth such as a device-code flow, run it so the sign-in prompt is visible (do not pipe output through `grep` or similar), and tell the user the code/URL they need.
 
 ---
 
@@ -144,20 +193,28 @@ This document provides guidelines for AI agents working on the VFS repository, i
 ### CHANGELOG Requirements
 
 #### All PRs MUST Update CHANGELOG.md
-- **Every PR requires an update to the `## [Unreleased]` section** of CHANGELOG.md
+- **Every PR requires an update to the `## [Unreleased]` section** of the affected module's CHANGELOG.md, including CI-only and docs-only changes
+- `releasegen validate` enforces this in CI and in the pre-commit hook (`require_changelog_entry` in `.releasegen.yaml`)
 - PRs are **always submitted without a new version number**
 - Version numbers are added automatically when the PR is merged to main
+- Add entries **inside** `## [Unreleased]`, directly under that heading, never below an already-released version
+
+#### Per-Module CHANGELOGs
+- Each Go module has its own CHANGELOG.md next to its `go.mod`. Changes to a contrib module go in that module's CHANGELOG; everything else goes in the root CHANGELOG.
+- A new module's CHANGELOG must start with the same preamble as the existing ones (title, Keep a Changelog and Semantic Versioning links, then `## [Unreleased]`).
 
 #### CHANGELOG Format
 The CHANGELOG follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
 
-**Standard Section Headings** (case-insensitive):
+**Section Headings** (case-insensitive):
 - `### Added` - New features or functionality
 - `### Changed` - Changes to existing functionality (breaking changes only)
 - `### Removed` - Removed features or functionality (breaking changes only)
 - `### Deprecated` - Features marked for future removal
 - `### Security` - Security-related updates or fixes
 - `### Fixed` - Bug fixes
+- `### Documentation` - Documentation-only changes (custom type, see `.releasegen.yaml`)
+- `### Performance` - Performance improvements (custom type, see `.releasegen.yaml`)
 
 #### Breaking Changes
 - **`### Changed` and `### Removed` sections are ONLY for breaking changes**
@@ -172,8 +229,8 @@ The CHANGELOG follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) f
 #### Version Bump Rules
 Changes determine the next semantic version:
 - **Major bump**: `### Changed` or `### Removed` sections with "BREAKING CHANGE"
-- **Minor bump**: `### Added`, `### Deprecated`, or `### Security` sections
-- **Patch bump**: Only `### Fixed` sections
+- **Minor bump**: `### Added`, `### Deprecated`, `### Security`, or `### Performance` sections
+- **Patch bump**: Only `### Fixed` or `### Documentation` sections
 
 #### Example CHANGELOG Entry
 ```markdown
@@ -188,11 +245,30 @@ Changes determine the next semantic version:
 ```
 
 ### PR Submission Guidelines
-1. Add changes under `## [Unreleased]` section in CHANGELOG.md
+1. Add changes under `## [Unreleased]` section in the affected module's CHANGELOG.md
 2. Use appropriate section headings based on change type
 3. **Do NOT add version numbers** - these are added during the merge/release process
 4. Be clear and specific in change descriptions
 5. Mark breaking changes with "BREAKING CHANGE" text
+
+---
+
+## Pull Requests and Code Review
+
+### Working With PRs
+- If a PR is already open for the branch, push to it. Do not open a second PR for the same work.
+- When reworking a third-party contributor's PR, push to their branch when possible. If a new PR replaces theirs, credit them and link the original PR(s) in the description and CHANGELOG.
+- Keep dependency bumps in their own PR rather than folding them into feature work.
+
+### Review Comments (Copilot and Human)
+- Validate each comment against the code before changing anything. Not every suggestion is correct.
+- When asked to "validate" comments, report which ones you agree with and ask before making changes.
+- After addressing a comment, reply briefly and resolve the thread. Leave threads you disagree with open, with an explanation.
+
+### Performing Code Reviews
+- Separate actionable findings from neutral observations. Each finding should state the problem, its impact, and a concrete fix.
+- State your confidence and how a fix was verified, especially for regressions.
+- Be conservative with core backends that production users depend on (SFTP in particular). Prove that fixes cause no regressions with tests rather than reasoning alone.
 
 ---
 
@@ -201,33 +277,41 @@ Changes determine the next semantic version:
 ### Compatibility Requirements
 VFS guarantees compatibility with **the latest Go version minus 1 minor version**.
 
-**Example:** If Go 1.26.1 is the latest release, VFS supports:
-- Go 1.26.x (latest minor version)
-- Go 1.25.x (latest - 1 minor version)
+**Example:** If Go 1.27.x is the latest release, VFS supports:
+- Go 1.27.x (latest minor version)
+- Go 1.26.x (latest - 1 minor version)
 
-The `go.mod` file specifies the older of the two supported versions (e.g., `go 1.25.8`), ensuring compatibility with both.
+Every `go.mod` specifies the **older** of the two supported minor versions, at its latest patch release (e.g., `go 1.26.7`), ensuring compatibility with both.
+
+The patch level matters: CI runs with `GOTOOLCHAIN=local` and `setup-go` `check-latest: true`, so a `go` directive newer than the latest released patch fails CI. Use a full patch version when it contains a needed security fix.
 
 ### Upgrade Process
 
 #### Core Module First
-1. Update `go.mod` in the root module to the latest Go version (e.g., `go 1.25.8`)
+1. Update `go.mod` in the root module to the latest patch of the latest-1 minor version
 2. Update all configuration files that reference Go versions
-3. Release the core VFS version
-4. **Then** update contrib modules (they import core, so core must be released first)
+3. Run `go mod tidy` in `testcontainers/` (it builds against local core via `replace`)
+4. Release the core VFS version
+5. **Then** update contrib modules (they import a published core version, so core must be released first)
 
 #### Configuration Files to Update
 When updating Go versions, update these files:
 
-- **`go.mod`** - Main module Go version
-- **`.golangci.yml`** - `run.go` field
-- **`.github/workflows/go.yml`** - `matrix.go-version` array
+- **All `go.mod` files** - `go` directive
+- **`.golangci.yml`** - `run.go` field (latest-1 minor version)
+- **`.github/workflows/go.yml`** - `matrix.go-version` array (latest-1 and latest)
 - **`.github/workflows/golangci-lint.yml`** - `go-version` field
+- **`.github/workflows/go-test-coverage.yml`** - `go-version` field
 - **`.github/workflows/codeql.yml`** - `go-version` field
+- **`.github/workflows/integration.yml`** - `go-version` field
 
 #### Contrib Modules (Update After Core Release)
 - `contrib/lockfile/go.mod`
 - `contrib/vfsevents/go.mod`
 - `contrib/backend/dropbox/go.mod`
+- `contrib/backend/gdrive/go.mod`
+- `contrib/backend/onedrive/go.mod`
+- `contrib/backend/sqlfs/go.mod`
 - Any other contrib modules
 
 ---
@@ -238,6 +322,7 @@ When updating Go versions, update these files:
 - Update dependencies regularly for security and bug fixes
 - Test thoroughly after dependency updates
 - Document breaking changes in CHANGELOG.md
+- Do not use deprecated modules. If a dependency is deprecated (e.g. `go` prints a deprecation warning), open an issue to migrate.
 
 ### Go Dependencies
 ```bash
@@ -248,6 +333,15 @@ go mod tidy
 # Update specific dependency
 go get -u github.com/example/package@latest
 ```
+
+### Watch the `go` Directive
+`go get -u` raises the `go` directive to the highest version required by any dependency. After upgrading:
+1. Check that the `go` directive is still at the supported floor (see [Go Version Policy](#go-version-policy))
+2. If it was raised, find the dependency responsible and pin it to the newest version compatible with the floor
+3. Restore the directive with `go mod edit -go=<version>` and run `go mod tidy`
+
+### testcontainers Module
+`testcontainers/` uses `replace github.com/c2fo/vfs/v7 => ../`, so any dependency change in core requires `go mod tidy` in `testcontainers/` too, or CI fails with `updates to go.mod needed`.
 
 ---
 
@@ -289,7 +383,7 @@ All GitHub Actions **must be pinned to specific commit SHAs** for security and r
    ```yaml
    # Before
    uses: actions/checkout@old-sha # v6.0.1
-   
+
    # After
    uses: actions/checkout@new-sha # v6.0.2
    ```
@@ -299,11 +393,13 @@ All GitHub Actions **must be pinned to specific commit SHAs** for security and r
    - Verify all workflows pass successfully
 
 ### Workflow Files
-- `.github/workflows/go.yml` - Main test workflow (multi-module, multi-OS, multi-Go-version)
-- `.github/workflows/golangci-lint.yml` - Linting workflow
+- `.github/workflows/go.yml` - Main test workflow (multi-module, multi-OS, multi-Go-version, `-race`)
+- `.github/workflows/golangci-lint.yml` - Linting workflow (per module)
 - `.github/workflows/codeql.yml` - Security scanning
 - `.github/workflows/go-test-coverage.yml` - Test coverage enforcement
-- `.github/workflows/ensure_changelog.yml` - CHANGELOG validation
+- `.github/workflows/integration.yml` - testcontainers conformance (PRs and nightly)
+- `.github/workflows/validate-changelog.yml` - CHANGELOG validation via `releasegen validate`
+- `.github/workflows/releasegen.yml` - Versions, tags, and publishes releases on merge to `main`
 
 ---
 
@@ -315,24 +411,28 @@ VFS uses a **multi-module** repository structure:
 ```
 vfs/
 ├── go.mod                           # Core VFS module
+├── testcontainers/go.mod            # Container-based conformance tests (replace ../)
 ├── contrib/
-│   ├── lockfile/go.mod             # Lockfile contrib module
-│   ├── vfsevents/go.mod            # Events contrib module
+│   ├── lockfile/go.mod              # Lockfile contrib module
+│   ├── vfsevents/go.mod             # Events contrib module
 │   └── backend/
-│       └── dropbox/go.mod          # Dropbox backend contrib module
+│       ├── dropbox/go.mod           # Dropbox backend
+│       ├── gdrive/go.mod            # Google Drive backend
+│       ├── onedrive/go.mod          # OneDrive backend
+│       └── sqlfs/go.mod             # SQL FS backend
 ```
 
 ### Module Dependencies
-- **Contrib modules depend on core VFS**
+- **Contrib modules depend on a published core VFS version**
 - Core must be released **before** updating contrib module imports
-- Each module has independent versioning
+- `testcontainers` always builds against local core via `replace`
+- Each module has independent versioning and its own CHANGELOG.md
 
 ### Release Process
-1. Update and test core VFS module
-2. Create release tag for core (e.g., `v7.14.0`)
-3. Update contrib modules to reference new core version
-4. Test contrib modules
-5. Create release tags for contrib modules (e.g., `contrib/lockfile/v1.2.0`)
+Releases are automated by `releasegen.yml`:
+1. Each PR adds entries under `## [Unreleased]` in the affected module CHANGELOG(s)
+2. On merge to `main`, releasegen computes each changed module's next version, promotes the entries into a versioned section, tags the commit (e.g. `v7.14.0`, `contrib/lockfile/v1.2.0`), and publishes a GitHub release
+3. Do not create tags or version sections by hand
 
 ### Testing All Modules
 ```bash
@@ -345,7 +445,7 @@ make lint
 # Manual testing
 for dir in $(find . -name go.mod -exec dirname {} \;); do
     echo "Testing $dir"
-    (cd "$dir" && go test ./...)
+    (cd "$dir" && go test -race ./...)
 done
 ```
 
@@ -366,9 +466,16 @@ The CI workflows automatically detect all modules using:
 This ensures new modules are automatically tested without workflow updates.
 
 ### Test Matrix
-- **Go Versions:** 1.25, 1.26 (latest-1 and latest)
+- **Go Versions:** latest-1 and latest (see [Go Version Policy](#go-version-policy))
 - **Operating Systems:** ubuntu-latest, macos-latest, windows-latest
 - **Modules:** All modules with `go.mod` files
+
+### Required Check Gates
+Matrix jobs fan out into a changing set of checks that can't be listed in branch rulesets. Each matrix workflow ends with a single gate job that rulesets require instead:
+- `Test (required)` in `go.yml`
+- `golangci-lint (required)` in `golangci-lint.yml`
+
+New matrix workflows should follow the same pattern (`needs: <matrix job>`, `if: always()`, fail unless the result is `success`).
 
 ### Concurrency Control
 Workflows use concurrency groups to prevent resource waste:
@@ -379,25 +486,9 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 ```
 
----
-
-## Code Quality
-
-### golangci-lint Configuration
-- Configuration: `.golangci.yml`
-- Go version must match latest supported version
-- Runs on all modules independently
-- Build tags: `vfsintegration` for integration tests
-
-**Run the linter:**
-```bash
-golangci-lint run --verbose --max-same-issues 0 ./...
-```
-
 ### Test Coverage
 - Minimum coverage requirements defined in `.testcoverage.yml`
 - Enforced via `go-test-coverage` action
-- Coverage reports generated for all modules
 
 ---
 
@@ -405,8 +496,7 @@ golangci-lint run --verbose --max-same-issues 0 ./...
 
 ### Dependency Scanning
 - CodeQL runs on all PRs and weekly schedule
-- Scans for security vulnerabilities in Go code
-- Requires `GH_CI_READ` secret for private dependencies
+- Dependabot alerts should be triaged into GitHub issues and fixed in their own PRs
 
 ### Action Security
 - All actions pinned to commit SHAs (not tags)
@@ -421,20 +511,13 @@ golangci-lint run --verbose --max-same-issues 0 ./...
 - [ ] Check for Go version updates
 - [ ] Review dependency updates (`go list -u -m all`)
 - [ ] Check GitHub Actions for updates (>10 days old)
-- [ ] Review security advisories
+- [ ] Review security advisories and Dependabot alerts
 
 ### Quarterly
-- [ ] Update Go to latest stable version
+- [ ] Update Go to latest-1 minor version
 - [ ] Update all dependencies
 - [ ] Review and update CI/CD workflows
 - [ ] Update this AGENTS.md document
-
-### Before Major Release
-- [ ] Update CHANGELOG.md
-- [ ] Run full test suite on all platforms
-- [ ] Verify all modules build successfully
-- [ ] Update version tags
-- [ ] Create GitHub release with notes
 
 ---
 
@@ -442,11 +525,12 @@ golangci-lint run --verbose --max-same-issues 0 ./...
 
 ### Adding a New Contrib Module
 1. Create directory under `contrib/`
-2. Initialize `go.mod` with dependency on core VFS
-3. Add README.md with usage documentation
-4. Implement required interfaces
-5. Add comprehensive tests
-6. CI will automatically detect and test the new module
+2. Initialize `go.mod` with dependency on a published core VFS version, using the same `go` directive as core
+3. Add `CHANGELOG.md` with the standard preamble and an `## [Unreleased]` entry
+4. Add `README.md` with usage documentation, and link it from the root `README.md` and `contrib/backend/README.md`
+5. Implement required interfaces
+6. Add comprehensive tests, including the shared conformance suites
+7. CI will automatically detect and test the new module
 
 ### Updating Core VFS Version in Contrib
 ```bash
@@ -460,8 +544,11 @@ go mod tidy
 # With build tags
 go test -tags=vfsintegration ./...
 
-# Specific backend
-cd backend/s3
+# Against real locations
+VFS_INTEGRATION_LOCATIONS="s3://bucket/vfs_test/" go test -v -tags=vfsintegration ./backend/testsuite/...
+
+# testcontainers (requires Docker)
+cd testcontainers
 go test -tags=vfsintegration ./...
 ```
 
@@ -472,4 +559,6 @@ go test -tags=vfsintegration ./...
 - [Go Release Policy](https://go.dev/doc/devel/release)
 - [GitHub Actions Security](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions)
 - [golangci-lint Documentation](https://golangci-lint.run/)
+- [releasegen](https://github.com/c2fo/releasegen)
+- [prenup](https://github.com/c2fo/prenup)
 - [VFS CHANGELOG](./CHANGELOG.md)
