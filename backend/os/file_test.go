@@ -952,12 +952,18 @@ func (s *osFileTest) TestReadOnlyFileEdgeCases() {
 
 	s.Run("Read does not change the file mode or contents", func() {
 		f := s.newReadOnlyFile("unchanged.txt")
-		_, err := io.ReadAll(f)
+		// Windows reports read-only files as 0444 rather than 0400, so compare against the actual mode.
+		before, err := os.Stat(osFilePath(f.(*File)))
+		s.Require().NoError(err)
+
+		_, err = io.ReadAll(f)
 		s.Require().NoError(err)
 		s.Require().NoError(f.Close())
-		info, err := os.Stat(osFilePath(f.(*File)))
+
+		after, err := os.Stat(osFilePath(f.(*File)))
 		s.Require().NoError(err)
-		s.Equal(os.FileMode(0400), info.Mode().Perm())
+		s.Equal(before.Mode().Perm(), after.Mode().Perm())
+		s.Zero(after.Mode().Perm()&0o222, "file must remain non-writable")
 		b, err := os.ReadFile(osFilePath(f.(*File)))
 		s.Require().NoError(err)
 		s.Equal(readOnlyContent, string(b))
