@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Documentation
+- Updated `contrib/backend/README.md` and `testcontainers/README.md` to recommend a stateful in-process fake for conformance testing of SaaS/HTTP-API backends (WireMock or recorded stubs for stateless error paths), based on the new Dropbox fake ([#349](https://github.com/C2FO/vfs/issues/349)).
 
 ## [[v7.32.1](https://github.com/C2FO/vfs/releases/tag/v7.32.1)] - 2026-10-26
 ### Fixed
