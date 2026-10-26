@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [[contrib/lockfile/v1.3.1](https://github.com/C2FO/vfs/releases/tag/contrib%2Flockfile%2Fv1.3.1)] - 2026-10-26
 ### Documentation
 - Clarified in the README which parts of locking are atomic, updated the S3 consistency notes, and fixed examples that did not compile.
 
