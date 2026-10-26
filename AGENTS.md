@@ -109,6 +109,7 @@ CI runs on Linux, macOS, and Windows. Common Windows pitfalls:
 
 #### Pre-commit Hook
 - `.prenup.yaml` configures [prenup](https://github.com/c2fo/prenup) to run tests, `golangci-lint`, and `releasegen validate` on the modules touched by a commit.
+- The `releasegen validate` step can't open a linked git worktree (`repository does not exist`). When committing from a worktree, use `git commit --no-verify`; the CHANGELOG is still validated in CI.
 
 #### Code Style
 - Follow standard Go idioms and conventions
@@ -152,10 +153,18 @@ CI runs on Linux, macOS, and Windows. Common Windows pitfalls:
 
 ### Documentation
 - All exported types, functions, and methods must have godoc comments
+- A package doc comment must sit directly above the `package` clause, or it won't attach to the package on pkg.go.dev
 - Include usage examples for complex functionality
 - Update README.md when adding new features
 - A new backend needs its own `README.md`, plus a link from the root `README.md` (and from `contrib/backend/README.md` for contrib backends)
 - Document breaking changes in CHANGELOG.md
+
+#### Generated API Docs
+- The core module's `docs/*.md` API pages are generated from godoc with [gomarkdoc](https://github.com/princjef/gomarkdoc). The package-to-page mapping is `DOC_PAGES` in the `Makefile`.
+- After changing doc comments or exported symbols, run `make docs` and commit the result. The `Docs` workflow runs `make docs-check` and fails the PR when a page is out of date.
+- Never hand-edit content between the `<!-- gomarkdoc:embed:start -->` and `<!-- gomarkdoc:embed:end -->` markers. Text outside the markers is preserved, and `docs/conformance_tests.md` is fully hand-written.
+- `.gomarkdoc.yml` and the template overrides in `.gomarkdoc/` drop source-line links so the output doesn't change whenever code moves. The overrides are copies of the templates from the pinned gomarkdoc version.
+- Contrib modules are documented by their READMEs, not by generated pages.
 
 ### Resource Management
 - Use context for cancellation throughout
@@ -304,6 +313,7 @@ When updating Go versions, update these files:
 - **`.github/workflows/go-test-coverage.yml`** - `go-version` field
 - **`.github/workflows/codeql.yml`** - `go-version` field
 - **`.github/workflows/integration.yml`** - `go-version` field
+- **`.github/workflows/docs.yml`** - `go-version` field
 
 #### Contrib Modules (Update After Core Release)
 - `contrib/lockfile/go.mod`
@@ -398,6 +408,7 @@ All GitHub Actions **must be pinned to specific commit SHAs** for security and r
 - `.github/workflows/codeql.yml` - Security scanning
 - `.github/workflows/go-test-coverage.yml` - Test coverage enforcement
 - `.github/workflows/integration.yml` - testcontainers conformance (PRs and nightly)
+- `.github/workflows/docs.yml` - Fails PRs whose generated `docs/*.md` pages are out of date (`make docs-check`)
 - `.github/workflows/validate-changelog.yml` - CHANGELOG validation via `releasegen validate`
 - `.github/workflows/releasegen.yml` - Versions, tags, and publishes releases on merge to `main`
 
@@ -518,10 +529,17 @@ concurrency:
 - [ ] Update all dependencies
 - [ ] Review and update CI/CD workflows
 - [ ] Update this AGENTS.md document
+- [ ] When upgrading gomarkdoc (pinned in the `Makefile`), re-copy its `type` and `func` templates into `.gomarkdoc/` and reapply the link removal
 
 ---
 
 ## Common Tasks
+
+### Adding a New Core Backend
+1. Create the package under `backend/` with a `doc.go` package comment and a `Scheme` constant
+2. Register it in `backend/all` and add a `conformance_test.go` that runs the shared suites
+3. Add a `pkg:docs/<name>.md` entry to `DOC_PAGES` in the `Makefile`, then run `make docs`
+4. Link the new page from the root `README.md`
 
 ### Adding a New Contrib Module
 1. Create directory under `contrib/`

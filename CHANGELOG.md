@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `README.md`: Added the Google Drive backend and `testcontainers`, linked the new docs pages, removed the retired Go Report Card badge, and fixed typos.
 - `contrib/backend/README.md` and `docs/conformance_tests.md`: Corrected the IO conformance case count (19), the example `go.mod`, mockery setup, S3 test defaults, and the per-backend environment variables; noted that SQL FS registers explicitly and that an empty `VFS_INTEGRATION_LOCATIONS` runs nothing.
 - `testcontainers/README.md`: Corrected when the integration workflow runs and noted that it also runs the contrib container tests.
+- `AGENTS.md`: Documented the generated API docs (`make docs`, the `Docs` workflow, and adding a core backend's page) and the `--no-verify` workaround for committing from a git worktree.
 
 ## [[v7.32.4](https://github.com/C2FO/vfs/releases/tag/v7.32.4)] - 2026-10-26
 ### Documentation
