@@ -33,10 +33,17 @@ if [ -z "$base_ref" ]; then
   exit 0
 fi
 
+# Capture the diff in a checked assignment: a failure inside process substitution would be
+# swallowed and look like "no changes", letting required checks pass without running tests.
+# --no-renames reports a move as a delete plus an add so the source module is affected too.
+if ! diff_output=$(git diff --name-only --no-renames "origin/${base_ref}...HEAD"); then
+  echo "error: unable to diff against origin/${base_ref}" >&2
+  exit 1
+fi
 changed=()
 while IFS= read -r line; do
   if [ -n "$line" ]; then changed+=("$line"); fi
-done < <(git diff --name-only "origin/${base_ref}...HEAD")
+done <<< "$diff_output"
 
 global_re='^(\.github/(workflows|scripts)/|\.golangci\.yml$|\.testcoverage\.yml$|go\.work)'
 for f in ${changed[@]+"${changed[@]}"}; do
