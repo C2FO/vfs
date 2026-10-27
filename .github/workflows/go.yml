@@ -5,10 +5,7 @@ on:
     branches:
       - main
       - v6
-  # Full run (all modules) after merge and on demand; PRs only test affected modules.
-  push:
-    branches:
-      - main
+  # PRs only test affected modules; a manual run tests every module.
   workflow_dispatch:
 
 # Concurrency Setting

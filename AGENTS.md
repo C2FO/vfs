@@ -479,18 +479,21 @@ This ensures new modules are automatically tested without workflow updates.
 ### Test Matrix
 - **Go Versions:** latest-1 and latest (see [Go Version Policy](#go-version-policy))
 - **Operating Systems:** ubuntu-latest, macos-latest, windows-latest
-- **Modules:** All modules with `go.mod` files on pushes to `main` and manual runs. On pull requests, `.github/scripts/affected-modules.sh` selects only the affected modules:
+- **Modules:** All modules with `go.mod` files on manual runs. On pull requests, `.github/scripts/affected-modules.sh` selects only the affected modules for the test matrix (`go.yml`), the lint matrix (`golangci-lint.yml`), and the Docker-based integration tests (`integration.yml`, limited to the `testcontainers`, `onedrive`, `gdrive`, and `sqlfs` modules). The nightly integration schedule always runs every integration module. Selection rules:
   - a module is affected when a file under its directory changes (nested modules own their files)
   - a module with a local `replace` directive (e.g. `testcontainers`) is affected when the replaced module is
   - changes to `.github/workflows/`, `.github/scripts/`, `.golangci.yml`, `.testcoverage.yml`, or `go.work*` test every module
   - markdown-only changes test nothing (the matrix is skipped and the gate still passes)
 
+Tests no longer run on pushes to `main`; a pull request must be green before merge.
+
 ### Required Check Gates
 Matrix jobs fan out into a changing set of checks that can't be listed in branch rulesets. Each matrix workflow ends with a single gate job that rulesets require instead:
 - `Test (required)` in `go.yml`
 - `golangci-lint (required)` in `golangci-lint.yml`
+- `testcontainers conformance` in `integration.yml`
 
-New matrix workflows should follow the same pattern (`needs: <matrix job>`, `if: always()`, fail unless the result is `success`).
+New matrix workflows should follow the same pattern (`needs: [<discovery job>, <matrix job>]`, `if: always()`, fail unless discovery succeeded and the matrix result is `success` or `skipped`). A skipped matrix means no module was affected.
 
 ### Concurrency Control
 Workflows use concurrency groups to prevent resource waste:
