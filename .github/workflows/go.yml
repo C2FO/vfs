@@ -5,6 +5,11 @@ on:
     branches:
       - main
       - v6
+  # Full run (all modules) after merge and on demand; PRs only test affected modules.
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 
 # Concurrency Setting
 concurrency:
@@ -22,16 +27,22 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Find all modules
+        with:
+          fetch-depth: 0
+      - name: Find modules to test
         id: modules
+        env:
+          BASE_REF: ${{ github.event_name == 'pull_request' && github.base_ref || '' }}
         run: |
-          modules=$(find . -name go.mod -exec dirname {} \; | jq --raw-input --slurp --compact-output 'split("\n")[:-1]')
-          echo "Modules found:"
-          echo $modules | jq -r ".[]"
+          modules=$(.github/scripts/affected-modules.sh "$BASE_REF")
+          echo "Modules to test:"
+          echo "$modules" | jq -r ".[]"
           echo "modules=$modules" >> $GITHUB_OUTPUT
 
   test:
     needs: get_modules
+    # An empty matrix is a workflow error, so skip the job when no module is affected.
+    if: needs.get_modules.outputs.modules != '[]'
     strategy:
       fail-fast: false
       matrix:
@@ -70,15 +81,21 @@ jobs:
   # should require only this job instead of every generated "Test ..." check.
   test-required:
     name: Test (required)
-    needs: test
+    needs: [get_modules, test]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Verify test matrix succeeded
         run: |
           result="${{ needs.test.result }}"
+          echo "Module discovery result: ${{ needs.get_modules.result }}"
           echo "Test matrix result: $result"
-          if [ "$result" != "success" ]; then
+          if [ "${{ needs.get_modules.result }}" != "success" ]; then
+            echo "Module discovery did not succeed."
+            exit 1
+          fi
+          # "skipped" means no module was affected by the change (see affected-modules.sh).
+          if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
             echo "One or more jobs in the test matrix did not succeed."
             exit 1
           fi
