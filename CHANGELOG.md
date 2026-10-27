@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [[v7.32.8](https://github.com/C2FO/vfs/releases/tag/v7.32.8)] - 2026-10-27
 ### Fixed
 - CI: `golangci-lint` and the Docker-based integration workflow now run only for the modules a pull request affects (previously all 8 and all 4 integration modules every time), using the same selection as the Go test matrix. The `golangci-lint (required)` and `testcontainers conformance` checks still always report, so required-check rulesets are unaffected.
 - CI: The Go test workflow no longer runs on pushes to `main`, since tests already pass on the pull request before merge. Manual runs (`workflow_dispatch`) still test every module.
