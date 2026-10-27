@@ -7,4 +7,7 @@
 //
 // Unlike other backends, sqlfs does not register itself with the backend registry on import. Construct a FileSystem
 // with NewFileSystem and register it with backend.Register(sqlfs.Scheme, fs).
+//
+// Schema creation and garbage collection are explicit: call EnsureSchema once before use, and Cleanup periodically
+// to remove superseded revisions.
 package sqlfs
