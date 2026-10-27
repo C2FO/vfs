@@ -479,7 +479,11 @@ This ensures new modules are automatically tested without workflow updates.
 ### Test Matrix
 - **Go Versions:** latest-1 and latest (see [Go Version Policy](#go-version-policy))
 - **Operating Systems:** ubuntu-latest, macos-latest, windows-latest
-- **Modules:** All modules with `go.mod` files
+- **Modules:** All modules with `go.mod` files on pushes to `main` and manual runs. On pull requests, `.github/scripts/affected-modules.sh` selects only the affected modules:
+  - a module is affected when a file under its directory changes (nested modules own their files)
+  - a module with a local `replace` directive (e.g. `testcontainers`) is affected when the replaced module is
+  - changes to `.github/workflows/`, `.github/scripts/`, `.golangci.yml`, `.testcoverage.yml`, or `go.work*` test every module
+  - markdown-only changes test nothing (the matrix is skipped and the gate still passes)
 
 ### Required Check Gates
 Matrix jobs fan out into a changing set of checks that can't be listed in branch rulesets. Each matrix workflow ends with a single gate job that rulesets require instead:
