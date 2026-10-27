@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [[v7.32.6](https://github.com/C2FO/vfs/releases/tag/v7.32.6)] - 2026-10-27
 ### Fixed
 - CI: pull requests now run the Go test matrix only for affected modules (a change confined to `contrib/backend/sqlfs` no longer tests every other module). Changes to CI/lint config, or pushes to `main`, still test every module.
 
