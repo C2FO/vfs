@@ -538,7 +538,9 @@ func (s *FaultTestSuite) TestLostCommitThenCloseRetrySucceeds() {
 }
 
 func (s *FaultTestSuite) TestTimeoutBoundsEachStatementNotTheTransaction() {
-	const timeout = 200 * time.Millisecond
+	// The per-statement delay is 2/3 of the timeout, leaving timeout/3 of headroom for real statement execution and
+	// scheduling. The timeout is generous so slow CI runners (notably Windows) stay inside that headroom.
+	const timeout = 900 * time.Millisecond
 	fsys, err := NewFileSystem(withQuerier(s.rec), WithDialect(SQLite()), WithChunkSize(faultChunk),
 		WithOperationTimeout(timeout))
 	s.Require().NoError(err)
