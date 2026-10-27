@@ -1,9 +1,14 @@
 name: Integration (testcontainers)
 
-# Runs the testcontainers module, which stands up real backend servers as
-# disposable Docker containers and runs the shared conformance + IO suites
-# against them. This requires a Docker daemon, so it lives in its own Linux-only
-# workflow rather than the generic multi-OS test matrix.
+# Runs the vfsintegration tests that stand up real backend servers as disposable
+# Docker containers (testcontainers, plus the WireMock/PostgreSQL tests of the
+# contrib backends) and run the shared conformance + IO suites against them. This
+# requires a Docker daemon, so it lives in its own Linux-only workflow rather than
+# the generic multi-OS test matrix.
+#
+# On pull requests only the integration modules affected by the change run (see
+# .github/scripts/affected-modules.sh). The nightly schedule and manual runs
+# test every integration module.
 
 on:
   pull_request:
@@ -22,9 +27,42 @@ permissions:
   contents: read
 
 jobs:
-  testcontainers:
-    name: testcontainers conformance
+  detect-modules:
+    name: detect-modules
     runs-on: ubuntu-latest
+    outputs:
+      modules: ${{ steps.set-modules.outputs.modules }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Find integration modules to test
+        id: set-modules
+        env:
+          BASE_REF: ${{ github.event_name == 'pull_request' && github.base_ref || '' }}
+          # Modules whose vfsintegration tests need Docker. Module directories use the
+          # same "./path" form that affected-modules.sh prints.
+          INTEGRATION_MODULES: '["./testcontainers","./contrib/backend/onedrive","./contrib/backend/gdrive","./contrib/backend/sqlfs"]'
+        run: |
+          affected=$(.github/scripts/affected-modules.sh "$BASE_REF")
+          modules=$(jq --null-input --compact-output \
+            --argjson affected "$affected" --argjson integration "$INTEGRATION_MODULES" \
+            '$integration | map(select(. as $m | $affected | index($m)))')
+          echo "Integration modules to test:"
+          echo "$modules" | jq -r '.[]'
+          echo "modules=$modules" >> $GITHUB_OUTPUT
+
+  testcontainers:
+    name: integration ${{ matrix.module }}
+    needs: detect-modules
+    # An empty matrix is a workflow error, so skip the job when no module is affected.
+    if: needs.detect-modules.outputs.modules != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJson(needs.detect-modules.outputs.modules) }}
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -49,20 +87,32 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_TOKEN }}
 
+      # Contrib backends keep their container tests in their own module. The
+      # real-drive conformance tests in the gdrive and onedrive modules skip
+      # without credentials.
       - name: Run integration tests
-        working-directory: testcontainers
+        working-directory: ${{ matrix.module }}
         run: go test -tags=vfsintegration -race -timeout 30m ./...
 
-      # Contrib backends keep their container tests in their own module. The
-      # real-drive conformance test in the same package skips without credentials.
-      - name: Run OneDrive WireMock tests
-        working-directory: contrib/backend/onedrive
-        run: go test -tags=vfsintegration -race -timeout 10m ./...
-
-      - name: Run Google Drive WireMock tests
-        working-directory: contrib/backend/gdrive
-        run: go test -tags=vfsintegration -race -timeout 10m ./...
-
-      - name: Run SQL FS PostgreSQL tests
-        working-directory: contrib/backend/sqlfs
-        run: go test -tags=vfsintegration -race -timeout 10m ./...
+  # Single required-status-check gate for the integration matrix. Its name is kept
+  # as "testcontainers conformance" because branch rulesets already require that check.
+  testcontainers-required:
+    name: testcontainers conformance
+    needs: [detect-modules, testcontainers]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify integration matrix succeeded
+        run: |
+          result="${{ needs.testcontainers.result }}"
+          echo "Module discovery result: ${{ needs.detect-modules.result }}"
+          echo "Integration matrix result: $result"
+          if [ "${{ needs.detect-modules.result }}" != "success" ]; then
+            echo "Module discovery did not succeed."
+            exit 1
+          fi
+          # "skipped" means no integration module was affected by the change (see affected-modules.sh).
+          if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+            echo "One or more jobs in the integration matrix did not succeed."
+            exit 1
+          fi
