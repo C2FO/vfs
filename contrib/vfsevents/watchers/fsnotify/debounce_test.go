@@ -322,8 +322,11 @@ func TestDebouncingEdgeCases(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("CreateThenDelete", func(t *testing.T) {
-		// Test create followed by delete - should result in delete event
-		watcher, err := NewFSNotifyWatcher(location, WithDebounce(200*time.Millisecond))
+		// Test create followed by delete - should result in delete event.
+		// The debounce window is far larger than the create-to-delete gap so a slow runner (notably Windows) cannot
+		// stretch that gap past the window and flush the create as its own event.
+		const debounce = 2 * time.Second
+		watcher, err := NewFSNotifyWatcher(location, WithDebounce(debounce))
 		require.NoError(t, err)
 
 		events := make(chan vfsevents.Event, 10)
@@ -349,25 +352,27 @@ func TestDebouncingEdgeCases(t *testing.T) {
 		err = os.WriteFile(testFile, []byte("content"), 0600)
 		require.NoError(t, err)
 
-		time.Sleep(50 * time.Millisecond) // Less than debounce
+		time.Sleep(50 * time.Millisecond) // Much less than debounce
 		err = os.Remove(testFile)
 		require.NoError(t, err)
 
-		// Wait for debounce period
-		time.Sleep(400 * time.Millisecond)
-
-		// Should receive delete event (delete wins over create)
-		eventCount := 0
+		// Wait for the debounced event rather than sleeping for a fixed period.
 		var finalEvent vfsevents.Event
-		timeout := time.After(100 * time.Millisecond)
+		select {
+		case finalEvent = <-events:
+		case <-time.After(debounce + 5*time.Second):
+			require.Fail(t, "timed out waiting for the debounced event")
+		}
+		eventCount := 1
 
+		// Nothing else should follow: the create must have been consolidated into the delete.
+		extra := time.After(500 * time.Millisecond)
 	eventLoop:
 		for {
 			select {
-			case event := <-events:
+			case <-events:
 				eventCount++
-				finalEvent = event
-			case <-timeout:
+			case <-extra:
 				break eventLoop
 			}
 		}
