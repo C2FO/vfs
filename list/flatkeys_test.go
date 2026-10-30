@@ -278,6 +278,19 @@ func (s *FlatKeysTestSuite) TestDirFilterPrunes() {
 	s.Equal([]string{"keep", "skip"}, asked)
 }
 
+func (s *FlatKeysTestSuite) TestDirFilterIsIgnoredWithoutRecursion() {
+	b := &fakeBucket{keys: sortedKeys("a/b/c.txt", "a/d.txt")}
+	asked := 0
+	rs := s.flat(b, list.Prefix("a/"), list.DirFilter(func(vfs.Entry) bool {
+		asked++
+		return false
+	}))
+
+	s.Empty(errsOf(rs))
+	s.Equal([]string{"a/b/", "a/d.txt"}, keysOf(rs), "the directory on the way to the prefix is read, not pruned")
+	s.Zero(asked)
+}
+
 func (s *FlatKeysTestSuite) TestDirFilterErrorIsFatal() {
 	boom := errors.New("boom")
 	b := &fakeBucket{keys: sortedKeys("a/x.txt", "b/y.txt")}

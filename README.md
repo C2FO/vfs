@@ -65,6 +65,25 @@ func main() {
 ```
 This snippet shows the basic setup: an osFile is created from a URI and written to using standard libraries.
 
+## Listing
+
+`list.Entries` streams the contents of any location as `vfs.Entry` values, in byte order, fetching from the backend only as you iterate:
+
+```go
+for e, err := range list.Entries(ctx, loc, list.Glob("*/*.csv"), list.FilesOnly()) {
+    if err != nil {
+        return err
+    }
+    fmt.Println(e.RelPath(), e.Size())
+}
+```
+
+* Options such as `list.Prefix`, `list.Recursive`, `list.MaxDepth`, `list.FilesOnly`, `list.DirsOnly`, `list.Glob`, `list.Match`, `list.Filter` and `list.DirFilter` choose what is listed. `list.Limit` with `list.After` pages through a listing, and each option may be given once. A `list.Glob` implies the depth it names, so it is not combined with `list.Recursive`.
+* An entry carries its relative path, and the size and modification time the backend listed with it, so reading them costs no extra request. `Info()` and `InfoContext(ctx)` fetch them when a backend did not list them.
+* An error for one unreadable subdirectory is yielded with that directory's entry and the listing continues, so a recursive listing can report which folders were and were not accessible.
+* `list.Collect` and `list.TopN` (with `list.BySize`, `list.ByModTime` and `list.ByName`) gather a listing when you do want it in memory.
+* A backend without native listing still works, listing files only. See [list](docs/list.md) for the full API.
+
 ## Advanced Usage
 * See the [GoDoc](https://pkg.go.dev/github.com/c2fo/vfs/v7) for deeper technical details, backend-specific options, and additional APIs.
 * Specialized operations like copying between S3 locations or advanced configs (e.g. Azure credentials) are documented in each backend doc.
@@ -83,6 +102,7 @@ The pages in `docs/` are generated from the Go doc comments with `make docs`:
     * [ftp backend](docs/ftp.md)
     * [azure backend](docs/azure.md)
     * [conformance tests](docs/conformance_tests.md)
+* [list](docs/list.md) - streaming listing of a location
 * [options](docs/options.md)
     * [delete options](docs/delete_options.md)
     * [new file options](docs/newfile_options.md)

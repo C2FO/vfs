@@ -60,8 +60,8 @@ type PageFunc func(ctx context.Context, req PageRequest) (Page, error)
 // page. Directories are synthesized from the "/" separators of keys, once each, whether or not a folder marker exists,
 // at the position of their order key. A key that is out of order ends the listing with an error, since a backend whose
 // order differs from byte order would otherwise return silently wrong results. FlatKeys applies q.Prefix, q.StartAfter,
-// q.Depth and q.Descend itself, whatever the backend did with the hints. It does not apply Kind, Glob, Match, Filter or
-// Limit; list.Entries does.
+// q.Depth and, in a recursive listing, q.Descend itself, whatever the backend did with the hints. It does not apply
+// Kind, Glob, Match, Filter or Limit; list.Entries does.
 //
 // A key that cannot be an Entry, such as "a//b", is yielded as a zero Entry with an error matching fs.ErrInvalid and
 // the listing continues. A failed page ends the listing with an error and a zero Entry, except that a location that does
@@ -72,7 +72,7 @@ func FlatKeys(ctx context.Context, parent vfs.Location, q Query, pages PageFunc,
 		f := &flat{
 			emitter: emitter{ctx: ctx, parent: parent, yield: yield},
 			win:     newWindow(q),
-			descend: q.Descend,
+			descend: descender(q),
 		}
 		f.run(pages, retry, PageRequest{StartAfter: q.StartAfter, Prefix: q.Prefix, Delimited: !q.Recursive})
 	}

@@ -28,9 +28,10 @@ const (
 
 // Query is the validated form of a set of listing options. It is what a backend's native listing starts from.
 //
-// Prefix, Recursive, MaxDepth, Kind, StartAfter and Limit are hints: a backend may use them to avoid fetching entries
-// that would be discarded, and may ignore any of them, because the listing applies every option to the entries a
-// backend yields. Glob, Match, Filter and Descend are always applied by the listing itself; a backend never needs to
+// Prefix, Recursive, MaxDepth, Kind, StartAfter, Limit and Descend are hints: a backend may use them to avoid fetching
+// entries that would be discarded, and may ignore any of them, because the listing applies every option to the entries
+// a backend yields. The shared engines, WalkDirs and FlatKeys, apply Prefix, Recursive, MaxDepth, StartAfter and
+// Descend themselves. Glob, Match and Filter are always applied by the listing itself; a backend never needs to
 // evaluate them. When Glob is set, Prefix, Recursive and MaxDepth hold the values the pattern implies.
 type Query struct {
 	// Prefix is the relative path every yielded entry must start with, or "".
@@ -52,7 +53,8 @@ type Query struct {
 	Match *regexp.Regexp
 	// Filter is the custom filter entries must pass, or nil.
 	Filter EntryFunc
-	// Descend decides whether to descend into a directory in a recursive listing, or is nil to descend into all.
+	// Descend decides whether to descend into a directory in a recursive listing, or is nil to descend into all. It has
+	// no effect on a listing that is not recursive.
 	Descend EntryFunc
 }
 

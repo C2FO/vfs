@@ -33,9 +33,14 @@ A backend that lists natively implements vfs.EntryLister and starts from [ParseQ
 
 - [Variables](<#variables>)
 - [func After\(e vfs.Entry\) options.ListOption](<#After>)
+- [func ByModTime\(a, b vfs.Entry\) int](<#ByModTime>)
+- [func ByName\(a, b vfs.Entry\) int](<#ByName>)
+- [func BySize\(a, b vfs.Entry\) int](<#BySize>)
+- [func Collect\(seq iter.Seq2\[vfs.Entry, error\]\) \(\[\]vfs.Entry, error\)](<#Collect>)
 - [func DirFilter\(fn func\(e vfs.Entry\) bool\) options.ListOption](<#DirFilter>)
 - [func DirFilterContext\(fn EntryFunc\) options.ListOption](<#DirFilterContext>)
 - [func DirsOnly\(\) options.ListOption](<#DirsOnly>)
+- [func Entries\(ctx context.Context, loc vfs.Location, opts ...options.ListOption\) iter.Seq2\[vfs.Entry, error\]](<#Entries>)
 - [func FilesOnly\(\) options.ListOption](<#FilesOnly>)
 - [func Filter\(fn func\(e vfs.Entry\) bool\) options.ListOption](<#Filter>)
 - [func FilterContext\(fn EntryFunc\) options.ListOption](<#FilterContext>)
@@ -48,6 +53,7 @@ A backend that lists natively implements vfs.EntryLister and starts from [ParseQ
 - [func Prefix\(p string\) options.ListOption](<#Prefix>)
 - [func Recursive\(\) options.ListOption](<#Recursive>)
 - [func StartAfter\(relPath string\) options.ListOption](<#StartAfter>)
+- [func TopN\(seq iter.Seq2\[vfs.Entry, error\], n int, compare func\(a, b vfs.Entry\) int\) \(\[\]vfs.Entry, error\)](<#TopN>)
 - [func WalkDirs\(ctx context.Context, parent vfs.Location, q Query, readDir ReadDirFunc, retry RetryFunc\) iter.Seq2\[vfs.Entry, error\]](<#WalkDirs>)
 - [type Child](<#Child>)
 - [type EntryFunc](<#EntryFunc>)
@@ -80,6 +86,185 @@ func After(e vfs.Entry) options.ListOption
 
 After yields only entries that sort after e, which is the cursor for the next page of a paged listing. It is StartAfter with the order key of e. After cannot be combined with [StartAfter](<#StartAfter>).
 
+<details><summary>Example</summary>
+<p>
+
+Limit and After page through a listing. The cursor is the last entry of the previous page, so no page needs to remember anything but that entry.
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend/mem"
+	"github.com/c2fo/vfs/v7/list"
+	"github.com/c2fo/vfs/v7/options"
+)
+
+// reportsLocation returns an in-memory location holding a few files.
+func reportsLocation() vfs.Location {
+	loc, err := mem.NewFileSystem().NewLocation("", "/reports/")
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, name := range []string{"2026-01.csv", "2026-02.csv", "2026-03.csv", "summary.txt", "notes.md"} {
+		f, err := loc.NewFile(name)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if _, err := f.Write([]byte("data")); err != nil {
+			log.Fatal(err)
+		}
+		if err := f.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}
+	return loc
+}
+
+func main() {
+	ctx := context.Background()
+	loc := reportsLocation()
+
+	var cursor vfs.Entry
+	for page := 1; ; page++ {
+		opts := []options.ListOption{list.Limit(2)}
+		if page > 1 {
+			opts = append(opts, list.After(cursor))
+		}
+
+		n := 0
+		for e, err := range list.Entries(ctx, loc, opts...) {
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("page %d: %s\n", page, e.RelPath())
+			cursor = e
+			n++
+		}
+		if n < 2 {
+			break
+		}
+	}
+}
+```
+
+#### Output
+
+```
+page 1: 2026-01.csv
+page 1: 2026-02.csv
+page 2: 2026-03.csv
+page 2: notes.md
+page 3: summary.txt
+```
+
+</p>
+</details>
+
+<a name="ByModTime"></a>
+## func ByModTime
+
+```go
+func ByModTime(a, b vfs.Entry) int
+```
+
+ByModTime compares entries by their listed ModTime. Entries without metadata have the zero time. It is a comparator for slices.SortFunc and [TopN](<#TopN>); swap the arguments to reverse it.
+
+<a name="ByName"></a>
+## func ByName
+
+```go
+func ByName(a, b vfs.Entry) int
+```
+
+ByName compares entries by Name, then by relative path so that entries with the same name in different directories have a stable order. It is a comparator for slices.SortFunc and [TopN](<#TopN>); swap the arguments to reverse it.
+
+<a name="BySize"></a>
+## func BySize
+
+```go
+func BySize(a, b vfs.Entry) int
+```
+
+BySize compares entries by their listed Size. Entries without metadata \(see vfs.Entry.HasMetadata\) have size 0. It is a comparator for slices.SortFunc and [TopN](<#TopN>); swap the arguments to reverse it.
+
+<a name="Collect"></a>
+## func Collect
+
+```go
+func Collect(seq iter.Seq2[vfs.Entry, error]) ([]vfs.Entry, error)
+```
+
+Collect returns every entry seq yields, in order. It stops at the first error and returns it with no entries, so a caller that wants the entries a failed listing did produce, such as for an access report, ranges over the sequence instead. Collect holds the whole listing in memory.
+
+<details><summary>Example</summary>
+<p>
+
+Collect gathers a listing into a slice, stopping at the first error.
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend/mem"
+	"github.com/c2fo/vfs/v7/list"
+)
+
+// reportsLocation returns an in-memory location holding a few files.
+func reportsLocation() vfs.Location {
+	loc, err := mem.NewFileSystem().NewLocation("", "/reports/")
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, name := range []string{"2026-01.csv", "2026-02.csv", "2026-03.csv", "summary.txt", "notes.md"} {
+		f, err := loc.NewFile(name)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if _, err := f.Write([]byte("data")); err != nil {
+			log.Fatal(err)
+		}
+		if err := f.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}
+	return loc
+}
+
+func main() {
+	ctx := context.Background()
+	loc := reportsLocation()
+
+	entries, err := list.Collect(list.Entries(ctx, loc, list.Prefix("2026-"), list.Limit(2)))
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, e := range entries {
+		fmt.Println(e.Name())
+	}
+}
+```
+
+#### Output
+
+```
+2026-01.csv
+2026-02.csv
+```
+
+</p>
+</details>
+
 <a name="DirFilter"></a>
 ## func DirFilter
 
@@ -106,6 +291,97 @@ func DirsOnly() options.ListOption
 ```
 
 DirsOnly restricts the listing to directories. DirsOnly cannot be combined with [FilesOnly](<#FilesOnly>).
+
+<a name="Entries"></a>
+## func Entries
+
+```go
+func Entries(ctx context.Context, loc vfs.Location, opts ...options.ListOption) iter.Seq2[vfs.Entry, error]
+```
+
+Entries lists the contents of loc as a stream of entries in ascending byte order of [OrderKey](<#OrderKey>), fetching from the backend as the caller iterates. The location itself is never yielded, and a location that does not exist yields nothing. Calling Entries performs no I/O; the listing starts when the returned sequence is ranged over.
+
+```
+for e, err := range list.Entries(ctx, loc, list.Recursive(), list.FilesOnly()) {
+	if err != nil {
+		return err
+	}
+	fmt.Println(e.RelPath())
+}
+```
+
+Options are validated first. An invalid option or combination is yielded as one error that matches [ErrInvalidOption](<#ErrInvalidOption>), and no request is made. Each option may be given at most once, so a caller that adds default options of its own must not repeat them.
+
+If loc implements vfs.EntryLister the backend lists natively and every option is applied again to what it yields, so a backend that ignores an option as a hint is still correct. A callback given to [DirFilter](<#DirFilter>) or [DirFilterContext](<#DirFilterContext>) may therefore be called more than once for the same directory, once by the backend and once here, and should be cheap and free of side effects.
+
+Otherwise Entries falls back to the location's List and ListByPrefix methods. That path yields files only, in byte order, without size or modification time \(see vfs.Entry.HasMetadata\), and it reports [errors.ErrUnsupported](<https://pkg.go.dev/errors/#ErrUnsupported>) for options that need directories: [Recursive](<#Recursive>), [MaxDepth](<#MaxDepth>) and [DirsOnly](<#DirsOnly>), and a [Glob](<#Glob>) containing "/". [DirFilter](<#DirFilter>) and [DirFilterContext](<#DirFilterContext>) only matter to recursive listings, so they have no effect there. A location that does not exist yields nothing; on this path that relies on the location's List returning an error that matches fs.ErrNotExist. Because those methods accept no context, cancellation on the fallback path takes effect only between yielded entries.
+
+Errors are \*fs.PathError values with Op "list". An error yielded with a zero vfs.Entry ends the listing, except one that matches fs.ErrInvalid, which reports a key that cannot be an entry and is followed by the rest of the listing. An error yielded with a directory's entry reports that directory could not be read; the listing continues with the next entry outside it. Errors are never hidden by filters, and do not count toward [Limit](<#Limit>).
+
+<details><summary>Example</summary>
+<p>
+
+Entries streams a location's contents in byte order. A listing never loads more than it needs, so stopping the loop stops the requests.
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend/mem"
+	"github.com/c2fo/vfs/v7/list"
+)
+
+// reportsLocation returns an in-memory location holding a few files.
+func reportsLocation() vfs.Location {
+	loc, err := mem.NewFileSystem().NewLocation("", "/reports/")
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, name := range []string{"2026-01.csv", "2026-02.csv", "2026-03.csv", "summary.txt", "notes.md"} {
+		f, err := loc.NewFile(name)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if _, err := f.Write([]byte("data")); err != nil {
+			log.Fatal(err)
+		}
+		if err := f.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}
+	return loc
+}
+
+func main() {
+	ctx := context.Background()
+	loc := reportsLocation()
+
+	for e, err := range list.Entries(ctx, loc) {
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(e.RelPath())
+	}
+}
+```
+
+#### Output
+
+```
+2026-01.csv
+2026-02.csv
+2026-03.csv
+notes.md
+summary.txt
+```
+
+</p>
+</details>
 
 <a name="FilesOnly"></a>
 ## func FilesOnly
@@ -143,7 +419,7 @@ func FlatKeys(ctx context.Context, parent vfs.Location, q Query, pages PageFunc,
 
 FlatKeys lists a flat key space, such as an object store, from sorted pages of keys. It is the engine behind the native listing of s3, gs, azure and sqlfs.
 
-Keys that arrive in byte order already are the order every listing guarantees, so nothing is buffered beyond one page. Directories are synthesized from the "/" separators of keys, once each, whether or not a folder marker exists, at the position of their order key. A key that is out of order ends the listing with an error, since a backend whose order differs from byte order would otherwise return silently wrong results. FlatKeys applies q.Prefix, q.StartAfter, q.Depth and q.Descend itself, whatever the backend did with the hints. It does not apply Kind, Glob, Match, Filter or Limit; list.Entries does.
+Keys that arrive in byte order already are the order every listing guarantees, so nothing is buffered beyond one page. Directories are synthesized from the "/" separators of keys, once each, whether or not a folder marker exists, at the position of their order key. A key that is out of order ends the listing with an error, since a backend whose order differs from byte order would otherwise return silently wrong results. FlatKeys applies q.Prefix, q.StartAfter, q.Depth and, in a recursive listing, q.Descend itself, whatever the backend did with the hints. It does not apply Kind, Glob, Match, Filter or Limit; list.Entries does.
 
 A key that cannot be an Entry, such as "a//b", is yielded as a zero Entry with an error matching fs.ErrInvalid and the listing continues. A failed page ends the listing with an error and a zero Entry, except that a location that does not exist yields nothing. Each page request is wrapped in retry, which may be nil, and is not attempted once ctx is done.
 
@@ -157,6 +433,68 @@ func Glob(pattern string) options.ListOption
 Glob yields only entries whose relative path matches pattern under path.Match rules, at whatever depth the pattern names: "\*/data.csv" matches "x/data.csv" but not "x/y/data.csv". The pattern must be a relative path with no empty, "." or ".." segments. Glob cannot be combined with [Prefix](<#Prefix>), [Recursive](<#Recursive>) or [MaxDepth](<#MaxDepth>), because it implies them.
 
 Patterns follow path.Match, which differs from POSIX shell globs in two ways worth knowing: a character class such as "\[\[:alpha:\]\]" has no named classes and is read as a set of literal characters, and an inverted range such as "\[b\-a\]" is not an error and matches nothing. "\*\*" is not supported and behaves as "\*".
+
+<details><summary>Example</summary>
+<p>
+
+Glob selects entries by pattern, using the same rules as path.Match and io/fs.
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend/mem"
+	"github.com/c2fo/vfs/v7/list"
+)
+
+// reportsLocation returns an in-memory location holding a few files.
+func reportsLocation() vfs.Location {
+	loc, err := mem.NewFileSystem().NewLocation("", "/reports/")
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, name := range []string{"2026-01.csv", "2026-02.csv", "2026-03.csv", "summary.txt", "notes.md"} {
+		f, err := loc.NewFile(name)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if _, err := f.Write([]byte("data")); err != nil {
+			log.Fatal(err)
+		}
+		if err := f.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}
+	return loc
+}
+
+func main() {
+	ctx := context.Background()
+	loc := reportsLocation()
+
+	for e, err := range list.Entries(ctx, loc, list.Glob("2026-0[12].csv")) {
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(e.RelPath())
+	}
+}
+```
+
+#### Output
+
+```
+2026-01.csv
+2026-02.csv
+```
+
+</p>
+</details>
 
 <a name="Limit"></a>
 ## func Limit
@@ -221,6 +559,15 @@ func StartAfter(relPath string) options.ListOption
 
 StartAfter yields only entries whose order key \(see [OrderKey](<#OrderKey>)\) sorts after relPath. A trailing "/" on relPath denotes a directory. An empty relPath is the same as omitting the option, so a paging loop can pass its cursor unconditionally. StartAfter cannot be combined with [After](<#After>).
 
+<a name="TopN"></a>
+## func TopN
+
+```go
+func TopN(seq iter.Seq2[vfs.Entry, error], n int, compare func(a, b vfs.Entry) int) ([]vfs.Entry, error)
+```
+
+TopN returns the n entries of seq that sort first under compare, in that order, keeping only n entries in memory however long the listing is. Entries that compare equal keep the order in which seq yielded them. To find the largest files, pass a comparator that sorts larger sizes first, such as one that swaps the arguments of [BySize](<#BySize>). TopN stops at the first error and returns it with no entries. It returns an error matching [ErrInvalidOption](<#ErrInvalidOption>) if n is below 1 or compare is nil, without ranging over seq.
+
 <a name="WalkDirs"></a>
 ## func WalkDirs
 
@@ -230,7 +577,7 @@ func WalkDirs(ctx context.Context, parent vfs.Location, q Query, readDir ReadDir
 
 WalkDirs lists a hierarchical backend, one directory read at a time. It is the engine behind the native listing of backends that read a directory per request, such as os, sftp and ftp.
 
-Each directory's children are sorted by order key and walked depth first, which yields the byte order of full paths that every listing guarantees. Descent stops at q.Depth, skips directories outside q.Prefix and subtrees that sort entirely before q.StartAfter, and honors q.Descend, which is called for each directory about to be read. WalkDirs does not apply Kind, Glob, Match, Filter or Limit; list.Entries does.
+Each directory's children are sorted by order key and walked depth first, which yields the byte order of full paths that every listing guarantees. Descent stops at q.Depth, skips directories outside q.Prefix and subtrees that sort entirely before q.StartAfter, and honors q.Descend in a recursive listing, calling it for each directory about to be read. WalkDirs does not apply Kind, Glob, Match, Filter or Limit; list.Entries does.
 
 If reading the location itself fails the error is yielded with a zero Entry and the listing ends, except that a location which does not exist yields nothing. If reading a subdirectory fails, the error is yielded together with that directory's Entry and the walk continues with the next entry outside it. A child with an invalid name is yielded as a zero Entry with an error matching fs.ErrInvalid, before the valid entries of its directory, and the walk continues.
 
@@ -349,7 +696,7 @@ type PageRequest struct {
 
 Query is the validated form of a set of listing options. It is what a backend's native listing starts from.
 
-Prefix, Recursive, MaxDepth, Kind, StartAfter and Limit are hints: a backend may use them to avoid fetching entries that would be discarded, and may ignore any of them, because the listing applies every option to the entries a backend yields. Glob, Match, Filter and Descend are always applied by the listing itself; a backend never needs to evaluate them. When Glob is set, Prefix, Recursive and MaxDepth hold the values the pattern implies.
+Prefix, Recursive, MaxDepth, Kind, StartAfter, Limit and Descend are hints: a backend may use them to avoid fetching entries that would be discarded, and may ignore any of them, because the listing applies every option to the entries a backend yields. The shared engines, WalkDirs and FlatKeys, apply Prefix, Recursive, MaxDepth, StartAfter and Descend themselves. Glob, Match and Filter are always applied by the listing itself; a backend never needs to evaluate them. When Glob is set, Prefix, Recursive and MaxDepth hold the values the pattern implies.
 
 ```go
 type Query struct {
@@ -372,7 +719,8 @@ type Query struct {
     Match *regexp.Regexp
     // Filter is the custom filter entries must pass, or nil.
     Filter EntryFunc
-    // Descend decides whether to descend into a directory in a recursive listing, or is nil to descend into all.
+    // Descend decides whether to descend into a directory in a recursive listing, or is nil to descend into all. It has
+    // no effect on a listing that is not recursive.
     Descend EntryFunc
 }
 ```

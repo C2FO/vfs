@@ -33,7 +33,7 @@ type ReadDirFunc func(ctx context.Context, relDir string) ([]Child, error)
 //
 // Each directory's children are sorted by order key and walked depth first, which yields the byte order of full paths
 // that every listing guarantees. Descent stops at q.Depth, skips directories outside q.Prefix and subtrees that sort
-// entirely before q.StartAfter, and honors q.Descend, which is called for each directory about to be read. WalkDirs
+// entirely before q.StartAfter, and honors q.Descend in a recursive listing, calling it for each directory about to be read. WalkDirs
 // does not apply Kind, Glob, Match, Filter or Limit; list.Entries does.
 //
 // If reading the location itself fails the error is yielded with a zero Entry and the listing ends, except that a
@@ -49,7 +49,7 @@ func WalkDirs(ctx context.Context, parent vfs.Location, q Query, readDir ReadDir
 		w := &walker{
 			emitter: emitter{ctx: ctx, parent: parent, yield: yield},
 			win:     newWindow(q),
-			descend: q.Descend,
+			descend: descender(q),
 			readDir: readDir,
 			retry:   retry,
 		}

@@ -239,6 +239,19 @@ func (s *WalkDirsTestSuite) TestDirFilterOnlyAskedAboutDirectoriesItWouldRead() 
 	s.Equal([]string{"a", "z"}, asked)
 }
 
+func (s *WalkDirsTestSuite) TestDirFilterIsIgnoredWithoutRecursion() {
+	fd := &fakeDirs{tree: treeFromPaths("a/b/c.txt", "a/d.txt")}
+	asked := 0
+	rs := s.walk(fd, list.Prefix("a/"), list.DirFilter(func(vfs.Entry) bool {
+		asked++
+		return false
+	}))
+
+	s.Empty(errsOf(rs))
+	s.Equal([]string{"a/b/", "a/d.txt"}, keysOf(rs), "the directory on the way to the prefix is read, not pruned")
+	s.Zero(asked)
+}
+
 func (s *WalkDirsTestSuite) TestDirFilterErrorIsFatal() {
 	boom := errors.New("boom")
 	fd := &fakeDirs{tree: treeFromPaths("a/x.txt", "b/y.txt")}

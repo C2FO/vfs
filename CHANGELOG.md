@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `options.ListOption`, the marker interface for listing options.
 - `list` package, with the listing options `Prefix`, `Recursive`, `MaxDepth`, `FilesOnly`, `DirsOnly`, `StartAfter`, `After`, `Limit`, `Glob`, `Match`, `Filter`, `FilterContext`, `DirFilter` and `DirFilterContext`. `list.ParseQuery` validates them (errors match `list.ErrInvalidOption`) and `list.OrderKey` defines the byte-order key listings are ordered by.
 - `list.WalkDirs` and `list.FlatKeys`, the shared engines a backend uses to implement `vfs.EntryLister`: `WalkDirs` for backends that list one directory at a time and `FlatKeys` for object stores. Both guarantee byte order, apply the listing window (prefix, depth, `StartAfter`), prune with `DirFilter`, synthesize directories, report keys that cannot be represented as non-fatal `fs.ErrInvalid` errors, and stop retrying once the context is done.
+- `list.Entries`, the streaming listing: it validates options, uses a location's native listing when it implements `vfs.EntryLister`, applies every option again to what a backend yields, and otherwise falls back to `Location.List()` and `ListByPrefix()` for files only (options that need directories report `errors.ErrUnsupported`). Errors are `*fs.PathError` values with Op `list`, and an unreadable subdirectory is reported with its entry while the listing continues.
+- `list.Collect`, `list.TopN` and the comparators `list.ByName`, `list.BySize` and `list.ByModTime` for gathering and ranking listings.
+- A "Listing" section in the README.
 
 ## [[v7.32.8](https://github.com/C2FO/vfs/releases/tag/v7.32.8)] - 2026-10-27
 ### Fixed

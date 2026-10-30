@@ -21,6 +21,16 @@ func newWindow(q Query) window {
 	return window{prefix: q.Prefix, after: q.StartAfter, depth: q.Depth()}
 }
 
+// descender returns the function that decides which directories are descended into: q.Descend for a recursive listing,
+// and nil otherwise. A non-recursive listing with a nested prefix reads the directories on the way to the prefix, and
+// those are not pruned.
+func descender(q Query) EntryFunc {
+	if !q.Recursive {
+		return nil
+	}
+	return q.Descend
+}
+
 // segments returns the depth of the entry at rel.
 func segments(rel string) int { return strings.Count(rel, "/") + 1 }
 
