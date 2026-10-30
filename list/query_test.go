@@ -210,9 +210,79 @@ func (s *QueryTestSuite) TestInvalidOptions() {
 }
 
 func (s *QueryTestSuite) TestBadGlobMatchesBadPattern() {
-	_, err := list.ParseQuery([]options.ListOption{list.Glob("[")})
-	s.Require().ErrorIs(err, list.ErrInvalidOption)
-	s.Require().ErrorIs(err, path.ErrBadPattern)
+	patterns := []string{"[", "a[", "*[", "?[", "x*[", "[a-", "[]a]", "[^]", "[a-]", "[-a]", "[a-b-c]", `\`, `a\`, "a/[b", "a/*/["}
+	for _, pattern := range patterns {
+		s.Run(pattern, func() {
+			_, err := list.ParseQuery([]options.ListOption{list.Glob(pattern)})
+			s.Require().ErrorIs(err, list.ErrInvalidOption)
+			s.Require().ErrorIs(err, path.ErrBadPattern)
+		})
+	}
+}
+
+func (s *QueryTestSuite) TestGlobAcceptsPatternsPathMatchAccepts() {
+	// These are not errors under path.Match, and Glob follows it exactly.
+	for _, pattern := range []string{"[b-a]", "[[:alpha:]]", "**/x", `a\*b`} {
+		s.Run(pattern, func() {
+			_, err := list.ParseQuery([]options.ListOption{list.Glob(pattern)})
+			s.Require().NoError(err)
+		})
+	}
+}
+
+func (s *QueryTestSuite) TestGlobCombinesWithPagingAndFilters() {
+	q, err := list.ParseQuery([]options.ListOption{
+		list.Glob("*/data.csv"),
+		list.StartAfter("a/data.csv"),
+		list.Limit(5),
+		list.FilesOnly(),
+		list.Match(regexp.MustCompile(`csv$`)),
+		list.Filter(func(vfs.Entry) bool { return true }),
+		list.DirFilter(func(vfs.Entry) bool { return true }),
+	})
+	s.Require().NoError(err)
+	s.Equal("*/data.csv", q.Glob)
+	s.Equal("a/data.csv", q.StartAfter)
+	s.Equal(5, q.Limit)
+	s.Equal(list.KindFiles, q.Kind)
+	s.NotNil(q.Match)
+	s.NotNil(q.Filter)
+	s.NotNil(q.Descend)
+	s.True(q.Recursive)
+	s.Equal(2, q.MaxDepth)
+}
+
+func (s *QueryTestSuite) TestDepth() {
+	tests := []struct {
+		name     string
+		opts     []options.ListOption
+		expected int
+	}{
+		{name: "no options lists immediate children", expected: 1},
+		{name: "recursive is unlimited", opts: []options.ListOption{list.Recursive()}, expected: 0},
+		{name: "recursive with max depth", opts: []options.ListOption{list.Recursive(), list.MaxDepth(3)}, expected: 3},
+		{name: "flat prefix without recursion", opts: []options.ListOption{list.Prefix("rep")}, expected: 1},
+		{name: "nested prefix without recursion", opts: []options.ListOption{list.Prefix("to/rep")}, expected: 2},
+		{name: "directory prefix without recursion", opts: []options.ListOption{list.Prefix("to/")}, expected: 2},
+		{name: "deeply nested prefix without recursion", opts: []options.ListOption{list.Prefix("a/b/c")}, expected: 3},
+		{name: "nested prefix with recursion is unlimited", opts: []options.ListOption{list.Prefix("to/rep"), list.Recursive()}, expected: 0},
+		{
+			name:     "nested prefix with recursion counts from the location",
+			opts:     []options.ListOption{list.Prefix("a/"), list.Recursive(), list.MaxDepth(2)},
+			expected: 2,
+		},
+		{name: "single segment glob", opts: []options.ListOption{list.Glob("*.csv")}, expected: 1},
+		{name: "two segment glob", opts: []options.ListOption{list.Glob("*/data.csv")}, expected: 2},
+		{name: "literal path glob", opts: []options.ListOption{list.Glob("a/b/c.txt")}, expected: 3},
+	}
+	for i := range tests {
+		tt := &tests[i]
+		s.Run(tt.name, func() {
+			q, err := list.ParseQuery(tt.opts)
+			s.Require().NoError(err)
+			s.Equal(tt.expected, q.Depth())
+		})
+	}
 }
 
 func (s *QueryTestSuite) TestGlobCompilation() {
@@ -269,6 +339,10 @@ func (s *QueryTestSuite) TestOrderKey() {
 			s.Equal(tt.expected, list.OrderKey(tt.entry))
 		})
 	}
+
+	s.Run("zero entry", func() {
+		s.Empty(list.OrderKey(vfs.Entry{}))
+	})
 
 	s.Run("file sorts before a directory of the same prefix", func() {
 		s.Less(list.OrderKey(s.fileEntry("logs-2024.gz")), list.OrderKey(s.dirEntry("logs")))

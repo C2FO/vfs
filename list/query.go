@@ -28,15 +28,17 @@ const (
 
 // Query is the validated form of a set of listing options. It is what a backend's native listing starts from.
 //
-// Prefix, Recursive, MaxDepth, Kind and StartAfter are hints: a backend may use them to avoid fetching entries that
-// would be discarded, and may ignore any of them, because the listing applies every option to the entries a backend
-// yields. When Glob is set, Prefix, Recursive and MaxDepth hold the values the pattern implies.
+// Prefix, Recursive, MaxDepth, Kind, StartAfter and Limit are hints: a backend may use them to avoid fetching entries
+// that would be discarded, and may ignore any of them, because the listing applies every option to the entries a
+// backend yields. Glob, Match, Filter and Descend are always applied by the listing itself; a backend never needs to
+// evaluate them. When Glob is set, Prefix, Recursive and MaxDepth hold the values the pattern implies.
 type Query struct {
 	// Prefix is the relative path every yielded entry must start with, or "".
 	Prefix string
-	// Recursive reports whether entries below the immediate children are listed.
+	// Recursive reports whether entries deeper than Depth's non-recursive limit are listed.
 	Recursive bool
-	// MaxDepth is the deepest path segment count to list, or 0 for no limit. It is only non-zero when Recursive is true.
+	// MaxDepth is the deepest path segment count to list, measured from the listed location, or 0 for no limit. It is
+	// only non-zero when Recursive is true.
 	MaxDepth int
 	// Kind restricts the kind of entry yielded.
 	Kind Kind
@@ -52,6 +54,20 @@ type Query struct {
 	Filter EntryFunc
 	// Descend decides whether to descend into a directory in a recursive listing, or is nil to descend into all.
 	Descend EntryFunc
+}
+
+// Depth returns the largest depth of entry the listing can yield, or 0 when there is no limit. Depth is the number of
+// segments in an entry's relative path and is always measured from the listed location, so "a/b/c.txt" has depth 3.
+//
+// A recursive listing is limited only by MaxDepth. A non-recursive listing is limited to one level inside the directory
+// Prefix names: with no Prefix that is 1 (immediate children), and with Prefix "to/rep" it is 2, because the
+// entries of "to" are listed. Backends and engines use Depth rather than re-deriving this, so that every backend
+// applies the same limit.
+func (q Query) Depth() int {
+	if q.Recursive {
+		return q.MaxDepth
+	}
+	return strings.Count(q.Prefix, "/") + 1
 }
 
 // OrderKey returns the key entries are ordered by: the entry's relative path, with "/" appended for directories.

@@ -19,7 +19,7 @@ Listings are configured with options, each of which implements options.ListOptio
 - [FilesOnly](<#FilesOnly>) and [DirsOnly](<#DirsOnly>) restrict the kind of entry.
 - [StartAfter](<#StartAfter>), [After](<#After>) and [Limit](<#Limit>) page through a listing.
 
-Each option may be given at most once, and invalid combinations are rejected by [ParseQuery](<#ParseQuery>) with an error matching [ErrInvalidOption](<#ErrInvalidOption>) before any request is made. Options that this package does not define, such as backend\-specific options, are ignored.
+Each option may be given at most once, so a caller that adds default options of its own must not repeat them. Invalid combinations are rejected by [ParseQuery](<#ParseQuery>) with an error matching [ErrInvalidOption](<#ErrInvalidOption>) before any request is made. Options that this package does not define, such as backend\-specific options, are ignored.
 
 ### Ordering
 
@@ -27,7 +27,7 @@ Entries are yielded in ascending byte order of their order key \(see [OrderKey](
 
 ### Backend implementers
 
-A backend that lists natively implements vfs.EntryLister and starts from [ParseQuery](<#ParseQuery>). Every field of [Query](<#Query>) other than Limit, Match and Filter is a hint the backend may use to avoid fetching entries that would be discarded. Ignoring a hint is never a correctness bug, because the listing applies every option again to what a backend yields.
+A backend that lists natively implements vfs.EntryLister and starts from [ParseQuery](<#ParseQuery>). The hints in [Query](<#Query>) let it avoid fetching entries that would be discarded, and [Query.Depth](<#Query.Depth>) gives the deepest level it needs to read. Ignoring a hint is never a correctness bug, because the listing applies every option again to what a backend yields.
 
 ## Index
 
@@ -51,6 +51,7 @@ A backend that lists natively implements vfs.EntryLister and starts from [ParseQ
 - [type Kind](<#Kind>)
 - [type Query](<#Query>)
   - [func ParseQuery\(opts \[\]options.ListOption\) \(Query, error\)](<#ParseQuery>)
+  - [func \(q Query\) Depth\(\) int](<#Query.Depth>)
 
 
 ## Variables
@@ -132,6 +133,8 @@ func Glob(pattern string) options.ListOption
 ```
 
 Glob yields only entries whose relative path matches pattern under path.Match rules, at whatever depth the pattern names: "\*/data.csv" matches "x/data.csv" but not "x/y/data.csv". The pattern must be a relative path with no empty, "." or ".." segments. Glob cannot be combined with [Prefix](<#Prefix>), [Recursive](<#Recursive>) or [MaxDepth](<#MaxDepth>), because it implies them.
+
+Patterns follow path.Match, which differs from POSIX shell globs in two ways worth knowing: a character class such as "\[\[:alpha:\]\]" has no named classes and is read as a set of literal characters, and an inverted range such as "\[b\-a\]" is not an error and matches nothing. "\*\*" is not supported and behaves as "\*".
 
 <a name="Limit"></a>
 ## func Limit
@@ -232,15 +235,16 @@ const (
 
 Query is the validated form of a set of listing options. It is what a backend's native listing starts from.
 
-Prefix, Recursive, MaxDepth, Kind and StartAfter are hints: a backend may use them to avoid fetching entries that would be discarded, and may ignore any of them, because the listing applies every option to the entries a backend yields. When Glob is set, Prefix, Recursive and MaxDepth hold the values the pattern implies.
+Prefix, Recursive, MaxDepth, Kind, StartAfter and Limit are hints: a backend may use them to avoid fetching entries that would be discarded, and may ignore any of them, because the listing applies every option to the entries a backend yields. Glob, Match, Filter and Descend are always applied by the listing itself; a backend never needs to evaluate them. When Glob is set, Prefix, Recursive and MaxDepth hold the values the pattern implies.
 
 ```go
 type Query struct {
     // Prefix is the relative path every yielded entry must start with, or "".
     Prefix string
-    // Recursive reports whether entries below the immediate children are listed.
+    // Recursive reports whether entries deeper than Depth's non-recursive limit are listed.
     Recursive bool
-    // MaxDepth is the deepest path segment count to list, or 0 for no limit. It is only non-zero when Recursive is true.
+    // MaxDepth is the deepest path segment count to list, measured from the listed location, or 0 for no limit. It is
+    // only non-zero when Recursive is true.
     MaxDepth int
     // Kind restricts the kind of entry yielded.
     Kind Kind
@@ -269,6 +273,17 @@ func ParseQuery(opts []options.ListOption) (Query, error)
 ParseQuery validates opts and returns the Query they describe. Any error matches [ErrInvalidOption](<#ErrInvalidOption>).
 
 Each option may be given at most once; [After](<#After>) and [StartAfter](<#StartAfter>) count as one option, as do [Filter](<#Filter>) and [FilterContext](<#FilterContext>), and [DirFilter](<#DirFilter>) and [DirFilterContext](<#DirFilterContext>). Options this package does not define are ignored, so backend\-specific options can be passed alongside.
+
+<a name="Query.Depth"></a>
+### func \(Query\) Depth
+
+```go
+func (q Query) Depth() int
+```
+
+Depth returns the largest depth of entry the listing can yield, or 0 when there is no limit. Depth is the number of segments in an entry's relative path and is always measured from the listed location, so "a/b/c.txt" has depth 3.
+
+A recursive listing is limited only by MaxDepth. A non\-recursive listing is limited to one level inside the directory Prefix names: with no Prefix that is 1 \(immediate children\), and with Prefix "to/rep" it is 2, because the entries of "to" are listed. Backends and engines use Depth rather than re\-deriving this, so that every backend applies the same limit.
 
 Generated by [gomarkdoc](<https://github.com/princjef/gomarkdoc>)
 
