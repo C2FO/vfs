@@ -5,6 +5,7 @@ package testcontainers
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
@@ -85,7 +86,17 @@ func optionsFor(scheme string) testsuite.ConformanceOptions {
 	return testsuite.ConformanceOptions{
 		SkipFTPSpecificTests:   scheme == "ftp",
 		SkipTouchTimestampTest: scheme == "ftp",
+		// S3 lists modification times and answers HeadObject with different precision, so a listed time can differ
+		// from File.LastModified by under a second.
+		ListModTimeTolerance: listModTimeTolerance(scheme),
 	}
+}
+
+func listModTimeTolerance(scheme string) time.Duration {
+	if scheme == "s3" {
+		return time.Second
+	}
+	return 0
 }
 
 func (s *containerSuite) TestConformance() {

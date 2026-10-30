@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `list.Collect`, `list.TopN` and the comparators `list.ByName`, `list.BySize` and `list.ByModTime` for gathering and ranking listings.
 - A "Listing" section in the README.
 
+### Performance
+- `s3` backend implements `vfs.EntryLister`: a listing makes one `ListObjectsV2` request per 1,000 keys, only as entries are consumed, and carries each file's size and modification time from the listing so reading them makes no `HeadObject` request.
+
 ### Fixed
 - `mem` backend: `Location.NewFile` no longer reads the file map without the lock, and `Location.DeleteFile` now changes a file's existence under that file's lock, removing data races when files are created or deleted concurrently.
 
