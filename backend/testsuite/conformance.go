@@ -47,6 +47,20 @@ type ConformanceOptions struct {
 
 	// SkipFTPSpecificTests skips tests that don't work well with FTP
 	SkipFTPSpecificTests bool
+
+	// CreateEmptyDirectory creates an empty directory at dir. Backends with real directories, such as os, sftp and
+	// ftp, set it so the listing tests check that an empty directory is listed; object stores leave it nil because
+	// they cannot hold one without a folder-marker object.
+	CreateEmptyDirectory func(dir vfs.Location) error
+
+	// RemoveDirectory removes dir and everything under it. The listing tests call it on their test location when the
+	// test ends, so backends with real directories leave nothing behind, including the empty directory. When it is nil
+	// the tests delete the files they wrote and, for the file scheme, remove the location with os.RemoveAll.
+	RemoveDirectory func(dir vfs.Location) error
+
+	// ListModTimeTolerance is how far a listed modification time may differ from File.LastModified. It is zero for
+	// backends whose listing reports the same precision as a single-file request.
+	ListModTimeTolerance time.Duration
 }
 
 // RunConformanceTests runs all conformance tests against the provided location.
@@ -68,6 +82,13 @@ func RunConformanceTests(t *testing.T, baseLoc vfs.Location, opts ...Conformance
 
 	t.Run("File", func(t *testing.T) {
 		RunFileTests(t, baseLoc, opt)
+	})
+
+	t.Run("Listing", func(t *testing.T) {
+		if _, ok := baseLoc.(vfs.EntryLister); !ok {
+			t.Skip("backend does not implement native listing (vfs.EntryLister)")
+		}
+		RunListingTests(t, baseLoc, opt)
 	})
 }
 

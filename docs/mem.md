@@ -75,6 +75,7 @@ func DoSomething() {
   - [func \(l \*Location\) List\(\) \(\[\]string, error\)](<#Location.List>)
   - [func \(l \*Location\) ListByPrefix\(prefix string\) \(\[\]string, error\)](<#Location.ListByPrefix>)
   - [func \(l \*Location\) ListByRegex\(regex \*regexp.Regexp\) \(\[\]string, error\)](<#Location.ListByRegex>)
+  - [func \(l \*Location\) ListEntries\(ctx context.Context, opts ...options.ListOption\) iter.Seq2\[vfs.Entry, error\]](<#Location.ListEntries>)
   - [func \(l \*Location\) NewFile\(relFilePath string, opts ...options.NewFileOption\) \(vfs.File, error\)](<#Location.NewFile>)
   - [func \(l \*Location\) NewLocation\(relLocPath string\) \(vfs.Location, error\)](<#Location.NewLocation>)
   - [func \(l \*Location\) Path\(\) string](<#Location.Path>)
@@ -426,6 +427,17 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error)
 ```
 
 ListByRegex takes a regular expression and returns a slice of strings containing the base names of files found that matched the regular expression. Returns an empty slice upon nothing found
+
+<a name="Location.ListEntries"></a>
+### func \(\*Location\) ListEntries
+
+```go
+func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) iter.Seq2[vfs.Entry, error]
+```
+
+ListEntries lists the location's contents as a stream of entries in byte order, implementing vfs.EntryLister. Use list.Entries to list a location with options and have every option applied.
+
+The listing is a snapshot taken when iteration starts: files written or deleted afterwards do not appear. Directories are implied by the files inside them, so an empty directory is not listed. Building the snapshot visits every file in the volume, so the cost grows with the volume, not with the location or any Limit. Each file entry carries the size and modification time held in memory.
 
 <a name="Location.NewFile"></a>
 ### func \(\*Location\) NewFile

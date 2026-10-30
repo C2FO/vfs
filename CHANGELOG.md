@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- `backend/testsuite`: `RunListingTests`, a conformance suite for `vfs.EntryLister` that `RunConformanceTests` runs for any backend that lists natively. `ConformanceOptions` gains `CreateEmptyDirectory`, `RemoveDirectory` and `ListModTimeTolerance`.
+- `mem` and `os` backends implement `vfs.EntryLister`. `mem` lists a snapshot taken when iteration starts; `os` reads one directory at a time and reports symbolic links as `fs.ModeSymlink` entries without following them.
 - `vfs.Entry`, the result type of the planned streaming listing API (#389): an `fs.DirEntry` that carries a file or directory's relative path, listed size and modification time, mode and backend-native object, with lazy `Info()` / `InfoContext()` and resolution to a `vfs.File` or `vfs.Location`. Backends build entries with `vfs.NewFileEntry` and `vfs.NewDirEntry`.
 - `vfs.EntryLister`, an optional interface a `vfs.Location` can implement to list its contents natively as an `iter.Seq2[vfs.Entry, error]`.
 - `options.ListOption`, the marker interface for listing options.
@@ -14,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `list.Entries`, the streaming listing: it validates options, uses a location's native listing when it implements `vfs.EntryLister`, applies every option again to what a backend yields, and otherwise falls back to `Location.List()` and `ListByPrefix()` for files only (options that need directories report `errors.ErrUnsupported`). Errors are `*fs.PathError` values with Op `list`, and an unreadable subdirectory is reported with its entry while the listing continues.
 - `list.Collect`, `list.TopN` and the comparators `list.ByName`, `list.BySize` and `list.ByModTime` for gathering and ranking listings.
 - A "Listing" section in the README.
+
+### Fixed
+- `mem` backend: `Location.NewFile` no longer reads the file map without the lock, and `Location.DeleteFile` now changes a file's existence under that file's lock, removing data races when files are created or deleted concurrently.
 
 ## [[v7.32.8](https://github.com/C2FO/vfs/releases/tag/v7.32.8)] - 2026-10-27
 ### Fixed

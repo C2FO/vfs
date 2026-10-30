@@ -97,6 +97,7 @@ See: https://golang.org/pkg/os/
   - [func \(l \*Location\) List\(\) \(\[\]string, error\)](<#Location.List>)
   - [func \(l \*Location\) ListByPrefix\(prefix string\) \(\[\]string, error\)](<#Location.ListByPrefix>)
   - [func \(l \*Location\) ListByRegex\(regex \*regexp.Regexp\) \(\[\]string, error\)](<#Location.ListByRegex>)
+  - [func \(l \*Location\) ListEntries\(ctx context.Context, opts ...options.ListOption\) iter.Seq2\[vfs.Entry, error\]](<#Location.ListEntries>)
   - [func \(l \*Location\) NewFile\(fileName string, opts ...options.NewFileOption\) \(vfs.File, error\)](<#Location.NewFile>)
   - [func \(l \*Location\) NewLocation\(relativePath string\) \(vfs.Location, error\)](<#Location.NewLocation>)
   - [func \(l \*Location\) Path\(\) string](<#Location.Path>)
@@ -452,6 +453,17 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error)
 ```
 
 ListByRegex returns a slice of all files matching the regex in the top directory of the location.
+
+<a name="Location.ListEntries"></a>
+### func \(\*Location\) ListEntries
+
+```go
+func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) iter.Seq2[vfs.Entry, error]
+```
+
+ListEntries lists the location's contents as a stream of entries in byte order, implementing vfs.EntryLister. Use list.Entries to list a location with options and have every option applied.
+
+Each directory is read when the listing reaches it, so memory use is one directory per level of depth. File entries carry the size, modification time and mode the operating system reported. A symbolic link is listed as a file entry whose Type is fs.ModeSymlink, and is not followed, so a link to a directory is not descended into. A directory that cannot be read is yielded with its entry and an error, and the listing continues.
 
 <a name="Location.NewFile"></a>
 ### func \(\*Location\) NewFile

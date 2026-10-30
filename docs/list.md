@@ -383,6 +383,79 @@ summary.txt
 </p>
 </details>
 
+<details><summary>Example (Recursive)</summary>
+<p>
+
+Recursive and FilesOnly together list every file under a location, however deep.
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend/mem"
+	"github.com/c2fo/vfs/v7/list"
+)
+
+func archiveLocation() vfs.Location {
+	loc, err := mem.NewFileSystem().NewLocation("", "/archive/")
+	if err != nil {
+		log.Fatal(err)
+	}
+	files := []struct {
+		path string
+		size int
+	}{
+		{"readme.txt", 10},
+		{"2025/q1/sales.csv", 400},
+		{"2025/q2/sales.csv", 250},
+		{"2026/q1/sales.csv", 900},
+		{"2026/q1/notes.md", 30},
+	}
+	for _, file := range files {
+		f, err := loc.NewFile(file.path)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if _, err := f.Write(make([]byte, file.size)); err != nil {
+			log.Fatal(err)
+		}
+		if err := f.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}
+	return loc
+}
+
+func main() {
+	ctx := context.Background()
+
+	for e, err := range list.Entries(ctx, archiveLocation(), list.Recursive(), list.FilesOnly()) {
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(e.RelPath())
+	}
+}
+```
+
+#### Output
+
+```
+2025/q1/sales.csv
+2025/q2/sales.csv
+2026/q1/notes.md
+2026/q1/sales.csv
+readme.txt
+```
+
+</p>
+</details>
+
 <a name="FilesOnly"></a>
 ## func FilesOnly
 
@@ -567,6 +640,78 @@ func TopN(seq iter.Seq2[vfs.Entry, error], n int, compare func(a, b vfs.Entry) i
 ```
 
 TopN returns the n entries of seq that sort first under compare, in that order, keeping only n entries in memory however long the listing is. Entries that compare equal keep the order in which seq yielded them. To find the largest files, pass a comparator that sorts larger sizes first, such as one that swaps the arguments of [BySize](<#BySize>). TopN stops at the first error and returns it with no entries. It returns an error matching [ErrInvalidOption](<#ErrInvalidOption>) if n is below 1 or compare is nil, without ranging over seq.
+
+<details><summary>Example</summary>
+<p>
+
+TopN keeps only the best n entries, so finding the largest files uses memory for n entries however many are listed.
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend/mem"
+	"github.com/c2fo/vfs/v7/list"
+)
+
+func archiveLocation() vfs.Location {
+	loc, err := mem.NewFileSystem().NewLocation("", "/archive/")
+	if err != nil {
+		log.Fatal(err)
+	}
+	files := []struct {
+		path string
+		size int
+	}{
+		{"readme.txt", 10},
+		{"2025/q1/sales.csv", 400},
+		{"2025/q2/sales.csv", 250},
+		{"2026/q1/sales.csv", 900},
+		{"2026/q1/notes.md", 30},
+	}
+	for _, file := range files {
+		f, err := loc.NewFile(file.path)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if _, err := f.Write(make([]byte, file.size)); err != nil {
+			log.Fatal(err)
+		}
+		if err := f.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}
+	return loc
+}
+
+func main() {
+	ctx := context.Background()
+
+	largestFirst := func(a, b vfs.Entry) int { return list.BySize(b, a) }
+	largest, err := list.TopN(list.Entries(ctx, archiveLocation(), list.Recursive(), list.FilesOnly()), 2, largestFirst)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, e := range largest {
+		fmt.Println(e.RelPath(), e.Size())
+	}
+}
+```
+
+#### Output
+
+```
+2026/q1/sales.csv 900
+2025/q1/sales.csv 400
+```
+
+</p>
+</details>
 
 <a name="WalkDirs"></a>
 ## func WalkDirs
