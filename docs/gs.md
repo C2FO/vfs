@@ -161,6 +161,7 @@ See: https://github.com/googleapis/google-cloud-go/tree/master/storage
   - [func \(l \*Location\) List\(\) \(\[\]string, error\)](<#Location.List>)
   - [func \(l \*Location\) ListByPrefix\(filenamePrefix string\) \(\[\]string, error\)](<#Location.ListByPrefix>)
   - [func \(l \*Location\) ListByRegex\(regex \*regexp.Regexp\) \(\[\]string, error\)](<#Location.ListByRegex>)
+  - [func \(l \*Location\) ListEntries\(ctx context.Context, opts ...options.ListOption\) iter.Seq2\[vfs.Entry, error\]](<#Location.ListEntries>)
   - [func \(l \*Location\) NewFile\(relFilePath string, opts ...options.NewFileOption\) \(vfs.File, error\)](<#Location.NewFile>)
   - [func \(l \*Location\) NewLocation\(relativePath string\) \(vfs.Location, error\)](<#Location.NewLocation>)
   - [func \(l \*Location\) Path\(\) string](<#Location.Path>)
@@ -725,6 +726,19 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error)
 ```
 
 ListByRegex returns a list of file names at the location which match the provided regular expression.
+
+<a name="Location.ListEntries"></a>
+### func \(\*Location\) ListEntries
+
+```go
+func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) iter.Seq2[vfs.Entry, error]
+```
+
+ListEntries lists the location's contents as a stream of entries in byte order, implementing vfs.EntryLister. Use list.Entries to list a location with options and have every option applied.
+
+Objects are read from one GCS object iterator, which fetches a page of up to 1,000 objects only when the listing needs more, so a listing that stops early stops its requests. The size and modification time of every file come from the listing itself, so reading them makes no further request, and Entry.Sys returns the listed \*storage.ObjectAttrs. A non\-recursive listing asks GCS to roll objects up at "/", and a recursive listing does not. GCS has no directories in flat buckets, so a directory entry exists wherever an object name has a "/" below the listed location, whether or not a folder placeholder object exists.
+
+A 403 response is reported as an error matching fs.ErrPermission. A bucket that does not exist is an error, not an empty listing, so a misspelled bucket is not mistaken for an empty one.
 
 <a name="Location.NewFile"></a>
 ### func \(\*Location\) NewFile

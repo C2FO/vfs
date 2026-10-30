@@ -91,6 +91,7 @@ If ServiceURL is empty, it defaults to https://\<AccountName\>.blob.core.windows
 - [type Client](<#Client>)
 - [type DefaultClient](<#DefaultClient>)
   - [func NewClient\(options \*Options\) \(\*DefaultClient, error\)](<#NewClient>)
+  - [func \(a \*DefaultClient\) BlobPager\(\_ context.Context, containerName string, req types.BlobListRequest\) \(types.BlobPager, error\)](<#DefaultClient.BlobPager>)
   - [func \(a \*DefaultClient\) Copy\(srcFile, tgtFile vfs.File\) error](<#DefaultClient.Copy>)
   - [func \(a \*DefaultClient\) Delete\(file vfs.File\) error](<#DefaultClient.Delete>)
   - [func \(a \*DefaultClient\) DeleteAllVersions\(file vfs.File\) error](<#DefaultClient.DeleteAllVersions>)
@@ -137,6 +138,7 @@ If ServiceURL is empty, it defaults to https://\<AccountName\>.blob.core.windows
   - [func \(l \*Location\) List\(\) \(\[\]string, error\)](<#Location.List>)
   - [func \(l \*Location\) ListByPrefix\(prefix string\) \(\[\]string, error\)](<#Location.ListByPrefix>)
   - [func \(l \*Location\) ListByRegex\(regex \*regexp.Regexp\) \(\[\]string, error\)](<#Location.ListByRegex>)
+  - [func \(l \*Location\) ListEntries\(ctx context.Context, opts ...options.ListOption\) iter.Seq2\[vfs.Entry, error\]](<#Location.ListEntries>)
   - [func \(l \*Location\) NewFile\(relFilePath string, opts ...options.NewFileOption\) \(vfs.File, error\)](<#Location.NewFile>)
   - [func \(l \*Location\) NewLocation\(relLocPath string\) \(vfs.Location, error\)](<#Location.NewLocation>)
   - [func \(l \*Location\) Path\(\) string](<#Location.Path>)
@@ -257,6 +259,15 @@ func NewClient(options *Options) (*DefaultClient, error)
 ```
 
 NewClient initializes a new DefaultClient
+
+<a name="DefaultClient.BlobPager"></a>
+### func \(\*DefaultClient\) BlobPager
+
+```go
+func (a *DefaultClient) BlobPager(_ context.Context, containerName string, req types.BlobListRequest) (types.BlobPager, error)
+```
+
+BlobPager returns a pager over the blobs of a container. A delimited request uses a hierarchy listing, which rolls virtual directories up, and any other request uses a flat listing.
 
 <a name="DefaultClient.Copy"></a>
 ### func \(\*DefaultClient\) Copy
@@ -709,6 +720,21 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error)
 ```
 
 ListByRegex returns a list of base names that match the given regular expression
+
+<a name="Location.ListEntries"></a>
+### func \(\*Location\) ListEntries
+
+```go
+func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) iter.Seq2[vfs.Entry, error]
+```
+
+ListEntries lists the location's contents as a stream of entries in byte order, implementing vfs.EntryLister. Use list.Entries to list a location with options and have every option applied.
+
+Blobs are read one page of up to 1,000 at a time, and a page is requested only when the listing needs more, so a listing that stops early stops its requests. The size and modification time of every file come from the listing itself, so reading them makes no further request, and Entry.Sys returns the listed \*container.BlobItem. A non\-recursive listing is a hierarchy listing that rolls blobs up at "/", and a recursive listing is a flat listing. A directory entry exists wherever a blob name has a "/" below the listed location, whether or not a placeholder blob exists.
+
+Azure cannot start a listing after a given name, so a listing that starts after a cursor, such as one that resumes with list.After, reads the blobs before the cursor and drops them. The cost of such a listing grows with the cursor's position. Listing relies on Azure returning blobs in ascending byte order; a listing that does not ends with an error instead of wrong results.
+
+The Client must also implement types.BlobLister, as the default client does; otherwise the listing fails with an error matching errors.ErrUnsupported. A 403 response is reported as an error matching fs.ErrPermission, and a container that does not exist is an error, not an empty listing.
 
 <a name="Location.NewFile"></a>
 ### func \(\*Location\) NewFile

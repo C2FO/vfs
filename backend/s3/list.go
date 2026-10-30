@@ -121,14 +121,10 @@ func objectOptions(object types.Object) []vfs.EntryOption {
 	}
 }
 
-// apiError is the part of an AWS API error that classifyListError reads.
-type apiError interface {
-	ErrorCode() string
-}
-
 // classifyListError makes an access-denied response match iofs.ErrPermission and leaves other errors as they are.
 func classifyListError(err error) error {
-	var api apiError
+	// The part of an AWS API error that is read; an inline interface keeps it out of the generated mocks.
+	var api interface{ ErrorCode() string }
 	if errors.As(err, &api) {
 		switch api.ErrorCode() {
 		case "AccessDenied", "AllAccessDisabled":
