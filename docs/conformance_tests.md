@@ -131,13 +131,15 @@ type ConformanceOptions struct {
     // protocol limitations (e.g., certain io.Copy patterns).
     SkipFTPSpecificTests bool
 
-    // CreateEmptyDirectory creates an empty directory for the listing tests.
-    // Set it for backends with real directories (os, sftp, ftp); leave it nil
-    // for object stores, which cannot hold an empty directory.
+    // CreateEmptyDirectory creates a directory and any missing parents, and
+    // succeeds when it exists (like os.MkdirAll). The listing tests use it for
+    // an empty directory and for the directories of their fixture files. Set it
+    // for backends with real directories (os, sftp, ftp); leave it nil for
+    // object stores, which cannot hold an empty directory.
     CreateEmptyDirectory func(dir vfs.Location) error
 
     // RemoveDirectory removes a directory and everything under it. The listing
-    // tests use it to clean up, so set it whenever CreateEmptyDirectory is set.
+    // tests use it to clean up; without it they delete only the files they wrote.
     RemoveDirectory func(dir vfs.Location) error
 
     // ListModTimeTolerance is how far a listed modification time may differ
@@ -152,7 +154,7 @@ type ConformanceOptions struct {
 |--------|-------------|
 | `SkipTouchTimestampTest` | Backend doesn't update `LastModified` when re-uploading identical content |
 | `SkipFTPSpecificTests` | Backend has FTP-like limitations with certain IO patterns |
-| `CreateEmptyDirectory` | Backend has real directories, so the listing tests can check that an empty one is listed |
+| `CreateEmptyDirectory` | Backend has real directories, so the listing tests can check that an empty one is listed, and create the directories their files go in |
 | `RemoveDirectory` | Backend has real directories, so the listing tests can remove the empty directory they created |
 | `ListModTimeTolerance` | Backend's listing reports modification times at a coarser precision than a single-file request |
 

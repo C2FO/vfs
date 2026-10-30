@@ -48,9 +48,11 @@ type ConformanceOptions struct {
 	// SkipFTPSpecificTests skips tests that don't work well with FTP
 	SkipFTPSpecificTests bool
 
-	// CreateEmptyDirectory creates an empty directory at dir. Backends with real directories, such as os, sftp and
-	// ftp, set it so the listing tests check that an empty directory is listed; object stores leave it nil because
-	// they cannot hold one without a folder-marker object.
+	// CreateEmptyDirectory creates the directory at dir, and any missing parents, and succeeds when it already exists
+	// (like os.MkdirAll). Backends with real directories, such as os, sftp and ftp, set it so the listing tests check
+	// that an empty directory is listed, and so the tests can create the directories their fixture files go in, which
+	// a backend like ftp does not create on write; object stores leave it nil because they cannot hold an empty
+	// directory without a folder-marker object.
 	CreateEmptyDirectory func(dir vfs.Location) error
 
 	// RemoveDirectory removes dir and everything under it. The listing tests call it on their test location when the

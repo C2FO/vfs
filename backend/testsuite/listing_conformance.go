@@ -67,6 +67,7 @@ func RunListingTests(t *testing.T, baseLoc vfs.Location, opts ...ConformanceOpti
 	t.Run("Options", func(t *testing.T) { testListingOptions(t, tree) })
 	t.Run("Paging", func(t *testing.T) { testListingPaging(t, tree) })
 	t.Run("EarlyTermination", func(t *testing.T) { testListingEarlyTermination(t, tree) })
+	t.Run("ReadWhileListing", func(t *testing.T) { testListingReadWhileListing(t, tree) })
 	t.Run("Cancellation", func(t *testing.T) { testListingCancellation(t, tree) })
 	t.Run("MissingLocation", func(t *testing.T) { testListingMissingLocation(t, tree) })
 	if opt.CreateEmptyDirectory != nil {
@@ -85,6 +86,14 @@ func newListingTree(t *testing.T, baseLoc vfs.Location, opt ConformanceOptions) 
 
 	for _, rel := range listingFixture {
 		body := strings.Repeat("x", len(rel))
+		if opt.CreateEmptyDirectory != nil {
+			dirLoc := root
+			if dir := path.Dir(rel); dir != "." {
+				dirLoc, err = root.NewLocation(dir + "/")
+				require.NoError(t, err)
+			}
+			require.NoError(t, opt.CreateEmptyDirectory(dirLoc), "creating the directory of %s", rel)
+		}
 		f, err := root.NewFile(rel)
 		require.NoError(t, err, "creating %s", rel)
 		_, err = f.Write([]byte(body))
@@ -408,6 +417,47 @@ func testListingPaging(t *testing.T, tree *listingTree) {
 			}
 		})
 	}
+}
+
+// testListingReadWhileListing reads every file from inside the loop, and reads one after leaving the loop early. A
+// backend that shares one connection between listing and transfers must not let either break the listing or the read.
+func testListingReadWhileListing(t *testing.T, tree *listingTree) {
+	t.Run("reading each file inside the loop", func(t *testing.T) {
+		var keys []string
+		for e, err := range list.Entries(t.Context(), tree.root, list.Recursive()) {
+			require.NoError(t, err)
+			keys = append(keys, list.OrderKey(e))
+			if e.IsDir() {
+				continue
+			}
+			f, err := e.File()
+			require.NoError(t, err)
+			data, err := io.ReadAll(f)
+			require.NoError(t, err, e.RelPath())
+			require.NoError(t, f.Close())
+			assert.Equal(t, tree.content[e.RelPath()], string(data), e.RelPath())
+		}
+		assert.Equal(t, tree.keys, keys)
+	})
+
+	t.Run("reading after leaving the loop early", func(t *testing.T) {
+		var first vfs.Entry
+		for e, err := range list.Entries(t.Context(), tree.root, list.Recursive(), list.FilesOnly()) {
+			require.NoError(t, err)
+			first = e
+			break
+		}
+		f, err := first.File()
+		require.NoError(t, err)
+		data, err := io.ReadAll(f)
+		require.NoError(t, err)
+		require.NoError(t, f.Close())
+		assert.Equal(t, tree.content[first.RelPath()], string(data))
+
+		again, err := list.Collect(list.Entries(t.Context(), tree.root, list.Recursive()))
+		require.NoError(t, err)
+		assert.Len(t, again, len(tree.keys), "a listing after the read is complete")
+	})
 }
 
 func testListingEarlyTermination(t *testing.T, tree *listingTree) {

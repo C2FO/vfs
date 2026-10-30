@@ -3,6 +3,8 @@
 package testcontainers
 
 import (
+	"context"
+	"path"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +14,9 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend/ftp"
+	ftptypes "github.com/c2fo/vfs/v7/backend/ftp/types"
+	"github.com/c2fo/vfs/v7/backend/sftp"
 	"github.com/c2fo/vfs/v7/backend/testsuite"
 	"github.com/c2fo/vfs/v7/vfssimple"
 )
@@ -83,13 +88,84 @@ func targetName(uri string) string {
 // cannot seek within a write and does not preserve modified timestamps the way
 // the other backends do, so those cases are skipped for it.
 func optionsFor(scheme string) testsuite.ConformanceOptions {
-	return testsuite.ConformanceOptions{
+	opts := testsuite.ConformanceOptions{
 		SkipFTPSpecificTests:   scheme == "ftp",
 		SkipTouchTimestampTest: scheme == "ftp",
 		// S3 lists modification times and answers HeadObject with different precision, so a listed time can differ
 		// from File.LastModified by under a second.
 		ListModTimeTolerance: listModTimeTolerance(scheme),
 	}
+	// sftp and ftp have real directories, so the listing tests also check an empty one.
+	if scheme == "sftp" || scheme == "ftp" {
+		opts.CreateEmptyDirectory = createDirectory
+	}
+	if scheme == "sftp" {
+		opts.RemoveDirectory = removeSFTPDirectory
+	}
+	return opts
+}
+
+// createDirectory creates dir and any missing parents over sftp or ftp, and succeeds when it exists.
+func createDirectory(dir vfs.Location) error {
+	switch fs := dir.FileSystem().(type) {
+	case *sftp.FileSystem:
+		client, err := fs.Client(dir.Authority())
+		if err != nil {
+			return err
+		}
+		return client.MkdirAll(dir.Path())
+	case *ftp.FileSystem:
+		dc, err := fs.DataConn(context.Background(), dir.Authority(), ftptypes.SingleOp, nil)
+		if err != nil {
+			return err
+		}
+		// FTP has no recursive make or exists check: make each level, and accept a failure when the level can be listed.
+		cur := ""
+		for _, seg := range strings.Split(strings.Trim(dir.Path(), "/"), "/") {
+			cur = path.Join(cur, seg)
+			p := "/" + cur
+			if err := dc.MakeDir(p); err != nil {
+				if _, listErr := dc.List(p); listErr != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	return nil
+}
+
+// removeSFTPDirectory removes dir and everything under it.
+func removeSFTPDirectory(dir vfs.Location) error {
+	fs, ok := dir.FileSystem().(*sftp.FileSystem)
+	if !ok {
+		return nil
+	}
+	client, err := fs.Client(dir.Authority())
+	if err != nil {
+		return err
+	}
+	var remove func(p string) error
+	remove = func(p string) error {
+		infos, err := client.ReadDir(p)
+		if err != nil {
+			return err
+		}
+		for _, info := range infos {
+			child := path.Join(p, info.Name())
+			if info.IsDir() {
+				if err := remove(child); err != nil {
+					return err
+				}
+				continue
+			}
+			if err := client.Remove(child); err != nil {
+				return err
+			}
+		}
+		return client.Remove(p)
+	}
+	return remove(path.Clean(dir.Path()))
 }
 
 func listModTimeTolerance(scheme string) time.Duration {
