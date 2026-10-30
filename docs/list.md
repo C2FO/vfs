@@ -39,6 +39,7 @@ A backend that lists natively implements vfs.EntryLister and starts from [ParseQ
 - [func FilesOnly\(\) options.ListOption](<#FilesOnly>)
 - [func Filter\(fn func\(e vfs.Entry\) bool\) options.ListOption](<#Filter>)
 - [func FilterContext\(fn EntryFunc\) options.ListOption](<#FilterContext>)
+- [func FlatKeys\(ctx context.Context, parent vfs.Location, q Query, pages PageFunc, retry RetryFunc\) iter.Seq2\[vfs.Entry, error\]](<#FlatKeys>)
 - [func Glob\(pattern string\) options.ListOption](<#Glob>)
 - [func Limit\(n int\) options.ListOption](<#Limit>)
 - [func Match\(re \*regexp.Regexp\) options.ListOption](<#Match>)
@@ -47,11 +48,19 @@ A backend that lists natively implements vfs.EntryLister and starts from [ParseQ
 - [func Prefix\(p string\) options.ListOption](<#Prefix>)
 - [func Recursive\(\) options.ListOption](<#Recursive>)
 - [func StartAfter\(relPath string\) options.ListOption](<#StartAfter>)
+- [func WalkDirs\(ctx context.Context, parent vfs.Location, q Query, readDir ReadDirFunc, retry RetryFunc\) iter.Seq2\[vfs.Entry, error\]](<#WalkDirs>)
+- [type Child](<#Child>)
 - [type EntryFunc](<#EntryFunc>)
 - [type Kind](<#Kind>)
+- [type Object](<#Object>)
+- [type Page](<#Page>)
+- [type PageFunc](<#PageFunc>)
+- [type PageRequest](<#PageRequest>)
 - [type Query](<#Query>)
   - [func ParseQuery\(opts \[\]options.ListOption\) \(Query, error\)](<#ParseQuery>)
   - [func \(q Query\) Depth\(\) int](<#Query.Depth>)
+- [type ReadDirFunc](<#ReadDirFunc>)
+- [type RetryFunc](<#RetryFunc>)
 
 
 ## Variables
@@ -124,6 +133,19 @@ func FilterContext(fn EntryFunc) options.ListOption
 ```
 
 FilterContext is [Filter](<#Filter>) with a callback that receives the listing's context and can fail. An error from fn ends the listing and is never treated as the entry being filtered out.
+
+<a name="FlatKeys"></a>
+## func FlatKeys
+
+```go
+func FlatKeys(ctx context.Context, parent vfs.Location, q Query, pages PageFunc, retry RetryFunc) iter.Seq2[vfs.Entry, error]
+```
+
+FlatKeys lists a flat key space, such as an object store, from sorted pages of keys. It is the engine behind the native listing of s3, gs, azure and sqlfs.
+
+Keys that arrive in byte order already are the order every listing guarantees, so nothing is buffered beyond one page. Directories are synthesized from the "/" separators of keys, once each, whether or not a folder marker exists, at the position of their order key. A key that is out of order ends the listing with an error, since a backend whose order differs from byte order would otherwise return silently wrong results. FlatKeys applies q.Prefix, q.StartAfter, q.Depth and q.Descend itself, whatever the backend did with the hints. It does not apply Kind, Glob, Match, Filter or Limit; list.Entries does.
+
+A key that cannot be an Entry, such as "a//b", is yielded as a zero Entry with an error matching fs.ErrInvalid and the listing continues. A failed page ends the listing with an error and a zero Entry, except that a location that does not exist yields nothing. Each page request is wrapped in retry, which may be nil, and is not attempted once ctx is done.
 
 <a name="Glob"></a>
 ## func Glob
@@ -199,6 +221,39 @@ func StartAfter(relPath string) options.ListOption
 
 StartAfter yields only entries whose order key \(see [OrderKey](<#OrderKey>)\) sorts after relPath. A trailing "/" on relPath denotes a directory. An empty relPath is the same as omitting the option, so a paging loop can pass its cursor unconditionally. StartAfter cannot be combined with [After](<#After>).
 
+<a name="WalkDirs"></a>
+## func WalkDirs
+
+```go
+func WalkDirs(ctx context.Context, parent vfs.Location, q Query, readDir ReadDirFunc, retry RetryFunc) iter.Seq2[vfs.Entry, error]
+```
+
+WalkDirs lists a hierarchical backend, one directory read at a time. It is the engine behind the native listing of backends that read a directory per request, such as os, sftp and ftp.
+
+Each directory's children are sorted by order key and walked depth first, which yields the byte order of full paths that every listing guarantees. Descent stops at q.Depth, skips directories outside q.Prefix and subtrees that sort entirely before q.StartAfter, and honors q.Descend, which is called for each directory about to be read. WalkDirs does not apply Kind, Glob, Match, Filter or Limit; list.Entries does.
+
+If reading the location itself fails the error is yielded with a zero Entry and the listing ends, except that a location which does not exist yields nothing. If reading a subdirectory fails, the error is yielded together with that directory's Entry and the walk continues with the next entry outside it. A child with an invalid name is yielded as a zero Entry with an error matching fs.ErrInvalid, before the valid entries of its directory, and the walk continues.
+
+Each read is wrapped in retry, which may be nil, and is not attempted once ctx is done. No read is in progress while the caller's loop body runs, and none is started after the caller stops iterating.
+
+<a name="Child"></a>
+## type Child
+
+Child describes one child of a directory, as a hierarchical backend reads it.
+
+```go
+type Child struct {
+    // Name is the child's base name. A name that cannot be part of an Entry's path is reported as a non-fatal error
+    // matching fs.ErrInvalid, not as an entry.
+    Name string
+    // IsDir reports whether the child is a directory. A symbolic link is not a directory here, even if it points to
+    // one, so listings never follow links; report it with vfs.WithEntryMode(fs.ModeSymlink | perm).
+    IsDir bool
+    // Options supply the listed size and modification time, mode and native object.
+    Options []vfs.EntryOption
+}
+```
+
 <a name="EntryFunc"></a>
 ## type EntryFunc
 
@@ -228,6 +283,65 @@ const (
     // KindDirs yields directories only.
     KindDirs
 )
+```
+
+<a name="Object"></a>
+## type Object
+
+Object is one key of a flat key space, as an object store lists it.
+
+```go
+type Object struct {
+    // Key is the object's key relative to the listed location, with no leading slash. A key ending in "/" is a folder
+    // marker and is folded into the directory it names. The empty key, the location's own marker, is ignored.
+    Key string
+    // Options supply the listed size and modification time, mode and native object. They are ignored for markers,
+    // because directories never carry metadata.
+    Options []vfs.EntryOption
+}
+```
+
+<a name="Page"></a>
+## type Page
+
+Page is one page of a flat listing.
+
+```go
+type Page struct {
+    // Objects are the keys of the page, in ascending byte order.
+    Objects []Object
+    // Prefixes are the rolled-up directories of a delimited page, each ending in "/", in ascending byte order.
+    Prefixes []string
+    // Done reports that no page follows.
+    Done bool
+}
+```
+
+<a name="PageFunc"></a>
+## type PageFunc
+
+PageFunc fetches the page described by req. FlatKeys calls it sequentially, never while the caller's loop body runs, and not again once the caller stops iterating. A location that does not exist is reported on the first call with an error matching fs.ErrNotExist.
+
+```go
+type PageFunc func(ctx context.Context, req PageRequest) (Page, error)
+```
+
+<a name="PageRequest"></a>
+## type PageRequest
+
+PageRequest describes the page FlatKeys needs next.
+
+```go
+type PageRequest struct {
+    // StartAfter is the key after which the page must start. A backend that keeps its own continuation token between
+    // calls may follow the token instead, because FlatKeys always resumes immediately after the previous page.
+    StartAfter string
+    // Prefix is the relative path every wanted key starts with, or "".
+    Prefix string
+    // Delimited reports whether to roll keys up at the next "/" after Prefix and return the rolled-up directories as
+    // Page.Prefixes. It is true for a non-recursive listing and false for a recursive one.
+    Delimited bool
+}
 ```
 
 <a name="Query"></a>
@@ -284,6 +398,24 @@ func (q Query) Depth() int
 Depth returns the largest depth of entry the listing can yield, or 0 when there is no limit. Depth is the number of segments in an entry's relative path and is always measured from the listed location, so "a/b/c.txt" has depth 3.
 
 A recursive listing is limited only by MaxDepth. A non\-recursive listing is limited to one level inside the directory Prefix names: with no Prefix that is 1 \(immediate children\), and with Prefix "to/rep" it is 2, because the entries of "to" are listed. Backends and engines use Depth rather than re\-deriving this, so that every backend applies the same limit.
+
+<a name="ReadDirFunc"></a>
+## type ReadDirFunc
+
+ReadDirFunc reads the children of the directory at relDir, a slash\-separated path relative to the listed location \("" for the location itself\), in any order. A directory that does not exist is reported with an error matching fs.ErrNotExist, and one that cannot be read with fs.ErrPermission when the cause is known.
+
+```go
+type ReadDirFunc func(ctx context.Context, relDir string) ([]Child, error)
+```
+
+<a name="RetryFunc"></a>
+## type RetryFunc
+
+RetryFunc wraps one backend request in the file system's retry policy. A vfs.Retry value, such as the one a file system's Retry method returns, is a RetryFunc. A nil RetryFunc runs each request once.
+
+```go
+type RetryFunc = func(wrapped func() error) error
+```
 
 Generated by [gomarkdoc](<https://github.com/princjef/gomarkdoc>)
 

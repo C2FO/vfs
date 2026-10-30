@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `vfs.EntryLister`, an optional interface a `vfs.Location` can implement to list its contents natively as an `iter.Seq2[vfs.Entry, error]`.
 - `options.ListOption`, the marker interface for listing options.
 - `list` package, with the listing options `Prefix`, `Recursive`, `MaxDepth`, `FilesOnly`, `DirsOnly`, `StartAfter`, `After`, `Limit`, `Glob`, `Match`, `Filter`, `FilterContext`, `DirFilter` and `DirFilterContext`. `list.ParseQuery` validates them (errors match `list.ErrInvalidOption`) and `list.OrderKey` defines the byte-order key listings are ordered by.
+- `list.WalkDirs` and `list.FlatKeys`, the shared engines a backend uses to implement `vfs.EntryLister`: `WalkDirs` for backends that list one directory at a time and `FlatKeys` for object stores. Both guarantee byte order, apply the listing window (prefix, depth, `StartAfter`), prune with `DirFilter`, synthesize directories, report keys that cannot be represented as non-fatal `fs.ErrInvalid` errors, and stop retrying once the context is done.
 
 ## [[v7.32.8](https://github.com/C2FO/vfs/releases/tag/v7.32.8)] - 2026-10-27
 ### Fixed
