@@ -186,6 +186,28 @@ Distributed under the MIT license. See https://github.com/C2FO/vfs/blob/main/LIC
 ## Index
 
 - [Constants](<#constants>)
+- [type Entry](<#Entry>)
+  - [func NewDirEntry\(parent Location, relPath string, opts ...EntryOption\) \(Entry, error\)](<#NewDirEntry>)
+  - [func NewFileEntry\(parent Location, relPath string, opts ...EntryOption\) \(Entry, error\)](<#NewFileEntry>)
+  - [func \(e Entry\) File\(\) \(File, error\)](<#Entry.File>)
+  - [func \(e Entry\) HasMetadata\(\) bool](<#Entry.HasMetadata>)
+  - [func \(e Entry\) Info\(\) \(fs.FileInfo, error\)](<#Entry.Info>)
+  - [func \(e Entry\) InfoContext\(ctx context.Context\) \(fs.FileInfo, error\)](<#Entry.InfoContext>)
+  - [func \(e Entry\) IsDir\(\) bool](<#Entry.IsDir>)
+  - [func \(e Entry\) Location\(\) \(Location, error\)](<#Entry.Location>)
+  - [func \(e Entry\) ModTime\(\) time.Time](<#Entry.ModTime>)
+  - [func \(e Entry\) Mode\(\) fs.FileMode](<#Entry.Mode>)
+  - [func \(e Entry\) Name\(\) string](<#Entry.Name>)
+  - [func \(e Entry\) Path\(\) string](<#Entry.Path>)
+  - [func \(e Entry\) RelPath\(\) string](<#Entry.RelPath>)
+  - [func \(e Entry\) Size\(\) uint64](<#Entry.Size>)
+  - [func \(e Entry\) Sys\(\) any](<#Entry.Sys>)
+  - [func \(e Entry\) Type\(\) fs.FileMode](<#Entry.Type>)
+- [type EntryLister](<#EntryLister>)
+- [type EntryOption](<#EntryOption>)
+  - [func WithEntryMetadata\(size uint64, modTime time.Time\) EntryOption](<#WithEntryMetadata>)
+  - [func WithEntryMode\(mode fs.FileMode\) EntryOption](<#WithEntryMode>)
+  - [func WithEntrySys\(sys any\) EntryOption](<#WithEntrySys>)
 - [type Error](<#Error>)
   - [func \(e Error\) Error\(\) string](<#Error.Error>)
 - [type File](<#File>)
@@ -220,6 +242,230 @@ const (
     ErrSeekInvalidWhence = Error("seek: invalid whence")
 )
 ```
+
+<a name="Entry"></a>
+## type Entry
+
+Entry describes one file or directory found by a listing. It implements fs.DirEntry. Entries are values: they are safe to copy and to use after the listing that produced them has ended.
+
+Entries are not comparable with == and must not be used as map keys: the value returned by Sys\(\) is backend specific and may not be comparable, which would make the comparison panic. Compare Path\(\) instead.
+
+The zero Entry is not a valid entry. Listings yield it alongside an error that ended the listing.
+
+```go
+type Entry struct {
+    // contains filtered or unexported fields
+}
+```
+
+<a name="NewDirEntry"></a>
+### func NewDirEntry
+
+```go
+func NewDirEntry(parent Location, relPath string, opts ...EntryOption) (Entry, error)
+```
+
+NewDirEntry builds the Entry for a directory found at relPath beneath parent. It is for backend implementers.
+
+relPath follows the rules of NewFileEntry, except that one trailing slash is allowed and removed.
+
+<a name="NewFileEntry"></a>
+### func NewFileEntry
+
+```go
+func NewFileEntry(parent Location, relPath string, opts ...EntryOption) (Entry, error)
+```
+
+NewFileEntry builds the Entry for a file found at relPath beneath parent. It is for backend implementers.
+
+relPath must be slash\-separated, relative to parent, and satisfy fs.ValidPath other than "." \(no empty, "." or ".." segments, no leading or trailing slash\). Otherwise NewFileEntry returns a \*fs.PathError wrapping fs.ErrInvalid. It returns an error, not a panic, because object stores can hold keys that no Entry can represent, such as "a//b".
+
+<a name="Entry.File"></a>
+### func \(Entry\) File
+
+```go
+func (e Entry) File() (File, error)
+```
+
+File returns the File the entry describes. It makes no request. It returns an error for a directory entry.
+
+<a name="Entry.HasMetadata"></a>
+### func \(Entry\) HasMetadata
+
+```go
+func (e Entry) HasMetadata() bool
+```
+
+HasMetadata reports whether Size and ModTime came from the listing.
+
+<a name="Entry.Info"></a>
+### func \(Entry\) Info
+
+```go
+func (e Entry) Info() (fs.FileInfo, error)
+```
+
+Info returns the entry's fs.FileInfo. When the entry has listed metadata, and for directories, it makes no request. Otherwise it asks the backend for the file's size and modification time.
+
+Failures are returned as a \*fs.PathError with Op "stat". The error matches fs.ErrNotExist, as well as the backend's own error, when the file no longer exists. A size that doesn't fit an int64 is also an error.
+
+Info is InfoContext with context.Background\(\); it exists to satisfy fs.DirEntry.
+
+<a name="Entry.InfoContext"></a>
+### func \(Entry\) InfoContext
+
+```go
+func (e Entry) InfoContext(ctx context.Context) (fs.FileInfo, error)
+```
+
+InfoContext is Info with a context. It returns ctx.Err\(\), wrapped in a \*fs.PathError, if ctx is already done before a request would be made. The File methods it calls don't accept a context yet, so a request already in flight is not interrupted.
+
+<a name="Entry.IsDir"></a>
+### func \(Entry\) IsDir
+
+```go
+func (e Entry) IsDir() bool
+```
+
+IsDir reports whether the entry is a directory.
+
+<a name="Entry.Location"></a>
+### func \(Entry\) Location
+
+```go
+func (e Entry) Location() (Location, error)
+```
+
+Location returns the Location the entry describes. It makes no request. It returns an error for a file entry.
+
+<a name="Entry.ModTime"></a>
+### func \(Entry\) ModTime
+
+```go
+func (e Entry) ModTime() time.Time
+```
+
+ModTime returns the modification time reported by the listing. It returns the zero time when HasMetadata is false.
+
+<a name="Entry.Mode"></a>
+### func \(Entry\) Mode
+
+```go
+func (e Entry) Mode() fs.FileMode
+```
+
+Mode returns the entry's type bits plus the permission, setuid, setgid and sticky bits, when the backend reports them. Otherwise only the type bits are set.
+
+<a name="Entry.Name"></a>
+### func \(Entry\) Name
+
+```go
+func (e Entry) Name() string
+```
+
+Name returns the entry's base name, without a trailing slash.
+
+<a name="Entry.Path"></a>
+### func \(Entry\) Path
+
+```go
+func (e Entry) Path() string
+```
+
+Path returns the absolute path of the entry within its authority, ending in "/" for directories. It matches the Path\(\) of the File or Location the entry resolves to.
+
+<a name="Entry.RelPath"></a>
+### func \(Entry\) RelPath
+
+```go
+func (e Entry) RelPath() string
+```
+
+RelPath returns the slash\-separated path of the entry relative to the listed location, with no leading or trailing slash. It is always a valid io/fs name \(see fs.ValidPath\).
+
+<a name="Entry.Size"></a>
+### func \(Entry\) Size
+
+```go
+func (e Entry) Size() uint64
+```
+
+Size returns the file size reported by the listing. It returns 0 when HasMetadata is false and for directories.
+
+<a name="Entry.Sys"></a>
+### func \(Entry\) Sys
+
+```go
+func (e Entry) Sys() any
+```
+
+Sys returns the backend's native listing object for the entry, or nil.
+
+<a name="Entry.Type"></a>
+### func \(Entry\) Type
+
+```go
+func (e Entry) Type() fs.FileMode
+```
+
+Type returns the entry's type bits: fs.ModeDir for directories, fs.ModeSymlink for symbolic links the backend reports, and 0 otherwise.
+
+<a name="EntryLister"></a>
+## type EntryLister
+
+EntryLister is an optional interface a Location may implement to list its contents natively as a stream of Entry values. The list package uses it to implement list.Entries.
+
+An implementation MUST:
+
+- yield entries in ascending byte order of relative path, where directories compare with a trailing "/"
+- yield directories for recursive listings, synthesizing them where the backend has none
+- make no further backend requests once yield returns false, and have no request in flight while yield runs
+- honor ctx, and wrap each backend request with FileSystem\(\).Retry\(\)
+- yield a failure to read one subdirectory together with that directory's Entry, and continue; yield any other failure with a zero Entry and then stop
+
+Options are hints. The list package applies every option itself, so an implementation may ignore any option it cannot push down to the backend. A Location that does not implement EntryLister is listed through Location.List: non\-recursive, files only, without metadata.
+
+```go
+type EntryLister interface {
+    ListEntries(ctx context.Context, opts ...options.ListOption) iter.Seq2[Entry, error]
+}
+```
+
+<a name="EntryOption"></a>
+## type EntryOption
+
+EntryOption configures an Entry built by NewFileEntry or NewDirEntry.
+
+```go
+type EntryOption func(*Entry)
+```
+
+<a name="WithEntryMetadata"></a>
+### func WithEntryMetadata
+
+```go
+func WithEntryMetadata(size uint64, modTime time.Time) EntryOption
+```
+
+WithEntryMetadata records the size and modification time reported by the backend's listing, so Info\(\) needs no further request.
+
+<a name="WithEntryMode"></a>
+### func WithEntryMode
+
+```go
+func WithEntryMode(mode fs.FileMode) EntryOption
+```
+
+WithEntryMode records the mode reported by the backend: the permission bits, the setuid, setgid and sticky bits, and, for files, the type bits such as fs.ModeSymlink. fs.ModeDir is always derived from the entry's kind, never from mode.
+
+<a name="WithEntrySys"></a>
+### func WithEntrySys
+
+```go
+func WithEntrySys(sys any) EntryOption
+```
+
+WithEntrySys records the backend's native listing object, returned by Sys\(\).
 
 <a name="Error"></a>
 ## type Error

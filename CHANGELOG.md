@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- `vfs.Entry`, the result type of the planned streaming listing API (#389): an `fs.DirEntry` that carries a file or directory's relative path, listed size and modification time, mode and backend-native object, with lazy `Info()` / `InfoContext()` and resolution to a `vfs.File` or `vfs.Location`. Backends build entries with `vfs.NewFileEntry` and `vfs.NewDirEntry`.
+- `vfs.EntryLister`, an optional interface a `vfs.Location` can implement to list its contents natively as an `iter.Seq2[vfs.Entry, error]`.
+- `options.ListOption`, the marker interface for listing options.
 
 ## [[v7.32.8](https://github.com/C2FO/vfs/releases/tag/v7.32.8)] - 2026-10-27
 ### Fixed
