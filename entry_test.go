@@ -413,6 +413,44 @@ func (s *EntryTestSuite) TestInfoErrors() {
 		s.Equal("stat", pe.Op)
 	})
 
+	s.Run("cancellation during Size starts no further request", func() {
+		ctx, cancel := context.WithCancel(s.T().Context())
+		defer cancel()
+		loc := s.parent("/root/")
+		f := mocks.NewFile(s.T())
+		loc.EXPECT().NewFile("f.txt").Return(f, nil).Once()
+		f.EXPECT().Size().RunAndReturn(func() (uint64, error) {
+			cancel()
+			return 3, nil
+		}).Once()
+
+		_, err := s.file(loc, "f.txt").InfoContext(ctx)
+
+		s.Require().ErrorIs(err, context.Canceled)
+		var pe *fs.PathError
+		s.Require().ErrorAs(err, &pe)
+		s.Equal("stat", pe.Op)
+	})
+
+	s.Run("cancellation during LastModified does not check whether the file exists", func() {
+		ctx, cancel := context.WithCancel(s.T().Context())
+		defer cancel()
+		boom := errors.New("request canceled")
+		loc := s.parent("/root/")
+		f := mocks.NewFile(s.T())
+		loc.EXPECT().NewFile("f.txt").Return(f, nil).Once()
+		f.EXPECT().Size().Return(3, nil).Once()
+		f.EXPECT().LastModified().RunAndReturn(func() (*time.Time, error) {
+			cancel()
+			return nil, boom
+		}).Once()
+
+		_, err := s.file(loc, "f.txt").InfoContext(ctx)
+
+		s.Require().ErrorIs(err, context.Canceled)
+		s.Require().ErrorIs(err, boom)
+	})
+
 	s.Run("canceled context ignored when metadata was listed", func() {
 		ctx, cancel := context.WithCancel(s.T().Context())
 		cancel()

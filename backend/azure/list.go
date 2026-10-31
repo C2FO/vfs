@@ -58,8 +58,17 @@ func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) 
 			yield(vfs.Entry{}, &iofs.PathError{Op: "list", Path: l.Path(), Err: fmt.Errorf("%w: %w", errors.ErrUnsupported, errNoBlobLister)})
 			return
 		}
-		list.FlatKeys(ctx, l, q, l.pages(lister), nil)(yield)
+		list.FlatKeys(ctx, l, q, l.pages(lister), l.retryFunc())(yield)
 	}
+}
+
+// retryFunc returns the retry policy the user configured with Options.RetryFunc, or nil. With none configured the
+// Azure SDK's own retry policy applies to every page request, so the listing adds none.
+func (l *Location) retryFunc() list.RetryFunc {
+	if l.fileSystem.options.RetryFunc == nil {
+		return nil
+	}
+	return l.fileSystem.Retry()
 }
 
 // keyPrefix returns the blob name prefix of the location: "" for the container root, otherwise the path with no leading

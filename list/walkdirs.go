@@ -38,8 +38,10 @@ type ReadDirFunc func(ctx context.Context, relDir string) ([]Child, error)
 //
 // If reading the location itself fails the error is yielded with a zero Entry and the listing ends, except that a
 // location which does not exist yields nothing. If reading a subdirectory fails, the error is yielded together with
-// that directory's Entry and the walk continues with the next entry outside it. A child with an invalid name is yielded
-// as a zero Entry with an error matching fs.ErrInvalid, before the valid entries of its directory, and the walk
+// that directory's Entry and the walk continues with the next entry outside it, unless the failure is of the connection
+// itself (a closed or reset connection, an unexpected end of file, a network or name resolution error), which would fail
+// every remaining directory the same way: that error is yielded with a zero Entry and the listing ends. A child with an invalid name is
+// yielded as a zero Entry with an error matching fs.ErrInvalid, before the valid entries of its directory, and the walk
 // continues.
 //
 // Each read is wrapped in retry, which may be nil, and is not attempted once ctx is done. No read is in progress while
@@ -108,6 +110,11 @@ func (w *walker) readFailed(relDir string, dir vfs.Entry, err error) bool {
 		return false
 	}
 	if relDir != "" {
+		if connectionFailed(err) {
+			// The session is gone, so every remaining directory would fail the same way: end the listing once.
+			w.fail(vfs.Entry{}, listError(w.parent.Path(), err))
+			return false
+		}
 		return w.fail(dir, listError(dir.Path(), err))
 	}
 	if !errors.Is(err, fs.ErrNotExist) {

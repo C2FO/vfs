@@ -29,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `s3` backend implements `vfs.EntryLister`: a listing makes one `ListObjectsV2` request per 1,000 keys, only as entries are consumed, and carries each file's size and modification time from the listing so reading them makes no `HeadObject` request.
 
 ### Fixed
+- `list` package: a `Glob` now matches segment by segment, so no wildcard or character class matches a `/` (`a[^x]b` no longer fails to match `ayb`) and a pattern's slash count is the depth of its matches.
+- `list` package: when every remaining entry is rejected by a filter, a canceled context is now reported instead of the listing silently running to the end, and `Entry.InfoContext` stops issuing requests once its context is canceled.
+- `list` package: a connection failure while reading a subdirectory now ends the listing with an error instead of reporting every remaining directory as failed. `sftp` and `ftp` report a lost session this way.
+- `azure` backend: a listing now uses the `Options.RetryFunc` when one is configured, as the rest of the backend does.
 - `azure` backend: `FileSystem.Client` no longer caches a client that failed to build. After a credential error, the next call returned a nil client with no error, and using it panicked; now every call returns the error.
 - `mem` backend: `Location.NewFile` no longer reads the file map without the lock, and `Location.DeleteFile` now changes a file's existence under that file's lock, removing data races when files are created or deleted concurrently.
 

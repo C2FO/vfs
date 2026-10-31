@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	iofs "io/fs"
+	"net"
+	"net/textproto"
+	"strconv"
 	"testing"
 	"time"
 
@@ -211,4 +214,29 @@ func (s *listEntriesTestSuite) TestConnectionFailureIsReported() {
 	_, err = list.Collect(list.Entries(s.T().Context(), loc))
 
 	s.Require().ErrorIs(err, errClientGetter)
+}
+
+func (s *listEntriesTestSuite) TestLostSessionInASubdirectoryEndsTheListing() {
+	for _, code := range []int{421, 425, 426, 430, 434} {
+		s.Run(strconv.Itoa(code), func() {
+			s.SetupTest()
+			s.expectDir("/dir1", folder("a"), folder("b"), folder("c"))
+			s.expectDir("/dir1/a", file("1.txt"))
+			s.client.EXPECT().List("/dir1/b").Return(nil, &textproto.Error{Code: code, Msg: "session lost"}).Once()
+
+			var keys []string
+			var errs []error
+			for e, err := range list.Entries(s.T().Context(), s.location(), list.Recursive()) {
+				if err != nil {
+					errs = append(errs, err)
+					continue
+				}
+				keys = append(keys, list.OrderKey(e))
+			}
+
+			s.Equal([]string{"a/", "a/1.txt", "b/"}, keys, "c is never listed once the session is lost")
+			s.Require().Len(errs, 1)
+			s.Require().ErrorIs(errs[0], net.ErrClosed)
+		})
+	}
 }

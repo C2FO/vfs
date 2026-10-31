@@ -5,10 +5,12 @@ import (
 	"errors"
 	"io"
 	iofs "io/fs"
+	"net"
 	"os"
 	"testing"
 	"time"
 
+	_sftp "github.com/pkg/sftp"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v7"
@@ -232,4 +234,25 @@ func (s *listEntriesTestSuite) TestConnectionFailureIsReported() {
 	_, err = list.Collect(list.Entries(s.T().Context(), loc))
 
 	s.Require().ErrorContains(err, "dial failed")
+}
+
+func (s *listEntriesTestSuite) TestLostConnectionInASubdirectoryEndsTheListing() {
+	s.expectDir("/dir1", s.dir("a"), s.dir("b"), s.dir("c"))
+	s.expectDir("/dir1/a", s.file("1.txt"))
+	s.client.EXPECT().ReadDir("/dir1/b").Return(nil, _sftp.ErrSSHFxConnectionLost).Once()
+
+	var keys []string
+	var errs []error
+	for e, err := range list.Entries(s.T().Context(), s.location(), list.Recursive()) {
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		keys = append(keys, list.OrderKey(e))
+	}
+
+	s.Equal([]string{"a/", "a/1.txt", "b/"}, keys, "c is never read once the connection is lost")
+	s.Require().Len(errs, 1)
+	s.Require().ErrorIs(errs[0], _sftp.ErrSSHFxConnectionLost)
+	s.Require().ErrorIs(errs[0], net.ErrClosed)
 }

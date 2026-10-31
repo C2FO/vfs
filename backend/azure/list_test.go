@@ -421,3 +421,32 @@ func (s *BlobPagerTestSuite) TestBlobItemToleratesMissingFields() {
 	s.Zero(item.Size)
 	s.True(item.LastModified.IsZero())
 }
+
+func (s *ListEntriesTestSuite) TestConfiguredRetryFuncRetriesAFailedPage() {
+	var attempts int
+	retry := func(wrapped func() error) error {
+		for {
+			attempts++
+			err := wrapped()
+			if err == nil || attempts >= 3 {
+				return err
+			}
+		}
+	}
+	s.fs = NewFileSystem(WithClient(s.client), WithOptions(Options{RetryFunc: retry}))
+	s.expectPager(types.BlobListRequest{Prefix: "dir1/", PageSize: 1000})
+	s.pager.EXPECT().NextPage(mock.Anything).Return(types.BlobPage{}, errors.New("transient")).Once()
+	s.pager.EXPECT().NextPage(mock.Anything).Return(types.BlobPage{Blobs: blobs("dir1/a.txt"), Done: true}, nil).Once()
+
+	s.Equal([]string{"a.txt"}, s.keys(s.location("/dir1/"), list.Recursive()))
+	s.Equal(2, attempts, "the configured policy wrapped the page request")
+}
+
+func (s *ListEntriesTestSuite) TestWithoutRetryFuncAFailedPageIsNotRetried() {
+	s.expectPager(types.BlobListRequest{Prefix: "dir1/", PageSize: 1000})
+	s.pager.EXPECT().NextPage(mock.Anything).Return(types.BlobPage{}, errors.New("transient")).Once()
+
+	_, err := list.Collect(list.Entries(s.T().Context(), s.location("/dir1/"), list.Recursive()))
+
+	s.Require().ErrorContains(err, "transient")
+}

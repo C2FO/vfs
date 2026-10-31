@@ -86,9 +86,11 @@ func After(e vfs.Entry) options.ListOption { return afterOption{entry: e} }
 // 1.
 func Limit(n int) options.ListOption { return limitOption(n) }
 
-// Glob yields only entries whose relative path matches pattern under path.Match rules, at whatever depth the pattern
-// names: "*/data.csv" matches "x/data.csv" but not "x/y/data.csv". The pattern must be a relative path with no empty,
-// "." or ".." segments. Glob cannot be combined with [Prefix], [Recursive] or [MaxDepth], because it implies them.
+// Glob yields only entries whose relative path matches pattern, at the depth the pattern names: "*/data.csv" matches
+// "x/data.csv" but not "x/y/data.csv". Each "/"-separated segment of the pattern is matched against the same segment of
+// the path under path.Match rules, so no wildcard or character class, such as "[^x]", matches a "/". The pattern must
+// be a relative path with no empty, "." or ".." segments. Glob cannot be combined with [Prefix], [Recursive] or
+// [MaxDepth], because it implies them.
 //
 // Patterns follow path.Match, which differs from POSIX shell globs in two ways worth knowing: a character class such as
 // "[[:alpha:]]" has no named classes and is read as a set of literal characters, and an inverted range such as "[b-a]"

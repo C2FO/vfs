@@ -293,3 +293,23 @@ func (s *FallbackTestSuite) TestBreakStopsTheListing() {
 	}
 	s.Equal(1, n)
 }
+
+func (s *FallbackTestSuite) TestCancellationIsReportedWhenEveryRemainingEntryIsFilteredOut() {
+	s.loc.EXPECT().List().Return([]string{"a", "b", "c"}, nil).Once()
+	ctx, cancel := context.WithCancel(s.T().Context())
+	defer cancel()
+
+	calls := 0
+	var errs []error
+	for _, err := range list.Entries(ctx, s.loc, list.Filter(func(vfs.Entry) bool {
+		calls++
+		cancel()
+		return false
+	})) {
+		errs = append(errs, err)
+	}
+
+	s.Equal(1, calls, "no callback runs after the context is canceled")
+	s.Require().Len(errs, 1)
+	s.Require().ErrorIs(errs[0], context.Canceled)
+}

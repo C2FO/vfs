@@ -2,9 +2,14 @@ package sftp
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	iofs "io/fs"
 	"iter"
+	"net"
 	"path"
+
+	_sftp "github.com/pkg/sftp"
 
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/list"
@@ -45,6 +50,10 @@ func (l *Location) readDir(_ context.Context, relDir string) ([]list.Child, erro
 
 	infos, err := client.ReadDir(path.Join(l.Path(), relDir))
 	if err != nil {
+		if errors.Is(err, _sftp.ErrSSHFxConnectionLost) {
+			// The session is gone; list.WalkDirs ends the listing instead of failing every remaining directory.
+			return nil, fmt.Errorf("%w: %w", net.ErrClosed, err)
+		}
 		return nil, err
 	}
 

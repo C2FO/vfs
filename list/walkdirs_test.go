@@ -3,7 +3,11 @@ package list_test
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"io/fs"
+	"net"
+	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -498,4 +502,46 @@ func (s *WalkDirsTestSuite) TestLazyAndEarlyTermination() {
 			s.Zero(inFlight)
 		}
 	})
+}
+
+func (s *WalkDirsTestSuite) TestSubdirectoryFailureEndsTheListingOnlyWhenTheConnectionFailed() {
+	tests := []struct {
+		name  string
+		err   error
+		fatal bool
+	}{
+		{name: "end of file", err: io.EOF, fatal: true},
+		{name: "unexpected end of file", err: io.ErrUnexpectedEOF, fatal: true},
+		{name: "closed connection", err: net.ErrClosed, fatal: true},
+		{name: "connection reset by peer", err: &fs.PathError{Op: "read", Path: "x", Err: syscall.ECONNRESET}, fatal: true},
+		{name: "broken pipe", err: fmt.Errorf("write: %w", syscall.EPIPE), fatal: true},
+		{name: "network operation error", err: &net.OpError{Op: "read", Net: "tcp", Err: errors.New("i/o timeout")}, fatal: true},
+		{name: "name resolution error", err: &net.DNSError{Err: "no such host", Name: "x"}, fatal: true},
+		{name: "permission denied is local", err: fs.ErrPermission},
+		{name: "vanished directory is local", err: fs.ErrNotExist},
+		{name: "operating system error is local", err: &fs.PathError{Op: "open", Path: "x", Err: syscall.ENOENT}},
+		{name: "unclassified failure is local", err: errors.New("bad directory")},
+	}
+	for i := range tests {
+		tt := &tests[i]
+		s.Run(tt.name, func() {
+			fd := &fakeDirs{
+				tree: treeFromPaths("a/1.txt", "b/2.txt", "c/3.txt"),
+				errs: map[string]error{"b": tt.err},
+			}
+			rs := s.walk(fd, list.Recursive())
+
+			errs := errsOf(rs)
+			s.Require().Len(errs, 1)
+			s.Require().ErrorIs(errs[0], tt.err)
+			if tt.fatal {
+				s.Equal([]string{"a/", "a/1.txt", "b/"}, keysOf(rs), "no entry after the connection failed")
+				s.Equal([]string{"", "a", "b"}, fd.reads, "no further directory is read")
+				last := rs[len(rs)-1]
+				s.Equal(vfs.Entry{}.RelPath(), last.entry.RelPath(), "a fatal error carries no entry")
+				return
+			}
+			s.Equal([]string{"a/", "a/1.txt", "b/", "c/", "c/3.txt"}, keysOf(rs))
+		})
+	}
 }

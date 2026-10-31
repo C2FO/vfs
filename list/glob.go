@@ -41,3 +41,21 @@ func compileGlob(pattern string) (compiledGlob, error) {
 	}
 	return compiledGlob{prefix: prefix, depth: len(segments)}, nil
 }
+
+// matchGlob reports whether rel, an entry's relative path, matches pattern segment by segment: it must have as many
+// segments as the pattern and each must match under path.Match. path.Match on the whole path would let a character class
+// such as "[^x]" match a "/", so "a[^x]b" would match "a/b", which is deeper than the depth the pattern was given.
+func matchGlob(pattern, rel string) (bool, error) {
+	patSegs := strings.Split(pattern, "/")
+	relSegs := strings.Split(rel, "/")
+	if len(patSegs) != len(relSegs) {
+		return false, nil
+	}
+	for i, seg := range patSegs {
+		ok, err := path.Match(seg, relSegs[i])
+		if err != nil || !ok {
+			return false, err
+		}
+	}
+	return true, nil
+}

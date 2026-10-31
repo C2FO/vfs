@@ -316,7 +316,7 @@ If loc implements vfs.EntryLister the backend lists natively and every option is
 
 Otherwise Entries falls back to the location's List and ListByPrefix methods. That path yields files only, in byte order, without size or modification time \(see vfs.Entry.HasMetadata\), and it reports [errors.ErrUnsupported](<https://pkg.go.dev/errors/#ErrUnsupported>) for options that need directories: [Recursive](<#Recursive>), [MaxDepth](<#MaxDepth>) and [DirsOnly](<#DirsOnly>), and a [Glob](<#Glob>) containing "/". [DirFilter](<#DirFilter>) and [DirFilterContext](<#DirFilterContext>) only matter to recursive listings, so they have no effect there. A location that does not exist yields nothing; on this path that relies on the location's List returning an error that matches fs.ErrNotExist. Because those methods accept no context, cancellation on the fallback path takes effect only between yielded entries.
 
-Errors are \*fs.PathError values with Op "list". An error yielded with a zero vfs.Entry ends the listing, except one that matches fs.ErrInvalid, which reports a key that cannot be an entry and is followed by the rest of the listing. An error yielded with a directory's entry reports that directory could not be read; the listing continues with the next entry outside it. Errors are never hidden by filters, and do not count toward [Limit](<#Limit>).
+Errors are \*fs.PathError values with Op "list". An error yielded with a zero vfs.Entry ends the listing, except one that matches fs.ErrInvalid, which reports a key that cannot be an entry and is followed by the rest of the listing. An error yielded with a directory's entry reports that directory could not be read; the listing continues with the next entry outside it, unless the connection failed, which ends the listing. Errors are never hidden by filters, and do not count toward [Limit](<#Limit>).
 
 <details><summary>Example</summary>
 <p>
@@ -503,7 +503,7 @@ A key that cannot be an Entry, such as "a//b", is yielded as a zero Entry with a
 func Glob(pattern string) options.ListOption
 ```
 
-Glob yields only entries whose relative path matches pattern under path.Match rules, at whatever depth the pattern names: "\*/data.csv" matches "x/data.csv" but not "x/y/data.csv". The pattern must be a relative path with no empty, "." or ".." segments. Glob cannot be combined with [Prefix](<#Prefix>), [Recursive](<#Recursive>) or [MaxDepth](<#MaxDepth>), because it implies them.
+Glob yields only entries whose relative path matches pattern, at the depth the pattern names: "\*/data.csv" matches "x/data.csv" but not "x/y/data.csv". Each "/"\-separated segment of the pattern is matched against the same segment of the path under path.Match rules, so no wildcard or character class, such as "\[^x\]", matches a "/". The pattern must be a relative path with no empty, "." or ".." segments. Glob cannot be combined with [Prefix](<#Prefix>), [Recursive](<#Recursive>) or [MaxDepth](<#MaxDepth>), because it implies them.
 
 Patterns follow path.Match, which differs from POSIX shell globs in two ways worth knowing: a character class such as "\[\[:alpha:\]\]" has no named classes and is read as a set of literal characters, and an inverted range such as "\[b\-a\]" is not an error and matches nothing. "\*\*" is not supported and behaves as "\*".
 
@@ -724,7 +724,7 @@ WalkDirs lists a hierarchical backend, one directory read at a time. It is the e
 
 Each directory's children are sorted by order key and walked depth first, which yields the byte order of full paths that every listing guarantees. Descent stops at q.Depth, skips directories outside q.Prefix and subtrees that sort entirely before q.StartAfter, and honors q.Descend in a recursive listing, calling it for each directory about to be read. WalkDirs does not apply Kind, Glob, Match, Filter or Limit; list.Entries does.
 
-If reading the location itself fails the error is yielded with a zero Entry and the listing ends, except that a location which does not exist yields nothing. If reading a subdirectory fails, the error is yielded together with that directory's Entry and the walk continues with the next entry outside it. A child with an invalid name is yielded as a zero Entry with an error matching fs.ErrInvalid, before the valid entries of its directory, and the walk continues.
+If reading the location itself fails the error is yielded with a zero Entry and the listing ends, except that a location which does not exist yields nothing. If reading a subdirectory fails, the error is yielded together with that directory's Entry and the walk continues with the next entry outside it, unless the failure is of the connection itself \(a closed or reset connection, an unexpected end of file, a network or name resolution error\), which would fail every remaining directory the same way: that error is yielded with a zero Entry and the listing ends. A child with an invalid name is yielded as a zero Entry with an error matching fs.ErrInvalid, before the valid entries of its directory, and the walk continues.
 
 Each read is wrapped in retry, which may be nil, and is not attempted once ctx is done. No read is in progress while the caller's loop body runs, and none is started after the caller stops iterating.
 

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io/fs"
 	"iter"
-	"path"
 	"strings"
 
 	"github.com/c2fo/vfs/v7"
@@ -43,7 +42,8 @@ import (
 // Errors are *fs.PathError values with Op "list". An error yielded with a zero vfs.Entry ends the listing, except one
 // that matches fs.ErrInvalid, which reports a key that cannot be an entry and is followed by the rest of the listing.
 // An error yielded with a directory's entry reports that directory could not be read; the listing continues with
-// the next entry outside it. Errors are never hidden by filters, and do not count toward [Limit].
+// the next entry outside it, unless the connection failed, which ends the listing. Errors are never hidden by filters,
+// and do not count toward [Limit].
 func Entries(ctx context.Context, loc vfs.Location, opts ...options.ListOption) iter.Seq2[vfs.Entry, error] {
 	return func(yield func(vfs.Entry, error) bool) {
 		q, err := ParseQuery(opts)
@@ -85,18 +85,24 @@ func (n enforcer) run(src iter.Seq2[vfs.Entry, error], yield func(vfs.Entry, err
 			}
 			continue
 		}
+		if cerr := n.ctx.Err(); cerr != nil {
+			yield(vfs.Entry{}, listError(n.loc.Path(), cerr))
+			return
+		}
 
 		keep, err := n.admit(e, &pruned)
 		if err != nil {
 			yield(vfs.Entry{}, err)
 			return
 		}
-		if !keep {
-			continue
-		}
+		// Checked after callbacks that may have canceled, and before an entry they rejected is skipped, so a listing
+		// cut short is reported even when every remaining entry is filtered out.
 		if cerr := n.ctx.Err(); cerr != nil {
 			yield(vfs.Entry{}, listError(n.loc.Path(), cerr))
 			return
+		}
+		if !keep {
+			continue
 		}
 		if !yield(e, nil) {
 			return
@@ -166,7 +172,7 @@ func (n enforcer) matches(e vfs.Entry) (bool, error) {
 		return false, nil
 	}
 	if n.q.Glob != "" {
-		ok, err := path.Match(n.q.Glob, rel)
+		ok, err := matchGlob(n.q.Glob, rel)
 		if err != nil {
 			return false, listError(e.Path(), err)
 		}

@@ -214,9 +214,16 @@ func (e Entry) InfoContext(ctx context.Context) (fs.FileInfo, error) {
 	var modTime *time.Time
 	var modErr error
 	if sizeErr == nil {
+		if err := ctx.Err(); err != nil {
+			return nil, &fs.PathError{Op: "stat", Path: e.Path(), Err: err}
+		}
 		modTime, modErr = f.LastModified()
 	}
 	if err := errors.Join(sizeErr, modErr); err != nil {
+		// A canceled context is reported as such, without starting another request to find out whether the file exists.
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, &fs.PathError{Op: "stat", Path: e.Path(), Err: errors.Join(ctxErr, err)}
+		}
 		if exists, existsErr := f.Exists(); existsErr == nil && !exists {
 			err = errors.Join(fs.ErrNotExist, err)
 		}

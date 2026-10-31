@@ -2,9 +2,12 @@ package ftp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	iofs "io/fs"
 	"iter"
+	"net"
+	"net/textproto"
 	"path"
 	"strconv"
 	"strings"
@@ -58,6 +61,10 @@ func (l *Location) readDir(ctx context.Context, relDir string) ([]list.Child, er
 		if strings.HasPrefix(err.Error(), strconv.Itoa(_ftp.StatusFileUnavailable)) {
 			return nil, fmt.Errorf("%w: %w", iofs.ErrNotExist, err)
 		}
+		if sessionLost(err) {
+			// The control connection is gone; list.WalkDirs ends the listing instead of failing every remaining directory.
+			return nil, fmt.Errorf("%w: %w", net.ErrClosed, err)
+		}
 		return nil, err
 	}
 
@@ -81,4 +88,20 @@ func (l *Location) readDir(ctx context.Context, relDir string) ([]list.Child, er
 		}
 	}
 	return children, nil
+}
+
+// sessionLost reports whether err is the server closing the control connection or refusing the session, which would
+// fail every further request the same way: service not available (421), data connection failures (425, 426) and the
+// refusal of credentials (430, 434).
+func sessionLost(err error) bool {
+	var perr *textproto.Error
+	if !errors.As(err, &perr) {
+		return false
+	}
+	switch perr.Code {
+	case _ftp.StatusNotAvailable, _ftp.StatusCanNotOpenDataConnection, _ftp.StatusTransfertAborted,
+		_ftp.StatusInvalidCredentials, _ftp.StatusHostUnavailable:
+		return true
+	}
+	return false
 }

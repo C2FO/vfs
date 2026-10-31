@@ -3,8 +3,11 @@ package list
 import (
 	"context"
 	"errors"
+	"io"
 	"io/fs"
+	"net"
 	"strings"
+	"syscall"
 
 	"github.com/c2fo/vfs/v7"
 )
@@ -126,4 +129,22 @@ func (m emitter) canceled() bool {
 // invalidKey is the non-fatal error for a key or name that cannot be an Entry.
 func invalidKey(key string) error {
 	return &fs.PathError{Op: "list", Path: key, Err: fs.ErrInvalid}
+}
+
+// connectionFailed reports whether err says the connection or session to the backend failed, as opposed to one directory
+// being unreadable. Such a failure would repeat for every remaining directory, so it ends a listing instead of being
+// reported for a single directory. A backend that has its own signal for a lost session, such as an SFTP status code,
+// wraps the error with net.ErrClosed.
+func connectionFailed(err error) bool {
+	// Not net.Error: syscall.Errno implements it, so every errno, such as ENOENT, would count as a failed connection.
+	var opErr *net.OpError
+	var dnsErr *net.DNSError
+	return errors.As(err, &opErr) ||
+		errors.As(err, &dnsErr) ||
+		errors.Is(err, io.EOF) ||
+		errors.Is(err, io.ErrUnexpectedEOF) ||
+		errors.Is(err, net.ErrClosed) ||
+		errors.Is(err, syscall.ECONNRESET) ||
+		errors.Is(err, syscall.ECONNABORTED) ||
+		errors.Is(err, syscall.EPIPE)
 }
