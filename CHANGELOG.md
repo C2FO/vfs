@@ -5,6 +5,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- `backend/testsuite`: `RunListingTests`, a conformance suite for `vfs.EntryLister` that `RunConformanceTests` runs for any backend that lists natively. `ConformanceOptions` gains `CreateEmptyDirectory` (which also creates the fixture's directories, with `os.MkdirAll` semantics), `RemoveDirectory` and `ListModTimeTolerance`. The suite checks that files can be read from inside the listing loop and after leaving it early.
+- `azure/types`: the optional `BlobLister` and `BlobPager` interfaces, which a `Client` implements to support native listing. `Client` is unchanged, so existing implementations keep working; one that does not implement `BlobLister` cannot be listed with `list.Entries`. The default client implements it.
+- `mem` and `os` backends implement `vfs.EntryLister`. `mem` lists a snapshot taken when iteration starts; `os` reads one directory at a time and reports symbolic links as `fs.ModeSymlink` entries without following them.
+- `vfs.Entry`, the result type of the streaming listing API (#389): an `fs.DirEntry` that carries a file or directory's relative path, listed size and modification time, mode and backend-native object, with lazy `Info()` / `InfoContext()` and resolution to a `vfs.File` or `vfs.Location`. Backends build entries with `vfs.NewFileEntry` and `vfs.NewDirEntry`.
+- `vfs.EntryLister`, an optional interface a `vfs.Location` can implement to list its contents natively as an `iter.Seq2[vfs.Entry, error]`.
+- `options.ListOption`, the marker interface for listing options.
+- `list` package, with the listing options `Prefix`, `Recursive`, `MaxDepth`, `FilesOnly`, `DirsOnly`, `StartAfter`, `After`, `Limit`, `Glob`, `Match`, `Filter`, `FilterContext`, `DirFilter` and `DirFilterContext`. `list.ParseQuery` validates them (errors match `list.ErrInvalidOption`) and `list.OrderKey` defines the byte-order key listings are ordered by.
+- `list.WalkDirs` and `list.FlatKeys`, the shared engines a backend uses to implement `vfs.EntryLister`: `WalkDirs` for backends that list one directory at a time and `FlatKeys` for object stores. Both guarantee byte order, apply the listing window (prefix, depth, `StartAfter`), prune with `DirFilter`, synthesize directories, report keys that cannot be represented as non-fatal `fs.ErrInvalid` errors, and stop retrying once the context is done.
+- `list.Entries`, the streaming listing: it validates options, uses a location's native listing when it implements `vfs.EntryLister`, applies every option again to what a backend yields, and otherwise falls back to `Location.List()` and `ListByPrefix()` for files only (options that need directories report `errors.ErrUnsupported`). Errors are `*fs.PathError` values with Op `list`, and an unreadable subdirectory is reported with its entry while the listing continues.
+- `list.Collect`, `list.TopN` and the comparators `list.ByName`, `list.BySize` and `list.ByModTime` for gathering and ranking listings.
+- A "Listing" section in the README.
+
+### Deprecated
+- `vfs.Location.List`, `ListByPrefix` and `ListByRegex` are deprecated in favor of `list.Entries` (with `list.FilesOnly`, `list.Prefix` and `list.Match`). They keep working and are not removed in v7. `RunLocationTests` still verifies them. The README has a migration table.
+
+### Performance
+- `sftp` backend implements `vfs.EntryLister`: a listing reads one directory at a time with `ReadDir`, only as the listing reaches it, and carries each file's size, modification time and mode from the directory read. The connection is held only during each read, so a slow caller does not keep it busy. Symbolic links are listed, not followed.
+- `ftp` backend implements `vfs.EntryLister`: a listing reads one directory at a time, completely, before yielding its entries, so the connection is free while the caller works on an entry, and carries each file's size and modification time from the listing. Symbolic links are listed, not followed.
+- `gs` backend implements `vfs.EntryLister`: a listing reads one object iterator, which requests a page of up to 1,000 objects only when the listing needs more, and carries each file's size and modification time from the listing.
+- `azure` backend implements `vfs.EntryLister`: a listing requests a page of up to 1,000 blobs at a time, only as entries are consumed, and carries each file's size and modification time from the listing. A non-recursive listing is a hierarchy listing and a recursive listing is a flat one.
+- `s3` backend implements `vfs.EntryLister`: a listing makes one `ListObjectsV2` request per 1,000 keys, only as entries are consumed, and carries each file's size and modification time from the listing so reading them makes no `HeadObject` request.
+
+### Fixed
+- `list` package: a `Glob` now matches segment by segment, so no wildcard or character class matches a `/` (`a[^x]b` no longer fails to match `ayb`) and a pattern's slash count is the depth of its matches.
+- `list` package: when every remaining entry is rejected by a filter, a canceled context is now reported instead of the listing silently running to the end, and `Entry.InfoContext` stops issuing requests once its context is canceled.
+- `list` package: a connection failure while reading a subdirectory now ends the listing with an error instead of reporting every remaining directory as failed. `sftp` and `ftp` report a lost session this way.
+- `azure` backend: a listing now uses the `Options.RetryFunc` when one is configured, as the rest of the backend does.
+- `azure` backend: `FileSystem.Client` no longer caches a client that failed to build. After a credential error, the next call returned a nil client with no error, and using it panicked; now every call returns the error.
+- `mem` backend: `Location.NewFile` no longer reads the file map without the lock, and `Location.DeleteFile` now changes a file's existence under that file's lock, removing data races when files are created or deleted concurrently.
 
 ## [[v7.32.8](https://github.com/C2FO/vfs/releases/tag/v7.32.8)] - 2026-10-27
 ### Fixed

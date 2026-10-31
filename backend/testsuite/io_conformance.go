@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/list"
 	"github.com/c2fo/vfs/v7/options"
 )
 
@@ -282,15 +283,15 @@ func setupTestFile(existsBefore bool, location vfs.Location, filename string) (R
 
 func teardownTestLocation(t *testing.T, _ string, location vfs.Location) {
 	t.Helper()
-	files, err := location.List()
+	files, err := list.Collect(list.Entries(t.Context(), location, list.FilesOnly()))
 	if err != nil {
 		t.Logf("warning: error listing files for cleanup: %v", err)
 		return
 	}
 	for _, file := range files {
-		err := location.DeleteFile(file)
+		err := location.DeleteFile(file.RelPath())
 		if err != nil {
-			t.Logf("warning: error deleting file %s: %v", file, err)
+			t.Logf("warning: error deleting file %s: %v", file.RelPath(), err)
 		}
 	}
 }

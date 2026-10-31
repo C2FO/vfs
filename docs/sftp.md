@@ -196,22 +196,24 @@ fs := sftp.NewFileSystem(
 	),
 )
 
-func doSFTPStuff() {
+func doSFTPStuff(ctx context.Context) {
 	fs := sftp.NewFileSystem()
 	loc, err := fs.NewLocation("myuser@server.com:22", "/some/path/")
 	file1, _ := loc.NewFile("file1.txt")
 	file2, _ := loc.NewFile("file2.txt")
-	file1.Touch()                // "touches" file and starts disconnect timer (default: 10sec)
-	_, _ := loc.List()           // stops timer, does location listing, resets timer to 10 seconds
+	file1.Touch() // "touches" file and starts disconnect timer (default: 10sec)
+	// stops timer, does location listing, resets timer to 10 seconds
+	_, _ = list.Collect(list.Entries(ctx, loc))
 	file2.Touch()                // stops timer, "touches" file2, resets timer to 10 seconds
 	time.Sleep(15 * time.Second) // pause for 15 seconds, disconnects for server after 10 seconds
-	_, _ := loc.List()           // reconnects, does location listing, starts new disconnect timer
+	// reconnects, does location listing, starts new disconnect timer
+	_, _ = list.Collect(list.Entries(ctx, loc))
 	return
 }
 
 func main {
 	// call our sftp function
-	doSFTPStuff()
+	doSFTPStuff(context.Background())
 	// even though the vfs sftp objects have fallen out of scope, our connection remains UNTIL the timer counts down
 
 	// do more work (that take longer than 10 seconds)
@@ -269,6 +271,7 @@ NOTE: AutoDisconnect has nothing to do with "keep alive". Here we're only concer
   - [func \(l \*Location\) List\(\) \(\[\]string, error\)](<#Location.List>)
   - [func \(l \*Location\) ListByPrefix\(prefix string\) \(\[\]string, error\)](<#Location.ListByPrefix>)
   - [func \(l \*Location\) ListByRegex\(regex \*regexp.Regexp\) \(\[\]string, error\)](<#Location.ListByRegex>)
+  - [func \(l \*Location\) ListEntries\(ctx context.Context, opts ...options.ListOption\) iter.Seq2\[vfs.Entry, error\]](<#Location.ListEntries>)
   - [func \(l \*Location\) NewFile\(relFilePath string, opts ...options.NewFileOption\) \(vfs.File, error\)](<#Location.NewFile>)
   - [func \(l \*Location\) NewLocation\(relativePath string\) \(vfs.Location, error\)](<#Location.NewLocation>)
   - [func \(l \*Location\) Path\(\) string](<#Location.Path>)
@@ -741,6 +744,19 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error)
 ```
 
 ListByRegex retrieves the filenames of all the files at the location's current path, then filters out all those that don't match the given regex. The resource considerations of List\(\) apply here as well.
+
+<a name="Location.ListEntries"></a>
+### func \(\*Location\) ListEntries
+
+```go
+func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) iter.Seq2[vfs.Entry, error]
+```
+
+ListEntries lists the location's contents as a stream of entries in byte order, implementing vfs.EntryLister. Use list.Entries to list a location with options and have every option applied.
+
+Each directory is read with one SFTP ReadDir when the listing reaches it, so memory use is one directory per level of depth, and a listing that stops early reads no further directories. The connection is taken for each directory read and released before the listing yields, so a caller that works slowly between entries does not hold the connection open or keep its idle timer from running. The size, modification time and mode of every file come from the directory read, so reading them makes no further request. A symbolic link is listed as a file entry whose Type is fs.ModeSymlink, and is not followed, so a link to a directory is not descended into. Entry.Sys returns the os.FileInfo the server reported.
+
+A directory that cannot be read is yielded with its entry and an error, and the listing continues; a permission failure matches fs.ErrPermission. A location that does not exist lists nothing.
 
 <a name="Location.NewFile"></a>
 ### func \(\*Location\) NewFile

@@ -19,10 +19,11 @@ The package exports the following test functions:
 
 | Function | Description |
 |----------|-------------|
-| `RunConformanceTests` | Runs all conformance tests (FileSystem, Location, File) |
+| `RunConformanceTests` | Runs all conformance tests (FileSystem, Location, File, and Listing when the backend lists natively) |
 | `RunFileSystemTests` | Tests `vfs.FileSystem` interface conformance |
 | `RunLocationTests` | Tests `vfs.Location` interface conformance |
 | `RunFileTests` | Tests `vfs.File` interface conformance |
+| `RunListingTests` | Tests `vfs.EntryLister` conformance: order, entries, options, paging, cancellation. Requires a native lister |
 | `RunIOTests` | Tests Read/Write/Seek behavior conformance |
 
 ## Using Conformance Tests
@@ -129,6 +130,21 @@ type ConformanceOptions struct {
     // SkipFTPSpecificTests skips tests that don't work well with FTP
     // protocol limitations (e.g., certain io.Copy patterns).
     SkipFTPSpecificTests bool
+
+    // CreateEmptyDirectory creates a directory and any missing parents, and
+    // succeeds when it exists (like os.MkdirAll). The listing tests use it for
+    // an empty directory and for the directories of their fixture files. Set it
+    // for backends with real directories (os, sftp, ftp); leave it nil for
+    // object stores, which cannot hold an empty directory.
+    CreateEmptyDirectory func(dir vfs.Location) error
+
+    // RemoveDirectory removes a directory and everything under it. The listing
+    // tests use it to clean up; without it they delete only the files they wrote.
+    RemoveDirectory func(dir vfs.Location) error
+
+    // ListModTimeTolerance is how far a listed modification time may differ
+    // from File.LastModified, for backends whose listing is less precise.
+    ListModTimeTolerance time.Duration
 }
 ```
 
@@ -138,6 +154,9 @@ type ConformanceOptions struct {
 |--------|-------------|
 | `SkipTouchTimestampTest` | Backend doesn't update `LastModified` when re-uploading identical content |
 | `SkipFTPSpecificTests` | Backend has FTP-like limitations with certain IO patterns |
+| `CreateEmptyDirectory` | Backend has real directories, so the listing tests can check that an empty one is listed, and create the directories their files go in |
+| `RemoveDirectory` | Backend has real directories, so the listing tests can remove the empty directory they created |
+| `ListModTimeTolerance` | Backend's listing reports modification times at a coarser precision than a single-file request |
 
 ## Testing Approaches
 
@@ -218,6 +237,21 @@ If `VFS_INTEGRATION_LOCATIONS` is empty, these runners have no locations to test
 - `Delete()` file removal
 - Handling files with spaces in paths
 - Operations on non-existent files (error handling)
+
+### Listing Tests (`RunListingTests`)
+
+`RunConformanceTests` runs these as a `Listing` subtest and skips it for a backend that does not implement
+`vfs.EntryLister`. `RunListingTests` itself fails if the location is not an `EntryLister`. The tests write a small
+tree (a file that shares a prefix with a directory, mixed case, spaces, Unicode, and a file five levels deep) and check:
+
+- Byte order of `RelPath()` (directories sorted with a trailing `/`) for recursive and non-recursive listings
+- Names, paths, kinds, and that listed size and modification time match `File.Size()` and `File.LastModified()`
+- That entries resolve to files and locations, and that an entry outlives the file it describes
+- `FilesOnly`, `DirsOnly`, `MaxDepth`, `Prefix`, `Glob`, `After` and `StartAfter`
+- Paging with `Limit` and a cursor reproduces the full listing with no gaps or repeats, for each filter
+  (`FilesOnly`, `DirsOnly`, `Prefix`, `Glob`, `MaxDepth`) as well as unfiltered
+- Stopping the loop early (no goroutine is left running), context cancellation, and a location that does not exist
+- An empty directory is listed (when `CreateEmptyDirectory` is set)
 
 ### IO Tests (`RunIOTests`)
 
