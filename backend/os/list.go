@@ -7,7 +7,6 @@ import (
 	"iter"
 	"os"
 	"path/filepath"
-	"syscall"
 
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/list"
@@ -42,6 +41,10 @@ func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) 
 	}
 }
 
+// errNotDirectory is the cause of a listing whose location is not a directory. It is not syscall.ENOTDIR, which on
+// Windows is ERROR_PATH_NOT_FOUND and so would match fs.ErrNotExist and be taken for a location that does not exist.
+var errNotDirectory = errors.New("not a directory")
+
 // requireDirectory fails unless dir is a directory. Reading a regular file as a directory is an error on Unix but not on
 // every platform, so the location of a listing is checked explicitly to make a location that is a file an error everywhere.
 func requireDirectory(dir string) error {
@@ -50,7 +53,7 @@ func requireDirectory(dir string) error {
 		return err
 	}
 	if !info.IsDir() {
-		return &fs.PathError{Op: "readdir", Path: dir, Err: syscall.ENOTDIR}
+		return &fs.PathError{Op: "readdir", Path: dir, Err: errNotDirectory}
 	}
 	return nil
 }
