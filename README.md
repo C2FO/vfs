@@ -84,6 +84,16 @@ for e, err := range list.Entries(ctx, loc, list.Glob("*/*.csv"), list.FilesOnly(
 * `list.Collect` and `list.TopN` (with `list.BySize`, `list.ByModTime` and `list.ByName`) gather a listing when you do want it in memory.
 * A backend without native listing still works, listing files only. See [list](docs/list.md) for the full API.
 
+`Location.List`, `Location.ListByPrefix` and `Location.ListByRegex` are deprecated and will be removed in a future major version. They return every name in memory, in no defined order, for files only. To migrate:
+
+| Before | After |
+|---|---|
+| `loc.List()` | `list.Collect(list.Entries(ctx, loc, list.FilesOnly()))`, or range over `list.Entries` to stream |
+| `loc.ListByPrefix("rep")` | `list.Entries(ctx, loc, list.Prefix("rep"), list.FilesOnly())` |
+| `loc.ListByRegex(re)` | `list.Entries(ctx, loc, list.Match(re), list.FilesOnly())` |
+
+Each entry's `RelPath()` is the name `List` returned, and `list.Entries` also reports directories unless `list.FilesOnly()` is given.
+
 ## Advanced Usage
 * See the [GoDoc](https://pkg.go.dev/github.com/c2fo/vfs/v7) for deeper technical details, backend-specific options, and additional APIs.
 * Specialized operations like copying between S3 locations or advanced configs (e.g. Azure credentials) are documented in each backend doc.

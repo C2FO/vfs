@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `list.Collect`, `list.TopN` and the comparators `list.ByName`, `list.BySize` and `list.ByModTime` for gathering and ranking listings.
 - A "Listing" section in the README.
 
+### Deprecated
+- `vfs.Location.List`, `ListByPrefix` and `ListByRegex` are deprecated in favor of `list.Entries` (with `list.FilesOnly`, `list.Prefix` and `list.Match`). They keep working and are not removed in v7. `RunLocationTests` still verifies them. The README has a migration table.
+
 ### Performance
 - `sftp` backend implements `vfs.EntryLister`: a listing reads one directory at a time with `ReadDir`, only as the listing reaches it, and carries each file's size, modification time and mode from the directory read. The connection is held only during each read, so a slow caller does not keep it busy. Symbolic links are listed, not followed.
 - `ftp` backend implements `vfs.EntryLister`: a listing reads one directory at a time, completely, before yielding its entries, so the connection is free while the caller works on an entry, and carries each file's size and modification time from the listing. Symbolic links are listed, not followed.

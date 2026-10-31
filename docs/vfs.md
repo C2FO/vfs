@@ -633,6 +633,10 @@ type Location interface {
     //   * All implementations are expected to return ([]string{}, nil) in the case of a non-existent directory/prefix/location.
     //   * If the user cares about the distinction between an empty location and a non-existent one, Location.Exists() should
     //     be checked first.
+    //
+    // Deprecated: Use list.Entries, which streams entries lazily in a defined order, with sizes and modification times,
+    // directories, and options such as list.Prefix, list.Glob and list.Recursive. For example,
+    // list.Entries(ctx, loc, list.FilesOnly()) replaces List.
     List() ([]string, error)
 
     // ListByPrefix returns a slice of strings representing the base names of the files found in Location whose filenames
@@ -643,6 +647,8 @@ type Location interface {
     //     location "/some/path/to/" with prefix of "somepattern"
     //   * If the user cares about the distinction between an empty location and a non-existent one, Location.Exists() should
     //     be checked first.
+    //
+    // Deprecated: Use list.Entries with list.Prefix and list.FilesOnly.
     ListByPrefix(prefix string) ([]string, error)
 
     // ListByRegex returns a slice of strings representing the base names of the files found in Location that matched the
@@ -651,6 +657,8 @@ type Location interface {
     //   * All implementations are expected to return ([]string{}, nil) in the case of a non-existent directory/prefix/location.
     //   * If the user cares about the distinction between an empty location and a non-existent one, Location.Exists() should
     //     be checked first.
+    //
+    // Deprecated: Use list.Entries with list.Match (or list.Glob) and list.FilesOnly.
     ListByRegex(regex *regexp.Regexp) ([]string, error)
 
     // Volume returns the volume as string. In URI parlance, volume equates to authority.

@@ -196,22 +196,24 @@ fs := sftp.NewFileSystem(
 	),
 )
 
-func doSFTPStuff() {
+func doSFTPStuff(ctx context.Context) {
 	fs := sftp.NewFileSystem()
 	loc, err := fs.NewLocation("myuser@server.com:22", "/some/path/")
 	file1, _ := loc.NewFile("file1.txt")
 	file2, _ := loc.NewFile("file2.txt")
-	file1.Touch()                // "touches" file and starts disconnect timer (default: 10sec)
-	_, _ := loc.List()           // stops timer, does location listing, resets timer to 10 seconds
+	file1.Touch() // "touches" file and starts disconnect timer (default: 10sec)
+	// stops timer, does location listing, resets timer to 10 seconds
+	_, _ = list.Collect(list.Entries(ctx, loc))
 	file2.Touch()                // stops timer, "touches" file2, resets timer to 10 seconds
 	time.Sleep(15 * time.Second) // pause for 15 seconds, disconnects for server after 10 seconds
-	_, _ := loc.List()           // reconnects, does location listing, starts new disconnect timer
+	// reconnects, does location listing, starts new disconnect timer
+	_, _ = list.Collect(list.Entries(ctx, loc))
 	return
 }
 
 func main {
 	// call our sftp function
-	doSFTPStuff()
+	doSFTPStuff(context.Background())
 	// even though the vfs sftp objects have fallen out of scope, our connection remains UNTIL the timer counts down
 
 	// do more work (that take longer than 10 seconds)

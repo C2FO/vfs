@@ -81,9 +81,9 @@ func fallbackNames(loc vfs.Location, prefix string) (dir string, names []string,
 		}
 	}
 	if base == "" {
-		names, err = target.List()
+		names, err = target.List() //nolint:staticcheck // the fallback exists to serve backends that only have the legacy methods
 	} else {
-		names, err = target.ListByPrefix(base)
+		names, err = target.ListByPrefix(base) //nolint:staticcheck // the fallback exists to serve backends that only have the legacy methods
 	}
 	return dir, names, err
 }
