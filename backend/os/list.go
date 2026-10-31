@@ -7,6 +7,7 @@ import (
 	"iter"
 	"os"
 	"path/filepath"
+	"syscall"
 
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/list"
@@ -29,10 +30,29 @@ func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) 
 		}
 		root := osLocationPath(l)
 		readDir := func(_ context.Context, relDir string) ([]list.Child, error) {
-			return readChildren(filepath.Join(root, filepath.FromSlash(relDir)))
+			dir := filepath.Join(root, filepath.FromSlash(relDir))
+			if relDir == "" {
+				if err := requireDirectory(dir); err != nil {
+					return nil, err
+				}
+			}
+			return readChildren(dir)
 		}
 		list.WalkDirs(ctx, l, q, readDir, nil)(yield)
 	}
+}
+
+// requireDirectory fails unless dir is a directory. Reading a regular file as a directory is an error on Unix but not on
+// every platform, so the location of a listing is checked explicitly to make a location that is a file an error everywhere.
+func requireDirectory(dir string) error {
+	info, err := os.Stat(dir)
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return &fs.PathError{Op: "readdir", Path: dir, Err: syscall.ENOTDIR}
+	}
+	return nil
 }
 
 // readChildren reads one directory. An entry that disappears between the directory read and its stat is left out.
