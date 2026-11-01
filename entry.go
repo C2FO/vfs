@@ -21,7 +21,7 @@ import (
 //   - yield entries in ascending byte order of relative path, where directories compare with a trailing "/"
 //   - yield directories for recursive listings, synthesizing them where the backend has none
 //   - make no further backend requests once yield returns false, and have no request in flight while yield runs
-//   - honor ctx, and wrap each backend request with FileSystem().Retry()
+//   - honor ctx, and wrap each backend request in the retry policy the backend's options configure, if any
 //   - yield a failure to read one subdirectory together with that directory's Entry, and continue; yield any other
 //     failure with a zero Entry and then stop
 //

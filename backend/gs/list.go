@@ -47,7 +47,12 @@ func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) 
 			yield(vfs.Entry{}, &iofs.PathError{Op: "list", Path: l.Path(), Err: err})
 			return
 		}
-		list.FlatKeys(ctx, l, q, l.pages(handle), nil)(yield)
+		// An object iterator keeps returning the error it failed with, so retrying its Next, as RetryBucketHandler does,
+		// cannot recover. Retry whole pages instead: pages starts a new iterator after a failure.
+		if retrying, ok := handle.(*RetryBucketHandler); ok {
+			handle = &RetryBucketHandler{Retry: noOpRetryer, handler: retrying.handler}
+		}
+		list.FlatKeys(ctx, l, q, l.pages(handle), l.fileSystem.Retry())(yield)
 	}
 }
 
@@ -63,7 +68,8 @@ func (l *Location) keyPrefix() string {
 
 // pages returns the page function for FlatKeys. It makes one object iterator when first called and takes each page from
 // it, rather than starting a new listing for each page: FlatKeys resumes immediately after the previous page, which is
-// where the iterator already is, and the iterator rolls up directories itself.
+// where the iterator already is, and the iterator rolls up directories itself. An iterator that fails keeps returning
+// the same error, so after a failure the next call, such as a retry, starts a new iterator at req.StartAfter.
 func (l *Location) pages(handle BucketHandleWrapper) list.PageFunc {
 	root := l.keyPrefix()
 	var objects ObjectIteratorWrapper
@@ -89,6 +95,7 @@ func (l *Location) pages(handle BucketHandleWrapper) list.PageFunc {
 				return page, nil
 			}
 			if err != nil {
+				objects = nil
 				return list.Page{}, classifyListError(err)
 			}
 			if attrs.Prefix != "" {

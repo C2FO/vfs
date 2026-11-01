@@ -210,7 +210,9 @@ func (s *QueryTestSuite) TestInvalidOptions() {
 }
 
 func (s *QueryTestSuite) TestBadGlobMatchesBadPattern() {
-	patterns := []string{"[", "a[", "*[", "?[", "x*[", "[a-", "[]a]", "[^]", "[a-]", "[-a]", "[a-b-c]", `\`, `a\`, "a/[b", "a/*/["}
+	patterns := []string{"[", "a[", "*[", "?[", "x*[", "[a-", "[]a]", "[^]", "[a-]", "[-a]", "[a-b-c]", `\`, `a\`, "a/[b", "a/*/[",
+		// Valid as a whole under path.Match, but not once split at "/" as Glob matches them.
+		`a\/b`, "[/]", "a[/]b"}
 	for _, pattern := range patterns {
 		s.Run(pattern, func() {
 			_, err := list.ParseQuery([]options.ListOption{list.Glob(pattern)})

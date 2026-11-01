@@ -21,13 +21,15 @@ func (g compiledGlob) recursive() bool { return g.depth > 1 }
 // compileGlob validates pattern and derives the literal prefix and depth a listing can use to avoid fetching entries
 // that cannot match. The error wraps both ErrInvalidOption and, for a malformed pattern, path.ErrBadPattern.
 func compileGlob(pattern string) (compiledGlob, error) {
-	if _, err := path.Match(pattern, ""); err != nil {
-		return compiledGlob{}, fmt.Errorf("%w: glob %q: %w", ErrInvalidOption, pattern, err)
-	}
 	segments := strings.Split(pattern, "/")
 	for _, seg := range segments {
 		if seg == "" || seg == "." || seg == ".." {
 			return compiledGlob{}, invalidf("glob %q must be a relative path with no empty, \".\" or \"..\" segments", pattern)
+		}
+		// Each segment is checked on its own, as matchGlob uses it: a pattern can be valid as a whole yet split into
+		// segments that are not, such as `a\/b`, whose first segment ends in an escape.
+		if _, err := path.Match(seg, ""); err != nil {
+			return compiledGlob{}, fmt.Errorf("%w: glob %q: %w", ErrInvalidOption, pattern, err)
 		}
 	}
 

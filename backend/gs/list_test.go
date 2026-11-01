@@ -196,9 +196,11 @@ func (s *listEntriesTestSuite) TestListingMatchesFileMetadata() {
 }
 
 // pagedTransport answers object-list requests with synthetic pages of up to 1,000 objects, as GCS does, because the fake
-// server returns every object in one response.
+// server returns every object in one response. It honors startOffset, and fails the request numbered failAt (from 1)
+// once with a 400 when failAt is set.
 type pagedTransport struct {
-	total int
+	total  int
+	failAt int
 
 	mu       sync.Mutex
 	requests []string
@@ -207,9 +209,22 @@ type pagedTransport struct {
 func (p *pagedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	p.mu.Lock()
 	p.requests = append(p.requests, req.URL.Query().Get("pageToken"))
+	fail := len(p.requests) == p.failAt
 	p.mu.Unlock()
+	if fail {
+		return &http.Response{
+			StatusCode: http.StatusBadRequest,
+			Status:     http.StatusText(http.StatusBadRequest),
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       http.NoBody,
+			Request:    req,
+		}, nil
+	}
 
 	start := 0
+	if offset := req.URL.Query().Get("startOffset"); offset != "" {
+		start, _ = strconv.Atoi(strings.TrimPrefix(offset, "dir1/k"))
+	}
 	if token := req.URL.Query().Get("pageToken"); token != "" {
 		start, _ = strconv.Atoi(token)
 	}
@@ -238,11 +253,18 @@ func (p *pagedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 func (s *listEntriesTestSuite) pagedLocation(total int) (vfs.Location, *pagedTransport) {
 	s.T().Helper()
-	transport := &pagedTransport{total: total}
+	return s.pagedLocationWith(&pagedTransport{total: total})
+}
+
+func (s *listEntriesTestSuite) pagedLocationWith(
+	transport *pagedTransport, opts ...options.NewFileSystemOption[FileSystem],
+) (vfs.Location, *pagedTransport) {
+	s.T().Helper()
 	client, err := storage.NewClient(s.T().Context(),
 		option.WithHTTPClient(&http.Client{Transport: transport}), option.WithoutAuthentication())
 	s.Require().NoError(err)
-	loc, err := NewFileSystem(WithClient(client)).NewLocation(listBucket, "/dir1/")
+	loc, err := NewFileSystem(append([]options.NewFileSystemOption[FileSystem]{WithClient(client)}, opts...)...).
+		NewLocation(listBucket, "/dir1/")
 	s.Require().NoError(err)
 	return loc, transport
 }
@@ -274,6 +296,36 @@ func (s *listEntriesTestSuite) TestPageBoundaryFallsBetweenEntries() {
 
 	s.Len(s.keys(loc, list.Recursive()), 1000)
 	s.Equal([]string{""}, transport.requests, "a full final page needs no further request")
+}
+
+func (s *listEntriesTestSuite) TestRetryerResumesAFailedPage() {
+	retries := 0
+	retryOnce := func(wrapped func() error) error {
+		if err := wrapped(); err != nil {
+			retries++
+			return wrapped()
+		}
+		return nil
+	}
+	loc, transport := s.pagedLocationWith(&pagedTransport{total: 2500, failAt: 2}, WithRetryer(retryOnce))
+
+	keys := s.keys(loc, list.Recursive())
+
+	s.Require().Len(keys, 2500, "the retried page is listed once, with no gap or repeat")
+	s.Equal("k0000", keys[0])
+	s.Equal("k2499", keys[2499])
+	s.Equal(1, retries, "the retryer wraps each page once, not also each object")
+	// The new iterator starts at the cursor k0999, inclusive, so its first page ends at k1998.
+	s.Equal([]string{"", "1000", "", "1999"}, transport.requests,
+		"the retry starts a new iterator at the cursor instead of reusing the failed one")
+}
+
+func (s *listEntriesTestSuite) TestFailedPageWithoutRetryerEndsTheListing() {
+	loc, _ := s.pagedLocationWith(&pagedTransport{total: 2500, failAt: 2})
+
+	_, err := list.Collect(list.Entries(s.T().Context(), loc, list.Recursive()))
+
+	s.Require().Error(err)
 }
 
 func (s *listEntriesTestSuite) TestMissingBucketIsAnError() {
