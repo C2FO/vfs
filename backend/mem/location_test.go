@@ -4,6 +4,7 @@ import (
 	"io"
 	"path"
 	"regexp"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -340,6 +341,38 @@ func (s *memLocationTest) TestWriteExistingFile() {
 	data, err := io.ReadAll(file)
 	s.Require().NoError(err)
 	s.Equal("hello world", string(data))
+}
+
+// TestNewFileWhileClosing is for the race detector: NewFile copies an existing file's contents while another File for
+// the same path replaces them in Close. It does not read the files, because File.Read is not yet safe to run alongside
+// Close.
+func (s *memLocationTest) TestNewFileWhileClosing() {
+	location, err := s.fileSystem.NewLocation("", "/race/")
+	s.Require().NoError(err)
+	seed, err := location.NewFile("x.txt")
+	s.Require().NoError(err)
+	_, err = seed.Write([]byte("seed"))
+	s.Require().NoError(err)
+	s.Require().NoError(seed.Close())
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for range 200 {
+			f, err := location.NewFile("x.txt")
+			if err != nil {
+				return
+			}
+			_, _ = f.Write([]byte("data"))
+			_ = f.Close()
+		}
+	}()
+	for range 200 {
+		_, err := location.NewFile("x.txt")
+		s.Require().NoError(err)
+	}
+	wg.Wait()
 }
 
 func TestMemLocation(t *testing.T) {

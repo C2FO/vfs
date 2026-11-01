@@ -36,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `gs` backend: a listing now retries with the configured `WithRetryer`. The object iterator keeps returning the error it failed with, so a failed page is retried by starting a new iterator at the listing's cursor instead of retrying each object read.
 - `list` package: a `Glob` whose segments are not valid patterns on their own, such as `a\/b` or `[/]`, is now rejected by `ParseQuery` with `path.ErrBadPattern` instead of failing part-way through the listing.
 - `azure` backend: `FileSystem.Client` no longer caches a client that failed to build. After a credential error, the next call returned a nil client with no error, and using it panicked; now every call returns the error.
-- `mem` backend: `Location.NewFile` no longer reads the file map without the lock, and `Location.DeleteFile` now changes a file's existence under that file's lock, removing data races when files are created or deleted concurrently.
+- `mem` backend: `Location.NewFile` no longer reads the file map without the lock, and `Location.DeleteFile` now changes a file's existence under that file's lock, removing data races when files are created or deleted concurrently. `Location.NewFile` for an existing file also reads its contents under the file's lock, and gives the new `File` its own copy, so it no longer races with `File.Close`.
 
 ## [[v7.32.8](https://github.com/C2FO/vfs/releases/tag/v7.32.8)] - 2026-10-27
 ### Fixed
