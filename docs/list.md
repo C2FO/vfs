@@ -844,13 +844,20 @@ PageRequest describes the page FlatKeys needs next.
 ```go
 type PageRequest struct {
     // StartAfter is the key after which the page must start. A backend that keeps its own continuation token between
-    // calls may follow the token instead, because FlatKeys always resumes immediately after the previous page.
+    // calls may follow the token instead unless Seek is set, because FlatKeys otherwise resumes immediately after the
+    // previous page.
     StartAfter string
     // Prefix is the relative path every wanted key starts with, or "".
     Prefix string
     // Delimited reports whether to roll keys up at the next "/" after Prefix and return the rolled-up directories as
-    // Page.Prefixes. It is true for a non-recursive listing and false for a recursive one.
+    // Page.Prefixes. It is true for a non-recursive listing, and for a recursive one whose depth limit stops one level
+    // inside the directory Prefix names, which lists the same entries.
     Delimited bool
+    // Seek reports that StartAfter lies past the end of the previous page, because the keys in between are inside a
+    // directory the listing skips: one DirFilter pruned or one deeper than MaxDepth allows. A backend that keeps its own
+    // continuation token starts a new listing at StartAfter to avoid reading those keys. A backend that cannot start
+    // after a key may continue from its token instead, because FlatKeys drops the skipped keys itself.
+    Seek bool
 }
 ```
 
