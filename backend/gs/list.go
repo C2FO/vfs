@@ -16,7 +16,6 @@ import (
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/list"
 	"github.com/c2fo/vfs/v7/options"
-	"github.com/c2fo/vfs/v7/utils"
 )
 
 // listPageSize is how many objects one FlatKeys page reads from the object iterator. It matches the page size of the
@@ -36,12 +35,7 @@ const listPageSize = 1000
 // A 403 response is reported as an error matching fs.ErrPermission. A bucket that does not exist is an error, not an
 // empty listing, so a misspelled bucket is not mistaken for an empty one.
 func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) iter.Seq2[vfs.Entry, error] {
-	return func(yield func(vfs.Entry, error) bool) {
-		q, err := list.ParseQuery(opts)
-		if err != nil {
-			yield(vfs.Entry{}, &iofs.PathError{Op: "list", Path: l.Path(), Err: err})
-			return
-		}
+	return list.Native(l, opts, func(q list.Query, yield func(vfs.Entry, error) bool) {
 		handle, err := l.getBucketHandle()
 		if err != nil {
 			yield(vfs.Entry{}, &iofs.PathError{Op: "list", Path: l.Path(), Err: err})
@@ -53,17 +47,7 @@ func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) 
 			handle = &RetryBucketHandler{Retry: noOpRetryer, handler: retrying.handler}
 		}
 		list.FlatKeys(ctx, l, q, l.pages(handle), l.fileSystem.Retry())(yield)
-	}
-}
-
-// keyPrefix returns the object name prefix of the location: "" for the bucket root, otherwise the path with no leading
-// slash and one trailing slash.
-func (l *Location) keyPrefix() string {
-	prefix := utils.RemoveLeadingSlash(l.prefix)
-	if prefix == "" {
-		return ""
-	}
-	return utils.EnsureTrailingSlash(prefix)
+	})
 }
 
 // pages returns the page function for FlatKeys. It makes one object iterator when first called and takes each page from
@@ -71,7 +55,8 @@ func (l *Location) keyPrefix() string {
 // where the iterator already is, and the iterator rolls up directories itself. An iterator that fails keeps returning
 // the same error, so after a failure the next call, such as a retry, starts a new iterator at req.StartAfter.
 func (l *Location) pages(handle BucketHandleWrapper) list.PageFunc {
-	root := l.keyPrefix()
+	// Path always begins and ends with "/", so this is "" for the root and "a/b/" below it.
+	root := strings.TrimPrefix(l.Path(), "/")
 	var objects ObjectIteratorWrapper
 
 	return func(ctx context.Context, req list.PageRequest) (list.Page, error) {

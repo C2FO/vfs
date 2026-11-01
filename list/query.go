@@ -109,6 +109,11 @@ type builder struct {
 // [FilterContext], and [DirFilter] and [DirFilterContext]. Options this package does not define are ignored, so
 // backend-specific options can be passed alongside.
 func ParseQuery(opts []options.ListOption) (Query, error) {
+	for _, opt := range opts {
+		if parsed, ok := opt.(parsedQuery); ok {
+			return parsed.q, nil
+		}
+	}
 	var b builder
 	seen := make(map[string]struct{}, len(opts))
 	for _, opt := range opts {
@@ -133,6 +138,12 @@ func ParseQuery(opts []options.ListOption) (Query, error) {
 	}
 	return b.q, nil
 }
+
+// parsedQuery carries the Query that Entries already parsed to a backend's ListEntries, so that ParseQuery returns it
+// instead of parsing the same options again. It is unexported, so only Entries can add it.
+type parsedQuery struct{ q Query }
+
+func (parsedQuery) ListOptionName() string { return "parsedQuery" }
 
 // finish checks the options against one another and applies what a glob implies.
 func (b *builder) finish() error {

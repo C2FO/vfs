@@ -39,14 +39,9 @@ import (
 // answer 550 both for a directory that does not exist and for one that cannot be entered, so a 550 is reported as
 // matching fs.ErrNotExist, and a location that the server cannot enter lists nothing.
 func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) iter.Seq2[vfs.Entry, error] {
-	return func(yield func(vfs.Entry, error) bool) {
-		q, err := list.ParseQuery(opts)
-		if err != nil {
-			yield(vfs.Entry{}, &iofs.PathError{Op: "list", Path: l.Path(), Err: err})
-			return
-		}
+	return list.Native(l, opts, func(q list.Query, yield func(vfs.Entry, error) bool) {
 		list.WalkDirs(ctx, l, q, l.readDir, nil)(yield)
-	}
+	})
 }
 
 // readDir lists one directory of the location, holding the connection only for the listing.

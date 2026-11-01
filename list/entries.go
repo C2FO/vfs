@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/fs"
 	"iter"
+	"slices"
 	"strings"
 
 	"github.com/c2fo/vfs/v7"
@@ -54,7 +55,8 @@ func Entries(ctx context.Context, loc vfs.Location, opts ...options.ListOption) 
 
 		var src iter.Seq2[vfs.Entry, error]
 		if lister, ok := loc.(vfs.EntryLister); ok {
-			src = lister.ListEntries(ctx, opts...)
+			// The parsed Query rides along, so the backend's ParseQuery does not parse the options again.
+			src = lister.ListEntries(ctx, append(slices.Clip(opts), parsedQuery{q: q})...)
 		} else {
 			src = fallback(ctx, loc, q)
 		}
@@ -199,4 +201,26 @@ func (n enforcer) matches(e vfs.Entry) (bool, error) {
 // callbackError is the fatal error for a filter callback that failed on e.
 func callbackError(e vfs.Entry, err error) error {
 	return &fs.PathError{Op: "list", Path: e.Path(), Err: err}
+}
+
+// Native returns the sequence a backend's ListEntries returns. It parses opts, yields a failure as a *fs.PathError naming
+// loc, which ends the listing, and otherwise calls run with the Query and the caller's yield. Options Entries already
+// parsed are not parsed again.
+//
+//	func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) iter.Seq2[vfs.Entry, error] {
+//		return list.Native(l, opts, func(q list.Query, yield func(vfs.Entry, error) bool) {
+//			list.WalkDirs(ctx, l, q, l.readDir, nil)(yield)
+//		})
+//	}
+func Native(
+	loc vfs.Location, opts []options.ListOption, run func(q Query, yield func(vfs.Entry, error) bool),
+) iter.Seq2[vfs.Entry, error] {
+	return func(yield func(vfs.Entry, error) bool) {
+		q, err := ParseQuery(opts)
+		if err != nil {
+			yield(vfs.Entry{}, &fs.PathError{Op: "list", Path: loc.Path(), Err: err})
+			return
+		}
+		run(q, yield)
+	}
 }

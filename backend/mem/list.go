@@ -2,7 +2,6 @@ package mem
 
 import (
 	"context"
-	"io/fs"
 	"iter"
 	"slices"
 	"strings"
@@ -21,14 +20,9 @@ import (
 // the volume, so the cost grows with the volume, not with the location or any Limit. Each file entry carries the size and
 // modification time held in memory.
 func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) iter.Seq2[vfs.Entry, error] {
-	return func(yield func(vfs.Entry, error) bool) {
-		q, err := list.ParseQuery(opts)
-		if err != nil {
-			yield(vfs.Entry{}, &fs.PathError{Op: "list", Path: l.Path(), Err: err})
-			return
-		}
+	return list.Native(l, opts, func(q list.Query, yield func(vfs.Entry, error) bool) {
 		list.WalkDirs(ctx, l, q, l.snapshot().readDir, nil)(yield)
-	}
+	})
 }
 
 // snapshot is the files under a location at one moment, grouped by directory.

@@ -734,7 +734,7 @@ Blobs are read one page of up to 1,000 at a time, and a page is requested only w
 
 Azure cannot start a listing after a given name, so a listing that starts after a cursor, such as one that resumes with list.After, reads the blobs before the cursor and drops them. The cost of such a listing grows with the cursor's position. Listing relies on Azure returning blobs in ascending byte order; a listing that does not ends with an error instead of wrong results.
 
-The Client must also implement types.BlobLister, as the default client does; otherwise the listing fails with an error matching errors.ErrUnsupported. A 403 response is reported as an error matching fs.ErrPermission, and a container that does not exist is an error, not an empty listing.
+A Client that does not also implement types.BlobLister, as the default client does, is listed through Location.List and ListByPrefix instead: files only, without size or modification time, and options that need directories, such as list.Recursive, report errors.ErrUnsupported. A 403 response is reported as an error matching fs.ErrPermission, and a container that does not exist is an error, not an empty listing.
 
 <a name="Location.NewFile"></a>
 ### func \(\*Location\) NewFile

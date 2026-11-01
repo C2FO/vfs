@@ -223,7 +223,63 @@ func (s *EntriesTestSuite) TestOptionsReachTheBackendUnchanged() {
 	opts := []options.ListOption{list.Recursive(), list.Limit(5), ignoredOption{}}
 
 	s.list(opts...)
-	s.Equal(opts, received)
+	s.Require().Len(received, len(opts)+1, "the parsed query rides along after the caller's options")
+	s.Equal(opts, received[:len(opts)])
+}
+
+func (s *EntriesTestSuite) TestBackendGetsTheParsedQuery() {
+	var received []options.ListOption
+	s.backend(nil, &received)
+	opts := []options.ListOption{list.Recursive(), list.MaxDepth(2), list.Prefix("a/"), list.Limit(5)}
+	want, err := list.ParseQuery(opts)
+	s.Require().NoError(err)
+
+	s.list(opts...)
+	got, err := list.ParseQuery(received)
+
+	s.Require().NoError(err)
+	s.Equal(want, got)
+}
+
+func (s *EntriesTestSuite) TestCallerOptionsAreNotModified() {
+	s.backend(nil, nil)
+	backing := []options.ListOption{list.Recursive(), ignoredOption{}}
+	opts := backing[:1]
+
+	s.list(opts...)
+
+	s.Equal(ignoredOption{}, backing[1], "adding the parsed query does not write into the caller's spare capacity")
+}
+
+func (s *EntriesTestSuite) TestNativeParsesOptions() {
+	var got list.Query
+	seq := list.Native(s.loc, []options.ListOption{list.Prefix("a/"), list.Limit(3)},
+		func(q list.Query, yield func(vfs.Entry, error) bool) {
+			got = q
+			yield(s.entry("a/x.txt"), nil)
+		})
+
+	entries, err := list.Collect(seq)
+
+	s.Require().NoError(err)
+	s.Len(entries, 1)
+	s.Equal("a/", got.Prefix)
+	s.Equal(3, got.Limit)
+}
+
+func (s *EntriesTestSuite) TestNativeReportsInvalidOptionsWithoutRunning() {
+	ran := false
+	seq := list.Native(s.loc, []options.ListOption{list.FilesOnly(), list.DirsOnly()},
+		func(list.Query, func(vfs.Entry, error) bool) { ran = true })
+
+	_, err := list.Collect(seq)
+
+	s.Require().ErrorIs(err, list.ErrInvalidOption)
+	var pe *fs.PathError
+	s.Require().ErrorAs(err, &pe)
+	s.Equal("list", pe.Op)
+	s.Equal("/root/", pe.Path)
+	s.False(ran)
 }
 
 func (s *EntriesTestSuite) TestInvalidOptions() {
@@ -261,7 +317,7 @@ func (s *EntriesTestSuite) TestBadGlobMatchesBothErrors() {
 }
 
 func (s *EntriesTestSuite) TestBackendReturningNoSequenceYieldsNothing() {
-	s.loc.lister.EXPECT().ListEntries(mock.Anything).Return(nil)
+	s.loc.lister.EXPECT().ListEntries(mock.Anything, mock.Anything).Return(nil)
 
 	s.Empty(s.list())
 }

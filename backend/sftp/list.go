@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	iofs "io/fs"
 	"iter"
 	"net"
 	"path"
@@ -30,14 +29,9 @@ import (
 // A directory that cannot be read is yielded with its entry and an error, and the listing continues; a permission
 // failure matches fs.ErrPermission. A location that does not exist lists nothing.
 func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) iter.Seq2[vfs.Entry, error] {
-	return func(yield func(vfs.Entry, error) bool) {
-		q, err := list.ParseQuery(opts)
-		if err != nil {
-			yield(vfs.Entry{}, &iofs.PathError{Op: "list", Path: l.Path(), Err: err})
-			return
-		}
+	return list.Native(l, opts, func(q list.Query, yield func(vfs.Entry, error) bool) {
 		list.WalkDirs(ctx, l, q, l.readDir, nil)(yield)
-	}
+	})
 }
 
 // readDir reads one directory of the location, taking the connection only for the read.

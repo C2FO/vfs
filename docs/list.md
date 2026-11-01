@@ -27,7 +27,7 @@ Entries are yielded in ascending byte order of their order key \(see [OrderKey](
 
 ### Backend implementers
 
-A backend that lists natively implements vfs.EntryLister and starts from [ParseQuery](<#ParseQuery>). The hints in [Query](<#Query>) let it avoid fetching entries that would be discarded, and [Query.Depth](<#Query.Depth>) gives the deepest level it needs to read. Ignoring a hint is never a correctness bug, because the listing applies every option again to what a backend yields.
+A backend that lists natively implements vfs.EntryLister, usually by returning [Native](<#Native>), which parses the options into a [Query](<#Query>) \(with [ParseQuery](<#ParseQuery>)\) and reports invalid ones. The hints in [Query](<#Query>) let it avoid fetching entries that would be discarded, and [Query.Depth](<#Query.Depth>) gives the deepest level it needs to read. Ignoring a hint is never a correctness bug, because the listing applies every option again to what a backend yields.
 
 ## Index
 
@@ -49,6 +49,7 @@ A backend that lists natively implements vfs.EntryLister and starts from [ParseQ
 - [func Limit\(n int\) options.ListOption](<#Limit>)
 - [func Match\(re \*regexp.Regexp\) options.ListOption](<#Match>)
 - [func MaxDepth\(n int\) options.ListOption](<#MaxDepth>)
+- [func Native\(loc vfs.Location, opts \[\]options.ListOption, run func\(q Query, yield func\(vfs.Entry, error\) bool\)\) iter.Seq2\[vfs.Entry, error\]](<#Native>)
 - [func OrderKey\(e vfs.Entry\) string](<#OrderKey>)
 - [func Prefix\(p string\) options.ListOption](<#Prefix>)
 - [func Recursive\(\) options.ListOption](<#Recursive>)
@@ -595,6 +596,23 @@ func MaxDepth(n int) options.ListOption
 ```
 
 MaxDepth stops descent so that no entry deeper than n path segments below the location is yielded. n must be at least 1, and MaxDepth requires [Recursive](<#Recursive>). MaxDepth cannot be combined with [Glob](<#Glob>).
+
+<a name="Native"></a>
+## func Native
+
+```go
+func Native(loc vfs.Location, opts []options.ListOption, run func(q Query, yield func(vfs.Entry, error) bool)) iter.Seq2[vfs.Entry, error]
+```
+
+Native returns the sequence a backend's ListEntries returns. It parses opts, yields a failure as a \*fs.PathError naming loc, which ends the listing, and otherwise calls run with the Query and the caller's yield. Options Entries already parsed are not parsed again.
+
+```
+func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) iter.Seq2[vfs.Entry, error] {
+	return list.Native(l, opts, func(q list.Query, yield func(vfs.Entry, error) bool) {
+		list.WalkDirs(ctx, l, q, l.readDir, nil)(yield)
+	})
+}
+```
 
 <a name="OrderKey"></a>
 ## func OrderKey

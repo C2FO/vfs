@@ -15,10 +15,7 @@ import (
 	"github.com/c2fo/vfs/v7/backend/azure/types"
 	"github.com/c2fo/vfs/v7/list"
 	"github.com/c2fo/vfs/v7/options"
-	"github.com/c2fo/vfs/v7/utils"
 )
-
-var errNoBlobLister = errors.New("the azure client does not implement types.BlobLister")
 
 // listPageSize is the largest page a listing asks Azure for, so a page costs one request.
 const listPageSize = 1000
@@ -38,16 +35,12 @@ const listPageSize = 1000
 // cursor's position. Listing relies on Azure returning blobs in ascending byte order; a listing that does not ends with
 // an error instead of wrong results.
 //
-// The Client must also implement types.BlobLister, as the default client does; otherwise the listing fails with an error
-// matching errors.ErrUnsupported. A 403 response is reported as an error matching fs.ErrPermission, and a container
+// A Client that does not also implement types.BlobLister, as the default client does, is listed through Location.List
+// and ListByPrefix instead: files only, without size or modification time, and options that need directories, such as
+// list.Recursive, report errors.ErrUnsupported. A 403 response is reported as an error matching fs.ErrPermission, and a container
 // that does not exist is an error, not an empty listing.
 func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) iter.Seq2[vfs.Entry, error] {
-	return func(yield func(vfs.Entry, error) bool) {
-		q, err := list.ParseQuery(opts)
-		if err != nil {
-			yield(vfs.Entry{}, &iofs.PathError{Op: "list", Path: l.Path(), Err: err})
-			return
-		}
+	return list.Native(l, opts, func(q list.Query, yield func(vfs.Entry, error) bool) {
 		client, err := l.fileSystem.Client()
 		if err != nil {
 			yield(vfs.Entry{}, &iofs.PathError{Op: "list", Path: l.Path(), Err: err})
@@ -55,12 +48,17 @@ func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) 
 		}
 		lister, ok := client.(types.BlobLister)
 		if !ok {
-			yield(vfs.Entry{}, &iofs.PathError{Op: "list", Path: l.Path(), Err: fmt.Errorf("%w: %w", errors.ErrUnsupported, errNoBlobLister)})
+			// Without a page-by-page listing, list the way any location without native listing is listed.
+			list.Entries(ctx, legacyLocation{l}, opts...)(yield)
 			return
 		}
 		list.FlatKeys(ctx, l, q, l.pages(lister), l.retryFunc())(yield)
-	}
+	})
 }
+
+// legacyLocation hides the location's ListEntries, so that list.Entries lists it through Location.List and
+// ListByPrefix.
+type legacyLocation struct{ vfs.Location }
 
 // retryFunc returns the retry policy the user configured with Options.RetryFunc, or nil. With none configured the
 // Azure SDK's own retry policy applies to every page request, so the listing adds none.
@@ -71,21 +69,12 @@ func (l *Location) retryFunc() list.RetryFunc {
 	return l.fileSystem.Retry()
 }
 
-// keyPrefix returns the blob name prefix of the location: "" for the container root, otherwise the path with no leading
-// slash and one trailing slash.
-func (l *Location) keyPrefix() string {
-	prefix := utils.RemoveLeadingSlash(l.Path())
-	if prefix == "" {
-		return ""
-	}
-	return utils.EnsureTrailingSlash(prefix)
-}
-
 // pages returns the page function for FlatKeys. It makes one pager when first called and takes each page from it:
 // Azure resumes with an opaque continuation marker the pager holds, so FlatKeys's StartAfter is not sent. FlatKeys drops
 // the keys up to its cursor itself.
 func (l *Location) pages(lister types.BlobLister) list.PageFunc {
-	root := l.keyPrefix()
+	// Path always begins and ends with "/", so this is "" for the root and "a/b/" below it.
+	root := strings.TrimPrefix(l.Path(), "/")
 	var pager types.BlobPager
 
 	return func(ctx context.Context, req list.PageRequest) (list.Page, error) {

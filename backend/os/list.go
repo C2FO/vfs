@@ -21,12 +21,7 @@ import (
 // whose Type is fs.ModeSymlink, and is not followed, so a link to a directory is not descended into. A directory that
 // cannot be read is yielded with its entry and an error, and the listing continues.
 func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) iter.Seq2[vfs.Entry, error] {
-	return func(yield func(vfs.Entry, error) bool) {
-		q, err := list.ParseQuery(opts)
-		if err != nil {
-			yield(vfs.Entry{}, &fs.PathError{Op: "list", Path: l.Path(), Err: err})
-			return
-		}
+	return list.Native(l, opts, func(q list.Query, yield func(vfs.Entry, error) bool) {
 		root := osLocationPath(l)
 		readDir := func(_ context.Context, relDir string) ([]list.Child, error) {
 			dir := filepath.Join(root, filepath.FromSlash(relDir))
@@ -38,7 +33,7 @@ func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) 
 			return readChildren(dir)
 		}
 		list.WalkDirs(ctx, l, q, readDir, nil)(yield)
-	}
+	})
 }
 
 // errNotDirectory is the cause of a listing whose location is not a directory. It is not syscall.ENOTDIR, which on

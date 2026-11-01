@@ -21,7 +21,8 @@ trailing "/" for directories. The same order holds on every backend, which makes
 
 # Backend implementers
 
-A backend that lists natively implements vfs.EntryLister and starts from [ParseQuery]. The hints in [Query] let it
+A backend that lists natively implements vfs.EntryLister, usually by returning [Native], which parses the options
+into a [Query] (with [ParseQuery]) and reports invalid ones. The hints in [Query] let it
 avoid fetching entries that would be discarded, and [Query.Depth] gives the deepest level it needs to read. Ignoring a
 hint is never a correctness bug, because the listing applies every option again to what a backend yields.
 */

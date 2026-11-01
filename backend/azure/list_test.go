@@ -241,15 +241,51 @@ func (s *ListEntriesTestSuite) TestLaterPageFailureEndsTheListing() {
 	s.Require().ErrorIs(errs[0], boom)
 }
 
-func (s *ListEntriesTestSuite) TestClientWithoutBlobListerIsUnsupported() {
-	plain := NewFileSystem(WithClient(mocks.NewClient(s.T())))
-	loc, err := plain.NewLocation("container", "/dir1/")
+// plainLocation returns a location whose Client has only the legacy List method, as a custom client written before
+// BlobLister existed does.
+func (s *ListEntriesTestSuite) plainLocation(path string) (vfs.Location, *mocks.Client) {
+	s.T().Helper()
+	client := mocks.NewClient(s.T())
+	loc, err := NewFileSystem(WithClient(client)).NewLocation("container", path)
 	s.Require().NoError(err)
+	return loc, client
+}
 
-	_, err = list.Collect(list.Entries(s.T().Context(), loc))
+func (s *ListEntriesTestSuite) TestClientWithoutBlobListerFallsBackToList() {
+	loc, client := s.plainLocation("/dir1/")
+	client.EXPECT().List(mock.Anything).Return([]string{"dir1/b.txt", "dir1/a.txt"}, nil).Once()
+
+	entries, err := list.Collect(list.Entries(s.T().Context(), loc))
+
+	s.Require().NoError(err)
+	s.Require().Len(entries, 2)
+	s.Equal("a.txt", entries[0].RelPath())
+	s.Equal("b.txt", entries[1].RelPath())
+	s.Equal("/dir1/a.txt", entries[0].Path())
+	s.False(entries[0].HasMetadata(), "the legacy listing carries no metadata")
+	f, err := entries[0].File()
+	s.Require().NoError(err)
+	s.IsType(&File{}, f)
+	s.Equal("/dir1/a.txt", f.Path())
+}
+
+func (s *ListEntriesTestSuite) TestClientWithoutBlobListerAppliesOptions() {
+	loc, client := s.plainLocation("/dir1/")
+	client.EXPECT().List(mock.Anything).Return([]string{"dir1/a.txt", "dir1/b.csv", "dir1/c.txt"}, nil).Once()
+
+	entries, err := list.Collect(list.Entries(s.T().Context(), loc, list.Glob("*.txt"), list.Limit(1)))
+
+	s.Require().NoError(err)
+	s.Require().Len(entries, 1)
+	s.Equal("a.txt", entries[0].RelPath())
+}
+
+func (s *ListEntriesTestSuite) TestClientWithoutBlobListerCannotListRecursively() {
+	loc, _ := s.plainLocation("/dir1/")
+
+	_, err := list.Collect(list.Entries(s.T().Context(), loc, list.Recursive()))
 
 	s.Require().ErrorIs(err, errors.ErrUnsupported)
-	s.Require().ErrorIs(err, errNoBlobLister)
 }
 
 func (s *ListEntriesTestSuite) TestInvalidOptionsMakeNoRequest() {

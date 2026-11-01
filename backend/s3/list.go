@@ -15,7 +15,6 @@ import (
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/list"
 	"github.com/c2fo/vfs/v7/options"
-	"github.com/c2fo/vfs/v7/utils"
 )
 
 // ListEntries lists the location's contents as a stream of entries in byte order, implementing vfs.EntryLister. Use
@@ -35,35 +34,21 @@ import (
 // An access-denied response is reported as an error matching iofs.ErrPermission. A bucket that does not exist is an
 // error, not an empty listing, so a misspelled bucket is not mistaken for an empty one.
 func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) iter.Seq2[vfs.Entry, error] {
-	return func(yield func(vfs.Entry, error) bool) {
-		q, err := list.ParseQuery(opts)
-		if err != nil {
-			yield(vfs.Entry{}, &iofs.PathError{Op: "list", Path: l.Path(), Err: err})
-			return
-		}
+	return list.Native(l, opts, func(q list.Query, yield func(vfs.Entry, error) bool) {
 		client, err := l.fileSystem.backendClient()
 		if err != nil {
 			yield(vfs.Entry{}, &iofs.PathError{Op: "list", Path: l.Path(), Err: err})
 			return
 		}
 		list.FlatKeys(ctx, l, q, l.pages(client), nil)(yield)
-	}
-}
-
-// keyPrefix returns the key prefix of the location: "" for the bucket root, otherwise the path with no leading slash and
-// one trailing slash.
-func (l *Location) keyPrefix() string {
-	prefix := utils.RemoveLeadingSlash(l.prefix)
-	if prefix == "" {
-		return ""
-	}
-	return utils.EnsureTrailingSlash(prefix)
+	})
 }
 
 // pages returns the page function for FlatKeys. Every request resumes with StartAfter rather than a continuation token,
 // because FlatKeys resumes after a rolled-up directory at a key that no continuation token represents.
 func (l *Location) pages(client backendClient) list.PageFunc {
-	root := l.keyPrefix()
+	// Path always begins and ends with "/", so this is "" for the root and "a/b/" below it.
+	root := strings.TrimPrefix(l.Path(), "/")
 	bucket := l.Authority().String()
 
 	return func(ctx context.Context, req list.PageRequest) (list.Page, error) {
