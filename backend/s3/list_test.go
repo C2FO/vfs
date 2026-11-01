@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	iofs "io/fs"
+	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -131,6 +133,97 @@ func (s *listEntriesTestSuite) TestResumesPastARolledUpDirectory() {
 	}, &s3.ListObjectsV2Output{Contents: objects("dir1/z.txt")})
 
 	s.Equal([]string{"a.txt", "logs/", "z.txt"}, s.keys(s.location("/dir1/")))
+}
+
+// serveKeys answers ListObjectsV2 from sorted keys, up to 1,000 at a time, honoring Prefix, StartAfter and Delimiter as
+// S3 does, and counts the calls.
+func serveKeys(keys []string, calls *int) listObjectsFunc {
+	return func(_ context.Context, in *s3.ListObjectsV2Input, _ ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
+		*calls++
+		prefix, after, delimiter := aws.ToString(in.Prefix), aws.ToString(in.StartAfter), aws.ToString(in.Delimiter)
+		out := &s3.ListObjectsV2Output{IsTruncated: aws.Bool(false)}
+		listed := 0
+		for i := sort.SearchStrings(keys, after); i < len(keys); i++ {
+			key := keys[i]
+			if key <= after || !strings.HasPrefix(key, prefix) {
+				continue
+			}
+			rolled := ""
+			if j := strings.Index(key[len(prefix):], delimiter); delimiter != "" && j >= 0 {
+				rolled = key[:len(prefix)+j+1]
+				if n := len(out.CommonPrefixes); n > 0 && aws.ToString(out.CommonPrefixes[n-1].Prefix) == rolled {
+					continue
+				}
+			}
+			if listed == 1000 {
+				out.IsTruncated = aws.Bool(true)
+				break
+			}
+			listed++
+			if rolled != "" {
+				out.CommonPrefixes = append(out.CommonPrefixes, commonPrefixes(rolled)...)
+			} else {
+				out.Contents = append(out.Contents, objects(key)...)
+			}
+		}
+		return out, nil
+	}
+}
+
+type listObjectsFunc = func(context.Context, *s3.ListObjectsV2Input, ...func(*s3.Options)) (*s3.ListObjectsV2Output, error)
+
+func (s *listEntriesTestSuite) TestSkippedDirectoriesAreNotRequested() {
+	// Ten directories, each with a manifest and three subdirectories of 2,000 keys: 60,010 keys, which take 61 requests
+	// to read in full.
+	keys := make([]string, 0, 60_010)
+	for d := range 10 {
+		keys = append(keys, fmt.Sprintf("dir1/d%d/manifest.json", d))
+		for _, sub := range []string{"a", "b", "c"} {
+			for k := range 2000 {
+				keys = append(keys, fmt.Sprintf("dir1/d%d/%s/%04d", d, sub, k))
+			}
+		}
+	}
+	sort.Strings(keys)
+	manifests := make([]string, 0, 10)
+	for d := range 10 {
+		manifests = append(manifests, fmt.Sprintf("d%d/manifest.json", d))
+	}
+
+	tests := []struct {
+		name string
+		opts []options.ListOption
+	}{
+		{name: "glob", opts: []options.ListOption{list.Glob("*/manifest.json")}},
+		{name: "max depth", opts: []options.ListOption{list.Recursive(), list.MaxDepth(2), list.FilesOnly()}},
+		{
+			name: "pruned",
+			opts: []options.ListOption{
+				list.Recursive(), list.FilesOnly(),
+				list.DirFilter(func(e vfs.Entry) bool { return strings.HasPrefix(e.Name(), "d") }),
+			},
+		},
+	}
+	for i := range tests {
+		tt := &tests[i]
+		s.Run(tt.name, func() {
+			s.SetupTest()
+			calls := 0
+			s.client.v2.EXPECT().ListObjectsV2(mock.Anything, mock.Anything).RunAndReturn(serveKeys(keys, &calls))
+
+			s.Equal(manifests, s.keys(s.location("/dir1/"), tt.opts...))
+			// One request for each of the 30 skipped subdirectories, which each start a page, and one for the last
+			// manifest.
+			s.Equal(31, calls)
+		})
+	}
+}
+
+func (s *listEntriesTestSuite) TestRecursiveListingOneLevelDeepIsDelimited() {
+	s.expectList(&s3.ListObjectsV2Input{Bucket: aws.String("bucket"), Prefix: aws.String("dir1/logs/"), Delimiter: aws.String("/")},
+		&s3.ListObjectsV2Output{Contents: objects("dir1/logs/a.gz"), CommonPrefixes: commonPrefixes("dir1/logs/old/")})
+
+	s.Equal([]string{"logs/a.gz"}, s.keys(s.location("/dir1/"), list.Glob("logs/*.gz")))
 }
 
 func (s *listEntriesTestSuite) TestBucketRootHasNoPrefix() {

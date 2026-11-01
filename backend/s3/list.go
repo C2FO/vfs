@@ -25,7 +25,9 @@ import (
 // itself, so reading them makes no further request, and Entry.Sys returns the listed types.Object. S3 can list a
 // modification time with different precision than HeadObject reports, so a listed time can differ from
 // File.LastModified by less than a second. A non-recursive
-// listing asks S3 to roll keys up at "/", and a recursive listing does not. S3 has no directories, so a directory
+// listing asks S3 to roll keys up at "/", as does a recursive one whose MaxDepth stops one level inside the directory
+// of its prefix; other recursive listings do not. A recursive listing that skips a directory, because of MaxDepth,
+// DirFilter or a Glob, resumes after it instead of requesting the keys inside it. S3 has no directories, so a directory
 // entry exists wherever a key has a "/" below the listed location, whether or not a folder marker object exists.
 //
 // Listing relies on S3 returning keys in ascending byte order, as general purpose buckets do. A listing that returns
@@ -45,7 +47,7 @@ func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) 
 }
 
 // pages returns the page function for FlatKeys. Every request resumes with StartAfter rather than a continuation token,
-// because FlatKeys resumes after a rolled-up directory at a key that no continuation token represents.
+// because FlatKeys resumes after a rolled-up or skipped directory at a key that no continuation token represents.
 func (l *Location) pages(client backendClient) list.PageFunc {
 	// Path always begins and ends with "/", so this is "" for the root and "a/b/" below it.
 	root := strings.TrimPrefix(l.Path(), "/")

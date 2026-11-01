@@ -29,13 +29,20 @@ type Object struct {
 // PageRequest describes the page FlatKeys needs next.
 type PageRequest struct {
 	// StartAfter is the key after which the page must start. A backend that keeps its own continuation token between
-	// calls may follow the token instead, because FlatKeys always resumes immediately after the previous page.
+	// calls may follow the token instead unless Seek is set, because FlatKeys otherwise resumes immediately after the
+	// previous page.
 	StartAfter string
 	// Prefix is the relative path every wanted key starts with, or "".
 	Prefix string
 	// Delimited reports whether to roll keys up at the next "/" after Prefix and return the rolled-up directories as
-	// Page.Prefixes. It is true for a non-recursive listing and false for a recursive one.
+	// Page.Prefixes. It is true for a non-recursive listing, and for a recursive one whose depth limit stops one level
+	// inside the directory Prefix names, which lists the same entries.
 	Delimited bool
+	// Seek reports that StartAfter lies past the end of the previous page, because the keys in between are inside a
+	// directory the listing skips: one DirFilter pruned or one deeper than MaxDepth allows. A backend that keeps its own
+	// continuation token starts a new listing at StartAfter to avoid reading those keys. A backend that cannot start
+	// after a key may continue from its token instead, because FlatKeys drops the skipped keys itself.
+	Seek bool
 }
 
 // Page is one page of a flat listing.
@@ -74,8 +81,15 @@ func FlatKeys(ctx context.Context, parent vfs.Location, q Query, pages PageFunc,
 			win:     newWindow(q),
 			descend: descender(q),
 		}
-		f.run(pages, retry, PageRequest{StartAfter: q.StartAfter, Prefix: q.Prefix, Delimited: !q.Recursive})
+		f.run(pages, retry, PageRequest{StartAfter: q.StartAfter, Prefix: q.Prefix, Delimited: delimited(q)})
 	}
+}
+
+// delimited reports whether the backend can roll keys up at the next "/" after q.Prefix. A recursive listing whose
+// depth limit stops one level inside the directory the prefix names lists the same entries as a non-recursive one, and
+// Descend is never asked about a directory at the depth limit, so rolling up saves reading the keys below that level.
+func delimited(q Query) bool {
+	return !q.Recursive || (q.MaxDepth > 0 && q.MaxDepth <= strings.Count(q.Prefix, "/")+1)
 }
 
 type flat struct {
@@ -128,7 +142,7 @@ func (f *flat) run(pages PageFunc, retry RetryFunc, req PageRequest) {
 			f.fail(vfs.Entry{}, listError(f.parent.Path(), errors.New("page requests made no progress")))
 			return
 		}
-		req.StartAfter = resumeAfter(req, items)
+		req.StartAfter, req.Seek = f.resumeAfter(req, items)
 	}
 }
 
@@ -170,21 +184,28 @@ func mergePage(p Page) []flatItem {
 // with that exact character right after the slash could be skipped.
 const pastDirectory = "\U0010FFFF"
 
-// resumeAfter returns the key the next page starts after. After a rolled-up directory it is the directory's key
-// plus pastDirectory, because StartAfter with the directory's own key would roll the same directory up again.
-func resumeAfter(req PageRequest, items []flatItem) string {
-	if len(items) == 0 {
-		return req.StartAfter
+// resumeAfter returns the key the next page starts after, and whether that key skips past the end of the page. After
+// a rolled-up directory it is the directory's key plus pastDirectory, because StartAfter with the directory's own key
+// would roll the same directory up again. While the page ends inside a skipped directory, it is past that directory,
+// so the keys inside it are never requested; each skipped directory therefore costs at most one request.
+func (f *flat) resumeAfter(req PageRequest, items []flatItem) (string, bool) {
+	next := req.StartAfter
+	if len(items) > 0 {
+		lastItem := items[len(items)-1]
+		key := lastItem.key
+		if req.Delimited && lastItem.prefix {
+			key += pastDirectory
+		}
+		next = max(next, key)
 	}
-	lastItem := items[len(items)-1]
-	next := lastItem.key
-	if req.Delimited && lastItem.prefix {
-		next += pastDirectory
+	// skipUnder is cleared by the first key outside it, so if it is still set, every key since it was set, including
+	// the last one of this page, is inside it.
+	if f.skipUnder != "" {
+		if past := f.skipUnder + "/" + pastDirectory; past > next {
+			return past, true
+		}
 	}
-	if next < req.StartAfter {
-		return req.StartAfter
-	}
-	return next
+	return next, false
 }
 
 // process handles one item. advanced reports whether it sorted after every earlier item, and ok is false once the

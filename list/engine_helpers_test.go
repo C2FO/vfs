@@ -104,6 +104,10 @@ type fakeBucket struct {
 	requests []list.PageRequest
 	pageErr  func(call int) error
 	mutate   func(call int, p *list.Page)
+	// ignoreSeek makes a request that seeks continue right after the previous page instead, as a backend that
+	// cannot start after a key, such as azure, does.
+	ignoreSeek bool
+	resume     string
 }
 
 func (b *fakeBucket) pages(_ context.Context, req list.PageRequest) (list.Page, error) {
@@ -113,6 +117,10 @@ func (b *fakeBucket) pages(_ context.Context, req list.PageRequest) (list.Page, 
 		if err := b.pageErr(call); err != nil {
 			return list.Page{}, err
 		}
+	}
+
+	if req.Seek && b.ignoreSeek {
+		req.StartAfter = b.resume
 	}
 
 	var page list.Page
@@ -147,6 +155,7 @@ func (b *fakeBucket) pages(_ context.Context, req list.PageRequest) (list.Page, 
 		count++
 	}
 	page.Done = !more
+	b.resume = max(b.resume, lastKey(page))
 	if b.mutate != nil {
 		b.mutate(call, &page)
 	}
@@ -154,6 +163,19 @@ func (b *fakeBucket) pages(_ context.Context, req list.PageRequest) (list.Page, 
 }
 
 func (b *fakeBucket) full(count int) bool { return b.pageSize > 0 && count >= b.pageSize }
+
+// lastKey returns the key a continuation token after page would resume after: its last object, or past its last
+// rolled-up directory.
+func lastKey(page list.Page) string {
+	last := ""
+	if n := len(page.Objects); n > 0 {
+		last = page.Objects[n-1].Key
+	}
+	if n := len(page.Prefixes); n > 0 {
+		last = max(last, page.Prefixes[n-1]+"\U0010FFFF")
+	}
+	return last
+}
 
 // sortedKeys returns the bucket keys for paths, sorted in byte order.
 func sortedKeys(paths ...string) []string {

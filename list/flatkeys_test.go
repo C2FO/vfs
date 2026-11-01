@@ -195,6 +195,119 @@ func (s *FlatKeysTestSuite) TestResumesPastARolledUpDirectory() {
 	s.Len(b.requests, 3)
 }
 
+// startsAfter returns the StartAfter and Seek of each request.
+func startsAfter(requests []list.PageRequest) (starts []string, seeks []bool) {
+	for _, req := range requests {
+		starts = append(starts, req.StartAfter)
+		seeks = append(seeks, req.Seek)
+	}
+	return starts, seeks
+}
+
+func (s *FlatKeysTestSuite) TestSeeksPastSkippedDirectories() {
+	keys := sortedKeys(
+		"a/deep/1", "a/deep/2", "a/deep/3", "a/deep/4", "a/deep/5", "a/deep/6", "a/x.txt",
+		"b/deep/1", "b/deep/2", "b/deep/3", "b/deep/4", "b/deep/5", "b/deep/6", "b/x.txt",
+		"c.txt",
+	)
+	tests := []struct {
+		name     string
+		opts     []options.ListOption
+		expected []string
+	}{
+		{
+			name:     "depth limit",
+			opts:     []options.ListOption{list.Recursive(), list.MaxDepth(2)},
+			expected: []string{"a/", "a/deep/", "a/x.txt", "b/", "b/deep/", "b/x.txt", "c.txt"},
+		},
+		{
+			name:     "pruned",
+			opts:     []options.ListOption{list.Recursive(), list.DirFilter(func(e vfs.Entry) bool { return e.Name() != "deep" })},
+			expected: []string{"a/", "a/deep/", "a/x.txt", "b/", "b/deep/", "b/x.txt", "c.txt"},
+		},
+		{
+			name:     "glob with a slash",
+			opts:     []options.ListOption{list.Glob("*/x.txt")},
+			expected: []string{"a/", "a/deep/", "a/x.txt", "b/", "b/deep/", "b/x.txt", "c.txt"},
+		},
+	}
+	for i := range tests {
+		tt := &tests[i]
+		s.Run(tt.name, func() {
+			b := &fakeBucket{keys: keys, pageSize: 2}
+			rs := s.flat(b, tt.opts...)
+			s.Empty(errsOf(rs))
+			s.Equal(tt.expected, keysOf(rs))
+
+			// Each page ends inside a skipped directory, so the next one starts past it: three requests instead of the
+			// eight that reading all 15 keys two at a time takes.
+			starts, seeks := startsAfter(b.requests)
+			s.Equal([]string{"", "a/deep/\U0010FFFF", "b/deep/\U0010FFFF"}, starts)
+			s.Equal([]bool{false, true, true}, seeks)
+		})
+	}
+}
+
+func (s *FlatKeysTestSuite) TestPageThatLeavesASkippedDirectoryDoesNotSeek() {
+	b := &fakeBucket{keys: sortedKeys("a/deep/1", "a/x.txt", "b/deep/1", "b/deep/2", "b/deep/3"), pageSize: 2}
+	rs := s.flat(b, list.Recursive(), list.MaxDepth(2))
+	s.Empty(errsOf(rs))
+	s.Equal([]string{"a/", "a/deep/", "a/x.txt", "b/", "b/deep/"}, keysOf(rs))
+
+	starts, seeks := startsAfter(b.requests)
+	s.Equal([]string{"", "a/x.txt", "b/deep/\U0010FFFF"}, starts,
+		"a page whose last key is past the skipped directory resumes after that key")
+	s.Equal([]bool{false, false, true}, seeks)
+}
+
+func (s *FlatKeysTestSuite) TestBackendThatIgnoresSeeksIsStillCorrect() {
+	keys := sortedKeys("a/deep/1", "a/deep/2", "a/deep/3", "a/deep/4", "a/x.txt", "b.txt")
+	b := &fakeBucket{keys: keys, pageSize: 2, ignoreSeek: true}
+	rs := s.flat(b, list.Recursive(), list.MaxDepth(2))
+	s.Empty(errsOf(rs))
+	s.Equal([]string{"a/", "a/deep/", "a/x.txt", "b.txt"}, keysOf(rs))
+	s.Len(b.requests, 3, "a backend that continues from its own token reads the skipped keys and FlatKeys drops them")
+}
+
+func (s *FlatKeysTestSuite) TestDelimitsARecursiveListingThatStopsOneLevelDown() {
+	tests := []struct {
+		name      string
+		opts      []options.ListOption
+		delimited bool
+	}{
+		{name: "max depth 1", opts: []options.ListOption{list.Recursive(), list.MaxDepth(1)}, delimited: true},
+		{name: "max depth 2", opts: []options.ListOption{list.Recursive(), list.MaxDepth(2)}},
+		{name: "no depth limit", opts: []options.ListOption{list.Recursive()}},
+		{
+			name:      "max depth one level inside a nested prefix",
+			opts:      []options.ListOption{list.Recursive(), list.Prefix("to/rep"), list.MaxDepth(2)},
+			delimited: true,
+		},
+		{name: "glob in one directory", opts: []options.ListOption{list.Glob("logs/*.gz")}, delimited: true},
+		{name: "glob across directories", opts: []options.ListOption{list.Glob("*/*.gz")}},
+	}
+	keys := sortedKeys("logs/a.gz", "logs/old/b.gz", "to/report.csv", "to/reports/z.csv", "top.txt")
+	for i := range tests {
+		tt := &tests[i]
+		s.Run(tt.name, func() {
+			b := &fakeBucket{keys: keys}
+			undelimited := &fakeBucket{keys: keys}
+			q := s.query(tt.opts...)
+			rs := s.flat(b, tt.opts...)
+			ignoresDelimiter := func(ctx context.Context, req list.PageRequest) (list.Page, error) {
+				req.Delimited = false
+				return undelimited.pages(ctx, req)
+			}
+			want := drain(list.FlatKeys(s.T().Context(), s.loc(), q, ignoresDelimiter, nil))
+
+			s.Require().NotEmpty(b.requests)
+			s.Equal(tt.delimited, b.requests[0].Delimited)
+			s.Empty(errsOf(rs))
+			s.Equal(keysOf(want), keysOf(rs), "rolling keys up lists the same entries")
+		})
+	}
+}
+
 func (s *FlatKeysTestSuite) TestWindow() {
 	keys := sortedKeys("a/b/c.txt", "a/b/d/e.txt", "to/report.csv", "to/reports/z.csv", "to/x/y.csv", "top.txt")
 	tests := []struct {

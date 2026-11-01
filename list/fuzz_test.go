@@ -229,10 +229,13 @@ func FuzzEnginesAgree(f *testing.F) {
 		objectKeys := slices.Clone(paths)
 		slices.Sort(objectKeys)
 		for _, pageSize := range []int{0, 1, 2, 5} {
-			bucket := &fakeBucket{keys: objectKeys, pageSize: pageSize}
-			flat := drain(list.FlatKeys(t.Context(), base, q, bucket.pages, nil))
-			require.Empty(t, errsOf(flat))
-			require.Equal(t, nonNil(window), nonNil(keysOf(flat)), "FlatKeys page size %d, paths %q", pageSize, paths)
+			for _, ignoreSeek := range []bool{false, true} {
+				bucket := &fakeBucket{keys: objectKeys, pageSize: pageSize, ignoreSeek: ignoreSeek}
+				flat := drain(list.FlatKeys(t.Context(), base, q, bucket.pages, nil))
+				require.Empty(t, errsOf(flat))
+				require.Equal(t, nonNil(window), nonNil(keysOf(flat)),
+					"FlatKeys page size %d, ignoring seeks %t, paths %q", pageSize, ignoreSeek, paths)
+			}
 		}
 
 		sources := map[string]serveFunc{

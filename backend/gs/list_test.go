@@ -8,6 +8,7 @@ import (
 	"io"
 	iofs "io/fs"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -196,19 +197,30 @@ func (s *listEntriesTestSuite) TestListingMatchesFileMetadata() {
 }
 
 // pagedTransport answers object-list requests with synthetic pages of up to 1,000 objects, as GCS does, because the fake
-// server returns every object in one response. It honors startOffset, and fails the request numbered failAt (from 1)
-// once with a 400 when failAt is set.
+// server returns every object in one response. It serves names, or total objects named dir1/k0000 onward when names is
+// nil. It honors startOffset, records it in offsets, and fails the request numbered failAt (from 1) once with a 400 when
+// failAt is set.
 type pagedTransport struct {
 	total  int
+	names  []string
 	failAt int
 
 	mu       sync.Mutex
 	requests []string
+	offsets  []string
+}
+
+func (p *pagedTransport) name(i int) string {
+	if p.names != nil {
+		return p.names[i]
+	}
+	return fmt.Sprintf("dir1/k%04d", i)
 }
 
 func (p *pagedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	p.mu.Lock()
 	p.requests = append(p.requests, req.URL.Query().Get("pageToken"))
+	p.offsets = append(p.offsets, req.URL.Query().Get("startOffset"))
 	fail := len(p.requests) == p.failAt
 	p.mu.Unlock()
 	if fail {
@@ -221,22 +233,28 @@ func (p *pagedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		}, nil
 	}
 
+	total := p.total
+	if p.names != nil {
+		total = len(p.names)
+	}
 	start := 0
-	if offset := req.URL.Query().Get("startOffset"); offset != "" {
+	if offset := req.URL.Query().Get("startOffset"); offset != "" && p.names != nil {
+		start = sort.SearchStrings(p.names, offset)
+	} else if offset != "" {
 		start, _ = strconv.Atoi(strings.TrimPrefix(offset, "dir1/k"))
 	}
 	if token := req.URL.Query().Get("pageToken"); token != "" {
 		start, _ = strconv.Atoi(token)
 	}
-	end := min(start+listPageSize, p.total)
+	end := min(start+listPageSize, total)
 	items := make([]map[string]string, 0, end-start)
 	for i := start; i < end; i++ {
 		items = append(items, map[string]string{
-			"name": fmt.Sprintf("dir1/k%04d", i), "bucket": listBucket, "size": "10", "updated": "2026-01-01T00:00:00Z",
+			"name": p.name(i), "bucket": listBucket, "size": "10", "updated": "2026-01-01T00:00:00Z",
 		})
 	}
 	body := map[string]any{"kind": "storage#objects", "items": items}
-	if end < p.total {
+	if end < total {
 		body["nextPageToken"] = strconv.Itoa(end)
 	}
 	data, err := json.Marshal(body)
@@ -278,6 +296,23 @@ func (s *listEntriesTestSuite) TestAThousandObjectsMakeOneRequest() {
 	s.Equal("k0000", keys[0])
 	s.Equal("k2499", keys[2499])
 	s.Equal([]string{"", "1000", "2000"}, transport.requests, "2,500 objects take exactly three list requests")
+}
+
+func (s *listEntriesTestSuite) TestSkippedDirectoryStartsANewIterator() {
+	names := make([]string, 0, 3002)
+	for k := range 3000 {
+		names = append(names, fmt.Sprintf("dir1/a/deep/k%04d", k))
+	}
+	names = append(names, "dir1/a/z.txt", "dir1/b.txt")
+	loc, transport := s.pagedLocationWith(&pagedTransport{names: names})
+
+	keys := s.keys(loc, list.Recursive(), list.MaxDepth(2))
+
+	s.Equal([]string{"a/", "a/deep/", "a/z.txt", "b.txt"}, keys)
+	s.Equal([]string{"", ""}, transport.requests,
+		"the second request is the first of a new iterator, not the second page of the old one")
+	s.Equal([]string{"", "dir1/a/deep/\U0010FFFF"}, transport.offsets,
+		"the new iterator starts past the skipped directory instead of reading its other 2,000 objects")
 }
 
 func (s *listEntriesTestSuite) TestStoppingEarlyStopsTheRequests() {

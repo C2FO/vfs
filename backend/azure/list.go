@@ -26,14 +26,15 @@ const listPageSize = 1000
 // Blobs are read one page of up to 1,000 at a time, and a page is requested only when the listing needs more, so a
 // listing that stops early stops its requests. The size and modification time of every file come from the listing
 // itself, so reading them makes no further request, and Entry.Sys returns the listed *container.BlobItem. A
-// non-recursive listing is a hierarchy listing that rolls blobs up at "/", and a recursive listing is a flat listing.
-// A directory entry exists wherever a blob name has a "/" below the listed location, whether or not a placeholder blob
-// exists.
+// non-recursive listing is a hierarchy listing that rolls blobs up at "/", as is a recursive one whose MaxDepth stops one
+// level inside the directory of its prefix, and other recursive listings are flat listings. A directory entry exists
+// wherever a blob name has a "/" below the listed location, whether or not a placeholder blob exists.
 //
 // Azure cannot start a listing after a given name, so a listing that starts after a cursor, such as one that resumes
 // with list.After, reads the blobs before the cursor and drops them. The cost of such a listing grows with the
-// cursor's position. Listing relies on Azure returning blobs in ascending byte order; a listing that does not ends with
-// an error instead of wrong results.
+// cursor's position. For the same reason a recursive listing that skips a directory, because of MaxDepth, DirFilter or
+// a Glob, reads the blobs inside it and drops them. Listing relies on Azure returning blobs in ascending byte order; a
+// listing that does not ends with an error instead of wrong results.
 //
 // A Client that does not also implement types.BlobLister, as the default client does, is listed through Location.List
 // and ListByPrefix instead: files only, without size or modification time, and options that need directories, such as
@@ -70,8 +71,9 @@ func (l *Location) retryFunc() list.RetryFunc {
 }
 
 // pages returns the page function for FlatKeys. It makes one pager when first called and takes each page from it:
-// Azure resumes with an opaque continuation marker the pager holds, so FlatKeys's StartAfter is not sent. FlatKeys drops
-// the keys up to its cursor itself.
+// Azure resumes with an opaque continuation marker the pager holds, so FlatKeys's StartAfter is not sent, and a
+// req.Seek past a skipped directory is not followed. FlatKeys drops the keys up to its cursor and inside skipped
+// directories itself.
 func (l *Location) pages(lister types.BlobLister) list.PageFunc {
 	// Path always begins and ends with "/", so this is "" for the root and "a/b/" below it.
 	root := strings.TrimPrefix(l.Path(), "/")

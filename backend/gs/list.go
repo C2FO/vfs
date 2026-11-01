@@ -28,9 +28,11 @@ const listPageSize = 1000
 // Objects are read from one GCS object iterator, which fetches a page of up to 1,000 objects only when the listing
 // needs more, so a listing that stops early stops its requests. The size and modification time of every file come from
 // the listing itself, so reading them makes no further request, and Entry.Sys returns the listed *storage.ObjectAttrs.
-// A non-recursive listing asks GCS to roll objects up at "/", and a recursive listing does not. GCS has no directories
-// in flat buckets, so a directory entry exists wherever an object name has a "/" below the listed location, whether or
-// not a folder placeholder object exists.
+// A non-recursive listing asks GCS to roll objects up at "/", as does a recursive one whose MaxDepth stops one level
+// inside the directory of its prefix; other recursive listings do not. A recursive listing that skips a directory,
+// because of MaxDepth, DirFilter or a Glob, starts a new iterator after it instead of reading the objects inside it.
+// GCS has no directories in flat buckets, so a directory entry exists wherever an object name has a "/" below the
+// listed location, whether or not a folder placeholder object exists.
 //
 // A 403 response is reported as an error matching fs.ErrPermission. A bucket that does not exist is an error, not an
 // empty listing, so a misspelled bucket is not mistaken for an empty one.
@@ -51,16 +53,17 @@ func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) 
 }
 
 // pages returns the page function for FlatKeys. It makes one object iterator when first called and takes each page from
-// it, rather than starting a new listing for each page: FlatKeys resumes immediately after the previous page, which is
-// where the iterator already is, and the iterator rolls up directories itself. An iterator that fails keeps returning
-// the same error, so after a failure the next call, such as a retry, starts a new iterator at req.StartAfter.
+// it, rather than starting a new listing for each page: unless it seeks, FlatKeys resumes immediately after the
+// previous page, which is where the iterator already is, and the iterator rolls up directories itself. A new iterator
+// starts at req.StartAfter when FlatKeys seeks past a skipped directory, and after a failure, because an iterator that
+// fails keeps returning the same error.
 func (l *Location) pages(handle BucketHandleWrapper) list.PageFunc {
 	// Path always begins and ends with "/", so this is "" for the root and "a/b/" below it.
 	root := strings.TrimPrefix(l.Path(), "/")
 	var objects ObjectIteratorWrapper
 
 	return func(ctx context.Context, req list.PageRequest) (list.Page, error) {
-		if objects == nil {
+		if objects == nil || req.Seek {
 			query := &storage.Query{Prefix: root + req.Prefix}
 			if req.Delimited {
 				query.Delimiter = "/"
