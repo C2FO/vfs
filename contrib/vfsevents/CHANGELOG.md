@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [[contrib/vfsevents/v1.4.4](https://github.com/C2FO/vfs/releases/tag/contrib%2Fvfsevents%2Fv1.4.4)] - 2026-11-02
 ### Fixed
 - Internal code cleanup with no behavior change: use `min` and `sync.WaitGroup.Go` where `modernize` suggested them. GCS event fields `timeDeleted`, `timeFinalized`, `updated`, and `owner` drop a no-op `omitempty`; zero values are still encoded, because `omitzero` would omit them. Removed four unused `//nolint:gosec` directives and handled two unchecked channel receives in tests so the module lints clean ([#391](https://github.com/C2FO/vfs/issues/391)).
 
