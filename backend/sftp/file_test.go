@@ -197,7 +197,7 @@ func (ts *fileTestSuite) TestOpenFile() {
 					authority: auth,
 					fileSystem: &FileSystem{
 						sftpclient: client,
-						options:    Options{FilePermissions: utils.Ptr("0644")},
+						options:    Options{FilePermissions: new("0644")},
 					},
 				},
 			}
@@ -814,7 +814,7 @@ func (ts *fileTestSuite) TestTouch() {
 						options: Options{
 							FilePermissions: func() *string {
 								if tc.setPermissions {
-									return utils.Ptr("0666")
+									return new("0666")
 								}
 								return nil
 							}(),
@@ -949,7 +949,7 @@ func (ts *fileTestSuite) TestSetDefaultPermissions() {
 				return client
 			}(),
 			options: func() Options {
-				opts := Options{FilePermissions: utils.Ptr("0644")}
+				opts := Options{FilePermissions: new("0644")}
 				return opts
 			}(),
 			expectedError: false,
@@ -962,7 +962,7 @@ func (ts *fileTestSuite) TestSetDefaultPermissions() {
 				return client
 			}(),
 			options: func() Options {
-				opts := Options{FilePermissions: utils.Ptr("0644")}
+				opts := Options{FilePermissions: new("0644")}
 				return opts
 			}(),
 			expectedError:  true,

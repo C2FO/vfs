@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -311,7 +310,7 @@ func (s *FileTestSuite) TestSize() {
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.Require().NoError(err, "The path is valid so no error should be returned")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{Size: to.Ptr[int64](5)}, nil)
+	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{Size: new(int64(5))}, nil)
 	size, err := f.Size()
 	s.Require().NoError(err)
 	s.Equal(uint64(5), size, "The size should be 5")

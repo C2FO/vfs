@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math/rand/v2"
 	"net/http"
 	"net/url"
@@ -161,9 +162,7 @@ func (c *driveClient) roundTrip(ctx context.Context, r request, body io.Reader) 
 		return nil, err
 	}
 	req.ContentLength = r.size
-	for k, v := range r.header {
-		req.Header[k] = v
-	}
+	maps.Copy(req.Header, r.header)
 
 	return c.httpClient.Do(req)
 }

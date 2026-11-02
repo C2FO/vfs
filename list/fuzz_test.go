@@ -172,8 +172,8 @@ func fuzzEntries(t *testing.T, loc vfs.Location, keys []string) []result {
 	out := make([]result, 0, len(keys))
 	for _, key := range keys {
 		build, rel := vfs.NewFileEntry, key
-		if strings.HasSuffix(key, "/") {
-			build, rel = vfs.NewDirEntry, strings.TrimSuffix(key, "/")
+		if before, ok := strings.CutSuffix(key, "/"); ok {
+			build, rel = vfs.NewDirEntry, before
 		}
 		e, err := build(loc, rel)
 		require.NoError(t, err)

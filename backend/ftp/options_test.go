@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/c2fo/vfs/v7/utils"
 	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
@@ -42,7 +41,7 @@ func (s *optionsSuite) TestFetchUsername() {
 		{
 			description: "env var is set",
 			authority:   "host.com",
-			envVar:      utils.Ptr("alice"),
+			envVar:      new("alice"),
 			expected:    "alice",
 		},
 		{
@@ -56,7 +55,7 @@ func (s *optionsSuite) TestFetchUsername() {
 		{
 			description: "options username overrides env var",
 			authority:   "host.com",
-			envVar:      utils.Ptr("bob"),
+			envVar:      new("bob"),
 			options: Options{
 				Username: "alice",
 			},
@@ -98,17 +97,17 @@ func (s *optionsSuite) TestFetchPassword() {
 		{
 			description: "env var is set but with empty value",
 			expected:    "",
-			envVar:      utils.Ptr(""),
+			envVar:      new(""),
 		},
 		{
 			description: "env var is set, value should override",
 			expected:    "12abc3",
-			envVar:      utils.Ptr("12abc3"),
+			envVar:      new("12abc3"),
 		},
 		{
 			description: "option should override",
 			expected:    "xyz123",
-			envVar:      utils.Ptr("12abc3"),
+			envVar:      new("12abc3"),
 			options: Options{
 				Password: "xyz123",
 			},
@@ -176,27 +175,27 @@ func (s *optionsSuite) TestIsDisableEPSV() {
 		},
 		{
 			description: "env var is set but empty",
-			envVar:      utils.Ptr(""),
+			envVar:      new(""),
 			expected:    false,
 		},
 		{
 			description: "env var is set and is a non-true value",
-			envVar:      utils.Ptr("not expected"),
+			envVar:      new("not expected"),
 			expected:    false,
 		},
 		{
 			description: "env var is set and is a `false` value",
-			envVar:      utils.Ptr("false"),
+			envVar:      new("false"),
 			expected:    false,
 		},
 		{
 			description: "env var is set and is '1' value",
-			envVar:      utils.Ptr("1"),
+			envVar:      new("1"),
 			expected:    true,
 		},
 		{
 			description: "env var is set and is 'true'",
-			envVar:      utils.Ptr("true"),
+			envVar:      new("true"),
 			expected:    true,
 		},
 		{
@@ -215,7 +214,7 @@ func (s *optionsSuite) TestIsDisableEPSV() {
 		},
 		{
 			description: "env var is set true but Options is set to false'",
-			envVar:      utils.Ptr("true"),
+			envVar:      new("true"),
 			options: Options{
 				DisableEPSV: &falseVal,
 			},
@@ -223,7 +222,7 @@ func (s *optionsSuite) TestIsDisableEPSV() {
 		},
 		{
 			description: "env var is set true but Options is set to false'",
-			envVar:      utils.Ptr("false"),
+			envVar:      new("false"),
 			options: Options{
 				DisableEPSV: &trueVal,
 			},
@@ -339,22 +338,22 @@ func (s *optionsSuite) TestFetchProtocol() {
 		},
 		{
 			description: "env var is set but empty",
-			envVar:      utils.Ptr(""),
+			envVar:      new(""),
 			expected:    "",
 		},
 		{
 			description: "env var is set to ftps",
-			envVar:      utils.Ptr("FTPS"),
+			envVar:      new("FTPS"),
 			expected:    ProtocolFTPS,
 		},
 		{
 			description: "env var is set to ftpes",
-			envVar:      utils.Ptr("FTPES"),
+			envVar:      new("FTPES"),
 			expected:    ProtocolFTPES,
 		},
 		{
 			description: "env var is set to garbage",
-			envVar:      utils.Ptr("blah"),
+			envVar:      new("blah"),
 			expected:    "blah",
 		},
 		{
@@ -366,7 +365,7 @@ func (s *optionsSuite) TestFetchProtocol() {
 		},
 		{
 			description: "options set to FTPES - overriding FTPS",
-			envVar:      utils.Ptr("FTPS"),
+			envVar:      new("FTPS"),
 			options: Options{
 				Protocol: ProtocolFTPES,
 			},
@@ -403,19 +402,19 @@ func (s *optionsSuite) TestFetchDialOptions() {
 		{
 			description: "protocol env var is set to FTPS",
 			authority:   "user@host.com",
-			envVar:      utils.Ptr(ProtocolFTPS),
+			envVar:      new(ProtocolFTPS),
 			expected:    3,
 		},
 		{
 			description: "protocol env var is set to FTPES",
 			authority:   "user@host.com",
-			envVar:      utils.Ptr(ProtocolFTPES),
+			envVar:      new(ProtocolFTPES),
 			expected:    3,
 		},
 		{
 			description: "protocol is set to empty",
 			authority:   "user@host.com",
-			envVar:      utils.Ptr(""),
+			envVar:      new(""),
 			expected:    2,
 		},
 		{

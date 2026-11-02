@@ -356,9 +356,7 @@ func (s *memLocationTest) TestNewFileWhileClosing() {
 	s.Require().NoError(seed.Close())
 
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for range 200 {
 			f, err := location.NewFile("x.txt")
 			if err != nil {
@@ -367,7 +365,7 @@ func (s *memLocationTest) TestNewFileWhileClosing() {
 			_, _ = f.Write([]byte("data"))
 			_ = f.Close()
 		}
-	}()
+	})
 	for range 200 {
 		_, err := location.NewFile("x.txt")
 		s.Require().NoError(err)

@@ -147,7 +147,7 @@ func (w *S3Watcher) Start(
 		opt(c)
 	}
 
-	ctx, cancel := context.WithCancel(ctx) //nolint:gosec // G118: cancel is properly called in Stop() method
+	ctx, cancel := context.WithCancel(ctx)
 	w.cancel = cancel
 
 	// Create a wrapped handler that applies filtering if configured
@@ -171,11 +171,9 @@ func (w *S3Watcher) Start(
 		c.StatusCallback(status)
 	}
 
-	w.wg.Add(1)
-	go func() {
-		defer w.wg.Done()
+	w.wg.Go(func() {
 		w.poll(ctx, wrappedHandler, errHandler, &status, c)
-	}()
+	})
 
 	return nil
 }

@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
 
 	"github.com/c2fo/vfs/v7"
@@ -195,11 +194,7 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 	}
 
 	// Otherwise, use TouchCopyBuffered using io.CopyBuffer
-	fileBufferSize := 0
-
-	if f.location.fileSystem.options.FileBufferSize > 0 {
-		fileBufferSize = f.location.fileSystem.options.FileBufferSize
-	}
+	fileBufferSize := max(f.location.fileSystem.options.FileBufferSize, 0)
 
 	if terr := utils.TouchCopyBuffered(file, f, fileBufferSize); terr != nil {
 		return utils.WrapCopyToFileError(terr)
@@ -333,7 +328,7 @@ func (f *File) Touch() error {
 	}
 
 	newMetadata := make(map[string]*string)
-	newMetadata["updated"] = to.Ptr("true")
+	newMetadata["updated"] = new("true")
 	if err := client.SetMetadata(f, newMetadata); err != nil {
 		return utils.WrapTouchError(err)
 	}

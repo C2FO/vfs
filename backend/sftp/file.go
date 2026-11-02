@@ -43,7 +43,7 @@ func (f *File) LastModified() (*time.Time, error) {
 	if err != nil {
 		return nil, utils.WrapLastModifiedError(err)
 	}
-	return utils.Ptr(userinfo.ModTime()), nil
+	return new(userinfo.ModTime()), nil
 }
 
 // Name returns the path portion of the file's path property. IE: "file.txt" of "sftp://someuser@host.com/some/path/to/file.txt
@@ -216,11 +216,7 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 		}
 	}()
 
-	fileBufferSize := 0
-
-	if f.location.fileSystem.options.FileBufferSize > 0 {
-		fileBufferSize = f.location.fileSystem.options.FileBufferSize
-	}
+	fileBufferSize := max(f.location.fileSystem.options.FileBufferSize, 0)
 
 	if err := utils.TouchCopyBuffered(file, f, fileBufferSize); err != nil {
 		return utils.WrapCopyToFileError(err)

@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/ssh"
 
-	"github.com/c2fo/vfs/v7/utils"
 	"github.com/c2fo/vfs/v7/utils/authority"
 )
 
@@ -583,26 +582,26 @@ func (o *optionsSuite) TestGetFileMode() {
 		},
 		{
 			name:            "ValidOctalString",
-			filePermissions: utils.Ptr("0755"),
-			expectedMode:    utils.Ptr(os.FileMode(0755)),
+			filePermissions: new("0755"),
+			expectedMode:    new(os.FileMode(0755)),
 			expectError:     false,
 		},
 		{
 			name:            "InvalidString",
-			filePermissions: utils.Ptr("invalid"),
+			filePermissions: new("invalid"),
 			expectedMode:    nil,
 			expectError:     true,
 		},
 		{
 			name:            "EmptyString",
-			filePermissions: utils.Ptr(""),
+			filePermissions: new(""),
 			expectedMode:    nil,
 			expectError:     true,
 		},
 		{
 			name:            "ValidDecimalString",
-			filePermissions: utils.Ptr("493"), // 0755 in decimal
-			expectedMode:    utils.Ptr(os.FileMode(0755)),
+			filePermissions: new("493"), // 0755 in decimal
+			expectedMode:    new(os.FileMode(0755)),
 			expectError:     false,
 		},
 	}

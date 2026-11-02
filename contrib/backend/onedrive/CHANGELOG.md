@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Copy request headers with `maps.Copy` ([#391](https://github.com/C2FO/vfs/issues/391)).
+
 ## [[contrib/backend/onedrive/v0.2.1](https://github.com/C2FO/vfs/releases/tag/contrib%2Fbackend%2Fonedrive%2Fv0.2.1)] - 2026-10-26
 ### Documentation
 - Fixed README examples, added `vfssimple` usage, and documented the credential fallback order, tenant defaults, and test environment variables.

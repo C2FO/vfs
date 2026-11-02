@@ -347,11 +347,10 @@ func IsRetryableError(err error, config RetryConfig) bool {
 // It uses an exponential backoff strategy with optional jitter to prevent
 // the "thundering herd" problem.
 func CalculateBackoff(attempt int, config RetryConfig) time.Duration {
-	backoff := config.InitialBackoff * time.Duration(math.Pow(config.BackoffFactor, float64(attempt)))
-
-	if backoff > config.MaxBackoff {
-		backoff = config.MaxBackoff
-	}
+	backoff := min(
+		config.InitialBackoff*time.Duration(math.Pow(config.BackoffFactor, float64(attempt))),
+		config.MaxBackoff,
+	)
 
 	// Add up to 25% jitter to prevent thundering herd
 	jitter := time.Duration(rand.Float64() * 0.25 * float64(backoff)) //nolint:gosec // G404: Use of weak random number generator

@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Use `min`, `maps.Copy`, and `any` where `modernize` suggested them ([#391](https://github.com/C2FO/vfs/issues/391)).
+
 ## [[contrib/backend/dropbox/v1.2.2](https://github.com/C2FO/vfs/releases/tag/contrib%2Fbackend%2Fdropbox%2Fv1.2.2)] - 2026-10-26
 ### Documentation
 - Fixed README examples, documented the `VFS_DROPBOX_ACCESS_TOKEN` fallback and `WithMaxSimpleUploadSize`, and corrected the testing instructions.

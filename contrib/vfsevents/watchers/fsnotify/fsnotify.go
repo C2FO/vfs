@@ -169,7 +169,7 @@ func (w *FSNotifyWatcher) Start(
 		}
 	}
 
-	ctx, cancel := context.WithCancel(ctx) //nolint:gosec // G118: cancel is properly called in Stop() method
+	ctx, cancel := context.WithCancel(ctx)
 	w.cancel = cancel
 
 	// Status tracking
@@ -183,11 +183,9 @@ func (w *FSNotifyWatcher) Start(
 		config.StatusCallback(status)
 	}
 
-	w.wg.Add(1)
-	go func() {
-		defer w.wg.Done()
+	w.wg.Go(func() {
 		w.watchLoop(ctx, handler, errHandler, &status, config)
-	}()
+	})
 
 	return nil
 }

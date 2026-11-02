@@ -28,9 +28,9 @@ type GCSEvent struct {
 	Size               uint64            `json:"size"`
 	Generation         int64             `json:"generation"`
 	TimeCreated        JSONTime          `json:"timeCreated"`
-	TimeDeleted        JSONTime          `json:"timeDeleted,omitempty"`
-	TimeFinalized      JSONTime          `json:"timeFinalized,omitempty"`
-	Updated            JSONTime          `json:"updated,omitempty"`
+	TimeDeleted        JSONTime          `json:"timeDeleted"`
+	TimeFinalized      JSONTime          `json:"timeFinalized"`
+	Updated            JSONTime          `json:"updated"`
 	Name               string            `json:"name"`
 	Bucket             string            `json:"bucket"`
 	ContentType        string            `json:"contentType"`
@@ -39,7 +39,7 @@ type GCSEvent struct {
 	ContentDisposition string            `json:"contentDisposition,omitempty"`
 	ContentLanguage    string            `json:"contentLanguage,omitempty"`
 	Etag               string            `json:"etag,omitempty"`
-	Owner              Owner             `json:"owner,omitempty"`
+	Owner              Owner             `json:"owner"`
 	Metadata           map[string]string `json:"metadata"`
 	EventType          string            `json:"eventType"`
 }
@@ -144,7 +144,7 @@ func (w *GCSWatcher) Start(
 		opt(config)
 	}
 
-	ctx, cancel := context.WithCancel(ctx) //nolint:gosec // G118: cancel is properly called in Stop() method
+	ctx, cancel := context.WithCancel(ctx)
 	w.cancel = cancel
 
 	// Create a wrapped handler that applies filtering if configured
@@ -168,10 +168,7 @@ func (w *GCSWatcher) Start(
 		config.StatusCallback(status)
 	}
 
-	w.wg.Add(1)
-	go func() {
-		defer w.wg.Done()
-
+	w.wg.Go(func() {
 		if err := w.receiveWithRetry(ctx, wrappedHandler, errHandler, &status, config); err != nil {
 			status.LastError = err
 			if config.StatusCallback != nil {
@@ -179,7 +176,7 @@ func (w *GCSWatcher) Start(
 			}
 			errHandler(err)
 		}
-	}()
+	})
 
 	return nil
 }

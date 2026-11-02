@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Internal code cleanup with no behavior change: use `min` and `sync.WaitGroup.Go` where `modernize` suggested them. GCS event fields `timeDeleted`, `timeFinalized`, `updated`, and `owner` drop a no-op `omitempty`; zero values are still encoded, because `omitzero` would omit them. Removed four unused `//nolint:gosec` directives and handled two unchecked channel receives in tests so the module lints clean ([#391](https://github.com/C2FO/vfs/issues/391)).
+
 ## [[contrib/vfsevents/v1.4.3](https://github.com/C2FO/vfs/releases/tag/contrib%2Fvfsevents%2Fv1.4.3)] - 2026-10-28
 ### Fixed
 - Test only: `TestDebouncingEdgeCases/CreateThenDelete` no longer fails intermittently on slow CI runners; it uses a much larger debounce window and waits for the event instead of sleeping for fixed periods.

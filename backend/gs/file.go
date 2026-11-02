@@ -438,11 +438,7 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 	}
 
 	// Otherwise, use TouchCopyBuffered using io.CopyBuffer
-	fileBufferSize := 0
-
-	if f.location.fileSystem.options.FileBufferSize > 0 {
-		fileBufferSize = f.location.fileSystem.options.FileBufferSize
-	}
+	fileBufferSize := max(f.location.fileSystem.options.FileBufferSize, 0)
 
 	if err := utils.TouchCopyBuffered(file, f, fileBufferSize); err != nil {
 		return utils.WrapCopyToFileError(err)

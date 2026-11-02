@@ -28,7 +28,7 @@ type vfsTestSuite struct {
 func (s *vfsTestSuite) SetupSuite() {
 	locs := os.Getenv("VFS_INTEGRATION_LOCATIONS")
 	s.testLocations = make(map[string]vfs.Location)
-	for _, loc := range strings.Split(locs, ";") {
+	for loc := range strings.SplitSeq(locs, ";") {
 		if loc == "" {
 			continue
 		}
