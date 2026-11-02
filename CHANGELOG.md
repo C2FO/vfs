@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [[v7.33.0](https://github.com/C2FO/vfs/releases/tag/v7.33.0)] - 2026-11-02
 ### Added
 - `backend/testsuite`: `RunListingTests`, a conformance suite for `vfs.EntryLister` that `RunConformanceTests` runs for any backend that lists natively. `ConformanceOptions` gains `CreateEmptyDirectory` (which also creates the fixture's directories, with `os.MkdirAll` semantics), `RemoveDirectory` and `ListModTimeTolerance`. The suite checks that files can be read from inside the listing loop and after leaving it early.
 - `azure/types`: the optional `BlobLister` and `BlobPager` interfaces, which a `Client` implements to support native listing. `Client` is unchanged, so existing implementations keep working; one that does not implement `BlobLister` is listed through `Location.List` and `ListByPrefix`, like any location without native listing. The default client implements it.
