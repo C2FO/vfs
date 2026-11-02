@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
 
 	"github.com/c2fo/vfs/v7/backend/azure/types"
@@ -22,11 +21,11 @@ func (a *DefaultClient) BlobPager(_ context.Context, containerName string, req t
 
 	var maxResults *int32
 	if req.PageSize > 0 {
-		maxResults = to.Ptr(req.PageSize)
+		maxResults = new(req.PageSize)
 	}
 	var prefix *string
 	if req.Prefix != "" {
-		prefix = to.Ptr(req.Prefix)
+		prefix = new(req.Prefix)
 	}
 
 	if req.Delimited {

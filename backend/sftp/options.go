@@ -52,7 +52,7 @@ func (o *Options) GetFileMode() (*os.FileMode, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid file mode: %w", err)
 	}
-	return utils.Ptr(os.FileMode(parsed)), nil
+	return new(os.FileMode(parsed)), nil
 }
 
 var defaultSSHConfig = &ssh.ClientConfig{

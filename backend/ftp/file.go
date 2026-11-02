@@ -60,7 +60,7 @@ func (f *File) LastModified() (*time.Time, error) {
 	if err != nil {
 		return nil, utils.WrapLastModifiedError(err)
 	}
-	return utils.Ptr(entry.Time), nil
+	return new(entry.Time), nil
 }
 
 func (f *File) stat(ctx context.Context) (*_ftp.Entry, error) {
@@ -465,10 +465,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 				// file doesn't exist, just use 0 as offset
 				f.offset = 0
 			} else {
-				f.offset = int64(sz) - offset
-				if f.offset < 0 {
-					f.offset = 0
-				}
+				f.offset = max(int64(sz)-offset, 0)
 			}
 
 			// close dataconn so that it reset the offset on next reopen (in StorFrom or RetrFrom)

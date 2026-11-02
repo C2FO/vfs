@@ -475,7 +475,7 @@ func (s *LocationTestSuite) TestListErrors() {
 	tests := []struct {
 		name        string
 		setupMock   func()
-		operation   func() (interface{}, error)
+		operation   func() (any, error)
 		expectError bool
 		expectEmpty bool
 	}{
@@ -487,7 +487,7 @@ func (s *LocationTestSuite) TestListErrors() {
 					Return(nil, errors.New("client error")).
 					Once()
 			},
-			operation: func() (interface{}, error) {
+			operation: func() (any, error) {
 				return s.location.ListByPrefix("test_")
 			},
 			expectError: true,
@@ -507,7 +507,7 @@ func (s *LocationTestSuite) TestListErrors() {
 					}, nil).
 					Once()
 			},
-			operation: func() (interface{}, error) {
+			operation: func() (any, error) {
 				return s.location.ListByPrefix("nomatch_")
 			},
 			expectError: false,
@@ -521,7 +521,7 @@ func (s *LocationTestSuite) TestListErrors() {
 					Return(nil, errors.New("client error")).
 					Once()
 			},
-			operation: func() (interface{}, error) {
+			operation: func() (any, error) {
 				return s.location.ListByRegex(regexp.MustCompile(`\.txt$`))
 			},
 			expectError: true,
@@ -534,7 +534,7 @@ func (s *LocationTestSuite) TestListErrors() {
 					Return(nil, errors.New("internal server error")).
 					Once()
 			},
-			operation: func() (interface{}, error) {
+			operation: func() (any, error) {
 				return s.location.Exists()
 			},
 			expectError: true,
@@ -547,7 +547,7 @@ func (s *LocationTestSuite) TestListErrors() {
 					Return(nil, errors.New("delete failed")).
 					Once()
 			},
-			operation: func() (interface{}, error) {
+			operation: func() (any, error) {
 				return nil, s.location.DeleteFile("file.txt")
 			},
 			expectError: true,

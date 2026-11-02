@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -350,12 +351,7 @@ func (d *fakeDrive) sortedFiles() []*fakeFile {
 }
 
 func contains(s []string, v string) bool {
-	for _, e := range s {
-		if e == v {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(s, v)
 }
 
 func (d *fakeDrive) lookupFile(w http.ResponseWriter, id string) *fakeFile {

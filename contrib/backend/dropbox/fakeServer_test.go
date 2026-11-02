@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"sort"
@@ -429,9 +430,7 @@ func (f *fakeDropbox) relocate(w http.ResponseWriter, arg []byte, move bool) {
 			}
 		}
 	}
-	for k, e := range moved {
-		f.entries[k] = e
-	}
+	maps.Copy(f.entries, moved)
 
 	writeJSON(w, http.StatusOK, map[string]any{"metadata": moved[toKey].metadata(f.idFor(toKey))})
 }

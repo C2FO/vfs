@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Use `maps.Copy` and `slices.Contains` where `modernize` suggested them ([#391](https://github.com/C2FO/vfs/issues/391)).
+
 ## [[contrib/backend/gdrive/v0.2.1](https://github.com/C2FO/vfs/releases/tag/contrib%2Fbackend%2Fgdrive%2Fv0.2.1)] - 2026-10-26
 ### Documentation
 - Fixed README examples and documented the `WithDeviceCode` callback, the fake-drive conformance tests, and the real-drive test environment variables.

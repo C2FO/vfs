@@ -63,7 +63,8 @@ func (s *S3WatcherTestSuite) waitForPoll(
 		graceTimer := time.NewTimer(500 * time.Millisecond)
 		defer graceTimer.Stop()
 		select {
-		case <-done:
+		case lateErr := <-done:
+			_ = lateErr // the timeout is reported below; the late result is not needed
 		case <-graceTimer.C:
 		}
 		s.Fail(failMsg)

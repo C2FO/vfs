@@ -126,12 +126,10 @@ func (p *Poller) Start(
 		opt(config)
 	}
 
-	ctx, cancel := context.WithCancel(ctx) //nolint:gosec // G118: cancel is properly called in Stop() method
+	ctx, cancel := context.WithCancel(ctx)
 	p.cancel = cancel
 
-	p.wg.Add(1)
-	go func() {
-		defer p.wg.Done()
+	p.wg.Go(func() {
 		ticker := time.NewTicker(p.interval)
 		defer ticker.Stop()
 
@@ -180,7 +178,7 @@ func (p *Poller) Start(
 				}
 			}
 		}
-	}()
+	})
 
 	return nil
 }

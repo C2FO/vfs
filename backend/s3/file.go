@@ -766,8 +766,7 @@ func (f *File) getReader() (io.ReadCloser, error) {
 
 func handleExistsError(err error) error {
 	if err != nil {
-		var kerr *types.NotFound
-		if errors.As(err, &kerr) {
+		if _, ok := errors.AsType[*types.NotFound](err); ok {
 			return vfs.ErrNotExist
 		}
 		return err

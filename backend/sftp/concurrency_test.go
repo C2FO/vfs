@@ -86,9 +86,7 @@ func (s *SFTPConcurrencyTestSuite) TestConcurrentFailedConnections() {
 	errorChan := make(chan error, numGoroutines)
 
 	for range numGoroutines {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			defer func() {
 				if r := recover(); r != nil {
 					panicChan <- r
@@ -98,7 +96,7 @@ func (s *SFTPConcurrencyTestSuite) TestConcurrentFailedConnections() {
 			// This should fail but not panic
 			_, err := fs.Client(auth)
 			errorChan <- err
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -178,9 +176,7 @@ func (s *SFTPConcurrencyTestSuite) TestTimerCleanupRobustness() {
 	panicChan := make(chan any, numOperations)
 
 	for range numOperations {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			defer func() {
 				if r := recover(); r != nil {
 					panicChan <- r
@@ -196,7 +192,7 @@ func (s *SFTPConcurrencyTestSuite) TestTimerCleanupRobustness() {
 
 			// Try another client operation to see if timer cleanup caused issues
 			_, _ = fs.Client(auth)
-		}()
+		})
 	}
 
 	wg.Wait()

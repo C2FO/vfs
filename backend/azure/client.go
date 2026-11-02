@@ -11,7 +11,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/streaming"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blockblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
@@ -177,7 +176,7 @@ func (a *DefaultClient) List(l vfs.Location) ([]string, error) {
 	}
 
 	pager := cli.NewListBlobsHierarchyPager("/", &container.ListBlobsHierarchyOptions{
-		Prefix:  to.Ptr(utils.RemoveLeadingSlash(l.Path())),
+		Prefix:  new(utils.RemoveLeadingSlash(l.Path())),
 		Include: container.ListBlobsInclude{Metadata: true, Tags: true},
 	})
 	ctx := context.Background()

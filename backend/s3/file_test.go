@@ -591,8 +591,8 @@ func (ts *fileTestSuite) TestDeleteError() {
 func (ts *fileTestSuite) TestDeleteWithAllVersionsOption() {
 	versOutput := s3.ListObjectVersionsOutput{
 		Versions: []types.ObjectVersion{
-			{VersionId: utils.Ptr("ver1")},
-			{VersionId: utils.Ptr("ver2")},
+			{VersionId: new("ver1")},
+			{VersionId: new("ver2")},
 		},
 	}
 	s3cliMock.EXPECT().ListObjectVersions(matchContext, mock.IsType((*s3.ListObjectVersionsInput)(nil))).Return(&versOutput, nil)
@@ -605,16 +605,16 @@ func (ts *fileTestSuite) TestDeleteWithAllVersionsOption() {
 func (ts *fileTestSuite) TestDeleteWithAllVersionsOptionError() {
 	versOutput := s3.ListObjectVersionsOutput{
 		Versions: []types.ObjectVersion{
-			{VersionId: utils.Ptr("ver1")},
-			{VersionId: utils.Ptr("ver2")},
+			{VersionId: new("ver1")},
+			{VersionId: new("ver2")},
 		},
 	}
 	s3cliMock.EXPECT().ListObjectVersions(matchContext, mock.IsType((*s3.ListObjectVersionsInput)(nil))).
 		Return(&versOutput, nil)
-	key := utils.Ptr(utils.RemoveLeadingSlash(testFileName))
+	key := new(utils.RemoveLeadingSlash(testFileName))
 	s3cliMock.EXPECT().DeleteObject(matchContext, &s3.DeleteObjectInput{Key: key, Bucket: &bucket}).
 		Return(&s3.DeleteObjectOutput{}, nil).Once()
-	s3cliMock.EXPECT().DeleteObject(matchContext, &s3.DeleteObjectInput{Key: key, Bucket: &bucket, VersionId: utils.Ptr("ver1")}).
+	s3cliMock.EXPECT().DeleteObject(matchContext, &s3.DeleteObjectInput{Key: key, Bucket: &bucket, VersionId: new("ver1")}).
 		Return(nil, errors.New("something went wrong")).Once()
 
 	err := testFile.Delete(delete.WithAllVersions())
@@ -978,7 +978,7 @@ func (ts *fileTestSuite) TestWriteOperations() {
 				if readErr != nil {
 					panic(readErr)
 				}
-				contents = utils.Ptr(string(b))
+				contents = new(string(b))
 			}).
 			Return(&s3.PutObjectOutput{}, nil)
 	}

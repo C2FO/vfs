@@ -15,7 +15,6 @@ import (
 	"github.com/c2fo/vfs/contrib/vfsevents"
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/mocks"
-	"github.com/c2fo/vfs/v7/utils"
 	"github.com/c2fo/vfs/v7/vfssimple"
 )
 
@@ -197,7 +196,7 @@ func (s *PollerTestSuite) TestPoll() {
 				loc.EXPECT().List().Return([]string{"file1"}, nil)
 				file := mocks.NewFile(s.T())
 				file.EXPECT().URI().Return("scheme:///file1")
-				file.EXPECT().LastModified().Return(utils.Ptr(time.Now().UTC()), nil)
+				file.EXPECT().LastModified().Return(new(time.Now().UTC()), nil)
 				file.EXPECT().Size().Return(uint64(100), nil)
 				loc.EXPECT().NewFile("file1").Return(file, nil)
 			},

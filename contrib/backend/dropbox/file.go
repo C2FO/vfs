@@ -434,10 +434,7 @@ func (f *File) chunkedUpload(client Client, commitInfo *files.CommitInfo, fileSi
 	// Upload chunks
 	for offset < fileSize {
 		remaining := fileSize - offset
-		chunkLen := chunkSize
-		if remaining < chunkSize {
-			chunkLen = remaining
-		}
+		chunkLen := min(remaining, chunkSize)
 
 		err := client.UploadSessionAppendV2(&files.UploadSessionAppendArg{
 			Cursor: &files.UploadSessionCursor{
@@ -558,10 +555,7 @@ func (f *File) Touch() error {
 	offset := int64(0)
 	for offset < stat.Size() {
 		remaining := stat.Size() - offset
-		chunkLen := chunkSize
-		if chunkLen > remaining {
-			chunkLen = remaining
-		}
+		chunkLen := min(chunkSize, remaining)
 
 		err := client.UploadSessionAppendV2(&files.UploadSessionAppendArg{
 			Cursor: &files.UploadSessionCursor{

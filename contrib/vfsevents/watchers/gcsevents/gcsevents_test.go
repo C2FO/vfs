@@ -59,7 +59,8 @@ func (s *GCSWatcherTestSuite) waitForReceive(
 		graceTimer := time.NewTimer(500 * time.Millisecond)
 		defer graceTimer.Stop()
 		select {
-		case <-done:
+		case lateErr := <-done:
+			_ = lateErr // the timeout is reported below; the late result is not needed
 		case <-graceTimer.C:
 		}
 		s.Fail(failMsg)
@@ -983,4 +984,17 @@ func ExampleNewGCSWatcher_withRetryLogic() {
 
 	// Graceful shutdown with timeout
 	_ = watcher.Stop(vfsevents.WithTimeout(30 * time.Second)) // Ignore error in example
+}
+
+// TestGCSEventJSONKeepsZeroStructFields locks the GCS payload shape: a zero JSONTime or Owner
+// is still encoded. omitempty does not apply to those struct fields, and omitzero would drop them.
+func (s *GCSWatcherTestSuite) TestGCSEventJSONKeepsZeroStructFields() {
+	body, err := json.Marshal(GCSEvent{})
+	s.Require().NoError(err)
+
+	var got map[string]json.RawMessage
+	s.Require().NoError(json.Unmarshal(body, &got))
+	for _, key := range []string{"timeDeleted", "timeFinalized", "updated", "owner"} {
+		s.Contains(got, key, "zero %s is still encoded", key)
+	}
 }

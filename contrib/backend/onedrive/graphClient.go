@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"path"
@@ -747,9 +748,7 @@ func (c *graphClient) newRequest(ctx context.Context, r request) (*http.Request,
 		req.ContentLength = size
 	}
 
-	for k, v := range r.header {
-		req.Header[k] = v
-	}
+	maps.Copy(req.Header, r.header)
 
 	if !r.anonymous {
 		token, err := c.accessToken(ctx)

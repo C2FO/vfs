@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Internal code cleanup with no behavior change: use Go 1.26 `new`, `min`/`max`, `errors.AsType`, `strings.CutSuffix`, `strings.SplitSeq`, and `sync.WaitGroup.Go` where the `modernize` analyzer suggested them, including in the integration test files. `utils.Ptr` stays exported and unchanged for callers. `modernize` is now enabled in `.golangci.yml` ([#391](https://github.com/C2FO/vfs/issues/391)).
+
 ## [[v7.33.0](https://github.com/C2FO/vfs/releases/tag/v7.33.0)] - 2026-11-02
 ### Added
 - `backend/testsuite`: `RunListingTests`, a conformance suite for `vfs.EntryLister` that `RunConformanceTests` runs for any backend that lists natively. `ConformanceOptions` gains `CreateEmptyDirectory` (which also creates the fixture's directories, with `os.MkdirAll` semantics), `RemoveDirectory` and `ListModTimeTolerance`. The suite checks that files can be read from inside the listing loop and after leaving it early.

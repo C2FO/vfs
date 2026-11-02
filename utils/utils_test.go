@@ -32,6 +32,21 @@ type slashTest struct {
 	message  string
 }
 
+func (s *utilsSuite) TestPtr() {
+	str := "value"
+	strPtr := utils.Ptr(str)
+	s.Require().NotNil(strPtr)
+	s.Equal(str, *strPtr)
+	s.NotSame(&str, strPtr, "Ptr returns a pointer to a copy, not to the argument")
+
+	zeroPtr := utils.Ptr(0)
+	s.Require().NotNil(zeroPtr)
+	s.Zero(*zeroPtr)
+
+	first, second := utils.Ptr(1), utils.Ptr(1)
+	s.NotSame(first, second, "each call returns a distinct pointer")
+}
+
 func (s *utilsSuite) TestEnsureTrailingSlash() {
 	tests := []slashTest{
 		{

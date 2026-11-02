@@ -167,9 +167,7 @@ func (s *ListEntriesTestSuite) TestListingWhileWriting() {
 
 	var wg sync.WaitGroup
 	for w := range 4 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for i := range 50 {
 				f, err := s.loc.NewFile("w" + string(rune('a'+w)) + "/" + string(rune('a'+i%26)) + ".txt")
 				if err != nil {
@@ -179,7 +177,7 @@ func (s *ListEntriesTestSuite) TestListingWhileWriting() {
 				_ = f.Close()
 				_ = s.loc.DeleteFile("seed/" + string(rune('a'+i%20)) + ".txt")
 			}
-		}()
+		})
 	}
 	for range 25 {
 		for _, err := range s.loc.(vfs.EntryLister).ListEntries(s.T().Context(), list.Recursive()) {

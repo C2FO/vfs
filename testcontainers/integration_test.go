@@ -121,7 +121,7 @@ func createDirectory(dir vfs.Location) error {
 		}
 		// FTP has no recursive make or exists check: make each level, and accept a failure when the level can be listed.
 		cur := ""
-		for _, seg := range strings.Split(strings.Trim(dir.Path(), "/"), "/") {
+		for seg := range strings.SplitSeq(strings.Trim(dir.Path(), "/"), "/") {
 			cur = path.Join(cur, seg)
 			p := "/" + cur
 			if err := dc.MakeDir(p); err != nil {

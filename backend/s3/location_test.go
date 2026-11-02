@@ -426,8 +426,8 @@ func (lt *locationTestSuite) TestDeleteFile() {
 func (lt *locationTestSuite) TestDeleteFileWithAllVersionsOption() {
 	versOutput := s3.ListObjectVersionsOutput{
 		Versions: []types.ObjectVersion{
-			{VersionId: utils.Ptr("ver1")},
-			{VersionId: utils.Ptr("ver2")},
+			{VersionId: new("ver1")},
+			{VersionId: new("ver2")},
 		},
 	}
 	lt.s3cliMock.EXPECT().ListObjectVersions(matchContext, mock.IsType((*s3.ListObjectVersionsInput)(nil))).Return(&versOutput, nil)
