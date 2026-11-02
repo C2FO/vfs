@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [[contrib/backend/dropbox/v1.2.3](https://github.com/C2FO/vfs/releases/tag/contrib%2Fbackend%2Fdropbox%2Fv1.2.3)] - 2026-11-02
 ### Fixed
 - Use `min`, `maps.Copy`, and `any` where `modernize` suggested them ([#391](https://github.com/C2FO/vfs/issues/391)).
 
