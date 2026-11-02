@@ -2,6 +2,7 @@ package mem
 
 import (
 	"path"
+	"slices"
 	"sync"
 
 	"github.com/c2fo/vfs/v7"
@@ -173,14 +174,16 @@ func (o objMap) fileNamesHere(absLocPath string) []string {
 	return fileList
 }
 
+// deepCopy returns a new File for srcFile. It reads srcFile under srcFile's lock, which File.Close holds while it
+// replaces the contents, and gives the new File its own copy of the contents. The caller must not hold srcFile's lock.
 func deepCopy(srcFile *memFile) vfs.File {
-	destination := &File{
-		name:            srcFile.name,
-		memFile:         srcFile,
-		readWriteSeeker: NewReadWriteSeekerWithData(srcFile.contents),
-	}
+	srcFile.Lock()
+	name, contents := srcFile.name, slices.Clone(srcFile.contents)
+	srcFile.Unlock()
 
-	destination.memFile = srcFile
-	destination.readWriteSeeker = NewReadWriteSeekerWithData(srcFile.contents)
-	return destination
+	return &File{
+		name:            name,
+		memFile:         srcFile,
+		readWriteSeeker: NewReadWriteSeekerWithData(contents),
+	}
 }

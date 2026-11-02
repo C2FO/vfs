@@ -1,0 +1,122 @@
+package azure
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	iofs "io/fs"
+	"iter"
+	"net/http"
+	"strings"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend/azure/types"
+	"github.com/c2fo/vfs/v7/list"
+	"github.com/c2fo/vfs/v7/options"
+)
+
+// listPageSize is the largest page a listing asks Azure for, so a page costs one request.
+const listPageSize = 1000
+
+// ListEntries lists the location's contents as a stream of entries in byte order, implementing vfs.EntryLister. Use
+// list.Entries to list a location with options and have every option applied.
+//
+// Blobs are read one page of up to 1,000 at a time, and a page is requested only when the listing needs more, so a
+// listing that stops early stops its requests. The size and modification time of every file come from the listing
+// itself, so reading them makes no further request, and Entry.Sys returns the listed *container.BlobItem. A
+// non-recursive listing is a hierarchy listing that rolls blobs up at "/", as is a recursive one whose MaxDepth stops one
+// level inside the directory of its prefix, and other recursive listings are flat listings. A directory entry exists
+// wherever a blob name has a "/" below the listed location, whether or not a placeholder blob exists.
+//
+// Azure cannot start a listing after a given name, so a listing that starts after a cursor, such as one that resumes
+// with list.After, reads the blobs before the cursor and drops them. The cost of such a listing grows with the
+// cursor's position. For the same reason a recursive listing that skips a directory, because of MaxDepth, DirFilter or
+// a Glob, reads the blobs inside it and drops them. Listing relies on Azure returning blobs in ascending byte order; a
+// listing that does not ends with an error instead of wrong results.
+//
+// A Client that does not also implement types.BlobLister, as the default client does, is listed through Location.List
+// and ListByPrefix instead: files only, without size or modification time, and options that need directories, such as
+// list.Recursive, report errors.ErrUnsupported. A 403 response is reported as an error matching fs.ErrPermission, and a container
+// that does not exist is an error, not an empty listing.
+func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) iter.Seq2[vfs.Entry, error] {
+	return list.Native(l, opts, func(q list.Query, yield func(vfs.Entry, error) bool) {
+		client, err := l.fileSystem.Client()
+		if err != nil {
+			yield(vfs.Entry{}, &iofs.PathError{Op: "list", Path: l.Path(), Err: err})
+			return
+		}
+		lister, ok := client.(types.BlobLister)
+		if !ok {
+			// Without a page-by-page listing, list the way any location without native listing is listed.
+			list.Entries(ctx, legacyLocation{l}, opts...)(yield)
+			return
+		}
+		list.FlatKeys(ctx, l, q, l.pages(lister), l.retryFunc())(yield)
+	})
+}
+
+// legacyLocation hides the location's ListEntries, so that list.Entries lists it through Location.List and
+// ListByPrefix.
+type legacyLocation struct{ vfs.Location }
+
+// retryFunc returns the retry policy the user configured with Options.RetryFunc, or nil. With none configured the
+// Azure SDK's own retry policy applies to every page request, so the listing adds none.
+func (l *Location) retryFunc() list.RetryFunc {
+	if l.fileSystem.options.RetryFunc == nil {
+		return nil
+	}
+	return l.fileSystem.Retry()
+}
+
+// pages returns the page function for FlatKeys. It makes one pager when first called and takes each page from it:
+// Azure resumes with an opaque continuation marker the pager holds, so FlatKeys's StartAfter is not sent, and a
+// req.Seek past a skipped directory is not followed. FlatKeys drops the keys up to its cursor and inside skipped
+// directories itself.
+func (l *Location) pages(lister types.BlobLister) list.PageFunc {
+	// Path always begins and ends with "/", so this is "" for the root and "a/b/" below it.
+	root := strings.TrimPrefix(l.Path(), "/")
+	var pager types.BlobPager
+
+	return func(ctx context.Context, req list.PageRequest) (list.Page, error) {
+		if pager == nil {
+			p, err := lister.BlobPager(ctx, l.Authority().String(), types.BlobListRequest{
+				Prefix: root + req.Prefix, Delimited: req.Delimited, PageSize: listPageSize,
+			})
+			if err != nil {
+				return list.Page{}, classifyListError(err)
+			}
+			pager = p
+		}
+
+		result, err := pager.NextPage(ctx)
+		if err != nil {
+			return list.Page{}, classifyListError(err)
+		}
+
+		page := list.Page{Done: result.Done, Objects: make([]list.Object, 0, len(result.Blobs))}
+		for _, blob := range result.Blobs {
+			page.Objects = append(page.Objects, list.Object{
+				Key: strings.TrimPrefix(blob.Name, root),
+				Options: []vfs.EntryOption{
+					vfs.WithEntryMetadata(uint64(max(blob.Size, 0)), blob.LastModified),
+					vfs.WithEntrySys(blob.Native),
+				},
+			})
+		}
+		for _, prefix := range result.Prefixes {
+			page.Prefixes = append(page.Prefixes, strings.TrimPrefix(prefix, root))
+		}
+		return page, nil
+	}
+}
+
+// classifyListError makes a 403 response match fs.ErrPermission and leaves other errors as they are.
+func classifyListError(err error) error {
+	var respErr *azcore.ResponseError
+	if errors.As(err, &respErr) && respErr.StatusCode == http.StatusForbidden {
+		return fmt.Errorf("%w: %w", iofs.ErrPermission, err)
+	}
+	return err
+}

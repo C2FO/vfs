@@ -206,6 +206,7 @@ IncludeInsecureCiphers bool \- If set to true, includes insecure cipher suites i
   - [func \(l \*Location\) List\(\) \(\[\]string, error\)](<#Location.List>)
   - [func \(l \*Location\) ListByPrefix\(prefix string\) \(\[\]string, error\)](<#Location.ListByPrefix>)
   - [func \(l \*Location\) ListByRegex\(regex \*regexp.Regexp\) \(\[\]string, error\)](<#Location.ListByRegex>)
+  - [func \(l \*Location\) ListEntries\(ctx context.Context, opts ...options.ListOption\) iter.Seq2\[vfs.Entry, error\]](<#Location.ListEntries>)
   - [func \(l \*Location\) NewFile\(relFilePath string, opts ...options.NewFileOption\) \(vfs.File, error\)](<#Location.NewFile>)
   - [func \(l \*Location\) NewLocation\(relativePath string\) \(vfs.Location, error\)](<#Location.NewLocation>)
   - [func \(l \*Location\) Path\(\) string](<#Location.Path>)
@@ -670,6 +671,21 @@ func (l *Location) ListByRegex(regex *regexp.Regexp) ([]string, error)
 ```
 
 ListByRegex retrieves the filenames of all the files at the location's current path, then filters out all those that don't match the given regex. The resource considerations of List\(\) apply here as well.
+
+<a name="Location.ListEntries"></a>
+### func \(\*Location\) ListEntries
+
+```go
+func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) iter.Seq2[vfs.Entry, error]
+```
+
+ListEntries lists the location's contents as a stream of entries in byte order, implementing vfs.EntryLister. Use list.Entries to list a location with options and have every option applied.
+
+Each directory is read completely with one FTP listing when the listing reaches it, before any of its entries is yielded. The FTP connection is therefore free while the caller works on an entry, so a caller may read, write or delete files while it is listing, or stop listing and carry on. A FileSystem shares one FTP connection between listings and transfers, so a file opened for reading or writing must be closed before the listing advances to its next directory; a transfer left open across iterations is ended by the next directory read. Memory use is one directory per level of depth, and a listing that stops early reads no further directories.
+
+The size and modification time of each file come from the listing, so reading them makes no further request. An FTP server reports modification times to the minute when it does not support MLSD, and a time in the listing can then differ from File.LastModified by up to a minute. A symbolic link is listed as a file entry whose Type is fs.ModeSymlink, and is not followed. FTP listings carry no permission bits, so Mode reports only the type.
+
+A directory that cannot be read is yielded with its entry and an error, and the listing continues. FTP servers answer 550 both for a directory that does not exist and for one that cannot be entered, so a 550 is reported as matching fs.ErrNotExist, and a location that the server cannot enter lists nothing.
 
 <a name="Location.NewFile"></a>
 ### func \(\*Location\) NewFile

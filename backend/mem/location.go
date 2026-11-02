@@ -171,15 +171,16 @@ func (l *Location) NewFile(relFilePath string, opts ...options.NewFileOption) (v
 
 	// after validating the path, we check to see if the
 	// file already exists. if it does, return a reference to it
-	mapRef := l.fileSystem.fsMap
 	relativeLocationPath := utils.EnsureTrailingSlash(path.Dir(path.Join(l.Path(), relFilePath)))
-	if _, ok := mapRef[l.Authority().String()]; ok {
-		fileList := mapRef[l.Authority().String()].filesHere(relativeLocationPath)
-		for _, file := range fileList {
-			if file.name == path.Base(relFilePath) {
-				fileCopy := deepCopy(file)
-				return fileCopy, nil
-			}
+	var fileList []*memFile
+	l.fileSystem.mu.Lock()
+	if objs, ok := l.fileSystem.fsMap[l.Authority().String()]; ok {
+		fileList = objs.filesHere(relativeLocationPath)
+	}
+	l.fileSystem.mu.Unlock()
+	for _, file := range fileList {
+		if file.name == path.Base(relFilePath) {
+			return deepCopy(file), nil
 		}
 	}
 
@@ -208,21 +209,29 @@ func (l *Location) DeleteFile(relFilePath string, _ ...options.DeleteOption) err
 	vol := l.Authority().String()
 	fullPath := path.Join(l.Path(), relFilePath)
 
+	// Lock the file before the file system, as File.Delete and File.Close do, so exists is written under the file's lock.
 	l.fileSystem.mu.Lock()
-	defer l.fileSystem.mu.Unlock()
-	mapRef := l.fileSystem.fsMap
-	if _, ok := mapRef[vol]; ok {
-		if thisObj, ok2 := mapRef[vol][fullPath]; ok2 {
-			file := thisObj.i.(*memFile)
-			file.exists = false
-			thisObj.i = nil
-			mapRef[vol][fullPath] = nil // setting that key to nil so it truly no longer lives on this system
-			delete(mapRef[vol], fullPath)
-			return nil
-		}
+	var file *memFile
+	if obj, ok := l.fileSystem.fsMap[vol][fullPath]; ok && obj != nil {
+		file, _ = obj.i.(*memFile)
+	}
+	l.fileSystem.mu.Unlock()
+	if file == nil {
+		return fmt.Errorf("unable to delete file: %w", os.ErrNotExist)
 	}
 
-	return fmt.Errorf("unable to delete file: %w", os.ErrNotExist)
+	file.Lock()
+	defer file.Unlock()
+	l.fileSystem.mu.Lock()
+	defer l.fileSystem.mu.Unlock()
+	obj, ok := l.fileSystem.fsMap[vol][fullPath]
+	if !ok || obj == nil || obj.i != file {
+		return fmt.Errorf("unable to delete file: %w", os.ErrNotExist)
+	}
+	file.exists = false
+	obj.i = nil
+	delete(l.fileSystem.fsMap[vol], fullPath)
+	return nil
 }
 
 // URI returns the URI of the location if the location exists

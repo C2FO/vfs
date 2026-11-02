@@ -116,6 +116,11 @@ linters:
       - linters:
           - lll
         source: '^//go:generate '
+      # The backends' tests and RunLocationTests exist to verify the deprecated listing methods keep working until removal.
+      - linters:
+          - staticcheck
+        path: (_test\.go|backend/testsuite/conformance\.go)
+        text: 'SA1019: \(github\.com/c2fo/vfs/v7\.Location\)\.(List|ListByPrefix|ListByRegex) is deprecated'
     paths:
       - docs
       - mocks

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/backend/testsuite"
 )
 
@@ -23,7 +24,14 @@ func TestConformance(t *testing.T) {
 		t.Fatalf("failed to create OS test location: %v", err)
 	}
 
-	testsuite.RunConformanceTests(t, location)
+	testsuite.RunConformanceTests(t, location, testsuite.ConformanceOptions{
+		CreateEmptyDirectory: func(dir vfs.Location) error {
+			return os.MkdirAll(osLocationPath(dir), 0o750)
+		},
+		RemoveDirectory: func(dir vfs.Location) error {
+			return os.RemoveAll(osLocationPath(dir))
+		},
+	})
 }
 
 // TestIOConformance runs the IO conformance test suite against the OS (local filesystem) backend.

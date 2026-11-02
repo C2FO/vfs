@@ -25,6 +25,7 @@ DOC_PAGES := \
 	backend/os:docs/os.md \
 	backend/s3:docs/s3.md \
 	backend/sftp:docs/sftp.md \
+	list:docs/list.md \
 	utils:docs/utils.md \
 	utils/authority:docs/authority.md \
 	vfssimple:docs/vfssimple.md \

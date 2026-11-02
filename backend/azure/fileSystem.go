@@ -76,8 +76,12 @@ func (fs *FileSystem) WithClient(client Client) *FileSystem {
 func (fs *FileSystem) Client() (Client, error) {
 	if fs.client == nil {
 		client, err := NewClient(fs.options)
+		if err != nil {
+			// Leave fs.client unset: storing the failed (nil) *DefaultClient would make later calls return it, with no
+			// error, as a non-nil Client that panics when used.
+			return nil, err
+		}
 		fs.client = client
-		return fs.client, err
 	}
 	return fs.client, nil
 }

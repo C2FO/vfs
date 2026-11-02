@@ -9,6 +9,8 @@ Options are grouped by the operation they apply to:
     See the options/newfile package, for example newfile.WithContentType.
   - DeleteOption configures File.Delete and Location.DeleteFile.
     See the options/delete package, for example delete.WithAllVersions.
+  - ListOption configures listing through vfs.EntryLister.
+    See the list package, for example list.Recursive.
 
 # Creating a Custom Option
 
@@ -59,6 +61,12 @@ func ApplyOptions[T any](fs *T, opts ...NewFileSystemOption[T]) {
 // See the package documentation for an example.
 type DeleteOption interface {
 	DeleteOptionName() string
+}
+
+// ListOption interface contains function that should be implemented by any custom option to qualify as a list option.
+// List options configure listing through vfs.EntryLister and the list package, for example list.Recursive.
+type ListOption interface {
+	ListOptionName() string
 }
 
 // NewFileOption interface contains function that should be implemented by any custom option to qualify as a new file option.

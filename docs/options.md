@@ -15,6 +15,7 @@ Options are grouped by the operation they apply to:
 - NewFileSystemOption configures a backend's FileSystem through its NewFileSystem function. Each backend provides its own options, such as s3.WithOptions or gs.WithRetryer.
 - NewFileOption configures FileSystem.NewFile and Location.NewFile. See the options/newfile package, for example newfile.WithContentType.
 - DeleteOption configures File.Delete and Location.DeleteFile. See the options/delete package, for example delete.WithAllVersions.
+- ListOption configures listing through vfs.EntryLister. See the list package, for example list.Recursive.
 
 ### Creating a Custom Option
 
@@ -55,6 +56,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 
 - [func ApplyOptions\[T any\]\(fs \*T, opts ...NewFileSystemOption\[T\]\)](<#ApplyOptions>)
 - [type DeleteOption](<#DeleteOption>)
+- [type ListOption](<#ListOption>)
 - [type NewFileOption](<#NewFileOption>)
 - [type NewFileSystemOption](<#NewFileSystemOption>)
 - [type Option](<#Option>)
@@ -77,6 +79,17 @@ DeleteOption interface contains function that should be implemented by any custo
 ```go
 type DeleteOption interface {
     DeleteOptionName() string
+}
+```
+
+<a name="ListOption"></a>
+## type ListOption
+
+ListOption interface contains function that should be implemented by any custom option to qualify as a list option. List options configure listing through vfs.EntryLister and the list package, for example list.Recursive.
+
+```go
+type ListOption interface {
+    ListOptionName() string
 }
 ```
 
