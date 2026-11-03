@@ -63,7 +63,7 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		return sub.ListByPrefix(prefix[i+1:])
+		return sub.(*Location).ListByPrefix(prefix[i+1:]) //nolint:forcetypeassert // NewLocation always returns *Location
 	}
 	return l.filter(func(n string) bool { return strings.HasPrefix(n, prefix) })
 }

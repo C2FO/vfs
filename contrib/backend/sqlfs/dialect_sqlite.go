@@ -21,7 +21,10 @@ func (sqliteDialect) Name() string                    { return "sqlite" }
 func (sqliteDialect) Rebind(q string) string          { return q }
 func (sqliteDialect) QuoteIdentifier(n string) string { return `"` + n + `"` }
 func (sqliteDialect) Migrations() []Migration {
-	return []Migration{mustMigration("sqlite", 1, "0001_init.sql")}
+	return []Migration{
+		mustMigration("sqlite", 1, "0001_init.sql"),
+		mustMigration("sqlite", 2, "0002_list_key_index.sql"),
+	}
 }
 
 func (sqliteDialect) UpsertChunk(t string) string {

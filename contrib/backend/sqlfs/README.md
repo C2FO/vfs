@@ -70,6 +70,32 @@ Run `EnsureSchema` from a migration job or a privileged startup step. The runtim
 with your own tool; replace each literal `vfs_` identifier with your prefix. `EnsureSchema` double-quotes every table
 and index name, so if your prefix has uppercase letters or starts with a digit, quote the names the same way.
 
+Schema version 2 adds an index that listing uses. A database at version 1 still works for reads and writes, but
+`ValidateSchema` rejects it with `ErrInvalidSchema` until `EnsureSchema` upgrades it, so run `EnsureSchema` once when
+you upgrade to a release with the new migration. On PostgreSQL the upgrade builds the index inside the migration
+transaction, which blocks writes to the files table while it runs; on a large table, schedule it accordingly.
+
+## Listing
+
+`Location` implements `vfs.EntryLister`, so `list.Entries` lists a location natively:
+
+```go
+for e, err := range list.Entries(ctx, loc, list.Glob("*/*.csv")) {
+    if err != nil { /* ... */ }
+    info, _ := e.Info() // size and modification time come from the listing query
+    fmt.Println(e.RelPath(), info.Size())
+}
+```
+
+Entries come in byte order of their path. Each query returns up to 1,000 files, starting after the last one already
+returned, and runs only when the caller asks for more entries. A non-recursive listing, or one that skips a directory
+because of `MaxDepth`, `DirFilter` or a `Glob`, resumes after the skipped directory instead of reading the files inside
+it. Directories are virtual, so a directory entry exists wherever a file's path continues below the listed location.
+
+Listing compares paths in byte order whatever the database's default collation: the PostgreSQL dialect collates them
+in `"C"`. A custom `Dialect` whose default collation is not byte order implements `ByteOrderer`; without it, a listing
+that finds paths out of byte order ends with an error rather than returning them in the wrong order.
+
 ## Options
 
 | Option | Default | Notes |
@@ -143,7 +169,8 @@ jittered backoff before surfacing.
 ## Limitations
 
 * Directories are implicit; there is no way to create an empty directory.
-* `ListByPrefix` and `ListByRegex` filter in Go after listing the directory, so very large directories cost a scan.
+* The deprecated `ListByPrefix` and `ListByRegex` filter in Go after listing the directory, so very large directories
+  cost a scan. `list.Entries` with `list.Prefix`, `list.Glob` or `list.Match` lists from the key index instead.
 * Modification times and retention windows use the clock of the process that performs the operation, so keep
   clocks of processes sharing a database reasonably in sync.
 * Content lives in ordinary tables; very large datasets may be better served by an object store.

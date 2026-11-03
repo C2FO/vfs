@@ -60,6 +60,7 @@ type FileSystem struct {
 	opTimeout         time.Duration
 	stagingRetention  time.Duration
 	revisionRetention time.Duration
+	listPageSize      int
 }
 
 var _ vfs.FileSystem = (*FileSystem)(nil)
@@ -76,6 +77,7 @@ func NewFileSystem(opts ...options.NewFileSystemOption[FileSystem]) (*FileSystem
 		opTimeout:         DefaultOperationTimeout,
 		stagingRetention:  DefaultStagingRetention,
 		revisionRetention: DefaultRevisionRetention,
+		listPageSize:      defaultListPageSize,
 	}
 	options.ApplyOptions(fsys, opts...)
 

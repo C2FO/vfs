@@ -11,6 +11,9 @@ import (
 	"github.com/c2fo/vfs/contrib/backend/sqlfs"
 )
 
+// latestVersion is the schema version the built-in dialects migrate to.
+const latestVersion = 2
+
 type SchemaTestSuite struct {
 	suite.Suite
 	dsn string
@@ -83,12 +86,12 @@ func (s *SchemaTestSuite) TestEnsureFreshAndRepeated() {
 	ctx := s.T().Context()
 	s.Require().NoError(s.fs.EnsureSchema(ctx))
 	s.Require().NoError(s.fs.ValidateSchema(ctx))
-	s.Equal(1, s.version())
+	s.Equal(latestVersion, s.version())
 
 	s.Require().NoError(s.fs.EnsureSchema(ctx), "idempotent")
 	var rows int
 	s.Require().NoError(s.db.QueryRow("SELECT COUNT(*) FROM vfs_schema").Scan(&rows))
-	s.Equal(1, rows, "second run must not re-apply the migration")
+	s.Equal(latestVersion, rows, "second run must not re-apply a migration")
 }
 
 func (s *SchemaTestSuite) TestEnsureConcurrent() {
@@ -106,7 +109,7 @@ func (s *SchemaTestSuite) TestEnsureConcurrent() {
 	}
 	var rows int
 	s.Require().NoError(s.db.QueryRow("SELECT COUNT(*) FROM vfs_schema").Scan(&rows))
-	s.Equal(1, rows, "schema created exactly once")
+	s.Equal(latestVersion, rows, "each migration applied exactly once")
 }
 
 func (s *SchemaTestSuite) TestNewerSchemaVersionRejected() {
@@ -158,4 +161,25 @@ func (s *SchemaTestSuite) TestMigrationFilesUseDefaultPrefix() {
 			s.Contains(m.SQL, "vfs_files", "%s migration %d must use the literal vfs_ prefix", d.Name(), m.Version)
 		}
 	}
+}
+
+// TestUpgradeAddsTheListingKeyIndex starts from a version 1 database, as created before listing used a key index.
+func (s *SchemaTestSuite) TestUpgradeAddsTheListingKeyIndex() {
+	ctx := s.T().Context()
+	_, err := s.db.Exec(sqlfs.SQLite().Migrations()[0].SQL)
+	s.Require().NoError(err)
+	s.Require().Equal(1, s.version())
+	put(s.T(), s.fs, "/docs/a.txt", []byte("a"))
+
+	err = s.fs.ValidateSchema(ctx)
+	s.Require().ErrorIs(err, sqlfs.ErrInvalidSchema)
+	s.Contains(err.Error(), "older than 2 (run EnsureSchema)")
+
+	s.Require().NoError(s.fs.EnsureSchema(ctx))
+	s.Require().NoError(s.fs.ValidateSchema(ctx))
+	s.Equal(2, s.version())
+	var n int
+	s.Require().NoError(s.db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'vfs_files_key_idx'").Scan(&n))
+	s.Equal(1, n)
+	s.Equal([]byte("a"), get(s.T(), s.fs, "/docs/a.txt"), "the upgrade keeps existing files")
 }

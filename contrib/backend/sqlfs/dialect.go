@@ -71,6 +71,15 @@ type SessionValidator interface {
 	ValidateSession(ctx context.Context, q Execer) error
 }
 
+// ByteOrderer may be implemented by a Dialect whose default text collation is not byte order. Listing compares and
+// sorts the key expression "(dir || name)" through ByteOrder, so the result must also be the expression the dialect's
+// key index (migration 2) is built on, or listing cannot use that index. A dialect that does not implement it compares
+// with its default collation; a listing that then finds keys out of byte order ends with an error.
+type ByteOrderer interface {
+	// ByteOrder returns expr compared and sorted in byte order, for example expr + ` COLLATE "C"`.
+	ByteOrder(expr string) string
+}
+
 // txn is a database transaction.
 type txn interface {
 	Execer
