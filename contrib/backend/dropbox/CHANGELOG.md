@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [[contrib/backend/dropbox/v1.3.0](https://github.com/C2FO/vfs/releases/tag/contrib%2Fbackend%2Fdropbox%2Fv1.3.0)] - 2026-11-03
 ### Added
 - `Location` implements `vfs.EntryLister`, so `list.Entries` lists natively: each folder is read with `list_folder` and `list_folder/continue`, only as the listing reaches it, and every file carries its size and server modification time from the listing, so reading them makes no further request. An authentication failure ends the listing after it is reported once, and cancelling the context stops further requests ([#389](https://github.com/C2FO/vfs/issues/389)).
 
