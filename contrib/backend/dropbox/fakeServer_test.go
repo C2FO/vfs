@@ -109,7 +109,7 @@ func newFakeServer(t *testing.T) (*fakeDropbox, *httptest.Server, files.Client) 
 	t.Cleanup(srv.Close)
 
 	cfg := dropbox.Config{
-		Client: srv.Client(),
+		Client: newHTTPClient(fakeToken, srv.Client().Transport),
 		URLGenerator: func(host, ns, route string) string {
 			return fmt.Sprintf("%s/%s/2/%s/%s", srv.URL, host, ns, route)
 		},

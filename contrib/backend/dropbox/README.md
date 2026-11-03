@@ -503,21 +503,32 @@ return file.Close()
 
 ### Listing Files
 
+`list.Entries` streams the files and folders of a location in byte order, with each file's size and modification time
+from the listing itself (no per-file request):
+
 ```go
 location, err := fs.NewLocation("", "/my-folder/")
 if err != nil {
     return err
 }
 
-files, err := location.List()
-if err != nil {
-    return err
-}
-
-for _, filename := range files {
-    fmt.Println(filename)
+for e, err := range list.Entries(ctx, location, list.Glob("*/*.csv")) {
+    if err != nil {
+        return err
+    }
+    info, _ := e.Info()
+    fmt.Println(e.RelPath(), info.Size())
 }
 ```
+
+A folder is read with one `list_folder` request plus `list_folder/continue` requests while Dropbox reports more
+entries, only as the listing reaches it, so a recursive listing makes one request per folder (and per page) and a
+listing that stops early stops its requests. Dropbox's own recursive mode is not used because it does not guarantee
+an order. A folder that cannot be read is yielded with its entry and an error and the listing continues. Dropbox limits
+the rate of requests and the SDK does not retry them, so a very large recursive listing can see rate limit errors; each
+is reported for the folder it hit.
+
+`location.List()` is deprecated; it returns only the file names directly in the folder.
 
 ### Copying Files (Native)
 

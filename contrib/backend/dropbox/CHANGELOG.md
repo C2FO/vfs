@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- `Location` implements `vfs.EntryLister`, so `list.Entries` lists natively: each folder is read with `list_folder` and `list_folder/continue`, only as the listing reaches it, and every file carries its size and server modification time from the listing, so reading them makes no further request. An authentication failure ends the listing after it is reported once, and cancelling the context stops further requests ([#389](https://github.com/C2FO/vfs/issues/389)).
+
+### Fixed
+- Uploading or downloading a file whose path contains non-ASCII characters no longer fails. The SDK puts the unescaped path in the `Dropbox-API-Arg` header, which Dropbox requires to be `\uXXXX`-escaped; the client now escapes it, using surrogate pairs above U+FFFF.
 
 ## [[contrib/backend/dropbox/v1.2.4](https://github.com/C2FO/vfs/releases/tag/contrib%2Fbackend%2Fdropbox%2Fv1.2.4)] - 2026-11-03
 ### Fixed
