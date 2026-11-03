@@ -329,10 +329,15 @@ func TestPostgresListingByteOrder(t *testing.T) {
 	admin, err := sql.Open("pgx", pgDSN)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = admin.Close() })
-	_, err = admin.ExecContext(ctx, `CREATE DATABASE sqlfs_icu TEMPLATE template0 LOCALE_PROVIDER icu ICU_LOCALE 'en-US' LOCALE 'C'`)
+	// The container is shared by every test and repetition, so the database is named for this run and dropped after it.
+	dbName := fmt.Sprintf("sqlfs_icu_%d", time.Now().UnixNano())
+	_, err = admin.ExecContext(ctx, `CREATE DATABASE `+dbName+` TEMPLATE template0 LOCALE_PROVIDER icu ICU_LOCALE 'en-US' LOCALE 'C'`)
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = admin.ExecContext(context.Background(), `DROP DATABASE IF EXISTS `+dbName+` WITH (FORCE)`)
+	})
 
-	icuDSN := strings.Replace(pgDSN, "/sqlfs?", "/sqlfs_icu?", 1)
+	icuDSN := strings.Replace(pgDSN, "/sqlfs?", "/"+dbName+"?", 1)
 	require.NotEqual(t, pgDSN, icuDSN)
 	db, err := sql.Open("pgx", icuDSN)
 	require.NoError(t, err)

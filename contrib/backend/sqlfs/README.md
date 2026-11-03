@@ -80,7 +80,7 @@ transaction, which blocks writes to the files table while it runs; on a large ta
 `Location` implements `vfs.EntryLister`, so `list.Entries` lists a location natively:
 
 ```go
-for e, err := range list.Entries(ctx, loc, list.Recursive(), list.Glob("*/*.csv")) {
+for e, err := range list.Entries(ctx, loc, list.Glob("*/*.csv")) {
     if err != nil { /* ... */ }
     info, _ := e.Info() // size and modification time come from the listing query
     fmt.Println(e.RelPath(), info.Size())
