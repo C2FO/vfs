@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Native listing: `Location` implements `vfs.EntryLister`, so `list.Entries` reads each folder once and reports every file's size and modification time from the listing instead of requesting them file by file. Files that share a name are each listed, and a location that does not exist lists nothing.
+
 ## [[contrib/backend/gdrive/v0.2.3](https://github.com/C2FO/vfs/releases/tag/contrib%2Fbackend%2Fgdrive%2Fv0.2.3)] - 2026-11-03
 ### Fixed
 - Updated core VFS dependency to v7.33.1, which adds the `list.Entries` listing API.

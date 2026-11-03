@@ -1,0 +1,75 @@
+package gdrive
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	iofs "io/fs"
+	"iter"
+	"path"
+
+	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/list"
+	"github.com/c2fo/vfs/v7/options"
+)
+
+var _ vfs.EntryLister = (*Location)(nil)
+
+// ListEntries lists the location's contents as a stream of entries in byte order, implementing vfs.EntryLister. Use
+// list.Entries to list a location with options and have every option applied.
+//
+// A folder is read in full, with one files.list request per page of up to 1000 children, when the listing reaches it;
+// a recursive listing reads one folder at a time, depth first, so memory use is one folder per level of depth and a
+// listing that stops early stops its requests. The size and modification time of every file come from the listing, the
+// same values File.Size and File.LastModified report, so reading them makes no further request, and Entry.Sys returns
+// the listed Item. A Google-native file, such as a Google Doc, is listed as a file with size 0.
+//
+// A location that does not exist lists nothing. A location that is a file is an error, as is a folder name that
+// matches more than one folder, which a path cannot choose between; in a recursive listing such a folder is yielded
+// with its entry and an error and the listing continues. A folder that cannot be read is reported the same way. An
+// entry whose name contains a slash cannot be part of a path and is reported as an error matching fs.ErrInvalid.
+// Drive allows several files in one folder to share a name; each is listed.
+//
+// Cancellation of ctx ends the listing, and is checked before every folder is read.
+func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) iter.Seq2[vfs.Entry, error] {
+	return list.Native(l, opts, func(q list.Query, yield func(vfs.Entry, error) bool) {
+		list.WalkDirs(ctx, l, q, l.readDir, l.fileSystem.Retry())(yield)
+	})
+}
+
+// readDir reads every child of one folder of the location.
+func (l *Location) readDir(ctx context.Context, relDir string) ([]list.Child, error) {
+	client, err := l.client()
+	if err != nil {
+		return nil, err
+	}
+
+	items, err := client.ListChildren(ctx, path.Join(l.drivePath(), relDir))
+	if err != nil {
+		return nil, wrapListError(err)
+	}
+
+	children := make([]list.Child, 0, len(items))
+	for i := range items {
+		item := items[i]
+		if item.IsFolder {
+			children = append(children, list.Child{Name: item.Name, IsDir: true})
+			continue
+		}
+		children = append(children, list.Child{Name: item.Name, Options: []vfs.EntryOption{
+			vfs.WithEntryMetadata(uint64(max(item.Size, 0)), item.ModTime),
+			vfs.WithEntrySys(&item),
+		}})
+	}
+	return children, nil
+}
+
+// wrapListError makes a missing folder match fs.ErrNotExist, which the engine reads as "nothing to list" or, for a
+// folder that vanished mid-listing, as a partial failure. A path segment that is a file stays an error: the location
+// exists but is not a folder.
+func wrapListError(err error) error {
+	if errors.Is(err, ErrNotFound) {
+		return fmt.Errorf("%w: %w", iofs.ErrNotExist, err)
+	}
+	return err
+}
