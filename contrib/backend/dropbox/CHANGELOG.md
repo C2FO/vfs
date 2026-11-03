@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [[contrib/backend/dropbox/v1.2.4](https://github.com/C2FO/vfs/releases/tag/contrib%2Fbackend%2Fdropbox%2Fv1.2.4)] - 2026-11-03
 ### Fixed
 - Updated core VFS dependency to v7.33.1, which adds the `list.Entries` listing API.
 
