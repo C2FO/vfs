@@ -26,6 +26,7 @@ type queries struct {
 	touchFile         string
 	moveFile          string
 	list              string
+	listKeys          string
 	selCleanup        string
 	delChunksRange    string
 	delRevision       string
@@ -35,6 +36,10 @@ func newQueries(d Dialect, prefix string) queries {
 	q := d.QuoteIdentifier
 	schema, revs, files, chunks := q(prefix+"schema"), q(prefix+"revisions"), q(prefix+"files"), q(prefix+"chunks")
 	rb := d.Rebind
+	key := "(dir || name)"
+	if bo, ok := d.(ByteOrderer); ok {
+		key = bo.ByteOrder(key)
+	}
 	return queries{
 		createSchemaTable: fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (version INTEGER PRIMARY KEY)", schema),
 		selVersion:        "SELECT MAX(version) FROM " + schema,
@@ -65,6 +70,10 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`, files)),
 		moveFile: rb(fmt.Sprintf("UPDATE %s SET namespace = ?, dir = ?, name = ?, generation = generation + 1 WHERE id = ? AND generation = ?",
 			files)),
 		list: rb(fmt.Sprintf("SELECT name FROM %s WHERE namespace = ? AND dir = ? ORDER BY name", files)),
+		// The first bound is the prefix every key starts with, the second the key the page starts after; keys past the
+		// prefix are cut off by the caller, which keeps the range open-ended so it can use the key index.
+		listKeys: rb(fmt.Sprintf(`SELECT dir, name, size, modified_at FROM %[1]s
+WHERE namespace = ? AND %[2]s >= ? AND %[2]s > ? ORDER BY %[2]s LIMIT ?`, files, key)),
 		selCleanup: rb(fmt.Sprintf(`SELECT id, state, chunk_size FROM %s
 WHERE (state = %d AND expires_at < ?) OR (state = %d AND superseded_at < ?) LIMIT ?`, revs, stateStaged, stateSuperseded)),
 		claimRevision: rb(fmt.Sprintf(`UPDATE %s SET state = %d
