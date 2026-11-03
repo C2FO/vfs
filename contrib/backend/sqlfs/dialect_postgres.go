@@ -19,7 +19,10 @@ type postgresDialect struct{}
 func (postgresDialect) Name() string                    { return "postgres" }
 func (postgresDialect) QuoteIdentifier(n string) string { return `"` + n + `"` }
 func (postgresDialect) Migrations() []Migration {
-	return []Migration{mustMigration("postgres", 1, "0001_init.sql")}
+	return []Migration{
+		mustMigration("postgres", 1, "0001_init.sql"),
+		mustMigration("postgres", 2, "0002_list_key_index.sql"),
+	}
 }
 
 func (postgresDialect) Rebind(q string) string {
@@ -37,6 +40,9 @@ func (postgresDialect) Rebind(q string) string {
 	}
 	return b.String()
 }
+
+// ByteOrder compares in the "C" collation, which is byte order for UTF-8, whatever the database's default collation.
+func (postgresDialect) ByteOrder(expr string) string { return expr + ` COLLATE "C"` }
 
 func (postgresDialect) UpsertChunk(t string) string {
 	return "INSERT INTO " + t + " (revision_id, chunk_index, data) VALUES (?, ?, ?) " +

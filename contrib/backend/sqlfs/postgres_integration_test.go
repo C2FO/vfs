@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -23,6 +24,7 @@ import (
 	"github.com/c2fo/vfs/contrib/backend/sqlfs"
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/backend/testsuite"
+	"github.com/c2fo/vfs/v7/list"
 	"github.com/c2fo/vfs/v7/options"
 )
 
@@ -318,4 +320,77 @@ func TestPostgresValidateMissingSchema(t *testing.T) {
 		sqlfs.WithTablePrefix(fmt.Sprintf("absent%d_", pgPrefixSeq.Add(1))))
 	require.NoError(t, err)
 	require.ErrorIs(t, fsys.ValidateSchema(t.Context()), sqlfs.ErrInvalidSchema, "an undefined table is a missing schema")
+}
+
+// TestPostgresListingByteOrder lists from a database whose default collation is ICU en-US, which sorts "B.txt" after
+// "a.txt" and "_u.txt" first, so the listing is only in byte order because its queries collate in "C".
+func TestPostgresListingByteOrder(t *testing.T) {
+	ctx := t.Context()
+	admin, err := sql.Open("pgx", pgDSN)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = admin.Close() })
+	_, err = admin.ExecContext(ctx, `CREATE DATABASE sqlfs_icu TEMPLATE template0 LOCALE_PROVIDER icu ICU_LOCALE 'en-US' LOCALE 'C'`)
+	require.NoError(t, err)
+
+	icuDSN := strings.Replace(pgDSN, "/sqlfs?", "/sqlfs_icu?", 1)
+	require.NotEqual(t, pgDSN, icuDSN)
+	db, err := sql.Open("pgx", icuDSN)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+	var ordered string
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT string_agg(v, ',' ORDER BY v) FROM (VALUES ('B'), ('a')) AS t(v)`).Scan(&ordered))
+	require.Equal(t, "a,B", ordered, "the default collation must not be byte order for this test to mean anything")
+
+	fsys, err := sqlfs.NewFileSystem(sqlfs.WithDB(db), sqlfs.WithDialect(sqlfs.PostgreSQL()))
+	require.NoError(t, err)
+	require.NoError(t, fsys.EnsureSchema(ctx))
+	// FlatKeys orders the keys within a page itself, so only keys spread over pages show the database's order.
+	sqlfs.SetListPageSize(fsys, 2)
+
+	listingOrderFixture(t, fsys)
+	loc, err := fsys.NewLocation(testNS, "/docs/")
+	require.NoError(t, err)
+
+	for name, tt := range map[string]struct {
+		opts     []options.ListOption
+		expected []string
+	}{
+		"recursive":     {opts: []options.ListOption{list.Recursive()}, expected: listingOrderRecursive},
+		"non-recursive": {expected: listingOrderTopLevel},
+	} {
+		t.Run(name, func(t *testing.T) {
+			entries, err := list.Collect(list.Entries(t.Context(), loc, tt.opts...))
+			require.NoError(t, err)
+			keys := make([]string, 0, len(entries))
+			for _, e := range entries {
+				keys = append(keys, list.OrderKey(e))
+			}
+			require.Equal(t, tt.expected, keys)
+		})
+	}
+}
+
+func TestPostgresListingUsesTheKeyIndex(t *testing.T) {
+	fsys, db, prefix := newPostgresFSWithPrefix(t)
+	ctx := t.Context()
+	conn, err := db.Conn(ctx)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = conn.Close() })
+	// The tables are nearly empty, so the planner would scan them sequentially whatever indexes exist.
+	_, err = conn.ExecContext(ctx, "SET enable_seqscan = off")
+	require.NoError(t, err)
+
+	rows, err := conn.QueryContext(ctx, "EXPLAIN "+sqlfs.ListKeysQuery(fsys), testNS, "/d/", "/d/a", 10)
+	require.NoError(t, err)
+	defer func() { _ = rows.Close() }()
+	var plan []string
+	for rows.Next() {
+		var line string
+		require.NoError(t, rows.Scan(&line))
+		plan = append(plan, line)
+	}
+	require.NoError(t, rows.Err())
+	joined := strings.Join(plan, "\n")
+	require.Contains(t, joined, prefix+"files_key_idx", joined)
+	require.NotContains(t, joined, "Sort", "rows come in index order, not sorted per query:\n%s", joined)
 }

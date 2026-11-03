@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- `Location` implements `vfs.EntryLister`, so `list.Entries` lists natively: each query returns up to 1,000 files in byte order of their path, only as entries are consumed, carries each file's size and modification time, and skips directories the listing does not descend into ([#389](https://github.com/C2FO/vfs/issues/389)).
+- Schema version 2 adds the index that listing uses. Run `EnsureSchema` once after upgrading: until then `ValidateSchema` rejects the database with `ErrInvalidSchema`, although reads and writes keep working.
+- `ByteOrderer`, an optional `Dialect` interface for databases whose default collation is not byte order. The PostgreSQL dialect implements it with the `"C"` collation.
 
 ## [[contrib/backend/sqlfs/v0.2.4](https://github.com/C2FO/vfs/releases/tag/contrib%2Fbackend%2Fsqlfs%2Fv0.2.4)] - 2026-11-03
 ### Fixed
