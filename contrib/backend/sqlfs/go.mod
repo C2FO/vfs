@@ -3,7 +3,7 @@ module github.com/c2fo/vfs/contrib/backend/sqlfs
 go 1.26.7
 
 require (
-	github.com/c2fo/vfs/v7 v7.32.0
+	github.com/c2fo/vfs/v7 v7.33.1
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0

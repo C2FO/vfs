@@ -3,7 +3,7 @@ module github.com/c2fo/vfs/contrib/backend/dropbox
 go 1.26.7
 
 require (
-	github.com/c2fo/vfs/v7 v7.27.0
+	github.com/c2fo/vfs/v7 v7.33.1
 	github.com/dropbox/dropbox-sdk-go-unofficial/v6 v6.6.1
 	github.com/stretchr/testify v1.12.1
 )

@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.45.1
 	github.com/aws/aws-sdk-go-v2/config v1.33.1
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.48.1
-	github.com/c2fo/vfs/v7 v7.27.0
+	github.com/c2fo/vfs/v7 v7.33.1
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/stretchr/testify v1.12.1
 )

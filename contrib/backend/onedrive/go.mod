@@ -5,7 +5,7 @@ go 1.26.7
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.23.3
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.15.0
-	github.com/c2fo/vfs/v7 v7.32.0
+	github.com/c2fo/vfs/v7 v7.33.1
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 )
