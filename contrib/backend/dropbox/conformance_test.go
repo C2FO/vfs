@@ -347,9 +347,12 @@ func (s *FakeServerTestSuite) TestRelocationIntoItselfRefused() {
 }
 
 func (s *FakeServerTestSuite) TestNonASCIIArgHeaderRefused() {
-	_, err := s.client.Upload(files.NewUploadArg("/caf\u00e9.txt"), bytes.NewReader([]byte("a")))
-	s.Require().Error(err)
-	s.Contains(err.Error(), "ASCII")
+	const route = "/content/2/files/upload"
+	raw := "{\"path\":\"/caf\u00e9.txt\"}"
+	escaped := `{"path":"/caf\u00e9.txt"}`
+
+	s.Equal(http.StatusBadRequest, s.post(route, fakeToken, raw, "application/octet-stream", []byte("a")))
+	s.Equal(http.StatusOK, s.post(route, fakeToken, escaped, "application/octet-stream", []byte("a")))
 }
 
 func (s *FakeServerTestSuite) TestSessionOffsetValidated() {

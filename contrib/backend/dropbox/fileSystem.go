@@ -129,7 +129,7 @@ func (fs *FileSystem) Client() (Client, error) {
 
 		// Create Dropbox config with access token
 		config := dropbox.Config{
-			Token:    token,
+			Client:   newHTTPClient(token, nil),
 			LogLevel: dropbox.LogOff, // Can be made configurable if needed
 		}
 
