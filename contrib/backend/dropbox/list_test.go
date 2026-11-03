@@ -1,6 +1,7 @@
 package dropbox
 
 import (
+	"context"
 	"errors"
 	iofs "io/fs"
 	"iter"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/dropbox/dropbox-sdk-go-unofficial/v6/dropbox"
+	"github.com/dropbox/dropbox-sdk-go-unofficial/v6/dropbox/auth"
 	"github.com/dropbox/dropbox-sdk-go-unofficial/v6/dropbox/files"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -311,6 +313,34 @@ func (s *ListFailureTestSuite) TestOtherFailuresAreNotMappedToStandardErrors() {
 	s.Require().ErrorIs(err, boom)
 	s.Require().NotErrorIs(err, iofs.ErrNotExist)
 	s.Require().NotErrorIs(err, iofs.ErrPermission)
+}
+
+func (s *ListFailureTestSuite) TestAuthFailureEndsTheListing() {
+	authErr := auth.AuthAPIError{APIError: dropbox.APIError{ErrorSummary: "expired_access_token/."}}
+	s.client.EXPECT().ListFolder(&files.ListFolderArg{Path: "/test/path"}).
+		Return(&files.ListFolderResult{Entries: []files.IsMetadata{s.folder("a"), s.folder("b")}}, nil).Once()
+	s.client.EXPECT().ListFolder(&files.ListFolderArg{Path: "/test/path/a"}).Return(nil, authErr).Once()
+
+	var errs []error
+	for e, err := range list.Entries(s.T().Context(), s.location, list.Recursive()) {
+		if err != nil {
+			s.Equal(vfs.Entry{}.RelPath(), e.RelPath(), "the failure carries no entry")
+			errs = append(errs, err)
+		}
+	}
+	s.Require().Len(errs, 1, "folder b is never requested")
+	s.Require().ErrorAs(errs[0], new(auth.AuthAPIError))
+}
+
+func (s *ListFailureTestSuite) TestCancellationStopsTheRequests() {
+	ctx, cancel := context.WithCancel(s.T().Context())
+	s.client.EXPECT().ListFolder(mock.Anything).RunAndReturn(func(*files.ListFolderArg) (*files.ListFolderResult, error) {
+		cancel()
+		return &files.ListFolderResult{Entries: []files.IsMetadata{s.file("a.txt")}, Cursor: "c1", HasMore: true}, nil
+	}).Once()
+
+	_, err := list.Collect(list.Entries(ctx, s.location))
+	s.Require().ErrorIs(err, context.Canceled)
 }
 
 func (s *ListFailureTestSuite) TestFolderPathHasNoTrailingSlash() {

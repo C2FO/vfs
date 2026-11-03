@@ -2,12 +2,14 @@ package dropbox
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	iofs "io/fs"
 	"iter"
 	"strings"
 	"time"
 
+	"github.com/dropbox/dropbox-sdk-go-unofficial/v6/dropbox/auth"
 	"github.com/dropbox/dropbox-sdk-go-unofficial/v6/dropbox/files"
 
 	"github.com/c2fo/vfs/v7"
@@ -32,16 +34,30 @@ var _ vfs.EntryLister = (*Location)(nil)
 //
 // A folder that cannot be read is yielded with its entry and an error, and the listing continues; a folder with
 // restricted content matches fs.ErrPermission, and a location that does not exist lists nothing. A location that is a
-// file is an error. Dropbox limits the rate of requests, and the SDK does not retry them, so a very large recursive
-// listing can see rate limit errors; each is reported for the folder it hit.
+// file is an error. An authentication failure, such as a token that expires mid-listing, is yielded once and ends the
+// listing, and so does cancellation of ctx, which is checked before every request. Dropbox limits the rate of
+// requests, and the SDK does not retry them, so a very large recursive listing can see rate limit errors; each is
+// reported for the folder it hit.
 func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) iter.Seq2[vfs.Entry, error] {
 	return list.Native(l, opts, func(q list.Query, yield func(vfs.Entry, error) bool) {
-		list.WalkDirs(ctx, l, q, l.readDir, l.fileSystem.Retry())(yield)
+		list.WalkDirs(ctx, l, q, l.readDir, l.fileSystem.Retry())(endOnAuthFailure(yield))
 	})
 }
 
+// endOnAuthFailure wraps yield so that an authentication failure, which would fail every remaining request the same
+// way, is yielded once, without an entry, and ends the listing.
+func endOnAuthFailure(yield func(vfs.Entry, error) bool) func(vfs.Entry, error) bool {
+	return func(e vfs.Entry, err error) bool {
+		if _, ok := errors.AsType[auth.AuthAPIError](err); ok {
+			yield(vfs.Entry{}, err)
+			return false
+		}
+		return yield(e, err)
+	}
+}
+
 // readDir reads every page of one folder of the location.
-func (l *Location) readDir(_ context.Context, relDir string) ([]list.Child, error) {
+func (l *Location) readDir(ctx context.Context, relDir string) ([]list.Child, error) {
 	client, err := l.fileSystem.Client()
 	if err != nil {
 		return nil, err
@@ -49,6 +65,9 @@ func (l *Location) readDir(_ context.Context, relDir string) ([]list.Child, erro
 
 	// Dropbox takes a folder path without a trailing slash, and "" for the root.
 	dir := strings.TrimSuffix(l.Path()+relDir, "/")
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	result, err := client.ListFolder(&files.ListFolderArg{Path: dir})
 	if err != nil {
 		return nil, wrapListError(err)
@@ -59,6 +78,9 @@ func (l *Location) readDir(_ context.Context, relDir string) ([]list.Child, erro
 		children = appendChildren(children, result.Entries)
 		if !result.HasMore {
 			return children, nil
+		}
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
 		if result, err = client.ListFolderContinue(&files.ListFolderContinueArg{Cursor: result.Cursor}); err != nil {
 			return nil, wrapListError(err)
