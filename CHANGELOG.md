@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Updated the indirect dependency `github.com/go-jose/go-jose/v4` to v4.1.6 to resolve Dependabot advisories GHSA-vvm8-gf78-28g4, GHSA-4w3g-jfj2-cw2q and GHSA-mgcc-cww5-fp2q, in the core and `testcontainers` modules.
+
 ## [[v7.33.1](https://github.com/C2FO/vfs/releases/tag/v7.33.1)] - 2026-11-02
 ### Fixed
 - Internal code cleanup with no behavior change: use Go 1.26 `new`, `min`/`max`, `errors.AsType`, `strings.CutSuffix`, `strings.SplitSeq`, and `sync.WaitGroup.Go` where the `modernize` analyzer suggested them, including in the integration test files. `utils.Ptr` stays exported and unchanged for callers. `modernize` is now enabled in `.golangci.yml` ([#391](https://github.com/C2FO/vfs/issues/391)).
