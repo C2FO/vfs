@@ -11,9 +11,10 @@ import (
 
 	"github.com/c2fo/vfs/contrib/vfsevents"
 	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/list"
 )
 
-// FileInfo stores cached file metadata to avoid expensive LastModified() calls
+// FileInfo stores cached file metadata so a poll can tell whether a file changed
 type FileInfo struct {
 	URI          string
 	LastModified time.Time
@@ -24,10 +25,12 @@ type FileInfo struct {
 // Poller implements the Watcher interface by polling a vfs.Location.
 //
 // Performance Considerations:
-// - Suitable for small to medium directories (< 1000 files)
-// - For large directories, consider using cloud-native event watchers (S3Events, GCSEvents)
-// - Memory usage grows with number of files but includes periodic cleanup
-// - LastModified() calls are cached to improve performance
+//   - Suitable for small to medium directories (< 1000 files)
+//   - For large directories, consider using cloud-native event watchers (S3Events, GCSEvents)
+//   - Memory usage grows with number of files but includes periodic cleanup
+//   - Each poll lists the location with list.Entries. A backend with native listing reports every file's size and
+//     modification time in that listing, so a poll makes no per-file requests; other backends are listed by name and
+//     a file's metadata is requested only when it is needed
 type Poller struct {
 	location    vfs.Location
 	interval    time.Duration
@@ -163,7 +166,7 @@ func (p *Poller) Start(
 				}
 				return
 			case <-ticker.C:
-				if err := p.poll(wrappedHandler, config, &status); err != nil {
+				if err := p.poll(ctx, wrappedHandler, config, &status); err != nil {
 					status.LastError = err
 					if config.StatusCallback != nil {
 						config.StatusCallback(status)
@@ -184,18 +187,23 @@ func (p *Poller) Start(
 }
 
 // poll checks for new, modified, or deleted files with improved performance and memory management.
-func (p *Poller) poll(handler vfsevents.HandlerFunc, config *vfsevents.StartConfig, status *vfsevents.WatcherStatus) error {
+func (p *Poller) poll(
+	ctx context.Context,
+	handler vfsevents.HandlerFunc,
+	config *vfsevents.StartConfig,
+	status *vfsevents.WatcherStatus,
+) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	var filenames []string
+	var entries []vfs.Entry
 	var err error
 
-	// Retry List() operation if retry is enabled
+	// Retry the listing if retry is enabled
 	if config.RetryConfig.Enabled {
 		var lastErr error
 		for attempt := range config.RetryConfig.MaxRetries + 1 {
-			filenames, err = p.location.List()
+			entries, err = p.listFiles(ctx)
 			if err == nil {
 				// Success - reset consecutive error count
 				status.ConsecutiveErrors = 0
@@ -238,14 +246,14 @@ func (p *Poller) poll(handler vfsevents.HandlerFunc, config *vfsevents.StartConf
 		}
 	} else {
 		// No retry - single attempt
-		filenames, err = p.location.List()
+		entries, err = p.listFiles(ctx)
 		if err != nil {
 			return fmt.Errorf("error listing files: %w", err)
 		}
 	}
 
 	currentFiles := make(map[string]struct{})
-	if err := p.processCurrentFiles(filenames, currentFiles, handler); err != nil {
+	if err := p.processCurrentFiles(entries, currentFiles, handler); err != nil {
 		return err
 	}
 
@@ -255,16 +263,37 @@ func (p *Poller) poll(handler vfsevents.HandlerFunc, config *vfsevents.StartConf
 	return nil
 }
 
+// listFiles lists the files directly in the location. A location that does not exist lists nothing, so when files that
+// were being tracked are gone the location itself is checked: its removal is an error, not the deletion of every file.
+func (p *Poller) listFiles(ctx context.Context) ([]vfs.Entry, error) {
+	entries, err := list.Collect(list.Entries(ctx, p.location, list.FilesOnly()))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(entries) == 0 && len(p.fileCache) > 0 {
+		exists, err := p.location.Exists()
+		if err != nil {
+			return nil, fmt.Errorf("failed to check if location exists: %w", err)
+		}
+		if !exists {
+			return nil, fmt.Errorf("location no longer exists: %s", p.location.URI())
+		}
+	}
+
+	return entries, nil
+}
+
 // processCurrentFiles processes all current files and detects new/modified files
-func (p *Poller) processCurrentFiles(filenames []string, currentFiles map[string]struct{}, handler vfsevents.HandlerFunc) error {
-	for _, filename := range filenames {
-		f, err := p.location.NewFile(filename)
+func (p *Poller) processCurrentFiles(entries []vfs.Entry, currentFiles map[string]struct{}, handler vfsevents.HandlerFunc) error {
+	for _, e := range entries {
+		f, err := e.File()
 		if err != nil {
 			return fmt.Errorf("error creating file: %w", err)
 		}
 		currentFiles[f.URI()] = struct{}{}
 
-		if err := p.processFile(f, handler); err != nil {
+		if err := p.processFile(e, f, handler); err != nil {
 			return err
 		}
 	}
@@ -272,8 +301,8 @@ func (p *Poller) processCurrentFiles(filenames []string, currentFiles map[string
 }
 
 // processFile processes a single file and handles new/modified file detection
-func (p *Poller) processFile(f vfs.File, handler vfsevents.HandlerFunc) error {
-	fileMetadata, err := p.getFileMetadata(f)
+func (p *Poller) processFile(e vfs.Entry, f vfs.File, handler vfsevents.HandlerFunc) error {
+	fileMetadata, err := p.getFileMetadata(e, f)
 	if err != nil {
 		return err
 	}
@@ -285,9 +314,17 @@ func (p *Poller) processFile(f vfs.File, handler vfsevents.HandlerFunc) error {
 	return p.handleFileEvent(f, fileMetadata, handler)
 }
 
-// getFileMetadata retrieves file metadata efficiently
-func (p *Poller) getFileMetadata(f vfs.File) (*fileMetadata, error) {
+// getFileMetadata returns the file's metadata, taking it from the listing when the backend reported it, which costs
+// nothing, and otherwise requesting it only when it is needed.
+func (p *Poller) getFileMetadata(e vfs.Entry, f vfs.File) (*fileMetadata, error) {
 	metadata := &fileMetadata{uri: f.URI()}
+
+	if e.HasMetadata() {
+		lastModified := e.ModTime()
+		metadata.lastModified = &lastModified
+		metadata.size = e.Size()
+		return metadata, nil
+	}
 
 	// Only call LastModified() if we need it (for minAge check or modification detection)
 	if p.minAge > 0 || p.fileCache[f.URI()] != nil {

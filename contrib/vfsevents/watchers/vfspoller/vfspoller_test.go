@@ -4,17 +4,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"iter"
 	"log"
 	"sort"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/contrib/vfsevents"
 	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/list"
 	"github.com/c2fo/vfs/v7/mocks"
+	"github.com/c2fo/vfs/v7/options"
 	"github.com/c2fo/vfs/v7/vfssimple"
 )
 
@@ -228,7 +232,8 @@ func (s *PollerTestSuite) TestPoll() {
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			loc := mocks.NewLocation(s.T())
-			loc.EXPECT().Exists().Return(true, nil)
+			loc.EXPECT().Exists().Return(true, nil).Once()
+			loc.EXPECT().Path().Return("/dir/").Maybe()
 			poller, _ := NewPoller(loc, tt.opts...)
 			if tt.fileCache != nil {
 				poller.fileCache = tt.fileCache
@@ -243,7 +248,7 @@ func (s *PollerTestSuite) TestPoll() {
 			}
 			status := &vfsevents.WatcherStatus{}
 
-			err := poller.poll(func(event vfsevents.Event) {}, config, status)
+			err := poller.poll(s.T().Context(), func(event vfsevents.Event) {}, config, status)
 			if tt.wantErr {
 				s.Require().Error(err)
 			} else {
@@ -386,7 +391,8 @@ func (s *PollerTestSuite) TestPollWithRetry() {
 		s.Run(tt.name, func() {
 			loc := mocks.NewLocation(s.T())
 			// Setup Exists() mock before creating poller
-			loc.EXPECT().Exists().Return(true, nil)
+			loc.EXPECT().Exists().Return(true, nil).Once()
+			loc.EXPECT().Path().Return("/dir/").Maybe()
 
 			poller, _ := NewPoller(loc)
 			tt.setupMocks(loc)
@@ -397,7 +403,7 @@ func (s *PollerTestSuite) TestPollWithRetry() {
 			status := &vfsevents.WatcherStatus{}
 
 			start := time.Now()
-			err := poller.poll(func(event vfsevents.Event) {}, config, status)
+			err := poller.poll(s.T().Context(), func(event vfsevents.Event) {}, config, status)
 			elapsed := time.Since(start)
 
 			if tt.wantErr {
@@ -970,4 +976,168 @@ func ExampleNewPoller_withRetryLogic() {
 		log.Printf("Failed to stop watcher: %v", err)
 		return
 	}
+}
+
+// nativeLocation is a Location whose listing is native, so list.Entries uses ListEntries instead of List.
+type nativeLocation struct {
+	*mocks.Location
+	*mocks.EntryLister
+}
+
+// newNativeLocation returns a poller over a native listing. The listed file mocks have no LastModified or Size
+// expectations, so any per-file metadata request fails the test.
+func (s *PollerTestSuite) newNativeLocation(opts ...Option) (*Poller, *mocks.EntryLister, *mocks.Location) {
+	loc := mocks.NewLocation(s.T())
+	loc.EXPECT().Exists().Return(true, nil)
+	loc.EXPECT().Path().Return("/dir/").Maybe()
+	lister := mocks.NewEntryLister(s.T())
+
+	poller, err := NewPoller(nativeLocation{loc, lister}, opts...)
+	s.Require().NoError(err)
+
+	loc.EXPECT().NewFile(mock.Anything).RunAndReturn(func(name string, _ ...options.NewFileOption) (vfs.File, error) {
+		f := mocks.NewFile(s.T())
+		f.EXPECT().URI().Return("scheme:///dir/" + name)
+		return f, nil
+	}).Maybe()
+	return poller, lister, loc
+}
+
+func (s *PollerTestSuite) listed(loc vfs.Location, name string, size uint64, modified time.Time) vfs.Entry {
+	e, err := vfs.NewFileEntry(loc, name, vfs.WithEntryMetadata(size, modified))
+	s.Require().NoError(err)
+	return e
+}
+
+func entrySeq(entries ...vfs.Entry) iter.Seq2[vfs.Entry, error] {
+	return func(yield func(vfs.Entry, error) bool) {
+		for _, e := range entries {
+			if !yield(e, nil) {
+				return
+			}
+		}
+	}
+}
+
+func (s *PollerTestSuite) TestNativeListingNeedsNoPerFileRequests() {
+	poller, lister, loc := s.newNativeLocation()
+	hourAgo := time.Now().UTC().Add(-time.Hour)
+	polls := [][]vfs.Entry{
+		{s.listed(loc, "a.txt", 1, hourAgo), s.listed(loc, "b.txt", 2, hourAgo)},
+		{s.listed(loc, "a.txt", 1, hourAgo), s.listed(loc, "b.txt", 2, hourAgo.Add(time.Minute))},
+		{s.listed(loc, "b.txt", 2, hourAgo.Add(time.Minute))},
+	}
+	for _, entries := range polls {
+		lister.EXPECT().ListEntries(mock.Anything, mock.Anything).Return(entrySeq(entries...)).Once()
+	}
+
+	var events []string
+	handler := func(e vfsevents.Event) { events = append(events, fmt.Sprintf("%s %s", e.Type, e.URI)) }
+	status := &vfsevents.WatcherStatus{}
+	for range polls {
+		s.Require().NoError(poller.poll(s.T().Context(), handler, &vfsevents.StartConfig{}, status))
+	}
+
+	s.Equal([]string{
+		"Created scheme:///dir/a.txt", "Created scheme:///dir/b.txt",
+		"Modified scheme:///dir/b.txt",
+		"Deleted scheme:///dir/a.txt",
+	}, events)
+}
+
+func (s *PollerTestSuite) TestNativeListingSizeChangeIsAModification() {
+	poller, lister, loc := s.newNativeLocation()
+	modified := time.Now().UTC().Add(-time.Hour)
+	lister.EXPECT().ListEntries(mock.Anything, mock.Anything).Return(entrySeq(s.listed(loc, "a.txt", 1, modified))).Once()
+	lister.EXPECT().ListEntries(mock.Anything, mock.Anything).Return(entrySeq(s.listed(loc, "a.txt", 5, modified))).Once()
+
+	var types []vfsevents.EventType
+	handler := func(e vfsevents.Event) { types = append(types, e.Type) }
+	for range 2 {
+		s.Require().NoError(poller.poll(s.T().Context(), handler, &vfsevents.StartConfig{}, &vfsevents.WatcherStatus{}))
+	}
+
+	s.Equal([]vfsevents.EventType{vfsevents.EventCreated, vfsevents.EventModified}, types)
+}
+
+func (s *PollerTestSuite) TestNativeListingHonorsMinAge() {
+	poller, lister, loc := s.newNativeLocation(WithMinAge(time.Hour))
+	lister.EXPECT().ListEntries(mock.Anything, mock.Anything).Return(entrySeq(
+		s.listed(loc, "fresh.txt", 1, time.Now().UTC()),
+		s.listed(loc, "old.txt", 1, time.Now().UTC().Add(-2*time.Hour)),
+	)).Once()
+
+	var uris []string
+	handler := func(e vfsevents.Event) { uris = append(uris, e.URI) }
+	s.Require().NoError(poller.poll(s.T().Context(), handler, &vfsevents.StartConfig{}, &vfsevents.WatcherStatus{}))
+
+	s.Equal([]string{"scheme:///dir/old.txt"}, uris)
+}
+
+func (s *PollerTestSuite) TestListsFilesOnly() {
+	poller, lister, _ := s.newNativeLocation()
+	lister.EXPECT().ListEntries(mock.Anything, mock.MatchedBy(func(opts []options.ListOption) bool {
+		q, err := list.ParseQuery(opts)
+		return err == nil && q.Kind == list.KindFiles && !q.Recursive
+	})).Return(entrySeq()).Once()
+
+	s.Require().NoError(poller.poll(s.T().Context(), func(vfsevents.Event) {}, &vfsevents.StartConfig{}, &vfsevents.WatcherStatus{}))
+}
+
+func (s *PollerTestSuite) TestEmptyListingOfARemovedLocationIsAnError() {
+	tests := []struct {
+		name        string
+		exists      bool
+		existsErr   error
+		wantErr     string
+		wantDeleted bool
+	}{
+		{name: "Location was removed", exists: false, wantErr: "location no longer exists"},
+		{name: "Location cannot be checked", existsErr: errors.New("boom"), wantErr: "failed to check if location exists"},
+		{name: "Files were deleted from a location that remains", exists: true, wantDeleted: true},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			loc := mocks.NewLocation(s.T())
+			loc.EXPECT().Exists().Return(true, nil).Once()
+			loc.EXPECT().Path().Return("/dir/").Maybe()
+			loc.EXPECT().URI().Return("scheme:///dir/").Maybe()
+			poller, err := NewPoller(loc)
+			s.Require().NoError(err)
+			poller.fileCache["scheme:///dir/a.txt"] = &FileInfo{URI: "scheme:///dir/a.txt"}
+
+			loc.EXPECT().List().Return([]string{}, nil).Once()
+			loc.EXPECT().Exists().Return(tt.exists, tt.existsErr).Once()
+
+			var deleted int
+			err = poller.poll(s.T().Context(), func(e vfsevents.Event) {
+				if e.Type == vfsevents.EventDeleted {
+					deleted++
+				}
+			}, &vfsevents.StartConfig{}, &vfsevents.WatcherStatus{})
+
+			if tt.wantErr != "" {
+				s.Require().ErrorContains(err, tt.wantErr)
+				s.Zero(deleted, "no file is reported deleted when the location is gone")
+				return
+			}
+			s.Require().NoError(err)
+			s.Equal(1, deleted)
+		})
+	}
+}
+
+func (s *PollerTestSuite) TestCanceledContextStopsTheListing() {
+	loc := mocks.NewLocation(s.T())
+	loc.EXPECT().Exists().Return(true, nil).Once()
+	loc.EXPECT().Path().Return("/dir/").Maybe()
+	poller, err := NewPoller(loc)
+	s.Require().NoError(err)
+
+	ctx, cancel := context.WithCancel(s.T().Context())
+	cancel()
+
+	err = poller.poll(ctx, func(vfsevents.Event) {}, &vfsevents.StartConfig{}, &vfsevents.WatcherStatus{})
+	s.Require().ErrorIs(err, context.Canceled)
 }

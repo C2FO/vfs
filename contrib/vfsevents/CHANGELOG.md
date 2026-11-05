@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Performance
+- `vfspoller` lists with `list.Entries` instead of `List()` followed by a stat of each file. On a backend with native listing, each poll reads every file's size and modification time from the listing and makes no per-file requests. A listing that finds no files while files were being tracked now fails the poll when the location no longer exists, rather than reporting every file deleted.
+
 ## [[contrib/vfsevents/v1.4.5](https://github.com/C2FO/vfs/releases/tag/contrib%2Fvfsevents%2Fv1.4.5)] - 2026-11-03
 ### Fixed
 - Updated core VFS dependency to v7.33.1, which adds the `list.Entries` listing API.
