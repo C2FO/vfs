@@ -251,6 +251,15 @@ request fails immediately instead of retrying early, which would only prolong th
 retries back off exponentially. An interrupted upload-session chunk resumes from the offset Graph
 reports rather than failing the upload.
 
+### Listing
+
+`list.Entries` lists natively: each folder is read once, when the listing reaches it, following Graph's
+paging, and every file's size and modification time come from that listing, so reading them makes no
+further request. `Entry.Sys` returns the listed `onedrive.DriveItem`. A location that does not exist, or
+lies below a file, lists nothing; a location that is itself a file is an error. A folder Graph refuses
+access to matches `fs.ErrPermission`, and a 401 (an expired token, for example) is reported once and ends
+the listing.
+
 ### Folders Are Not Files
 
 `Delete`, `CopyToFile`/`CopyToLocation` and `MoveToFile`/`MoveToLocation` return an error when the
@@ -365,10 +374,10 @@ For application permissions, an admin must grant consent.
 go test ./...
 ```
 
-Unit tests use mockery mocks of `types.Client` (regenerate with `mockery` from this directory) and an
-`httptest` server for the Graph REST client. There is no in-process fake that runs the shared
-conformance suites on every `go test`; the WireMock tests and the real-drive conformance tests below
-both require `-tags=vfsintegration`.
+Unit tests use mockery mocks of `types.Client` (regenerate with `mockery` from this directory) and
+`httptest` servers for the Graph REST client. A small in-process fake Graph runs the shared listing
+suite on every `go test`. There is no fake for the rest of the conformance suites; the WireMock tests
+and the real-drive conformance tests below both require `-tags=vfsintegration`.
 
 ### WireMock Integration Tests
 
