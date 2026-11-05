@@ -215,6 +215,11 @@ func (p *Poller) poll(
 				break
 			}
 
+			// A listing that ended because ctx did will end the same way on every retry.
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return fmt.Errorf("listing stopped: %w", ctxErr)
+			}
+
 			// Check if error is retryable
 			if !vfsevents.IsRetryableError(err, config.RetryConfig) {
 				return fmt.Errorf("non-retryable error listing files: %w", err)
@@ -241,8 +246,12 @@ func (p *Poller) poll(
 				config.StatusCallback(*status)
 			}
 
-			// Wait before retry
-			time.Sleep(backoff)
+			// Wait before retry, unless the poller is stopped first
+			select {
+			case <-ctx.Done():
+				return fmt.Errorf("waiting to retry: %w", ctx.Err())
+			case <-time.After(backoff):
+			}
 		}
 
 		// If we still have an error after all retries, return it
@@ -332,7 +341,8 @@ func (p *Poller) processFile(e vfs.Entry, f vfs.File, handler vfsevents.HandlerF
 func (p *Poller) getFileMetadata(e vfs.Entry, f vfs.File) (*fileMetadata, error) {
 	metadata := &fileMetadata{uri: f.URI()}
 
-	if e.HasMetadata() {
+	// A symlink is listed with its own size and time, but the file's methods report its target's, which is what changes.
+	if e.HasMetadata() && e.Type()&iofs.ModeSymlink == 0 {
 		lastModified := e.ModTime()
 		metadata.lastModified = &lastModified
 		metadata.size = e.Size()

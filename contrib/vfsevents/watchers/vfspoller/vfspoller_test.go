@@ -1184,3 +1184,86 @@ func (s *PollerTestSuite) TestStoppingDuringAListingIsNotReportedAsAnError() {
 	default:
 	}
 }
+
+func (s *PollerTestSuite) TestSymlinkMetadataComesFromItsTarget() {
+	loc := mocks.NewLocation(s.T())
+	loc.EXPECT().Exists().Return(true, nil)
+	loc.EXPECT().Path().Return("/dir/").Maybe()
+	lister := mocks.NewEntryLister(s.T())
+	poller, err := NewPoller(nativeLocation{loc, lister}, WithMinAge(time.Hour))
+	s.Require().NoError(err)
+	now := time.Now().UTC()
+	targetOld := now.Add(-2 * time.Hour)
+
+	link := func(modified time.Time) vfs.Entry {
+		e, err := vfs.NewFileEntry(loc, "link", vfs.WithEntryMetadata(1, modified), vfs.WithEntryMode(iofs.ModeSymlink))
+		s.Require().NoError(err)
+		return e
+	}
+	lister.EXPECT().ListEntries(mock.Anything, mock.Anything).Return(entrySeq(link(now))).Once()
+	lister.EXPECT().ListEntries(mock.Anything, mock.Anything).Return(entrySeq(link(now))).Once()
+
+	// the link itself is new, but its target is old enough, then the target is edited
+	targets := []time.Time{targetOld, now.Add(-90 * time.Minute)}
+	sizes := []uint64{10, 20}
+	var call int
+	loc.EXPECT().NewFile("link").RunAndReturn(func(string, ...options.NewFileOption) (vfs.File, error) {
+		f := mocks.NewFile(s.T())
+		f.EXPECT().URI().Return("scheme:///dir/link")
+		f.EXPECT().LastModified().Return(&targets[call], nil)
+		f.EXPECT().Size().Return(sizes[call], nil)
+		call++
+		return f, nil
+	}).Times(2)
+
+	var types []vfsevents.EventType
+	handler := func(e vfsevents.Event) { types = append(types, e.Type) }
+	for range 2 {
+		s.Require().NoError(poller.poll(s.T().Context(), handler, &vfsevents.StartConfig{}, &vfsevents.WatcherStatus{}))
+	}
+
+	s.Equal([]vfsevents.EventType{vfsevents.EventCreated, vfsevents.EventModified}, types)
+}
+
+func (s *PollerTestSuite) TestExpiredContextIsNotRetried() {
+	poller, lister, _ := s.newNativeLocation()
+	ctx, cancel := context.WithCancel(s.T().Context())
+	lister.EXPECT().ListEntries(mock.Anything, mock.Anything).RunAndReturn(
+		func(context.Context, ...options.ListOption) iter.Seq2[vfs.Entry, error] {
+			return func(yield func(vfs.Entry, error) bool) {
+				cancel()
+				yield(vfs.Entry{}, context.DeadlineExceeded)
+			}
+		}).Once() // a retry would call ListEntries a second time and fail the test
+
+	config := &vfsevents.StartConfig{RetryConfig: vfsevents.RetryConfig{
+		Enabled: true, MaxRetries: 3, InitialBackoff: time.Hour, MaxBackoff: time.Hour, BackoffFactor: 2,
+	}}
+	start := time.Now()
+	err := poller.poll(ctx, func(vfsevents.Event) {}, config, &vfsevents.WatcherStatus{})
+
+	s.Require().ErrorIs(err, context.Canceled)
+	s.Less(time.Since(start), time.Minute, "no backoff is waited out")
+}
+
+func (s *PollerTestSuite) TestRetryBackoffEndsWhenTheContextDoes() {
+	poller, lister, _ := s.newNativeLocation()
+	ctx, cancel := context.WithCancel(s.T().Context())
+	lister.EXPECT().ListEntries(mock.Anything, mock.Anything).RunAndReturn(
+		func(context.Context, ...options.ListOption) iter.Seq2[vfs.Entry, error] {
+			return func(yield func(vfs.Entry, error) bool) {
+				time.AfterFunc(50*time.Millisecond, cancel) // while the poller waits to retry
+				yield(vfs.Entry{}, errors.New("connection timeout"))
+			}
+		}).Once()
+
+	config := &vfsevents.StartConfig{RetryConfig: vfsevents.RetryConfig{
+		Enabled: true, MaxRetries: 3, InitialBackoff: time.Hour, MaxBackoff: time.Hour, BackoffFactor: 2,
+		RetryableErrors: []string{"timeout"},
+	}}
+	start := time.Now()
+	err := poller.poll(ctx, func(vfsevents.Event) {}, config, &vfsevents.WatcherStatus{})
+
+	s.Require().ErrorIs(err, context.Canceled)
+	s.Less(time.Since(start), time.Minute)
+}
