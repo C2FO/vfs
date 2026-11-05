@@ -890,3 +890,25 @@ func (s *DriveClientTestSuite) TestListChildrenRemembersUniquelyNamedFolders() {
 	_, err = client.ListChildren(s.ctx, "dir/dup")
 	s.Require().ErrorIs(err, ErrAmbiguous)
 }
+
+func (s *DriveClientTestSuite) TestListChildrenForgetsFoldersThatBecameAmbiguous() {
+	root := s.drive.addFolder("dir")
+	s.drive.add(root, "sub", folderMimeType, nil)
+
+	_, err := s.client.ListChildren(s.ctx, "dir")
+	s.Require().NoError(err)
+	s.client.cacheFolder("dir/sub/deeper", "stale")
+	_, ok := s.client.cachedFolder("dir/sub")
+	s.Require().True(ok)
+
+	s.drive.add(root, "sub", folderMimeType, nil)
+	_, err = s.client.ListChildren(s.ctx, "dir")
+	s.Require().NoError(err)
+
+	for _, key := range []string{"dir/sub", "dir/sub/deeper"} {
+		_, ok := s.client.cachedFolder(key)
+		s.False(ok, "%q must not outlive the duplicate", key)
+	}
+	_, err = s.client.ListChildren(s.ctx, "dir/sub")
+	s.Require().ErrorIs(err, ErrAmbiguous)
+}

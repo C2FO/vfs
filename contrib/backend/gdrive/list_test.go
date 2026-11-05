@@ -4,6 +4,7 @@ import (
 	"context"
 	iofs "io/fs"
 	"iter"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -222,6 +223,26 @@ func (s *ListEntriesTestSuite) TestAmbiguousFolderIsAPartialFailure() {
 	s.Equal("dup/", failed[0])
 }
 
+func (s *ListEntriesTestSuite) TestDuplicateAddedAfterTheFolderWasCachedIsStillAmbiguous() {
+	loc := s.location("/base/")
+	s.write(loc, "dup/x.txt") // leaves "base/dup" in the folder cache
+	s.drive.add(s.base, "dup", folderMimeType, nil)
+
+	var keys []string
+	var failed int
+	for e, err := range list.Entries(s.T().Context(), loc, list.Recursive()) {
+		if err != nil {
+			s.Require().ErrorIs(err, ErrAmbiguous)
+			failed++
+			continue
+		}
+		keys = append(keys, list.OrderKey(e))
+	}
+
+	s.Equal([]string{"dup/", "dup/"}, keys, "neither folder is descended into, so x.txt is not listed twice")
+	s.Equal(2, failed)
+}
+
 func (s *ListEntriesTestSuite) TestNameWithASlashIsReportedAsInvalid() {
 	s.drive.addFile(s.base, "ok.txt", []byte("x"))
 	s.drive.addFile(s.base, "a/b.txt", []byte("x"))
@@ -409,4 +430,63 @@ func (s *ListFailureTestSuite) TestNoClientIsAnError() {
 
 	_, err = list.Collect(list.Entries(s.T().Context(), loc))
 	s.Require().Error(err)
+}
+
+func (s *ListFailureTestSuite) TestAuthFailureEndsTheListing() {
+	s.client.EXPECT().ListChildren(mock.Anything, "base").Return([]types.Item{
+		{Name: "a", IsFolder: true}, {Name: "b", IsFolder: true},
+	}, nil)
+	// "base/b" is never read: the mock fails the test if it is
+	s.client.EXPECT().ListChildren(mock.Anything, "base/a").
+		Return(nil, &apiError{StatusCode: http.StatusUnauthorized, Reason: "authError"})
+
+	var keys []string
+	var errs []error
+	for e, err := range list.Entries(s.T().Context(), s.location("/base/"), list.Recursive()) {
+		if err != nil {
+			errs = append(errs, err)
+			s.Zero(e, "an authentication failure is reported without an entry")
+			continue
+		}
+		keys = append(keys, list.OrderKey(e))
+	}
+
+	s.Equal([]string{"a/"}, keys)
+	s.Require().Len(errs, 1)
+	var apiErr *apiError
+	s.Require().ErrorAs(errs[0], &apiErr)
+	s.Equal(http.StatusUnauthorized, apiErr.StatusCode)
+}
+
+func (s *ListFailureTestSuite) TestPermissionFailuresMatchErrPermission() {
+	tests := []struct {
+		name       string
+		err        error
+		permission bool
+	}{
+		{name: "Insufficient file permissions", err: &apiError{StatusCode: 403, Reason: "insufficientFilePermissions"}, permission: true},
+		{name: "Forbidden", err: &apiError{StatusCode: 403, Reason: "forbidden"}, permission: true},
+		{name: "App not authorized to file", err: &apiError{StatusCode: 403, Reason: "appNotAuthorizedToFile"}, permission: true},
+		{name: "Rate limit also answers 403", err: &apiError{StatusCode: 403, Reason: "userRateLimitExceeded"}},
+		{name: "Same reason on another status", err: &apiError{StatusCode: 500, Reason: "forbidden"}},
+		{name: "Not an API error", err: errBoom},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			client := mocks.NewClient(s.T())
+			client.EXPECT().ListChildren(mock.Anything, "base").Return(nil, tt.err)
+
+			loc, err := NewFileSystem(WithClient(client)).NewLocation("", "/base/")
+			s.Require().NoError(err)
+
+			_, err = list.Collect(list.Entries(s.T().Context(), loc))
+			s.Require().ErrorIs(err, tt.err, "the original error is kept")
+			if tt.permission {
+				s.Require().ErrorIs(err, iofs.ErrPermission)
+			} else {
+				s.Require().NotErrorIs(err, iofs.ErrPermission)
+			}
+		})
+	}
 }

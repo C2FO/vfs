@@ -6,6 +6,7 @@ import (
 	"fmt"
 	iofs "io/fs"
 	"iter"
+	"net/http"
 	"path"
 
 	"github.com/c2fo/vfs/v7"
@@ -26,15 +27,29 @@ var _ vfs.EntryLister = (*Location)(nil)
 //
 // A location that does not exist lists nothing. A location that is a file is an error, as is a folder name that
 // matches more than one folder, which a path cannot choose between; in a recursive listing such a folder is yielded
-// with its entry and an error and the listing continues. A folder that cannot be read is reported the same way. An
-// entry whose name contains a slash cannot be part of a path and is reported as an error matching fs.ErrInvalid.
-// Drive allows several files in one folder to share a name; each is listed.
+// with its entry and an error and the listing continues. A folder that cannot be read is reported the same way, and
+// one Drive refuses access to matches fs.ErrPermission. An entry whose name contains a slash cannot be part of a path
+// and is reported as an error matching fs.ErrInvalid. Drive allows several files in one folder to share a name; each
+// is listed.
 //
-// Cancellation of ctx ends the listing, and is checked before every folder is read.
+// A 401 from Drive, such as a token that expires mid-listing, is yielded once and ends the listing, and so does
+// cancellation of ctx, which is checked before every folder is read.
 func (l *Location) ListEntries(ctx context.Context, opts ...options.ListOption) iter.Seq2[vfs.Entry, error] {
 	return list.Native(l, opts, func(q list.Query, yield func(vfs.Entry, error) bool) {
-		list.WalkDirs(ctx, l, q, l.readDir, l.fileSystem.Retry())(yield)
+		list.WalkDirs(ctx, l, q, l.readDir, l.fileSystem.Retry())(endOnAuthFailure(yield))
 	})
+}
+
+// endOnAuthFailure wraps yield so that a 401 from Drive, which would fail every remaining request the same way, is
+// yielded once, without an entry, and ends the listing.
+func endOnAuthFailure(yield func(vfs.Entry, error) bool) func(vfs.Entry, error) bool {
+	return func(e vfs.Entry, err error) bool {
+		if apiErr, ok := errors.AsType[*apiError](err); ok && apiErr.StatusCode == http.StatusUnauthorized {
+			yield(vfs.Entry{}, err)
+			return false
+		}
+		return yield(e, err)
+	}
 }
 
 // readDir reads every child of one folder of the location.
@@ -81,5 +96,22 @@ func wrapListError(ctx context.Context, client Client, dir string, err error) er
 	if errors.Is(err, ErrNotFound) {
 		return fmt.Errorf("%w: %w", iofs.ErrNotExist, err)
 	}
+	if isPermissionDenied(err) {
+		return fmt.Errorf("%w: %w", iofs.ErrPermission, err)
+	}
 	return err
+}
+
+// isPermissionDenied reports whether Drive refused access to a folder. Rate limits also answer 403, but with their own
+// reasons, so they are not matched.
+func isPermissionDenied(err error) bool {
+	apiErr, ok := errors.AsType[*apiError](err)
+	if !ok || apiErr.StatusCode != http.StatusForbidden {
+		return false
+	}
+	switch apiErr.Reason {
+	case "insufficientFilePermissions", "forbidden", "appNotAuthorizedToFile":
+		return true
+	}
+	return false
 }

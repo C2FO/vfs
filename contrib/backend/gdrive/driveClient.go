@@ -495,9 +495,11 @@ func (c *driveClient) ListChildren(ctx context.Context, folderPath string) ([]It
 }
 
 // cacheChildFolders remembers the IDs of the folders among items, the children of folderPath, so that listing one
-// of them next does not have to look it up by name. A name that is not unique in its folder is skipped, since Drive
-// compares names without regard to case and a path cannot choose between them; such a folder must still fail with
-// ErrAmbiguous when it is resolved. A name containing a slash cannot be part of a path.
+// of them next does not have to look it up by name. A name that is not unique in its folder is not remembered, since
+// Drive compares names without regard to case and a path cannot choose between them; any ID already remembered for
+// it, and for everything below it, is forgotten, because it may have been cached before the duplicate appeared and
+// would let the path resolve to just one of them. Such a folder must fail with ErrAmbiguous when it is resolved. A
+// name containing a slash cannot be part of a path.
 func (c *driveClient) cacheChildFolders(folderPath string, items []Item) {
 	counts := make(map[string]int, len(items))
 	for i := range items {
@@ -507,10 +509,29 @@ func (c *driveClient) cacheChildFolders(folderPath string, items []Item) {
 	prefix := strings.Join(folderSegments(folderPath), "/")
 	for i := range items {
 		it := &items[i]
-		if !it.IsFolder || counts[strings.ToLower(it.Name)] != 1 || strings.Contains(it.Name, "/") {
+		if strings.Contains(it.Name, "/") {
 			continue
 		}
-		c.cacheFolder(path.Join(prefix, it.Name), it.ID)
+
+		key := path.Join(prefix, it.Name)
+		switch {
+		case counts[strings.ToLower(it.Name)] > 1:
+			c.forgetFolder(key)
+		case it.IsFolder:
+			c.cacheFolder(key, it.ID)
+		}
+	}
+}
+
+// forgetFolder drops the remembered ID of the folder at key and of every folder below it.
+func (c *driveClient) forgetFolder(key string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for k := range c.folders {
+		if k == key || strings.HasPrefix(k, key+"/") {
+			delete(c.folders, k)
+		}
 	}
 }
 
