@@ -276,6 +276,11 @@ func (s *ListFailureTestSuite) TestNotFoundIsClassifiedByLookingAtTheItem() {
 			expectEmpty: true,
 		},
 		{
+			name:      "Lookup is refused - the failure matches ErrPermission",
+			getItem:   func() (*DriveItem, error) { return nil, &apiError{StatusCode: 403, Code: "accessDenied"} },
+			expectErr: iofs.ErrPermission,
+		},
+		{
 			name:      "Lookup fails - the failure is reported, not read as missing",
 			getItem:   func() (*DriveItem, error) { return nil, errListBoom },
 			expectErr: errListBoom,
@@ -317,11 +322,13 @@ func (s *ListFailureTestSuite) TestClientErrorEndsTheListing() {
 }
 
 func (s *ListFailureTestSuite) TestNoClientIsAnError() {
+	s.T().Setenv("VFS_ONEDRIVE_ACCESS_TOKEN", "")
+	s.T().Setenv("VFS_ONEDRIVE_TENANT_ID", "")
 	loc, err := NewFileSystem().NewLocation("", "/base/")
 	s.Require().NoError(err)
 
 	_, err = list.Collect(list.Entries(s.T().Context(), loc))
-	s.Require().Error(err)
+	s.Require().ErrorIs(err, errCredentialsRequired)
 }
 
 func (s *ListFailureTestSuite) TestPermissionFailuresMatchErrPermission() {

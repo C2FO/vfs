@@ -92,7 +92,7 @@ func wrapListError(ctx context.Context, client Client, dir string, err error) er
 			return fmt.Errorf("%w: %s: %w", errNotFolder, dir, err)
 		case gerr != nil && !errors.Is(gerr, ErrNotFound):
 			// the folder's state is unknown, so this is not "missing"; an expired token, for one, must end the listing
-			return fmt.Errorf("checking %s after it was not found: %w", dir, gerr)
+			return wrapListError(ctx, client, dir, fmt.Errorf("checking %s after it was not found: %w", dir, gerr))
 		}
 		return fmt.Errorf("%w: %w", iofs.ErrNotExist, err)
 	}
