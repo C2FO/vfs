@@ -44,9 +44,10 @@ func (l *Location) readDir(ctx context.Context, relDir string) ([]list.Child, er
 		return nil, err
 	}
 
-	items, err := client.ListChildren(ctx, path.Join(l.drivePath(), relDir))
+	dir := path.Join(l.drivePath(), relDir)
+	items, err := client.ListChildren(ctx, dir)
 	if err != nil {
-		return nil, wrapListError(err)
+		return nil, wrapListError(ctx, client, dir, err)
 	}
 
 	children := make([]list.Child, 0, len(items))
@@ -65,9 +66,18 @@ func (l *Location) readDir(ctx context.Context, relDir string) ([]list.Child, er
 }
 
 // wrapListError makes a missing folder match fs.ErrNotExist, which the engine reads as "nothing to list" or, for a
-// folder that vanished mid-listing, as a partial failure. A path segment that is a file stays an error: the location
-// exists but is not a folder.
-func wrapListError(err error) error {
+// folder that vanished mid-listing, as a partial failure.
+//
+// ErrNotFolder means a segment of the path is a file. When that file is the location itself the location exists but
+// is not a folder, which stays an error. When it is an ancestor nothing can exist at the path, so it is missing, as
+// Exists and List treat it.
+func wrapListError(ctx context.Context, client Client, dir string, err error) error {
+	if errors.Is(err, ErrNotFolder) {
+		if _, gerr := client.GetItem(ctx, dir); isMissing(gerr) {
+			return fmt.Errorf("%w: %w", iofs.ErrNotExist, err)
+		}
+		return err
+	}
 	if errors.Is(err, ErrNotFound) {
 		return fmt.Errorf("%w: %w", iofs.ErrNotExist, err)
 	}

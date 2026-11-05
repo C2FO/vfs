@@ -60,6 +60,12 @@ func (s *ListEntriesTestSuite) keys(loc vfs.Location, opts ...options.ListOption
 	return keys
 }
 
+// freshLocation returns a location on a new file system, so no folder is already known from earlier requests.
+func (s *ListEntriesTestSuite) freshLocation(p string) vfs.Location {
+	s.fs = newTestFS(s.T(), s.drive)
+	return s.location(p)
+}
+
 func (s *ListEntriesTestSuite) listRequests() int {
 	n := 0
 	for _, r := range s.drive.requestLog() {
@@ -92,8 +98,8 @@ func (s *ListEntriesTestSuite) TestPagesAreReadToTheEnd() {
 }
 
 func (s *ListEntriesTestSuite) TestAFolderIsReadOnlyWhenTheListingReachesIt() {
-	loc := s.location("/base/")
-	s.write(loc, "a.txt", "sub/b.txt", "sub2/c.txt")
+	s.write(s.location("/base/"), "a.txt", "sub/b.txt", "sub2/c.txt")
+	loc := s.freshLocation("/base/")
 
 	before := s.listRequests()
 	next, stop := iter.Pull2(list.Entries(s.T().Context(), loc, list.Recursive()))
@@ -103,11 +109,20 @@ func (s *ListEntriesTestSuite) TestAFolderIsReadOnlyWhenTheListingReachesIt() {
 	s.Require().True(ok)
 	s.Require().NoError(err)
 	s.Equal("a.txt", list.OrderKey(e))
-	// resolving the location and reading it is all a first entry costs: no subfolder has been read
-	s.LessOrEqual(s.listRequests()-before, 2)
-	stop()
+	// finding "base" and reading it is all a first entry costs: no subfolder has been read
+	s.Equal(2, s.listRequests()-before)
+}
 
-	s.Less(s.listRequests()-before, 5)
+func (s *ListEntriesTestSuite) TestSubfoldersAreReadWithoutLookingThemUpByName() {
+	s.write(s.location("/base/"), "a.txt", "sub/b.txt", "sub/deep/c.txt", "sub2/d.txt")
+	loc := s.freshLocation("/base/")
+
+	before := s.listRequests()
+	s.Equal([]string{
+		"a.txt", "sub/", "sub/b.txt", "sub/deep/", "sub/deep/c.txt", "sub2/", "sub2/d.txt",
+	}, s.keys(loc, list.Recursive()))
+	// "base" is looked up and listed; each of the other three folders needs only its listing
+	s.Equal(2+3, s.listRequests()-before)
 }
 
 func (s *ListEntriesTestSuite) TestNonRecursiveListingReadsOnlyTheLocation() {
@@ -116,7 +131,7 @@ func (s *ListEntriesTestSuite) TestNonRecursiveListingReadsOnlyTheLocation() {
 
 	before := s.listRequests()
 	s.Equal([]string{"a.txt", "sub/"}, s.keys(loc))
-	s.LessOrEqual(s.listRequests()-before, 2)
+	s.Equal(1, s.listRequests()-before) // the location is already known, so one listing is all it takes
 }
 
 func (s *ListEntriesTestSuite) TestEntriesCarryTheListedMetadata() {
@@ -178,6 +193,12 @@ func (s *ListEntriesTestSuite) TestLocationThatIsAFileIsAnError() {
 	s.Require().NotErrorIs(err, iofs.ErrNotExist)
 }
 
+func (s *ListEntriesTestSuite) TestLocationBelowAFileListsNothing() {
+	s.write(s.location("/base/"), "f.txt")
+
+	s.Empty(s.keys(s.location("/base/f.txt/deeper/")))
+}
+
 func (s *ListEntriesTestSuite) TestAmbiguousFolderIsAPartialFailure() {
 	s.drive.addFile(s.base, "a.txt", []byte("x"))
 	s.drive.add(s.base, "dup", folderMimeType, nil)
@@ -234,9 +255,9 @@ func (s *ListEntriesTestSuite) TestCanceledContextStopsTheListing() {
 }
 
 func (s *ListEntriesTestSuite) TestRootLocationLists() {
-	s.write(s.location("/"), "r.txt")
+	s.drive.addFile("root", "r.txt", []byte("x"))
 
-	s.Contains(s.keys(s.location("/")), "r.txt")
+	s.Equal([]string{"base/", "r.txt"}, s.keys(s.location("/")))
 }
 
 // ListFailureTestSuite checks how the native listing reports failures, using a mocked client.
@@ -301,16 +322,60 @@ func (s *ListFailureTestSuite) TestSubfolderIsReadByItsPath() {
 	s.Equal([]string{"sub/", "sub/b.txt"}, keys)
 }
 
-func (s *ListFailureTestSuite) TestMissingFolderMapsToNotExist() {
-	s.Require().ErrorIs(wrapListError(ErrNotFound), iofs.ErrNotExist)
-	s.Require().ErrorIs(wrapListError(ErrNotFound), ErrNotFound)
+func (s *ListFailureTestSuite) TestPathThroughAFile() {
+	tests := []struct {
+		name        string
+		getItem     func() (*types.Item, error)
+		expectEmpty bool
+	}{
+		{
+			name:        "Ancestor is a file - the location is missing",
+			getItem:     func() (*types.Item, error) { return nil, ErrNotFolder },
+			expectEmpty: true,
+		},
+		{
+			name:        "Nothing at the location - missing",
+			getItem:     func() (*types.Item, error) { return nil, ErrNotFound },
+			expectEmpty: true,
+		},
+		{
+			name:    "Location is itself a file - an error",
+			getItem: func() (*types.Item, error) { return &types.Item{Name: "base"}, nil },
+		},
+		{
+			name:    "Location cannot be checked - an error",
+			getItem: func() (*types.Item, error) { return nil, errBoom },
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			client := mocks.NewClient(s.T())
+			client.EXPECT().ListChildren(mock.Anything, "base").Return(nil, ErrNotFolder)
+			client.EXPECT().GetItem(mock.Anything, "base").RunAndReturn(
+				func(context.Context, string) (*types.Item, error) { return tt.getItem() })
+
+			loc, err := NewFileSystem(WithClient(client)).NewLocation("", "/base/")
+			s.Require().NoError(err)
+
+			entries, err := list.Collect(list.Entries(s.T().Context(), loc))
+			if tt.expectEmpty {
+				s.Require().NoError(err)
+				s.Empty(entries)
+				return
+			}
+			s.Require().Error(err)
+			s.Require().NotErrorIs(err, iofs.ErrNotExist)
+		})
+	}
 }
 
-func (s *ListFailureTestSuite) TestOtherFailuresAreNotMapped() {
-	for _, err := range []error{ErrNotFolder, ErrAmbiguous, errBoom} {
-		s.Require().NotErrorIs(wrapListError(err), iofs.ErrNotExist)
-		s.Require().ErrorIs(wrapListError(err), err)
-	}
+func (s *ListFailureTestSuite) TestAmbiguousFolderIsNotMissing() {
+	s.client.EXPECT().ListChildren(mock.Anything, "base").Return(nil, ErrAmbiguous)
+
+	_, err := list.Collect(list.Entries(s.T().Context(), s.location("/base/")))
+	s.Require().ErrorIs(err, ErrAmbiguous)
+	s.Require().NotErrorIs(err, iofs.ErrNotExist)
 }
 
 func (s *ListFailureTestSuite) TestClientErrorEndsTheListing() {

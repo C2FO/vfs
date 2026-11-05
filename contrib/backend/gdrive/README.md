@@ -105,6 +105,12 @@ decisions is in [DESIGN.md](./DESIGN.md); the ones that matter in practice:
 - **Duplicate names.** Drive allows two files named `a.txt` in one folder; a VFS path cannot say which.
   Operations on such a path (`Exists`, `Size`, `Read`, `Delete`, copy, move, and writes) fail with
   `gdrive.ErrAmbiguous`. Listing shows both entries. Rename or remove one in Drive to resolve it.
+- **Listing.** `list.Entries` lists natively: each folder is read once, when the listing reaches it, and every
+  file's size and modification time come from that listing, so reading them makes no further request.
+  `Entry.Sys` returns the listed `gdrive.Item`. A location that does not exist, or lies below a file, lists nothing;
+  a location that is itself a file is an error. A recursive listing that meets a folder it cannot resolve (for
+  example one whose name matches several folders) reports the error for that folder and carries on. Google-native
+  files are listed with size 0.
 - **Folders are guarded.** `Delete`, copy and move on a path that is a folder fail with
   `gdrive.ErrIsFolder`; Drive would otherwise delete or move the folder and everything in it.
   `File.Exists` is false for a folder.

@@ -859,3 +859,34 @@ func (s *DriveClientTestSuite) TestRedactURL() {
 	s.Equal("https://h/files?q=a", redactURL("https://h/files?q=a"))
 	s.Equal("<unparseable url>", redactURL("://bad"))
 }
+
+func (s *DriveClientTestSuite) TestListChildrenRemembersUniquelyNamedFolders() {
+	root := s.drive.addFolder("dir")
+	s.drive.add(root, "unique", folderMimeType, nil)
+	s.drive.add(root, "dup", folderMimeType, nil)
+	s.drive.add(root, "dup", folderMimeType, nil)
+	s.drive.add(root, "Case", folderMimeType, nil)
+	s.drive.add(root, "case", folderMimeType, nil)
+	s.drive.add(root, "same", folderMimeType, nil)
+	s.drive.addFile(root, "same", []byte("x"))
+	s.drive.add(root, "a/b", folderMimeType, nil)
+
+	fresh := newTestFS(s.T(), s.drive)
+	c, err := fresh.Client("")
+	s.Require().NoError(err)
+	client := c.(*driveClient)
+
+	_, err = client.ListChildren(s.ctx, "dir")
+	s.Require().NoError(err)
+
+	_, ok := client.cachedFolder("dir/unique")
+	s.True(ok, "a uniquely named folder is remembered")
+
+	for _, name := range []string{"dup", "Case", "case", "same", "a/b"} {
+		_, ok := client.cachedFolder("dir/" + name)
+		s.False(ok, "%q is not unique, or not a path segment, and must still be resolved by name", name)
+	}
+
+	_, err = client.ListChildren(s.ctx, "dir/dup")
+	s.Require().ErrorIs(err, ErrAmbiguous)
+}

@@ -490,7 +490,28 @@ func (c *driveClient) ListChildren(ctx context.Context, folderPath string) ([]It
 		return nil, err
 	}
 
+	c.cacheChildFolders(folderPath, items)
 	return items, nil
+}
+
+// cacheChildFolders remembers the IDs of the folders among items, the children of folderPath, so that listing one
+// of them next does not have to look it up by name. A name that is not unique in its folder is skipped, since Drive
+// compares names without regard to case and a path cannot choose between them; such a folder must still fail with
+// ErrAmbiguous when it is resolved. A name containing a slash cannot be part of a path.
+func (c *driveClient) cacheChildFolders(folderPath string, items []Item) {
+	counts := make(map[string]int, len(items))
+	for i := range items {
+		counts[strings.ToLower(items[i].Name)]++
+	}
+
+	prefix := strings.Join(folderSegments(folderPath), "/")
+	for i := range items {
+		it := &items[i]
+		if !it.IsFolder || counts[strings.ToLower(it.Name)] != 1 || strings.Contains(it.Name, "/") {
+			continue
+		}
+		c.cacheFolder(path.Join(prefix, it.Name), it.ID)
+	}
 }
 
 // Download implements Client.
