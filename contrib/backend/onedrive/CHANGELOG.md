@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [[contrib/backend/onedrive/v0.3.0](https://github.com/C2FO/vfs/releases/tag/contrib%2Fbackend%2Fonedrive%2Fv0.3.0)] - 2026-11-05
 ### Added
 - Native listing: `Location` implements `vfs.EntryLister`, so `list.Entries` reads each folder once, following Graph's paging, and reports every file's size and modification time from the listing instead of requesting them file by file. A location that does not exist, or lies below a file, lists nothing. A 401 ends a listing after being reported once, and a folder Graph refuses access to matches `fs.ErrPermission`.
 
