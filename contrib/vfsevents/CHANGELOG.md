@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Updated the indirect dependency `github.com/go-jose/go-jose/v4` to v4.1.6 to resolve Dependabot advisories GHSA-vvm8-gf78-28g4, GHSA-4w3g-jfj2-cw2q and GHSA-mgcc-cww5-fp2q.
+
 ## [[contrib/vfsevents/v1.5.0](https://github.com/C2FO/vfs/releases/tag/contrib%2Fvfsevents%2Fv1.5.0)] - 2026-11-05
 ### Performance
 - `vfspoller` lists with `list.Entries` instead of `List()` followed by a stat of each file. On a backend with native listing, each poll reads every file's size and modification time from the listing and makes no per-file requests. A listing that finds no files while files were being tracked now fails the poll when the location no longer exists, rather than reporting every file deleted.
