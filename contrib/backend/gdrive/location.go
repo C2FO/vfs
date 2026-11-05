@@ -67,7 +67,7 @@ func (l *Location) ListByPrefix(prefix string) ([]string, error) {
 		}
 
 		// List files in subdirectory with the file prefix
-		return subLoc.ListByPrefix(filePrefix)
+		return subLoc.(*Location).ListByPrefix(filePrefix) //nolint:forcetypeassert // NewLocation always returns *Location
 	}
 
 	// Simple case: no relative path, just filter current directory
