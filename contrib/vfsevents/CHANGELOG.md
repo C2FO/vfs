@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [[contrib/vfsevents/v1.6.0](https://github.com/C2FO/vfs/releases/tag/contrib%2Fvfsevents%2Fv1.6.0)] - 2026-11-05
 ### Security
 - Updated the indirect dependency `github.com/go-jose/go-jose/v4` to v4.1.6 to resolve Dependabot advisories GHSA-vvm8-gf78-28g4, GHSA-4w3g-jfj2-cw2q and GHSA-mgcc-cww5-fp2q.
 
