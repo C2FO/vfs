@@ -82,12 +82,17 @@ func (l *Location) readDir(ctx context.Context, relDir string) ([]list.Child, er
 // folder that vanished mid-listing, as a partial failure.
 //
 // Graph answers 404 both for a path that does not exist and, for the children of a file, possibly for a file, so a 404
-// is checked against the item itself: a file is the location existing but not being a folder, which stays an error.
+// is checked against the item itself: a file is the location existing but not being a folder, which stays an error, and
+// so does a check that fails for any other reason.
 func wrapListError(ctx context.Context, client Client, dir string, err error) error {
 	if errors.Is(err, ErrNotFound) {
 		item, gerr := client.GetItem(ctx, dir)
-		if gerr == nil && !item.IsFolder {
+		switch {
+		case gerr == nil && !item.IsFolder:
 			return fmt.Errorf("%w: %s: %w", errNotFolder, dir, err)
+		case gerr != nil && !errors.Is(gerr, ErrNotFound):
+			// the folder's state is unknown, so this is not "missing"; an expired token, for one, must end the listing
+			return fmt.Errorf("checking %s after it was not found: %w", dir, gerr)
 		}
 		return fmt.Errorf("%w: %w", iofs.ErrNotExist, err)
 	}

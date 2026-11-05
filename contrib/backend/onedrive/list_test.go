@@ -258,6 +258,7 @@ func (s *ListFailureTestSuite) TestNotFoundIsClassifiedByLookingAtTheItem() {
 		name        string
 		getItem     func() (*DriveItem, error)
 		expectEmpty bool
+		expectErr   error
 	}{
 		{
 			name:        "Nothing at the location - missing",
@@ -275,9 +276,9 @@ func (s *ListFailureTestSuite) TestNotFoundIsClassifiedByLookingAtTheItem() {
 			expectEmpty: true,
 		},
 		{
-			name:        "Lookup fails - treated as missing",
-			getItem:     func() (*DriveItem, error) { return nil, errListBoom },
-			expectEmpty: true,
+			name:      "Lookup fails - the failure is reported, not read as missing",
+			getItem:   func() (*DriveItem, error) { return nil, errListBoom },
+			expectErr: errListBoom,
 		},
 	}
 
@@ -297,8 +298,13 @@ func (s *ListFailureTestSuite) TestNotFoundIsClassifiedByLookingAtTheItem() {
 				s.Empty(entries)
 				return
 			}
-			s.Require().ErrorIs(err, errNotFolder)
+			s.Require().Error(err)
 			s.Require().NotErrorIs(err, iofs.ErrNotExist)
+			if tt.expectErr != nil {
+				s.Require().ErrorIs(err, tt.expectErr)
+				return
+			}
+			s.Require().ErrorIs(err, errNotFolder)
 		})
 	}
 }
