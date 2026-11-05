@@ -191,7 +191,7 @@ The VFS Poller detects three types of file events:
 2. **Modified**: Existing files change (detected via LastModified time or file size)
 3. **Deleted**: Files are removed from the directory
 
-Changes are detected by listing the location with `list.Entries` (files only) on each poll, which returns only the files directly in the location. A backend with native listing reports each file's size and modification time in that listing, so a poll makes no per-file requests. A backend without one is listed by name, and a file's metadata is requested only when it is needed (to apply `WithMinAge`, or to compare a file seen before). A listing that finds no files while files were being tracked checks that the location still exists; if it does not, the poll fails instead of reporting every file deleted. Subdirectories are not watched recursively.
+Changes are detected by listing the location with `list.Entries` (files only) on each poll, which returns only the files directly in the location. A backend with native listing reports each file's size and modification time in that listing, so a poll makes no per-file requests. A backend without one is listed by name, and a file's metadata is requested only when it is needed (to apply `WithMinAge`, or to compare a file seen before). A listing that finds no files while files were being tracked checks that the location still exists; if it does not, the poll fails instead of reporting every file deleted. A name the backend reports as unrepresentable (one that cannot be a file of the location) is skipped, so one such name does not stop every poll. Subdirectories are not watched recursively.
 
 ## Performance Tuning
 

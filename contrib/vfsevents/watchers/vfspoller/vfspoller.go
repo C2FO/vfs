@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	iofs "io/fs"
 	"sort"
 	"sync"
 	"time"
@@ -167,6 +168,10 @@ func (p *Poller) Start(
 				return
 			case <-ticker.C:
 				if err := p.poll(ctx, wrappedHandler, config, &status); err != nil {
+					if ctx.Err() != nil && errors.Is(err, ctx.Err()) {
+						// Stop canceled the listing; that is a shutdown, not a failure to report.
+						continue
+					}
 					status.LastError = err
 					if config.StatusCallback != nil {
 						config.StatusCallback(status)
@@ -266,9 +271,17 @@ func (p *Poller) poll(
 // listFiles lists the files directly in the location. A location that does not exist lists nothing, so when files that
 // were being tracked are gone the location itself is checked: its removal is an error, not the deletion of every file.
 func (p *Poller) listFiles(ctx context.Context) ([]vfs.Entry, error) {
-	entries, err := list.Collect(list.Entries(ctx, p.location, list.FilesOnly()))
-	if err != nil {
-		return nil, err
+	var entries []vfs.Entry
+	for e, err := range list.Entries(ctx, p.location, list.FilesOnly()) {
+		if errors.Is(err, iofs.ErrInvalid) {
+			// A name that cannot be a file of this location, which the listing reports and then carries on past, must
+			// not stop every poll; the file cannot be opened through the location either way.
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, e)
 	}
 
 	if len(entries) == 0 && len(p.fileCache) > 0 {

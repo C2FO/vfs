@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	iofs "io/fs"
 	"iter"
 	"log"
 	"sort"
@@ -1140,4 +1141,46 @@ func (s *PollerTestSuite) TestCanceledContextStopsTheListing() {
 
 	err = poller.poll(ctx, func(vfsevents.Event) {}, &vfsevents.StartConfig{}, &vfsevents.WatcherStatus{})
 	s.Require().ErrorIs(err, context.Canceled)
+}
+
+func (s *PollerTestSuite) TestNameThatCannotBeAFileIsSkipped() {
+	poller, lister, loc := s.newNativeLocation()
+	bad := &iofs.PathError{Op: "list", Path: "a/b", Err: iofs.ErrInvalid}
+	lister.EXPECT().ListEntries(mock.Anything, mock.Anything).Return(
+		func(yield func(vfs.Entry, error) bool) {
+			if !yield(vfs.Entry{}, bad) {
+				return
+			}
+			yield(s.listed(loc, "ok.txt", 1, time.Now().UTC().Add(-time.Hour)), nil)
+		}).Once()
+
+	var uris []string
+	handler := func(e vfsevents.Event) { uris = append(uris, e.URI) }
+	s.Require().NoError(poller.poll(s.T().Context(), handler, &vfsevents.StartConfig{}, &vfsevents.WatcherStatus{}))
+
+	s.Equal([]string{"scheme:///dir/ok.txt"}, uris)
+}
+
+func (s *PollerTestSuite) TestStoppingDuringAListingIsNotReportedAsAnError() {
+	poller, lister, _ := s.newNativeLocation(WithInterval(time.Millisecond))
+	listing := make(chan struct{})
+	lister.EXPECT().ListEntries(mock.Anything, mock.Anything).RunAndReturn(
+		func(ctx context.Context, _ ...options.ListOption) iter.Seq2[vfs.Entry, error] {
+			return func(yield func(vfs.Entry, error) bool) {
+				close(listing)
+				<-ctx.Done()
+				yield(vfs.Entry{}, ctx.Err())
+			}
+		}).Once()
+
+	errs := make(chan error, 1)
+	s.Require().NoError(poller.Start(s.T().Context(), func(vfsevents.Event) {}, func(err error) { errs <- err }))
+	<-listing
+	s.Require().NoError(poller.Stop())
+
+	select {
+	case err := <-errs:
+		s.Fail("a canceled listing was reported", "%v", err)
+	default:
+	}
 }
