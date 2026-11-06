@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `iofs`: a new package whose `New(loc)` presents any `vfs.Location` as a read-only `io/fs.FS` that also implements `fs.StatFS`, `fs.ReadDirFS`, `fs.ReadFileFS` and `fs.SubFS`, so locations work with `http.FileServerFS`, `template.ParseFS`, `fs.WalkDir` and `fs.Glob`. It lists through `list.Entries`, and passes `testing/fstest.TestFS` on the `mem`, `os`, `sftp`, `azure` and `s3` backends. `ftp` and `gs` are not yet covered because of existing `Seek` bugs ([#407](https://github.com/C2FO/vfs/issues/407), [#406](https://github.com/C2FO/vfs/issues/406)). See [#408](https://github.com/C2FO/vfs/issues/408).
+
 ## [[v7.34.0](https://github.com/C2FO/vfs/releases/tag/v7.34.0)] - 2026-11-05
 ### Security
 - Updated the indirect dependency `github.com/go-jose/go-jose/v4` to v4.1.6 to resolve Dependabot advisories GHSA-vvm8-gf78-28g4, GHSA-4w3g-jfj2-cw2q and GHSA-mgcc-cww5-fp2q, in the core and `testcontainers` modules.
