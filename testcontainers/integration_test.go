@@ -4,9 +4,13 @@ package testcontainers
 
 import (
 	"context"
+	"io"
+	stdfs "io/fs"
 	"path"
+	"strconv"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/stretchr/testify/suite"
@@ -18,6 +22,7 @@ import (
 	ftptypes "github.com/c2fo/vfs/v7/backend/ftp/types"
 	"github.com/c2fo/vfs/v7/backend/sftp"
 	"github.com/c2fo/vfs/v7/backend/testsuite"
+	"github.com/c2fo/vfs/v7/iofs"
 	"github.com/c2fo/vfs/v7/vfssimple"
 )
 
@@ -187,6 +192,73 @@ func (s *containerSuite) TestIO() {
 	for _, tgt := range s.targets {
 		s.Run(tgt.name, func() {
 			testsuite.RunIOTests(s.T(), tgt.location, optionsFor(tgt.scheme))
+		})
+	}
+}
+
+// TestIOFS checks that iofs presents each backend as a valid fs.FS. testing/fstest.TestFS needs every directory to
+// hold at least one file, because object stores cannot represent an empty directory.
+func (s *containerSuite) TestIOFS() {
+	tree := map[string]string{
+		"a.txt":         "alpha",
+		"css/site.css":  "body{}",
+		"css/img/x.png": "png",
+		"deep/er/f.go":  "package f",
+	}
+	for _, tgt := range s.targets {
+		s.Run(tgt.name, func() {
+			root, err := tgt.location.NewLocation("iofs-" + strconv.FormatInt(time.Now().UnixNano(), 36) + "/")
+			s.Require().NoError(err)
+
+			expected := make([]string, 0, len(tree))
+			for name, content := range tree {
+				f, err := root.NewFile(name)
+				s.Require().NoError(err)
+				// sftp and ftp have real directories, which a write does not create.
+				s.Require().NoError(createDirectory(f.Location()))
+				_, err = io.WriteString(f, content)
+				s.Require().NoError(err)
+				s.Require().NoError(f.Close())
+				expected = append(expected, name)
+				s.T().Cleanup(func() { _ = f.Delete() })
+			}
+
+			s.Require().NoError(fstest.TestFS(iofs.New(root), expected...))
+		})
+	}
+}
+
+// TestIOFSFileWins checks that a name that is both an object and a prefix is a single file. Only object stores allow it.
+func (s *containerSuite) TestIOFSFileWins() {
+	for _, tgt := range s.targets {
+		if tgt.scheme != "s3" && tgt.scheme != "az" {
+			continue
+		}
+		s.Run(tgt.name, func() {
+			root, err := tgt.location.NewLocation("iofs-wins-" + strconv.FormatInt(time.Now().UnixNano(), 36) + "/")
+			s.Require().NoError(err)
+			for name, content := range map[string]string{"amb": "file", "amb/child": "child"} {
+				f, err := root.NewFile(name)
+				s.Require().NoError(err)
+				_, err = io.WriteString(f, content)
+				s.Require().NoError(err)
+				s.Require().NoError(f.Close())
+				s.T().Cleanup(func() { _ = f.Delete() })
+			}
+
+			fsys := iofs.New(root)
+			info, err := stdfs.Stat(fsys, "amb")
+			s.Require().NoError(err)
+			s.False(info.IsDir())
+
+			entries, err := stdfs.ReadDir(fsys, ".")
+			s.Require().NoError(err)
+			s.Require().Len(entries, 1)
+			s.False(entries[0].IsDir())
+
+			data, err := stdfs.ReadFile(fsys, "amb/child")
+			s.Require().NoError(err)
+			s.Equal("child", string(data))
 		})
 	}
 }

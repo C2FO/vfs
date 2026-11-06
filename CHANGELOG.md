@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `iofs`: a new package whose `New(loc)` presents any `vfs.Location` as a read-only `io/fs.FS` that also implements `fs.StatFS`, `fs.ReadDirFS`, `fs.ReadFileFS` and `fs.SubFS`, so locations work with `http.FileServerFS`, `template.ParseFS`, `fs.WalkDir` and `fs.Glob`. It lists through `list.Entries`, and passes `testing/fstest.TestFS` on the `mem`, `os`, `sftp`, `ftp`, `gs`, `azure` and `s3` backends ([#408](https://github.com/C2FO/vfs/issues/408)).
+
 ## [[v7.34.2](https://github.com/C2FO/vfs/releases/tag/v7.34.2)] - 2026-11-12
 ### Fixed
 - `ftp`: `File.Seek` with `io.SeekEnd` now positions at `size + offset`, as `io.Seeker` requires, instead of `size - offset`. A negative offset moves back from the end, a positive offset seeks past it, and a resulting negative position returns an error ([#407](https://github.com/C2FO/vfs/issues/407)).
