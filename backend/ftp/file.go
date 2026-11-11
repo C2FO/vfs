@@ -465,7 +465,13 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 				// file doesn't exist, just use 0 as offset
 				f.offset = 0
 			} else {
-				f.offset = max(int64(sz)-offset, 0)
+				// io.Seeker: the new position is size + offset, so a negative offset moves back
+				// from the end and a positive one moves past it.
+				newOffset := int64(sz) + offset
+				if newOffset < 0 {
+					return 0, utils.WrapSeekError(errNegativeSeekPosition)
+				}
+				f.offset = newOffset
 			}
 
 			// close dataconn so that it reset the offset on next reopen (in StorFrom or RetrFrom)

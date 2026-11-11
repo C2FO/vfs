@@ -327,7 +327,7 @@ func (ts *fileTestSuite) TestSeek() {
 	// whence = 2 (seek from end)
 	mockDataConn.EXPECT().GetEntry(fp).Return(&_ftp.Entry{Size: uint64(len(contents))}, nil).Twice()
 	mockDataConn.EXPECT().Close().Return(nil).Once()
-	pos, err = ftpfile.Seek(8, 2) // seek to some mid point
+	pos, err = ftpfile.Seek(-8, 2) // seek back from the end to some mid point
 	ts.Require().NoError(err, "no error expected")
 	ts.Equal(int64(4), pos, "position check")
 	localFile.Reset()
@@ -348,12 +348,20 @@ func (ts *fileTestSuite) TestSeek() {
 	ts.Equal(int64(6), ftpfile.offset, "ftp File offset should be 6")
 	ts.NotNil(ftpfile.location.fileSystem.dataconn, "dataconn should no longer be nil")
 
-	// whence = 2, correction of offset to 0 when whence 2 and seek offset > len(contents)
-	mockDataConn.EXPECT().GetEntry(fp).Return(&_ftp.Entry{}, nil).Twice()
+	// whence = 2, a positive offset seeks past the end of the file (allowed by io.Seeker)
+	mockDataConn.EXPECT().GetEntry(fp).Return(&_ftp.Entry{Size: uint64(len(contents))}, nil).Twice()
 	mockDataConn.EXPECT().Close().Return(nil).Once()
-	pos, err = ftpfile.Seek(15, 2)
+	pos, err = ftpfile.Seek(3, 2)
 	ts.Require().NoError(err, "no error expected")
-	ts.Zero(pos, "new offset should be 5")
+	ts.Equal(int64(len(contents)+3), pos, "offset should be size + offset")
+
+	// whence = 2, seeking before the start of the file is an error and leaves the offset unchanged
+	mockDataConn.EXPECT().GetEntry(fp).Return(&_ftp.Entry{Size: uint64(len(contents))}, nil).Twice()
+	pos, err = ftpfile.Seek(-int64(len(contents)+1), 2)
+	ts.Require().Error(err, "error expected")
+	ts.Require().ErrorIs(err, errNegativeSeekPosition, "negative position error expected")
+	ts.Zero(pos, "position should be 0 on error")
+	ts.Equal(int64(len(contents)+3), ftpfile.offset, "offset should be unchanged on error")
 
 	// whence = 2, file doesn't exist yet
 	mockDataConn.EXPECT().GetEntry(fp).Return(nil, os.ErrNotExist).Once()
