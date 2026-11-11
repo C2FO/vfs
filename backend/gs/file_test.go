@@ -110,6 +110,56 @@ func (ts *fileTestSuite) TestRead() {
 	ts.Equal(localFile.String(), contents, "Copying an gs file to a buffer should fill buffer with file's contents")
 }
 
+// dataWithEOFReader returns all of its data together with io.EOF in a single Read call, which
+// io.Reader allows.
+type dataWithEOFReader struct {
+	data []byte
+	done bool
+}
+
+func (r *dataWithEOFReader) Read(p []byte) (int, error) {
+	if r.done {
+		return 0, io.EOF
+	}
+	r.done = true
+	return copy(p, r.data), io.EOF
+}
+
+func (r *dataWithEOFReader) Close() error { return nil }
+
+func (ts *fileTestSuite) TestReadAdvancesCursorWithEOF() {
+	contents := "hello"
+	bucketName := "bucki"
+	objectName := "a.txt"
+	server := fakestorage.NewServer(
+		Objects{
+			fakestorage.Object{
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName: bucketName,
+					Name:       objectName,
+				},
+				Content: []byte(contents),
+			},
+		},
+	)
+	defer server.Stop()
+	fs := NewFileSystem(WithClient(server.Client()))
+
+	file, err := fs.NewFile(bucketName, "/"+objectName)
+	ts.Require().NoError(err, "Shouldn't fail creating new file")
+	gsFile, ok := file.(*File)
+	ts.Require().True(ok)
+	gsFile.reader = &dataWithEOFReader{data: []byte(contents)}
+
+	got, err := io.ReadAll(file)
+	ts.Require().NoError(err)
+	ts.Equal(contents, string(got))
+
+	pos, err := file.Seek(0, io.SeekCurrent)
+	ts.Require().NoError(err)
+	ts.Equal(int64(len(contents)), pos, "position should include bytes returned with io.EOF")
+}
+
 func (ts *fileTestSuite) TestDelete() {
 	contents := "hello world!"
 	bucketName := "bucki"
