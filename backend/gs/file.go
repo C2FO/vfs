@@ -153,6 +153,11 @@ func (f *File) Read(p []byte) (n int, err error) {
 	}
 
 	read, err := r.Read(p)
+	// advance the cursor for every byte returned, including bytes returned together with an error
+	// (io.Reader may return n > 0 along with io.EOF)
+	f.cursorPos += int64(read)
+	f.readCalled = true
+
 	if err != nil {
 		// if we got io.EOF, we'll return the read and the EOF error
 		// because io.Copy looks for EOF to determine if it's done
@@ -162,9 +167,6 @@ func (f *File) Read(p []byte) (n int, err error) {
 		}
 		return read, utils.WrapReadError(err)
 	}
-
-	f.cursorPos += int64(read)
-	f.readCalled = true
 
 	return read, nil
 }

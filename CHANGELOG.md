@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- `gs`: `File.Read` now advances the cursor by bytes returned together with `io.EOF`, so `Seek(0, io.SeekCurrent)` after reading to the end reports the file size, and a `Write` after reading to the end continues at the end of the object instead of overwriting from the start ([#406](https://github.com/C2FO/vfs/issues/406)).
 
 ## [[v7.34.0](https://github.com/C2FO/vfs/releases/tag/v7.34.0)] - 2026-11-05
 ### Security
