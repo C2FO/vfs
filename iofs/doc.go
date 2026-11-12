@@ -1,5 +1,5 @@
 /*
-Package iofs presents a [vfs.Location] as a read-only [io/fs.FS].
+Package iofs presents a [github.com/c2fo/vfs/v7.Location] as a read-only [io/fs.FS].
 
 It lets any VFS backend be used wherever the standard library accepts a filesystem, such as [net/http.FileServerFS],
 [html/template.ParseFS], [io/fs.WalkDir] and [io/fs.Glob]:
@@ -17,8 +17,8 @@ needs no change to any backend, and it never writes.
 
 Names follow [io/fs.ValidPath]: unrooted, slash-separated, without "." or ".." elements, with "." naming the location
 the filesystem was built on. On Windows a name containing a backslash is also invalid, as with [os.DirFS], because the
-os backend treats it as a separator. Invalid names fail with an error matching [io/fs.ErrInvalid] before any request is
-made.
+os backend treats it as a separator, and a listed name containing one is omitted from ReadDir. Invalid names fail
+with an error matching [io/fs.ErrInvalid] before any request is made.
 
 # Files and directories
 
@@ -34,7 +34,7 @@ to a directory is not a directory here, unlike with [os.DirFS], and opening a li
 Links in the intermediate components of a name are resolved by the backend, so on the os backend a link inside the root
 can lead outside it; do not serve an untrusted tree that may contain such links. The same holds for Sub.
 
-[io/fs.FileInfo.Sys] always returns nil, so the writable [vfs.File] behind an entry is never reachable.
+[io/fs.FileInfo.Sys] always returns nil, so the writable [github.com/c2fo/vfs/v7.File] behind an entry is never reachable.
 
 A location that does not exist cannot be told apart from an empty one when it is opened as ".", so ReadDir on it
 returns no entries and no error; names beneath it do not exist.

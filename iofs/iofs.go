@@ -62,10 +62,19 @@ var (
 	_ fs.SubFS      = (*fsys)(nil)
 )
 
-// pathError builds the *fs.PathError returned for name. A failure already reported by the list package is
-// unwrapped first, so the message names the caller's path rather than the backend's.
+// pathError builds the *fs.PathError returned for name. Failures already reported as a *fs.PathError, by the list
+// package or by a backend, are unwrapped first, so the message names the caller's path rather than the backend's, and
+// does not expose where the backend keeps its data.
 func pathError(op, name string, err error) error {
-	if pe, ok := err.(*fs.PathError); ok && pe.Err != nil { //nolint:errorlint // only unwrap an error that is itself a PathError
+	for {
+		pe, ok := err.(*fs.PathError) //nolint:errorlint // only unwrap an error that is itself a PathError
+		if !ok {
+			// a backend's own wrapping around a PathError, such as "read error: <PathError>"
+			pe, ok = errors.Unwrap(err).(*fs.PathError) //nolint:errorlint // as above
+		}
+		if !ok || pe.Err == nil {
+			break
+		}
 		err = pe.Err
 	}
 	return &fs.PathError{Op: op, Path: name, Err: err}

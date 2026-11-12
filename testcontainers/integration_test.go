@@ -231,7 +231,7 @@ func (s *containerSuite) TestIOFS() {
 // TestIOFSFileWins checks that a name that is both an object and a prefix is a single file. Only object stores allow it.
 func (s *containerSuite) TestIOFSFileWins() {
 	for _, tgt := range s.targets {
-		if tgt.scheme != "s3" && tgt.scheme != "az" {
+		if tgt.scheme != "s3" && tgt.scheme != "az" && tgt.scheme != "gs" {
 			continue
 		}
 		s.Run(tgt.name, func() {

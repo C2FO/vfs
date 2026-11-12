@@ -1,6 +1,8 @@
 package iofs
 
 import (
+	"context"
+	"fmt"
 	"io"
 	"io/fs"
 	"runtime"
@@ -39,6 +41,53 @@ func TestNewFileExposesReaderAtOnlyWhenSupported(t *testing.T) {
 	n, err := ra.ReadAt(buf, 2)
 	require.NoError(t, err)
 	require.Equal(t, "pha", string(buf[:n]))
+}
+
+func TestReadAtAfterCloseFails(t *testing.T) {
+	loc, err := mem.NewFileSystem().NewLocation("vol", "/root/")
+	require.NoError(t, err)
+	f, err := loc.NewFile("a.txt")
+	require.NoError(t, err)
+
+	file := newFile(&fsys{}, readerAt{File: f, data: "alpha"}, vfs.Entry{}, "a.txt")
+	require.NoError(t, file.Close())
+	_, err = file.(io.ReaderAt).ReadAt(make([]byte, 1), 0)
+	require.ErrorIs(t, err, fs.ErrClosed)
+}
+
+func TestDirEntryInfoErrorNamesTheFilesystemPath(t *testing.T) {
+	loc, err := mem.NewFileSystem().NewLocation("vol", "/root/css/")
+	require.NoError(t, err)
+	e, err := vfs.NewFileEntry(loc, "site.css")
+	require.NoError(t, err)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err = dirEntry{entry: e, fsys: &fsys{ctx: ctx}, name: "css/site.css"}.Info()
+	require.ErrorIs(t, err, context.Canceled)
+	var pe *fs.PathError
+	require.ErrorAs(t, err, &pe)
+	require.Equal(t, "css/site.css", pe.Path)
+}
+
+func TestPathErrorUnwrapsBackendPaths(t *testing.T) {
+	inner := &fs.PathError{Op: "open", Path: "/host/secret", Err: fs.ErrPermission}
+	tests := []struct {
+		name  string
+		input error
+	}{
+		{name: "plain", input: fs.ErrPermission},
+		{name: "list error around a backend error", input: &fs.PathError{Op: "list", Path: "/", Err: inner}},
+		{name: "backend wrapping", input: fmt.Errorf("read error: %w", inner)},
+		{name: "backend wrapping inside a list error", input: &fs.PathError{Op: "list", Path: "/", Err: fmt.Errorf("read error: %w", inner)}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := pathError("open", "a.txt", tt.input)
+			require.ErrorIs(t, err, fs.ErrPermission)
+			require.Equal(t, "open a.txt: permission denied", err.Error())
+		})
+	}
 }
 
 func TestNewDirInfoUsesReportedPermissions(t *testing.T) {

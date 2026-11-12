@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"iter"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -23,6 +25,7 @@ import (
 	vfsos "github.com/c2fo/vfs/v7/backend/os"
 	"github.com/c2fo/vfs/v7/iofs"
 	"github.com/c2fo/vfs/v7/mocks"
+	"github.com/c2fo/vfs/v7/options"
 )
 
 var tree = map[string]string{
@@ -454,6 +457,117 @@ func (s *IOFSTestSuite) TestOpenSymlinkToFileFails() {
 	s.Require().ErrorIs(err, fs.ErrInvalid)
 	_, err = fs.ReadFile(iofs.New(loc), "flink")
 	s.Require().ErrorIs(err, fs.ErrInvalid)
+}
+
+// erroringLocation lists two files and then fails, as a paginated listing does when a later page cannot be fetched.
+type erroringLocation struct {
+	vfs.Location
+	err error
+}
+
+func (l erroringLocation) ListEntries(_ context.Context, _ ...options.ListOption) iter.Seq2[vfs.Entry, error] {
+	return func(yield func(vfs.Entry, error) bool) {
+		for _, name := range []string{"a.txt", "b.txt"} {
+			e, err := vfs.NewFileEntry(l.Location, name, vfs.WithEntryMetadata(1, time.Time{}))
+			if err != nil || !yield(e, nil) {
+				return
+			}
+		}
+		yield(vfs.Entry{}, &fs.PathError{Op: "list", Path: "/", Err: l.err})
+	}
+}
+
+func (s *IOFSTestSuite) TestReadDirReturnsEntriesReadBeforeFailure() {
+	boom := errors.New("page two failed")
+	fsys := iofs.New(erroringLocation{Location: s.memLocation(), err: boom})
+
+	entries, err := fs.ReadDir(fsys, ".")
+	s.Require().ErrorIs(err, boom)
+	names := make([]string, 0, len(entries))
+	for _, e := range entries {
+		names = append(names, e.Name())
+	}
+	s.Equal([]string{"a.txt", "b.txt"}, names)
+}
+
+func (s *IOFSTestSuite) TestClosedFile() {
+	for backend, loc := range s.backends() {
+		s.Run(backend, func() {
+			f, err := iofs.New(loc).Open("a.txt")
+			s.Require().NoError(err)
+			s.Require().NoError(f.Close())
+			s.Require().NoError(f.Close(), "Close is idempotent")
+
+			_, err = f.Read(make([]byte, 1))
+			s.Require().ErrorIs(err, fs.ErrClosed)
+			var pe *fs.PathError
+			s.Require().ErrorAs(err, &pe)
+			s.Equal("a.txt", pe.Path)
+			_, err = f.(io.Seeker).Seek(0, io.SeekStart)
+			s.Require().ErrorIs(err, fs.ErrClosed)
+		})
+	}
+}
+
+func (s *IOFSTestSuite) TestFileErrorsNameTheFilesystemPath() {
+	boom := errors.New("read failed")
+	file := mocks.NewFile(s.T())
+	file.EXPECT().Read(mock.Anything).Return(0, &fs.PathError{Op: "read", Path: "/host/secret/a.txt", Err: boom})
+	file.EXPECT().Close().Return(nil)
+	loc := mocks.NewLocation(s.T())
+	loc.EXPECT().Path().Return("/root/").Maybe()
+	loc.EXPECT().ListByPrefix("a.txt").Return([]string{"a.txt"}, nil)
+	loc.EXPECT().NewFile("a.txt").Return(file, nil)
+
+	f, err := iofs.New(loc).Open("a.txt")
+	s.Require().NoError(err)
+	defer func() { s.Require().NoError(f.Close()) }()
+	_, err = f.Read(make([]byte, 1))
+	s.Require().ErrorIs(err, boom)
+	s.NotContains(err.Error(), "/host/secret")
+	var pe *fs.PathError
+	s.Require().ErrorAs(err, &pe)
+	s.Equal("a.txt", pe.Path)
+}
+
+func (s *IOFSTestSuite) TestDirEntryExposesNoWritableFile() {
+	entries, err := fs.ReadDir(iofs.New(s.memLocation()), ".")
+	s.Require().NoError(err)
+	s.Require().NotEmpty(entries)
+	for _, e := range entries {
+		_, hasFile := e.(interface{ File() (vfs.File, error) })
+		s.False(hasFile, e.Name())
+		_, hasLocation := e.(interface{ Location() (vfs.Location, error) })
+		s.False(hasLocation, e.Name())
+	}
+}
+
+func (s *IOFSTestSuite) TestOpenSymlinkToDirectoryFails() {
+	if runtime.GOOS == "windows" {
+		s.T().Skip("creating symbolic links needs privileges on Windows")
+	}
+	loc := s.osLocation()
+	s.Require().NoError(os.Symlink(filepath.Join(loc.Path(), "css"), filepath.Join(loc.Path(), "dlink")))
+	fsys := iofs.New(loc)
+
+	_, err := fsys.Open("dlink")
+	s.Require().ErrorIs(err, fs.ErrInvalid)
+	_, err = fs.ReadDir(fsys, "dlink")
+	s.Require().ErrorIs(err, fs.ErrInvalid)
+}
+
+func (s *IOFSTestSuite) TestBackslashNameIsNotListedOnWindows() {
+	if runtime.GOOS != "windows" {
+		s.T().Skip("a backslash is a valid name character outside Windows")
+	}
+	loc := s.memLocation()
+	f, err := loc.NewFile(`odd\name.txt`)
+	s.Require().NoError(err)
+	_, err = io.WriteString(f, "x")
+	s.Require().NoError(err)
+	s.Require().NoError(f.Close())
+
+	s.Require().NoError(fs.WalkDir(iofs.New(loc), ".", func(_ string, _ fs.DirEntry, err error) error { return err }))
 }
 
 func countOf(names []string, name string) int {

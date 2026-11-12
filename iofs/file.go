@@ -1,6 +1,7 @@
 package iofs
 
 import (
+	"errors"
 	"io"
 	"io/fs"
 	"time"
@@ -19,6 +20,8 @@ type file struct {
 	vf   vfs.File
 	e    vfs.Entry
 	name string
+
+	closed bool
 }
 
 // readerAtFile is a file whose underlying vfs.File also supports io.ReaderAt.
@@ -40,15 +43,53 @@ var (
 	_ io.ReaderAt = (*readerAtFile)(nil)
 )
 
-func (f *file) Read(p []byte) (int, error) { return f.vf.Read(p) }
+// Read reads from the file. A vfs.File reopens itself when used after Close, so a closed file is rejected here.
+func (f *file) Read(p []byte) (int, error) {
+	if f.closed {
+		return 0, pathError("read", f.name, fs.ErrClosed)
+	}
+	n, err := f.vf.Read(p)
+	return n, f.ioError("read", err)
+}
 
-func (f *file) Seek(offset int64, whence int) (int64, error) { return f.vf.Seek(offset, whence) }
+func (f *file) Seek(offset int64, whence int) (int64, error) {
+	if f.closed {
+		return 0, pathError("seek", f.name, fs.ErrClosed)
+	}
+	pos, err := f.vf.Seek(offset, whence)
+	return pos, f.ioError("seek", err)
+}
 
-func (f *file) Close() error { return f.vf.Close() }
+// Close closes the file. It is safe to call more than once.
+func (f *file) Close() error {
+	if f.closed {
+		return nil
+	}
+	f.closed = true
+	return f.ioError("close", f.vf.Close())
+}
+
+// ioError reports err as a *fs.PathError naming the file's name in the filesystem, except io.EOF, which callers
+// compare with ==.
+func (f *file) ioError(op string, err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, io.EOF) {
+		return io.EOF
+	}
+	return pathError(op, f.name, err)
+}
 
 func (f *file) Stat() (fs.FileInfo, error) { return f.fsys.entryInfo(f.e, "stat", f.name) }
 
-func (r *readerAtFile) ReadAt(p []byte, off int64) (int, error) { return r.ra.ReadAt(p, off) }
+func (r *readerAtFile) ReadAt(p []byte, off int64) (int, error) {
+	if r.closed {
+		return 0, pathError("readat", r.name, fs.ErrClosed)
+	}
+	n, err := r.ra.ReadAt(p, off)
+	return n, r.ioError("readat", err)
+}
 
 // filePerm returns the entry's mode, adding read permission when the backend reported none.
 func filePerm(e vfs.Entry) fs.FileMode {

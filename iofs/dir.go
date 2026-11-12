@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/fs"
 	"iter"
+	"path"
 	"sort"
 
 	"github.com/c2fo/vfs/v7"
@@ -70,15 +71,16 @@ func (d *dirFile) ReadDir(n int) ([]fs.DirEntry, error) {
 		}
 		if err != nil {
 			d.done = true
+			d.stop()
 			if n <= 0 {
 				sortEntries(entries)
 			}
 			return entries, pathError("readdir", d.name, err)
 		}
-		if d.shadowed(e) {
+		if !d.listable(e) {
 			continue
 		}
-		entries = append(entries, dirEntry{Entry: e, fsys: d.fsys})
+		entries = append(entries, dirEntry{entry: e, fsys: d.fsys, name: path.Join(d.name, e.Name())})
 	}
 
 	if n > 0 && len(entries) == 0 {
@@ -91,6 +93,12 @@ func (d *dirFile) ReadDir(n int) ([]fs.DirEntry, error) {
 		}
 	}
 	return entries, nil
+}
+
+// listable reports whether e is returned by ReadDir. A name validName rejects can be listed but never opened, so it is
+// left out, as an invalid key is; and a directory shadowed by a file is dropped.
+func (d *dirFile) listable(e vfs.Entry) bool {
+	return validName(e.Name()) && !d.shadowed(e)
 }
 
 // shadowed reports whether e is a directory with the name of a file already returned. Object stores allow an object
@@ -116,12 +124,20 @@ func pull(seq iter.Seq2[vfs.Entry, error]) (func() (vfs.Entry, error, bool), fun
 	return iter.Pull2(seq)
 }
 
-// dirEntry is the fs.DirEntry returned by ReadDir. Its Info agrees with Stat, including the default permissions.
+// dirEntry is the fs.DirEntry returned by ReadDir. Its Info agrees with Stat, including the default permissions. It
+// deliberately does not embed vfs.Entry, whose File and Location methods would expose a writable file.
 type dirEntry struct {
-	vfs.Entry
-	fsys *fsys
+	entry vfs.Entry
+	fsys  *fsys
+	name  string // the entry's name in the filesystem, for errors
 }
 
+func (e dirEntry) Name() string { return e.entry.Name() }
+
+func (e dirEntry) IsDir() bool { return e.entry.IsDir() }
+
+func (e dirEntry) Type() fs.FileMode { return e.entry.Type() }
+
 func (e dirEntry) Info() (fs.FileInfo, error) {
-	return e.fsys.entryInfo(e.Entry, "stat", e.RelPath())
+	return e.fsys.entryInfo(e.entry, "stat", e.name)
 }
