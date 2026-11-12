@@ -7,12 +7,22 @@ import (
 	"io"
 	"io/fs"
 	"path"
+	"runtime"
 	"sort"
 	"strings"
 
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/list"
 )
+
+// validName reports whether name can be resolved. It is fs.ValidPath, plus, on Windows, no backslash: the os backend
+// treats it as a separator there, so "a\\b" would reach the same file as "a/b", as os.DirFS also forbids.
+func validName(name string) bool {
+	if !fs.ValidPath(name) {
+		return false
+	}
+	return runtime.GOOS != "windows" || !strings.Contains(name, `\`)
+}
 
 var errNotDir = errors.New("not a directory")
 
@@ -93,7 +103,7 @@ func (f *fsys) lookup(op, name string) (vfs.Entry, error) {
 
 // Open opens the named file or directory.
 func (f *fsys) Open(name string) (fs.File, error) {
-	if !fs.ValidPath(name) {
+	if !validName(name) {
 		return nil, pathError("open", name, fs.ErrInvalid)
 	}
 	if name == "." {
@@ -121,7 +131,7 @@ func (f *fsys) Open(name string) (fs.File, error) {
 
 // Stat returns the fs.FileInfo for the named file or directory.
 func (f *fsys) Stat(name string) (fs.FileInfo, error) {
-	if !fs.ValidPath(name) {
+	if !validName(name) {
 		return nil, pathError("stat", name, fs.ErrInvalid)
 	}
 	if name == "." {
@@ -191,7 +201,7 @@ func (f *fsys) ReadFile(name string) ([]byte, error) {
 
 // Sub returns an fs.FS rooted at the named directory. It makes no request.
 func (f *fsys) Sub(dir string) (fs.FS, error) {
-	if !fs.ValidPath(dir) {
+	if !validName(dir) {
 		return nil, pathError("sub", dir, fs.ErrInvalid)
 	}
 	if dir == "." {

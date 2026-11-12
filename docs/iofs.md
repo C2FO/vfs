@@ -24,7 +24,7 @@ The returned filesystem also implements [io/fs.StatFS](<https://pkg.go.dev/io/fs
 
 ### Names
 
-Names follow [io/fs.ValidPath](<https://pkg.go.dev/io/fs/#ValidPath>): unrooted, slash\-separated, without "." or ".." elements, with "." naming the location the filesystem was built on. Invalid names fail with an error matching [io/fs.ErrInvalid](<https://pkg.go.dev/io/fs/#ErrInvalid>) before any request is made.
+Names follow [io/fs.ValidPath](<https://pkg.go.dev/io/fs/#ValidPath>): unrooted, slash\-separated, without "." or ".." elements, with "." naming the location the filesystem was built on. On Windows a name containing a backslash is also invalid, as with [os.DirFS](<https://pkg.go.dev/os/#DirFS>), because the os backend treats it as a separator. Invalid names fail with an error matching [io/fs.ErrInvalid](<https://pkg.go.dev/io/fs/#ErrInvalid>) before any request is made.
 
 ### Files and directories
 

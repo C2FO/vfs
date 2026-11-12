@@ -3,6 +3,7 @@ package iofs
 import (
 	"io"
 	"io/fs"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -52,4 +53,24 @@ func TestNewDirInfoUsesReportedPermissions(t *testing.T) {
 	require.Equal(t, fs.ModeDir|0o700, newDirInfo("sub", &reported).Mode())
 	require.Equal(t, fs.ModeDir|0o555, newDirInfo("sub", &unreported).Mode())
 	require.Equal(t, fs.ModeDir|0o555, newDirInfo(".", nil).Mode())
+}
+
+func TestValidName(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{name: "dot", input: ".", expected: true},
+		{name: "nested", input: "a/b.txt", expected: true},
+		{name: "rooted", input: "/a", expected: false},
+		{name: "dotdot", input: "../a", expected: false},
+		{name: "trailing slash", input: "a/", expected: false},
+		{name: "backslash", input: `a\b`, expected: runtime.GOOS != "windows"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, validName(tt.input))
+		})
+	}
 }
