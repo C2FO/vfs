@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [[v7.35.0](https://github.com/C2FO/vfs/releases/tag/v7.35.0)] - 2026-11-12
 ### Added
 - `iofs`: a new package whose `New(loc)` presents any `vfs.Location` as a read-only `io/fs.FS` that also implements `fs.StatFS`, `fs.ReadDirFS`, `fs.ReadFileFS` and `fs.SubFS`, so locations work with `http.FileServerFS`, `template.ParseFS`, `fs.WalkDir` and `fs.Glob`. It lists through `list.Entries`, and passes `testing/fstest.TestFS` on the `mem`, `os`, `sftp`, `ftp`, `gs`, `azure` and `s3` backends ([#408](https://github.com/C2FO/vfs/issues/408)).
 
