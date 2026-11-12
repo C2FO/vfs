@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"testing"
+	"testing/iotest"
 
 	"cloud.google.com/go/storage"
 	"github.com/fsouza/fake-gcs-server/fakestorage"
@@ -110,25 +111,9 @@ func (ts *fileTestSuite) TestRead() {
 	ts.Equal(localFile.String(), contents, "Copying an gs file to a buffer should fill buffer with file's contents")
 }
 
-// dataWithEOFReader returns all of its data together with io.EOF in a single Read call, which
-// io.Reader allows.
-type dataWithEOFReader struct {
-	data []byte
-	done bool
-}
-
-func (r *dataWithEOFReader) Read(p []byte) (int, error) {
-	if r.done {
-		return 0, io.EOF
-	}
-	r.done = true
-	return copy(p, r.data), io.EOF
-}
-
-func (r *dataWithEOFReader) Close() error { return nil }
-
-func (ts *fileTestSuite) TestReadAdvancesCursorWithEOF() {
-	contents := "hello"
+// newFileWithEOFReader returns a File for an existing object whose reader returns the final bytes together
+// with io.EOF in the same Read call, which io.Reader allows.
+func (ts *fileTestSuite) newFileWithEOFReader(contents string) (*FileSystem, *File, func()) {
 	bucketName := "bucki"
 	objectName := "a.txt"
 	server := fakestorage.NewServer(
@@ -142,22 +127,56 @@ func (ts *fileTestSuite) TestReadAdvancesCursorWithEOF() {
 			},
 		},
 	)
-	defer server.Stop()
 	fs := NewFileSystem(WithClient(server.Client()))
 
 	file, err := fs.NewFile(bucketName, "/"+objectName)
 	ts.Require().NoError(err, "Shouldn't fail creating new file")
 	gsFile, ok := file.(*File)
 	ts.Require().True(ok)
-	gsFile.reader = &dataWithEOFReader{data: []byte(contents)}
+	gsFile.reader = io.NopCloser(iotest.DataErrReader(bytes.NewReader([]byte(contents))))
 
-	got, err := io.ReadAll(file)
-	ts.Require().NoError(err)
-	ts.Equal(contents, string(got))
+	return fs, gsFile, server.Stop
+}
 
-	pos, err := file.Seek(0, io.SeekCurrent)
+func (ts *fileTestSuite) TestReadAdvancesCursorWithEOF() {
+	tests := []struct {
+		name     string
+		contents string
+	}{
+		{name: "short file", contents: "hello"},
+		{name: "larger than a single read", contents: string(bytes.Repeat([]byte("0123456789"), 1000))},
+		{name: "empty file", contents: ""},
+	}
+
+	for _, tt := range tests {
+		ts.Run(tt.name, func() {
+			_, file, stop := ts.newFileWithEOFReader(tt.contents)
+			defer stop()
+
+			got, err := io.ReadAll(file)
+			ts.Require().NoError(err)
+			ts.Equal(tt.contents, string(got))
+
+			pos, err := file.Seek(0, io.SeekCurrent)
+			ts.Require().NoError(err)
+			ts.Equal(int64(len(tt.contents)), pos, "position should include bytes returned with io.EOF")
+		})
+	}
+}
+
+func (ts *fileTestSuite) TestWriteAfterReadToEOFAppends() {
+	fs, file, stop := ts.newFileWithEOFReader("hello")
+	defer stop()
+
+	_, err := io.ReadAll(file)
 	ts.Require().NoError(err)
-	ts.Equal(int64(len(contents)), pos, "position should include bytes returned with io.EOF")
+
+	_, err = file.Write([]byte(" world"))
+	ts.Require().NoError(err)
+	ts.Require().NoError(file.Close())
+
+	ts.Equal("hello world", string(fsMustReadFileName(fs, "bucki", "a.txt")),
+		"a write after reading to EOF should continue at the end of the object")
 }
 
 func (ts *fileTestSuite) TestDelete() {
