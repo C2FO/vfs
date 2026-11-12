@@ -8,7 +8,6 @@ import (
 	"io/fs"
 	"path"
 	"runtime"
-	"sort"
 	"strings"
 
 	"github.com/c2fo/vfs/v7"
@@ -122,6 +121,9 @@ func (f *fsys) Open(name string) (fs.File, error) {
 		return &dirFile{fsys: f, loc: loc, name: name, info: newDirInfo(e.Name(), &e)}, nil
 	}
 
+	if e.Mode()&fs.ModeSymlink != 0 {
+		return nil, pathError("open", name, fmt.Errorf("%w: symbolic links are not followed", fs.ErrInvalid))
+	}
 	vf, err := e.File()
 	if err != nil {
 		return nil, pathError("open", name, err)
@@ -154,11 +156,7 @@ func (f *fsys) entryInfo(e vfs.Entry, op, name string) (fs.FileInfo, error) {
 	if err != nil {
 		return nil, pathError(op, name, err)
 	}
-	vf, err := e.File()
-	if err != nil {
-		return nil, pathError(op, name, err)
-	}
-	return fileInfo{FileInfo: info, mode: filePerm(e), sys: vf}, nil
+	return fileInfo{FileInfo: info, mode: filePerm(e)}, nil
 }
 
 // ReadDir reads the named directory and returns its entries sorted by filename.
@@ -173,12 +171,8 @@ func (f *fsys) ReadDir(name string) ([]fs.DirEntry, error) {
 	if !ok {
 		return nil, pathError("readdir", name, errNotDir)
 	}
-	entries, err := dir.ReadDir(-1)
-	if err != nil {
-		return nil, err
-	}
-	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
-	return entries, nil
+	// entries read before a failure are returned with it, as fs.ReadDirFS requires
+	return dir.ReadDir(-1)
 }
 
 // ReadFile reads the named file and returns its contents.
@@ -194,12 +188,14 @@ func (f *fsys) ReadFile(name string) ([]byte, error) {
 	}
 	data, err := io.ReadAll(file)
 	if err != nil {
-		return nil, pathError("readfile", name, err)
+		return data, pathError("readfile", name, err)
 	}
 	return data, nil
 }
 
-// Sub returns an fs.FS rooted at the named directory. It makes no request.
+// Sub returns an fs.FS rooted at the named directory. It makes no request, so it cannot apply the rule that a file
+// wins over a directory of the same name: on an object store holding both "a" and "a/b", Stat("a") is a file but
+// Sub("a") succeeds and lists "b".
 func (f *fsys) Sub(dir string) (fs.FS, error) {
 	if !validName(dir) {
 		return nil, pathError("sub", dir, fs.ErrInvalid)

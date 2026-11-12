@@ -59,16 +59,16 @@ func filePerm(e vfs.Entry) fs.FileMode {
 	return m
 }
 
-// fileInfo adapts a listed file's fs.FileInfo: it adds default permissions and exposes the vfs.File as Sys.
+// fileInfo adapts a listed file's fs.FileInfo: it adds default permissions and reports no
+// Sys value, so the underlying vfs.File, which can write, is not reachable.
 type fileInfo struct {
 	fs.FileInfo
 	mode fs.FileMode
-	sys  vfs.File
 }
 
 func (i fileInfo) Mode() fs.FileMode { return i.mode }
 
-func (i fileInfo) Sys() any { return i.sys }
+func (i fileInfo) Sys() any { return nil }
 
 // dirInfo is the fs.FileInfo of a directory. Directories have no size or modification time in VFS.
 type dirInfo struct {

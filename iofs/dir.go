@@ -70,6 +70,9 @@ func (d *dirFile) ReadDir(n int) ([]fs.DirEntry, error) {
 		}
 		if err != nil {
 			d.done = true
+			if n <= 0 {
+				sortEntries(entries)
+			}
 			return entries, pathError("readdir", d.name, err)
 		}
 		if d.shadowed(e) {
@@ -82,7 +85,7 @@ func (d *dirFile) ReadDir(n int) ([]fs.DirEntry, error) {
 		return nil, io.EOF
 	}
 	if n <= 0 {
-		sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
+		sortEntries(entries)
 		if entries == nil {
 			entries = []fs.DirEntry{}
 		}
@@ -103,6 +106,10 @@ func (d *dirFile) shadowed(e vfs.Entry) bool {
 	}
 	_, ok := d.files[e.Name()]
 	return ok
+}
+
+func sortEntries(entries []fs.DirEntry) {
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
 }
 
 func pull(seq iter.Seq2[vfs.Entry, error]) (func() (vfs.Entry, error, bool), func()) {

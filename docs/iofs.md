@@ -28,9 +28,13 @@ Names follow [io/fs.ValidPath](<https://pkg.go.dev/io/fs/#ValidPath>): unrooted,
 
 ### Files and directories
 
-A name is resolved by listing its parent directory with [github.com/c2fo/vfs/v7/list.Entries](<https://pkg.go.dev/github.com/c2fo/vfs/v7/list/#Entries>), so the same rules hold on every backend, including those with no real directories. When a name matches both a file and a directory, which object stores allow, the file wins. Object stores cannot represent an empty directory: a directory exists only while something is stored beneath it.
+A name is resolved by listing its parent directory with [github.com/c2fo/vfs/v7/list.Entries](<https://pkg.go.dev/github.com/c2fo/vfs/v7/list/#Entries>), so the same rules hold on every backend, including those with no real directories. When a name matches both a file and a directory, which object stores allow, the file wins \(except for Sub, which makes no request and so cannot tell\). A listed name that is not an [io/fs.ValidPath](<https://pkg.go.dev/io/fs/#ValidPath>) element, such as an object key "a//b", cannot be represented and is silently omitted from ReadDir and [io/fs.WalkDir](<https://pkg.go.dev/io/fs/#WalkDir>). Object stores cannot represent an empty directory: a directory exists only while something is stored beneath it.
 
-A symbolic link is reported as the listing reports it: with [io/fs.ModeSymlink](<https://pkg.go.dev/io/fs/#ModeSymlink>) and without being followed, so a link to a directory is not a directory here, unlike with [os.DirFS](<https://pkg.go.dev/os/#DirFS>). A location that does not exist cannot be told apart from an empty one when it is opened as ".", so ReadDir on it returns no entries and no error; names beneath it do not exist.
+A symbolic link is reported as the listing reports it: with [io/fs.ModeSymlink](<https://pkg.go.dev/io/fs/#ModeSymlink>) and without being followed, so a link to a directory is not a directory here, unlike with [os.DirFS](<https://pkg.go.dev/os/#DirFS>), and opening a link fails with [io/fs.ErrInvalid](<https://pkg.go.dev/io/fs/#ErrInvalid>). Links in the intermediate components of a name are resolved by the backend, so on the os backend a link inside the root can lead outside it; do not serve an untrusted tree that may contain such links. The same holds for Sub.
+
+[io/fs.FileInfo.Sys](<https://pkg.go.dev/io/fs/#FileInfo.Sys>) always returns nil, so the writable \[vfs.File\] behind an entry is never reachable.
+
+A location that does not exist cannot be told apart from an empty one when it is opened as ".", so ReadDir on it returns no entries and no error; names beneath it do not exist.
 
 ### Cost
 

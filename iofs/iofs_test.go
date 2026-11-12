@@ -127,8 +127,7 @@ func (s *IOFSTestSuite) TestReadFileAndStat() {
 				s.Equal(path.Base(tt.path), info.Name())
 				s.EqualValues(len(tt.expectedData), info.Size())
 				s.NotZero(info.Mode().Perm())
-				_, ok := info.Sys().(vfs.File)
-				s.True(ok, "Sys should return the vfs.File")
+				s.Nil(info.Sys(), "Sys must not expose the writable vfs.File")
 
 				data, err := fs.ReadFile(fsys, tt.path)
 				s.Require().NoError(err)
@@ -408,7 +407,9 @@ func (s *IOFSTestSuite) TestLookupWithInvalidParent() {
 func (s *IOFSTestSuite) TestReadFileReadError() {
 	boom := errors.New("read failed")
 	file := mocks.NewFile(s.T())
-	file.EXPECT().Read(mock.Anything).Return(0, boom)
+	file.EXPECT().Read(mock.Anything).RunAndReturn(func(b []byte) (int, error) {
+		return copy(b, "part"), boom
+	}).Once()
 	file.EXPECT().Close().Return(nil)
 
 	loc := mocks.NewLocation(s.T())
@@ -416,8 +417,43 @@ func (s *IOFSTestSuite) TestReadFileReadError() {
 	loc.EXPECT().ListByPrefix("a.txt").Return([]string{"a.txt"}, nil)
 	loc.EXPECT().NewFile("a.txt").Return(file, nil)
 
-	_, err := fs.ReadFile(iofs.New(loc), "a.txt")
+	data, err := fs.ReadFile(iofs.New(loc), "a.txt")
 	s.Require().ErrorIs(err, boom)
+	s.Equal("part", string(data), "bytes read before the failure are kept")
+}
+
+func (s *IOFSTestSuite) TestReadDoesNotRewriteMemFile() {
+	loc := s.memLocation()
+	fsys := iofs.New(loc)
+
+	f, err := fsys.Open("a.txt")
+	s.Require().NoError(err)
+	_, err = f.Read(make([]byte, 1))
+	s.Require().NoError(err)
+
+	other, err := loc.NewFile("a.txt")
+	s.Require().NoError(err)
+	_, err = io.WriteString(other, "replaced")
+	s.Require().NoError(err)
+	s.Require().NoError(other.Close())
+
+	s.Require().NoError(f.Close())
+	data, err := fs.ReadFile(fsys, "a.txt")
+	s.Require().NoError(err)
+	s.Equal("replaced", string(data))
+}
+
+func (s *IOFSTestSuite) TestOpenSymlinkToFileFails() {
+	if runtime.GOOS == "windows" {
+		s.T().Skip("creating symbolic links needs privileges on Windows")
+	}
+	loc := s.osLocation()
+	s.Require().NoError(os.Symlink(filepath.Join(loc.Path(), "a.txt"), filepath.Join(loc.Path(), "flink")))
+
+	_, err := iofs.New(loc).Open("flink")
+	s.Require().ErrorIs(err, fs.ErrInvalid)
+	_, err = fs.ReadFile(iofs.New(loc), "flink")
+	s.Require().ErrorIs(err, fs.ErrInvalid)
 }
 
 func countOf(names []string, name string) int {

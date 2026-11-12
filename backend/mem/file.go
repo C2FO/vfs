@@ -53,7 +53,8 @@ var errNilReference = errors.New("the target file passed in was nil")
 
 // Close imitates io.Closer by resetting the cursor and setting a boolean
 func (f *File) Close() error {
-	if f.isOpen {
+	// only a handle that was written to commits on Close; reading or seeking must not rewrite the file
+	if f.isOpen && f.writeMode != none {
 		// update the contents of the memFile
 		f.memFile.Lock()
 		defer f.memFile.Unlock()
