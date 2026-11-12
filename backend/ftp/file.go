@@ -469,7 +469,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 				// from the end and a positive one moves past it.
 				newOffset := int64(sz) + offset
 				if newOffset < 0 {
-					return 0, utils.WrapSeekError(errNegativeSeekPosition)
+					return 0, utils.WrapSeekError(vfs.ErrSeekInvalidOffset)
 				}
 				f.offset = newOffset
 			}

@@ -8,9 +8,3 @@ const errDataconnSingleOpInvalid = dataConnError("dataconn must be open for sing
 const errDataconnReadInvalid = dataConnError("dataconn must be open for read mode to conduct a read")
 const errDataconnWriteInvalid = dataConnError("dataconn must be open for write mode to conduct a write")
 const errDataconnWriterNil = dataConnError("write connection is closed")
-
-type seekError string
-
-func (e seekError) Error() string { return string(e) }
-
-const errNegativeSeekPosition = seekError("seek to a negative position")

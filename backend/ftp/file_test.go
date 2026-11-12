@@ -359,9 +359,16 @@ func (ts *fileTestSuite) TestSeek() {
 	mockDataConn.EXPECT().GetEntry(fp).Return(&_ftp.Entry{Size: uint64(len(contents))}, nil).Twice()
 	pos, err = ftpfile.Seek(-int64(len(contents)+1), 2)
 	ts.Require().Error(err, "error expected")
-	ts.Require().ErrorIs(err, errNegativeSeekPosition, "negative position error expected")
+	ts.Require().ErrorIs(err, vfs.ErrSeekInvalidOffset, "invalid offset error expected")
 	ts.Zero(pos, "position should be 0 on error")
 	ts.Equal(int64(len(contents)+3), ftpfile.offset, "offset should be unchanged on error")
+
+	// whence = 2, seeking back exactly to the start of the file is allowed
+	mockDataConn.EXPECT().GetEntry(fp).Return(&_ftp.Entry{Size: uint64(len(contents))}, nil).Twice()
+	mockDataConn.EXPECT().Close().Return(nil).Once()
+	pos, err = ftpfile.Seek(-int64(len(contents)), 2)
+	ts.Require().NoError(err, "no error expected")
+	ts.Zero(pos, "seeking -size from the end should land at the start")
 
 	// whence = 2, file doesn't exist yet
 	mockDataConn.EXPECT().GetEntry(fp).Return(nil, os.ErrNotExist).Once()
