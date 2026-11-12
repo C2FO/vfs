@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - `ftp`: `File.Seek` with `io.SeekEnd` now positions at `size + offset`, as `io.Seeker` requires, instead of `size - offset`. A negative offset moves back from the end, a positive offset seeks past it, and a resulting negative position returns an error ([#407](https://github.com/C2FO/vfs/issues/407)).
 
+## [[v7.34.1](https://github.com/C2FO/vfs/releases/tag/v7.34.1)] - 2026-11-12
+### Fixed
+- `gs`: `File.Read` now advances the cursor by bytes returned together with `io.EOF`, so `Seek(0, io.SeekCurrent)` after reading to the end reports the file size, and a `Write` after reading to the end continues at the end of the object instead of overwriting from the start ([#406](https://github.com/C2FO/vfs/issues/406)).
+
 ## [[v7.34.0](https://github.com/C2FO/vfs/releases/tag/v7.34.0)] - 2026-11-05
 ### Security
 - Updated the indirect dependency `github.com/go-jose/go-jose/v4` to v4.1.6 to resolve Dependabot advisories GHSA-vvm8-gf78-28g4, GHSA-4w3g-jfj2-cw2q and GHSA-mgcc-cww5-fp2q, in the core and `testcontainers` modules.
