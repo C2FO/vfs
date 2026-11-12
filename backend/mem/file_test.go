@@ -755,6 +755,84 @@ func (s *memFileTest) TestFileNewWrite() {
 	s.Equal("hello world", string(data))
 }
 
+// TestCloseAfterReadOnlyUseDoesNotWrite checks that a handle that was only read or seeked leaves the file alone when closed.
+func (s *memFileTest) TestCloseAfterReadOnlyUseDoesNotWrite() {
+	const filePath = "/readonly/file.txt"
+	seed, err := s.fileSystem.NewFile("", filePath)
+	s.Require().NoError(err)
+	_, err = seed.Write([]byte("original"))
+	s.Require().NoError(err)
+	s.Require().NoError(seed.Close())
+
+	tests := []struct {
+		name string
+		use  func(f vfs.File) error
+	}{
+		{name: "read", use: func(f vfs.File) error { _, err := f.Read(make([]byte, 1)); return err }},
+		{name: "seek", use: func(f vfs.File) error { _, err := f.Seek(1, io.SeekStart); return err }},
+	}
+	for _, tt := range tests {
+		s.Run(tt.name+" keeps an intervening write", func() {
+			reader, err := s.fileSystem.NewFile("", filePath)
+			s.Require().NoError(err)
+			s.Require().NoError(tt.use(reader))
+
+			writer, err := s.fileSystem.NewFile("", filePath)
+			s.Require().NoError(err)
+			_, err = writer.Write([]byte("replaced"))
+			s.Require().NoError(err)
+			s.Require().NoError(writer.Close())
+
+			s.Require().NoError(reader.Close())
+			check, err := s.fileSystem.NewFile("", filePath)
+			s.Require().NoError(err)
+			data, err := io.ReadAll(check)
+			s.Require().NoError(err)
+			s.Equal("replaced", string(data))
+			s.Require().NoError(check.Close())
+			// restore for the next case
+			_, err = writer.Write([]byte("original"))
+			s.Require().NoError(err)
+			s.Require().NoError(writer.Close())
+		})
+		s.Run(tt.name+" keeps LastModified", func() {
+			f, err := s.fileSystem.NewFile("", filePath)
+			s.Require().NoError(err)
+			before, err := f.LastModified()
+			s.Require().NoError(err)
+			want := *before
+
+			s.Require().NoError(tt.use(f))
+			s.Require().NoError(f.Close())
+
+			after, err := f.LastModified()
+			s.Require().NoError(err)
+			s.True(want.Equal(*after))
+		})
+		s.Run(tt.name+" does not resurrect a deleted file", func() {
+			reader, err := s.fileSystem.NewFile("", filePath)
+			s.Require().NoError(err)
+			s.Require().NoError(tt.use(reader))
+
+			deleter, err := s.fileSystem.NewFile("", filePath)
+			s.Require().NoError(err)
+			s.Require().NoError(deleter.Delete())
+
+			s.Require().NoError(reader.Close())
+			exists, err := deleter.Exists()
+			s.Require().NoError(err)
+			s.False(exists)
+
+			// recreate for the next case
+			again, err := s.fileSystem.NewFile("", filePath)
+			s.Require().NoError(err)
+			_, err = again.Write([]byte("original"))
+			s.Require().NoError(err)
+			s.Require().NoError(again.Close())
+		})
+	}
+}
+
 // TestSeekBeyondEOF tests that seeking beyond the end of file is allowed and creates zero-filled gaps
 func (s *memFileTest) TestSeekBeyondEOF() {
 	file, err := s.fileSystem.NewFile("", "/test_files/seek_beyond_eof.txt")

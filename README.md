@@ -94,6 +94,19 @@ for e, err := range list.Entries(ctx, loc, list.Glob("*/*.csv"), list.FilesOnly(
 
 Each entry's `RelPath()` is the name `List` returned, and `list.Entries` also reports directories unless `list.FilesOnly()` is given.
 
+## Using a location as an io/fs.FS
+
+`iofs.New` presents any location as a read-only `fs.FS`, so VFS backends work with `http.FileServerFS`, `template.ParseFS`, `fs.WalkDir`, `fs.Glob` and the rest of the standard library:
+
+```go
+fsys := iofs.New(loc) // loc is any vfs.Location, e.g. s3://bucket/assets/
+
+http.Handle("/", http.FileServerFS(fsys))
+data, err := fs.ReadFile(fsys, "config/app.json")
+```
+
+Directory reads use `list.Entries`, so they include subdirectories and cost no per-file request on backends that list natively. See [iofs](docs/iofs.md).
+
 ## Advanced Usage
 * See the [GoDoc](https://pkg.go.dev/github.com/c2fo/vfs/v7) for deeper technical details, backend-specific options, and additional APIs.
 * Specialized operations like copying between S3 locations or advanced configs (e.g. Azure credentials) are documented in each backend doc.
@@ -103,6 +116,7 @@ The pages in `docs/` are generated from the Go doc comments with `make docs`:
 * [vfs](docs/vfs.md) - core `FileSystem`, `Location`, and `File` interfaces
 * [vfscp](docs/vfscp.md)
 * [vfssimple](docs/vfssimple.md)
+* [iofs](docs/iofs.md) - a `vfs.Location` as an `io/fs.FS`
 * [backend](docs/backend.md)
     * [os backend](docs/os.md)
     * [gs backend](docs/gs.md)
