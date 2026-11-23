@@ -41,6 +41,13 @@ type File struct {
 	gcsWriter      io.WriteCloser
 	cancelFunc     context.CancelFunc
 	writeCalled    bool
+
+	// streaming is true once a write began without a local temp file; Seek and Read are rejected until Close.
+	streaming bool
+	// ephemeralStream is set by internal copy helpers to stream a single sequential write without a temp file.
+	ephemeralStream bool
+	// writeErr latches a local write buffer failure; the upload was aborted and Close reports it without committing.
+	writeErr error
 }
 
 // Close commits any writes, either from the GCS writer stream or from a tempfile (in the case where Seek or Read are
@@ -55,7 +62,15 @@ func (f *File) Close() error {
 		f.seekCalled = false
 		f.readCalled = false
 		f.writeCalled = false
+		f.streaming = false
+		f.ephemeralStream = false
+		f.writeErr = nil
 	}()
+
+	// a failed local write already aborted the upload and removed the temp file; never commit a partial object
+	if f.writeErr != nil {
+		return utils.WrapCloseError(f.writeErr)
+	}
 
 	// cleanup reader (unless reader is also the writer tempfile)
 	if f.reader != nil && !f.writeCalled {
@@ -172,6 +187,9 @@ func (f *File) Read(p []byte) (n int, err error) {
 }
 
 func (f *File) getReader() (io.ReadCloser, error) {
+	if f.streaming {
+		return nil, vfs.ErrWriteBufferDisabled
+	}
 	if f.reader == nil {
 		if f.writeCalled && f.tempFileWriter != nil {
 			// we've edited or truncated the file, so we need to read from the temp file which should already be at the
@@ -199,6 +217,11 @@ func (f *File) getReader() (io.ReadCloser, error) {
 
 // Seek implements the standard for io.Seeker.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
+	// without a local buffer the written bytes cannot be revisited; reject before touching the active upload
+	if f.streaming {
+		return 0, utils.WrapSeekError(vfs.ErrWriteBufferDisabled)
+	}
+
 	// get length of file
 	var length uint64
 	if f.writeCalled {
@@ -262,16 +285,32 @@ func (f *File) Write(data []byte) (int, error) {
 	// This is a rare case, but is meant to emulate the behavior of a standard POSIX file system.
 	// We might consider placing each write in a goroutine with a WaitGroup if this becomes a performance issue.
 
+	if f.writeErr != nil {
+		return 0, utils.WrapWriteError(f.writeErr)
+	}
+
 	// check/initialize for writer
 	err := f.initWriters()
 	if err != nil {
 		return 0, utils.WrapWriteError(err)
 	}
 
+	// streaming: write only to gcs, no local temp file
+	if f.tempFileWriter == nil {
+		written, err := f.gcsWriter.Write(data)
+		f.cursorPos += int64(written)
+		if err != nil {
+			return written, utils.WrapWriteError(err)
+		}
+		f.writeCalled = true
+
+		return written, nil
+	}
+
 	// write to tempfile
 	written, err := f.tempFileWriter.Write(data)
 	if err != nil {
-		return 0, utils.WrapWriteError(err)
+		return 0, utils.WrapWriteError(f.abortWrite(errLocalWriteBuffer(err)))
 	}
 
 	// write to gcs
@@ -295,12 +334,90 @@ func (f *File) Write(data []byte) (int, error) {
 	return written, nil
 }
 
+// abortWrite tears down an in-flight write after a local write buffer failure: it cancels the upload so no partial
+// object is committed, removes the temp file, and latches err so later Writes and Close report it.
+func (f *File) abortWrite(err error) error {
+	if f.cancelFunc != nil {
+		f.cancelFunc()
+		f.cancelFunc = nil
+	}
+	// Do not Close the writer: even with a canceled context, Close can still commit the object. Canceling the
+	// context alone makes the writer abandon the upload.
+	f.gcsWriter = nil
+	if r, ok := f.reader.(*os.File); ok && r == f.tempFileWriter {
+		f.reader = nil
+	}
+	// Close returns early once writeErr is latched, so release any network reader here
+	if f.reader != nil {
+		if closeErr := f.reader.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
+		f.reader = nil
+	}
+	if cleanupErr := f.cleanupTempFile(); cleanupErr != nil {
+		err = errors.Join(err, cleanupErr)
+	}
+	f.writeErr = err
+
+	return err
+}
+
+// selectWriteMode switches the file to streaming before its first write when write buffering is off.
+func (f *File) selectWriteMode() error {
+	if f.tempFileWriter != nil || f.streaming || f.useWriteBuffer() {
+		return nil
+	}
+	// streaming can't revisit written bytes, and editing an existing object needs the local copy
+	if f.seekCalled || f.readCalled {
+		return vfs.ErrWriteBufferDisabled
+	}
+	f.streaming = true
+
+	return nil
+}
+
+// startGCSWriter creates the cancelable GCS writer that streams to the object.
+func (f *File) startGCSWriter() error {
+	// setup cancelable context
+	ctx, cancel := context.WithCancel(f.location.fileSystem.ctx)
+	f.cancelFunc = cancel
+
+	// get object handle
+	handle, err := f.getObjectHandle()
+	if err != nil {
+		return err
+	}
+
+	// get gcsWriter
+	w := handle.NewWriter(ctx)
+	if w == nil {
+		return errors.New("failed to create GCS writer")
+	}
+
+	for _, o := range f.opts {
+		switch o := o.(type) {
+		case *newfile.ContentType:
+			w.ContentType = *(*string)(o)
+		default:
+		}
+	}
+
+	// set gcsWriter
+	f.gcsWriter = w
+
+	return nil
+}
+
 func (f *File) initWriters() error {
-	if f.tempFileWriter == nil {
+	if err := f.selectWriteMode(); err != nil {
+		return err
+	}
+
+	if f.tempFileWriter == nil && !f.streaming {
 		// Create temp file
 		tmpFile, err := os.CreateTemp("", fmt.Sprintf("vfs_gcs_%s.%d", f.Name(), time.Now().UnixNano()))
 		if err != nil {
-			return err
+			return errLocalWriteBuffer(err)
 		}
 		f.tempFileWriter = tmpFile
 
@@ -325,34 +442,10 @@ func (f *File) initWriters() error {
 	}
 
 	// if we haven't seeked yet, we need to get the gcsWriter
-	if f.gcsWriter == nil {
-		if !f.seekCalled && !f.readCalled {
-			// setup cancelable context
-			ctx, cancel := context.WithCancel(f.location.fileSystem.ctx)
-			f.cancelFunc = cancel
-
-			// get object handle
-			handle, err := f.getObjectHandle()
-			if err != nil {
-				return err
-			}
-
-			// get gcsWriter
-			w := handle.NewWriter(ctx)
-			if w == nil {
-				return errors.New("failed to create GCS writer")
-			}
-
-			for _, o := range f.opts {
-				switch o := o.(type) {
-				case *newfile.ContentType:
-					w.ContentType = *(*string)(o)
-				default:
-				}
-			}
-
-			// set gcsWriter
-			f.gcsWriter = w
+	if f.gcsWriter == nil && !f.seekCalled && !f.readCalled {
+		if err := f.startGCSWriter(); err != nil {
+			f.streaming = false
+			return err
 		}
 	}
 

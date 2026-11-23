@@ -856,6 +856,11 @@ type Options struct {
     // if set, otherwise Application Default Credentials. It can't be combined with APIKey, and Endpoint and Scopes are
     // ignored when it's set.
     ImpersonateServiceAccount string `json:"impersonateServiceAccount,omitempty"`
+    // DisableWriteBuffer streams writes straight to GCS instead of also mirroring them to a local temporary file, which
+    // is what normally makes Seek and Read after Write possible. With it set, Write cannot be combined with Seek or Read
+    // before Close (vfs.ErrWriteBufferDisabled), and local disk is not used for writes. It is unrelated to FileBufferSize,
+    // which only sizes the in-memory copy buffer. A single file can override this with newfile.WithWriteBuffer.
+    DisableWriteBuffer bool `json:"disableWriteBuffer,omitempty"`
 }
 ```
 

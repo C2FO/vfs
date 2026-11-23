@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/internal/writebuffer"
 )
 
 var (
@@ -192,6 +193,9 @@ func TouchCopyBuffered(writer io.Writer, reader io.Reader, bufferSize int) error
 	var buffer []byte
 	var size int64
 	var err error
+
+	// a single sequential copy never needs the backend's local write buffer
+	defer writebuffer.EnableEphemeralStreaming(writer)()
 
 	if bufferSize <= 0 {
 		// Use TouchCopyMinBufferSize

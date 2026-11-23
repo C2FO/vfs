@@ -23,4 +23,8 @@ const (
 
 	// ErrSeekInvalidWhence - Whence is invalid.  Must be one of the following: 0 (io.SeekStart), 1 (io.SeekCurrent), or 2 (io.SeekEnd)
 	ErrSeekInvalidWhence = Error("seek: invalid whence")
+
+	// ErrWriteBufferDisabled - the file was opened with local write buffering disabled (see newfile.WithStreamingWrite),
+	// so Write cannot be combined with Seek or Read before Close.
+	ErrWriteBufferDisabled = Error("write buffer is disabled: cannot combine Write with Seek or Read before Close")
 )

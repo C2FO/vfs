@@ -7,12 +7,15 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v7"
 	_os "github.com/c2fo/vfs/v7/backend/os"
+	"github.com/c2fo/vfs/v7/internal/writebuffer"
 	"github.com/c2fo/vfs/v7/mocks"
 	"github.com/c2fo/vfs/v7/utils"
 	"github.com/c2fo/vfs/v7/utils/authority"
@@ -745,6 +748,53 @@ func (s *utilsSuite) TestTouchCopy() {
 	s.Require().NoError(err, "unexpected error creating vfs.File reader for non-existent file")
 	err = utils.TouchCopyBuffered(writer, noFile, 0)
 	s.Require().Error(err, "expected error running TouchCopy() using non-existent reader")
+}
+
+// streamTrackingWriter records whether the write buffer hook claimed it and whether it was reset.
+type streamTrackingWriter struct {
+	enabledDuringWrite []bool
+	enabled            bool
+	resets             int
+}
+
+func (w *streamTrackingWriter) Write(p []byte) (int, error) {
+	w.enabledDuringWrite = append(w.enabledDuringWrite, w.enabled)
+	return len(p), nil
+}
+
+var registerStreamTrackingOnce sync.Once
+
+func (s *utilsSuite) TestTouchCopyBufferedEnablesEphemeralStreaming() {
+	registerStreamTrackingOnce.Do(func() {
+		writebuffer.Register(func(w io.Writer) (func(), bool) {
+			t, ok := w.(*streamTrackingWriter)
+			if !ok {
+				return nil, false
+			}
+			t.enabled = true
+			return func() { t.enabled = false; t.resets++ }, true
+		})
+	})
+
+	tests := []struct {
+		name    string
+		content string
+	}{
+		{name: "non-empty copy streams then resets", content: "some content"},
+		{name: "empty copy streams the zero-byte write then resets"},
+	}
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			w := &streamTrackingWriter{}
+			s.Require().NoError(utils.TouchCopyBuffered(w, strings.NewReader(tt.content), 0))
+			s.Require().NotEmpty(w.enabledDuringWrite)
+			for _, enabled := range w.enabledDuringWrite {
+				s.True(enabled, "write buffer hook should be active during the copy")
+			}
+			s.False(w.enabled)
+			s.Equal(1, w.resets)
+		})
+	}
 }
 
 func (s *utilsSuite) TestTouchCopyBufferedDefaultBufferSize() {

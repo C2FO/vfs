@@ -14,6 +14,7 @@ import (
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/backend"
 	_os "github.com/c2fo/vfs/v7/backend/os"
+	"github.com/c2fo/vfs/v7/internal/writebuffer"
 )
 
 /**********************************
@@ -416,6 +417,43 @@ func (s *memFileTest) TestCopyToFile() {
 	_, err = otherFile.Read(readSlice2)
 	s.Require().NoError(err, "unexpected read error")
 	s.Equal(readSlice1, readSlice2)
+}
+
+// streamTrackingFile wraps a vfs.File to observe the write buffer hook during CopyToFile.
+type streamTrackingFile struct {
+	vfs.File
+	enabled            bool
+	enabledDuringWrite bool
+	resets             int
+}
+
+func (f *streamTrackingFile) Write(p []byte) (int, error) {
+	f.enabledDuringWrite = f.enabled
+	return f.File.Write(p)
+}
+
+func (s *memFileTest) TestCopyToFileEnablesEphemeralStreaming() {
+	writebuffer.Register(func(w io.Writer) (func(), bool) {
+		t, ok := w.(*streamTrackingFile)
+		if !ok {
+			return nil, false
+		}
+		t.enabled = true
+		return func() { t.enabled = false; t.resets++ }, true
+	})
+
+	osFile, err := backend.Backend(_os.Scheme).NewFile("", filepath.Join(s.T().TempDir(), "target.txt"))
+	s.Require().NoError(err)
+	target := &streamTrackingFile{File: osFile}
+
+	_, err = s.testFile.Write([]byte("hello world"))
+	s.Require().NoError(err)
+	s.Require().NoError(s.testFile.Close())
+
+	s.Require().NoError(s.testFile.CopyToFile(target))
+	s.True(target.enabledDuringWrite, "write buffer hook should be active during the write")
+	s.False(target.enabled)
+	s.Equal(1, target.resets)
 }
 
 // TestCopyToFileOS tests "CopyToFile()" between one file in the in-memory FileSystem and the other in the os FileSystem

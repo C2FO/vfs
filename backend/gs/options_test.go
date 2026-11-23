@@ -207,7 +207,8 @@ func (s *optionsSuite) TestParseClientOptions() {
 		},
 	}
 
-	for _, tc := range testCases {
+	for i := range testCases {
+		tc := &testCases[i]
 		s.Run(tc.name, func() {
 			result, err := parseClientOptions(s.T().Context(), tc.input)
 			s.Require().NoError(err)

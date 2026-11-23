@@ -1,6 +1,7 @@
 package s3
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -52,6 +53,13 @@ type File struct {
 	cancelFunc         context.CancelFunc
 	writeCalled        bool
 	s3WriterCompleteCh chan error
+
+	// streaming is true once a write began without a local temp file; Seek and Read are rejected until Close.
+	streaming bool
+	// ephemeralStream is set by internal copy helpers to stream a single sequential write without a temp file.
+	ephemeralStream bool
+	// writeErr latches a local write buffer failure; the upload was aborted and Close reports it without committing.
+	writeErr error
 }
 
 // Info Functions
@@ -265,7 +273,15 @@ func (f *File) Close() error { //nolint:gocyclo
 		f.readCalled = false
 		f.writeCalled = false
 		f.readEOFSeen = false
+		f.streaming = false
+		f.ephemeralStream = false
+		f.writeErr = nil
 	}()
+
+	// a failed local write already aborted the upload and removed the temp file; never commit a partial object
+	if f.writeErr != nil {
+		return utils.WrapCloseError(f.writeErr)
+	}
 
 	// cleanup reader (unless reader is also the writer tempfile)
 	if f.reader != nil && !f.writeCalled {
@@ -301,7 +317,8 @@ func (f *File) Close() error { //nolint:gocyclo
 	// wait for file to exist
 	if wroteFile {
 		// read s3WriterCompleteCh if it exists
-		if f.writeCalled && f.s3Writer != nil && f.s3WriterCompleteCh != nil {
+		// (even if no Write succeeded: the upload may have failed first, and that error is the real cause)
+		if f.s3Writer != nil && f.s3WriterCompleteCh != nil {
 			// wait for s3Writer to complete
 			err := <-f.s3WriterCompleteCh
 			// close s3WriterCompleteCh channel
@@ -404,6 +421,11 @@ func (f *File) cleanupTempFile() error {
 
 // Seek implements the standard for io.Seeker.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
+	// without a local buffer the written bytes cannot be revisited; reject before touching the active upload
+	if f.streaming {
+		return 0, utils.WrapSeekError(vfs.ErrWriteBufferDisabled)
+	}
+
 	// get length of file
 	var length uint64
 	if f.writeCalled {
@@ -466,16 +488,32 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 
 // Write implements the standard for io.Writer.  Note that writes are not committed to S3 until Close() is called.
 func (f *File) Write(data []byte) (int, error) {
+	if f.writeErr != nil {
+		return 0, utils.WrapWriteError(f.writeErr)
+	}
+
 	// check/initialize for writer
 	err := f.initWriters()
 	if err != nil {
 		return 0, utils.WrapWriteError(err)
 	}
 
+	// streaming: write only to s3, no local temp file
+	if f.tempFileWriter == nil {
+		written, err := f.s3Writer.Write(data)
+		f.cursorPos += int64(written)
+		if err != nil {
+			return written, utils.WrapWriteError(err)
+		}
+		f.writeCalled = true
+
+		return written, nil
+	}
+
 	// write to tempfile
 	written, err := f.tempFileWriter.Write(data)
 	if err != nil {
-		return 0, utils.WrapWriteError(err)
+		return 0, utils.WrapWriteError(f.abortWrite(errLocalWriteBuffer(err)))
 	}
 
 	// write to s3
@@ -512,12 +550,7 @@ func (f *File) Touch() error {
 
 	// file doesn't already exist so create it
 	if !exists {
-		_, err = f.Write([]byte(""))
-		if err != nil {
-			return utils.WrapTouchError(err)
-		}
-
-		if err := f.Close(); err != nil {
+		if err := f.createEmptyFile(); err != nil {
 			return utils.WrapTouchError(err)
 		}
 	} else {
@@ -526,6 +559,27 @@ func (f *File) Touch() error {
 	}
 
 	return nil
+}
+
+// createEmptyFile uploads a zero-byte object directly, without a local temp file, and waits for it to exist.
+func (f *File) createEmptyFile() error {
+	client, err := f.location.fileSystem.backendClient()
+	if err != nil {
+		return err
+	}
+
+	partSize, err := f.resolveUploadPartSize()
+	if err != nil {
+		return err
+	}
+
+	input := uploadObjectInput(f)
+	input.Body = bytes.NewReader(nil)
+	if _, err := transfermanager.New(client, withUploadPartSize(partSize)).UploadObject(context.Background(), input); err != nil {
+		return err
+	}
+
+	return waitUntilFileExists(f, 5)
 }
 
 // URI returns the File's URI as a string.
@@ -722,6 +776,9 @@ func waitUntilFileExists(file vfs.File, retries int) error {
 }
 
 func (f *File) getReader() (io.ReadCloser, error) {
+	if f.streaming {
+		return nil, vfs.ErrWriteBufferDisabled
+	}
 	if f.reader == nil {
 		if f.writeCalled && f.tempFileWriter != nil {
 			// we've edited or truncated the file, so we need to read from the temp file which should already be at the
@@ -774,12 +831,65 @@ func handleExistsError(err error) error {
 	return nil
 }
 
+// abortWrite tears down an in-flight write after a local write buffer failure: it cancels the upload so no partial
+// object is committed, removes the temp file, and latches err so later Writes and Close report it.
+func (f *File) abortWrite(err error) error {
+	hadWriter := f.s3Writer != nil
+	if f.cancelFunc != nil {
+		f.cancelFunc()
+		f.cancelFunc = nil
+	}
+	if f.s3Writer != nil {
+		_ = f.s3Writer.CloseWithError(err)
+		f.s3Writer = nil
+	}
+	// the upload goroutine always reports exactly once; wait so it is not left running
+	if hadWriter && f.s3WriterCompleteCh != nil {
+		<-f.s3WriterCompleteCh //nolint:errcheck // the upload was just canceled, so its error is expected
+		f.s3WriterCompleteCh = nil
+	}
+	if r, ok := f.reader.(*os.File); ok && r == f.tempFileWriter {
+		f.reader = nil
+	}
+	// Close returns early once writeErr is latched, so release any network reader here
+	if f.reader != nil {
+		if closeErr := f.reader.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
+		f.reader = nil
+	}
+	if cleanupErr := f.cleanupTempFile(); cleanupErr != nil {
+		err = errors.Join(err, cleanupErr)
+	}
+	f.writeErr = err
+
+	return err
+}
+
+// selectWriteMode switches the file to streaming before its first write when write buffering is off.
+func (f *File) selectWriteMode() error {
+	if f.tempFileWriter != nil || f.streaming || f.useWriteBuffer() {
+		return nil
+	}
+	// streaming can't revisit written bytes, and editing an existing object needs the local copy
+	if f.seekCalled || f.readCalled {
+		return vfs.ErrWriteBufferDisabled
+	}
+	f.streaming = true
+
+	return nil
+}
+
 func (f *File) initWriters() error {
-	if f.tempFileWriter == nil {
+	if err := f.selectWriteMode(); err != nil {
+		return err
+	}
+
+	if f.tempFileWriter == nil && !f.streaming {
 		// Create temp file
 		tmpFile, err := os.CreateTemp("", fmt.Sprintf("vfs_s3_%s.%d", f.Name(), time.Now().UnixNano()))
 		if err != nil {
-			return err
+			return errLocalWriteBuffer(err)
 		}
 		f.tempFileWriter = tmpFile
 
@@ -808,6 +918,7 @@ func (f *File) initWriters() error {
 		if !f.seekCalled && !f.readCalled {
 			w, err := f.getS3Writer()
 			if err != nil {
+				f.streaming = false
 				return f.cleanupTempFileOnErr(err)
 			}
 

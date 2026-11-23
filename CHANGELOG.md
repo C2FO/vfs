@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- `s3`, `gs`: opt-in streaming writes that skip the local temporary file. `newfile.WithStreamingWrite()` does it for one file, `newfile.WithWriteBuffer()` turns the buffer back on for one file (the last of the two wins), and the new `DisableWriteBuffer` field on `s3.Options` and `gs.Options` does it for a whole filesystem. With the buffer off, `Seek` or `Read` after `Write`, and `Write` after `Seek` or `Read`, return the new `vfs.ErrWriteBufferDisabled` until `Close`. The default behavior is unchanged ([#412](https://github.com/C2FO/vfs/issues/412)).
+
+### Fixed
+- `s3`: `Close` now reports the upload error when the upload failed before any `Write` succeeded, instead of waiting about 5 seconds and returning a misleading "failed to find file" ([#412](https://github.com/C2FO/vfs/issues/412)).
+- `s3`, `gs`: copies and moves into `s3` or `gs` from another backend or account, and `s3` `File.Touch` on a missing object, no longer write a local temporary file, so they no longer need local disk as large as the object. `s3` `Touch` now uploads the empty object directly and no longer flushes or resets pending writes on the same `File` ([#412](https://github.com/C2FO/vfs/issues/412)).
+- `s3`, `gs`: when the local temporary file cannot be created or written (for example, a full disk), the upload is now abandoned and the temp file removed, `Close` returns the error instead of committing a truncated object, the error suggests `newfile.WithStreamingWrite()` or `DisableWriteBuffer`, and any open read stream is closed ([#412](https://github.com/C2FO/vfs/issues/412)).
 
 ## [[v7.35.0](https://github.com/C2FO/vfs/releases/tag/v7.35.0)] - 2026-11-12
 ### Added
