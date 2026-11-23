@@ -360,7 +360,8 @@ func (ts *writeBufferTestSuite) TestTempWriteFailureAbortsUpload() {
 	readOnly, err := os.Open(orig.Name())
 	ts.Require().NoError(err)
 	f.tempFileWriter = readOnly
-	ts.T().Cleanup(func() { _ = orig.Close() })
+	// release the writable handle: Windows cannot remove a file that is still open
+	ts.Require().NoError(orig.Close())
 
 	_, err = f.Write([]byte("def"))
 	ts.Require().Error(err)
