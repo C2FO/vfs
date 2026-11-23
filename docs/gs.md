@@ -123,6 +123,7 @@ See: https://github.com/googleapis/google-cloud-go/tree/master/storage
   - [func \(c \*Copier\) Run\(ctx context.Context\) \(\*storage.ObjectAttrs, error\)](<#Copier.Run>)
 - [type CopierWrapper](<#CopierWrapper>)
 - [type File](<#File>)
+  - [func \(f \*File\) BeginSequentialWrite\(\) \(end func\(\)\)](<#File.BeginSequentialWrite>)
   - [func \(f \*File\) Close\(\) error](<#File.Close>)
   - [func \(f \*File\) CopyToFile\(file vfs.File\) \(err error\)](<#File.CopyToFile>)
   - [func \(f \*File\) CopyToLocation\(location vfs.Location\) \(vfs.File, error\)](<#File.CopyToLocation>)
@@ -336,6 +337,15 @@ type File struct {
     // contains filtered or unexported fields
 }
 ```
+
+<a name="File.BeginSequentialWrite"></a>
+### func \(\*File\) BeginSequentialWrite
+
+```go
+func (f *File) BeginSequentialWrite() (end func())
+```
+
+BeginSequentialWrite implements utils.SequentialWriter. When the file has not been written, seeked or read and was not explicitly opened with newfile.WithWriteBuffer, writes until the returned function is called skip the local temporary file. Such a file cannot be sought or read until it is closed.
 
 <a name="File.Close"></a>
 ### func \(\*File\) Close
@@ -856,6 +866,11 @@ type Options struct {
     // if set, otherwise Application Default Credentials. It can't be combined with APIKey, and Endpoint and Scopes are
     // ignored when it's set.
     ImpersonateServiceAccount string `json:"impersonateServiceAccount,omitempty"`
+    // DisableWriteBuffer streams writes straight to GCS instead of also mirroring them to a local temporary file, which
+    // is what normally makes Seek and Read after Write possible. With it set, Write cannot be combined with Seek or Read
+    // before Close (vfs.ErrWriteBufferDisabled), and local disk is not used for writes. It is unrelated to FileBufferSize,
+    // which only sizes the in-memory copy buffer. A single file can override this with newfile.WithWriteBuffer.
+    DisableWriteBuffer bool `json:"disableWriteBuffer,omitempty"`
 }
 ```
 

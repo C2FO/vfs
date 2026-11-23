@@ -13,7 +13,7 @@ Package options provides a set of interfaces and functions to define and apply o
 Options are grouped by the operation they apply to:
 
 - NewFileSystemOption configures a backend's FileSystem through its NewFileSystem function. Each backend provides its own options, such as s3.WithOptions or gs.WithRetryer.
-- NewFileOption configures FileSystem.NewFile and Location.NewFile. See the options/newfile package, for example newfile.WithContentType.
+- NewFileOption configures FileSystem.NewFile and Location.NewFile. See the options/newfile package, for example newfile.WithContentType or newfile.WithStreamingWrite.
 - DeleteOption configures File.Delete and Location.DeleteFile. See the options/delete package, for example delete.WithAllVersions.
 - ListOption configures listing through vfs.EntryLister. See the list package, for example list.Recursive.
 

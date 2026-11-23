@@ -7,6 +7,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -745,6 +746,45 @@ func (s *utilsSuite) TestTouchCopy() {
 	s.Require().NoError(err, "unexpected error creating vfs.File reader for non-existent file")
 	err = utils.TouchCopyBuffered(writer, noFile, 0)
 	s.Require().Error(err, "expected error running TouchCopy() using non-existent reader")
+}
+
+// streamTrackingWriter records whether the write buffer hook claimed it and whether it was reset.
+type streamTrackingWriter struct {
+	enabledDuringWrite []bool
+	enabled            bool
+	resets             int
+}
+
+func (w *streamTrackingWriter) Write(p []byte) (int, error) {
+	w.enabledDuringWrite = append(w.enabledDuringWrite, w.enabled)
+	return len(p), nil
+}
+
+func (w *streamTrackingWriter) BeginSequentialWrite() func() {
+	w.enabled = true
+	return func() { w.enabled = false; w.resets++ }
+}
+
+func (s *utilsSuite) TestTouchCopyBufferedBeginsSequentialWrite() {
+	tests := []struct {
+		name    string
+		content string
+	}{
+		{name: "non-empty copy streams then resets", content: "some content"},
+		{name: "empty copy streams the zero-byte write then resets"},
+	}
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			w := &streamTrackingWriter{}
+			s.Require().NoError(utils.TouchCopyBuffered(w, strings.NewReader(tt.content), 0))
+			s.Require().NotEmpty(w.enabledDuringWrite)
+			for _, enabled := range w.enabledDuringWrite {
+				s.True(enabled, "write buffer hook should be active during the copy")
+			}
+			s.False(w.enabled)
+			s.Equal(1, w.resets)
+		})
+	}
 }
 
 func (s *utilsSuite) TestTouchCopyBufferedDefaultBufferSize() {

@@ -418,6 +418,39 @@ func (s *memFileTest) TestCopyToFile() {
 	s.Equal(readSlice1, readSlice2)
 }
 
+// streamTrackingFile wraps a vfs.File to observe the sequential write hint during CopyToFile.
+type streamTrackingFile struct {
+	vfs.File
+	enabled            bool
+	enabledDuringWrite bool
+	resets             int
+}
+
+func (f *streamTrackingFile) Write(p []byte) (int, error) {
+	f.enabledDuringWrite = f.enabled
+	return f.File.Write(p)
+}
+
+func (f *streamTrackingFile) BeginSequentialWrite() func() {
+	f.enabled = true
+	return func() { f.enabled = false; f.resets++ }
+}
+
+func (s *memFileTest) TestCopyToFileBeginsSequentialWrite() {
+	osFile, err := backend.Backend(_os.Scheme).NewFile("", filepath.Join(s.T().TempDir(), "target.txt"))
+	s.Require().NoError(err)
+	target := &streamTrackingFile{File: osFile}
+
+	_, err = s.testFile.Write([]byte("hello world"))
+	s.Require().NoError(err)
+	s.Require().NoError(s.testFile.Close())
+
+	s.Require().NoError(s.testFile.CopyToFile(target))
+	s.True(target.enabledDuringWrite, "write buffer hook should be active during the write")
+	s.False(target.enabled)
+	s.Equal(1, target.resets)
+}
+
 // TestCopyToFileOS tests "CopyToFile()" between one file in the in-memory FileSystem and the other in the os FileSystem
 func (s *memFileTest) TestCopyToFileOS() {
 	expectedText := "Hello World!"
