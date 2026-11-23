@@ -344,6 +344,11 @@ func (ts *writeBufferTestSuite) TestCreateTempFailureHint() {
 	ts.Contains(err.Error(), "newfile.WithStreamingWrite()")
 	ts.Nil(f.tempFileWriter)
 	ts.Nil(f.s3Writer, "no upload should start when the local buffer cannot be created")
+
+	// Close reports the failure instead of succeeding with nothing written
+	err = f.Close()
+	ts.Require().Error(err)
+	ts.Contains(err.Error(), "newfile.WithStreamingWrite()")
 }
 
 func (ts *writeBufferTestSuite) TestTempWriteFailureAbortsUpload() {

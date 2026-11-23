@@ -189,6 +189,10 @@ func TouchCopy(writer io.Writer, reader io.Reader) error {
 // empty file. It guarantees a Write() call on the target file.
 // bufferSize is in bytes and if is less than TouchCopyMinBufferSize will result in a buffer of size TouchCopyMinBufferSize
 // bytes. If bufferSize is > TouchCopyMinBufferSize it will result in a buffer of size bufferSize bytes
+//
+// When writer is an s3 or gs file that has not been written, seeked or read yet, the copy streams to the remote without a
+// local temporary file. Such a file cannot be sought or read until it is closed, so callers must Close writer after
+// the copy, as every VFS CopyToFile implementation does.
 func TouchCopyBuffered(writer io.Writer, reader io.Reader, bufferSize int) error {
 	var buffer []byte
 	var size int64

@@ -889,7 +889,8 @@ func (f *File) initWriters() error {
 		// Create temp file
 		tmpFile, err := os.CreateTemp("", fmt.Sprintf("vfs_s3_%s.%d", f.Name(), time.Now().UnixNano()))
 		if err != nil {
-			return errLocalWriteBuffer(err)
+			// latch the failure so Close reports it instead of silently succeeding
+			return f.abortWrite(errLocalWriteBuffer(err))
 		}
 		f.tempFileWriter = tmpFile
 
