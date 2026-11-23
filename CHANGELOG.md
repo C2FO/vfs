@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- `s3`, `gs`: opt-in streaming writes that skip the local temporary file. `newfile.WithStreamingWrite()` does it for one file, `newfile.WithWriteBuffer()` turns the buffer back on for one file (the last of the two wins), and the new `DisableWriteBuffer` field on `s3.Options` and `gs.Options` does it for a whole filesystem. With the buffer off, `Seek` or `Read` after `Write`, and `Write` after `Seek` or `Read`, return the new `vfs.ErrWriteBufferDisabled` until `Close`. The default behavior is unchanged ([#412](https://github.com/C2FO/vfs/issues/412)).
+- `s3`, `gs`: opt-in streaming writes that skip the local temporary file. `newfile.WithStreamingWrite()` does it for one file, `newfile.WithWriteBuffer()` turns the buffer back on for one file (the last of the two wins), and the new `DisableWriteBuffer` field on `s3.Options` and `gs.Options` does it for a whole filesystem. With the buffer off, `Seek` or `Read` after `Write`, and `Write` after `Seek` or `Read`, return the new `vfs.ErrWriteBufferDisabled` until `Close`. The default behavior is unchanged ([#412](https://github.com/C2FO/vfs/issues/412)). `utils.SequentialWriter` and `utils.BeginSequentialWrite` let copy helpers hint one sequential write to files that stage writes locally; `s3.File` and `gs.File` implement it.
 
 ### Fixed
 - `s3`: `Close` now reports the upload error when the upload failed before any `Write` succeeded, instead of waiting about 5 seconds and returning a misleading "failed to find file" ([#412](https://github.com/C2FO/vfs/issues/412)).

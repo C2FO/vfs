@@ -14,7 +14,6 @@ import (
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/backend"
 	_os "github.com/c2fo/vfs/v7/backend/os"
-	"github.com/c2fo/vfs/v7/internal/writebuffer"
 )
 
 /**********************************
@@ -419,7 +418,7 @@ func (s *memFileTest) TestCopyToFile() {
 	s.Equal(readSlice1, readSlice2)
 }
 
-// streamTrackingFile wraps a vfs.File to observe the write buffer hook during CopyToFile.
+// streamTrackingFile wraps a vfs.File to observe the sequential write hint during CopyToFile.
 type streamTrackingFile struct {
 	vfs.File
 	enabled            bool
@@ -432,16 +431,12 @@ func (f *streamTrackingFile) Write(p []byte) (int, error) {
 	return f.File.Write(p)
 }
 
-func (s *memFileTest) TestCopyToFileEnablesEphemeralStreaming() {
-	writebuffer.Register(func(w io.Writer) (func(), bool) {
-		t, ok := w.(*streamTrackingFile)
-		if !ok {
-			return nil, false
-		}
-		t.enabled = true
-		return func() { t.enabled = false; t.resets++ }, true
-	})
+func (f *streamTrackingFile) BeginSequentialWrite() func() {
+	f.enabled = true
+	return func() { f.enabled = false; f.resets++ }
+}
 
+func (s *memFileTest) TestCopyToFileBeginsSequentialWrite() {
 	osFile, err := backend.Backend(_os.Scheme).NewFile("", filepath.Join(s.T().TempDir(), "target.txt"))
 	s.Require().NoError(err)
 	target := &streamTrackingFile{File: osFile}

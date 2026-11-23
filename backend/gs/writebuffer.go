@@ -2,25 +2,21 @@ package gs
 
 import (
 	"fmt"
-	"io"
 
-	"github.com/c2fo/vfs/v7/internal/writebuffer"
 	"github.com/c2fo/vfs/v7/options/newfile"
 )
 
-func init() {
-	writebuffer.Register(func(w io.Writer) (func(), bool) {
-		f, ok := w.(*File)
-		if !ok || f.writeCalled || f.seekCalled || f.readCalled || f.tempFileWriter != nil || f.streaming {
-			return nil, false
-		}
-		// a file explicitly opened with newfile.WithWriteBuffer keeps its local buffer
-		if newfile.UseWriteBuffer(false, f.opts) {
-			return nil, false
-		}
-		f.ephemeralStream = true
-		return func() { f.ephemeralStream = false }, true
-	})
+// BeginSequentialWrite implements utils.SequentialWriter. When the file has not been written, seeked or read and was
+// not explicitly opened with newfile.WithWriteBuffer, writes until the returned function is called skip the local
+// temporary file. Such a file cannot be sought or read until it is closed.
+func (f *File) BeginSequentialWrite() (end func()) {
+	if f.writeCalled || f.seekCalled || f.readCalled || f.tempFileWriter != nil || f.streaming ||
+		newfile.UseWriteBuffer(false, f.opts) {
+		return func() {}
+	}
+	f.ephemeralStream = true
+
+	return func() { f.ephemeralStream = false }
 }
 
 // useWriteBuffer reports whether writes to this file are mirrored to a local temporary file. Per-file options take

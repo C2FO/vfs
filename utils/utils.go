@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/c2fo/vfs/v7"
-	"github.com/c2fo/vfs/v7/internal/writebuffer"
 )
 
 var (
@@ -185,6 +184,26 @@ func TouchCopy(writer io.Writer, reader io.Reader) error {
 	return nil
 }
 
+// SequentialWriter is implemented by files that stage writes locally (for example s3 and gs) and can skip that staging
+// when the caller promises one sequential write stream followed by Close.
+type SequentialWriter interface {
+	// BeginSequentialWrite tells the file that a single sequential write stream is about to start and that it will not
+	// be sought or read until it is closed. It returns a function that ends the hint, which is always non-nil and safe
+	// to call even when the file ignored the hint (for example because it was already written to).
+	BeginSequentialWrite() (end func())
+}
+
+// BeginSequentialWrite calls SequentialWriter.BeginSequentialWrite when w implements it. Otherwise it does nothing.
+// The returned function is always non-nil and should be called, typically with defer, when the write stream is done.
+func BeginSequentialWrite(w io.Writer) (end func()) {
+	if sw, ok := w.(SequentialWriter); ok {
+		if e := sw.BeginSequentialWrite(); e != nil {
+			return e
+		}
+	}
+	return func() {}
+}
+
 // TouchCopyBuffered is a wrapper around io.CopyBuffer which ensures that even empty source files (reader) will get written as an
 // empty file. It guarantees a Write() call on the target file.
 // bufferSize is in bytes and if is less than TouchCopyMinBufferSize will result in a buffer of size TouchCopyMinBufferSize
@@ -199,7 +218,7 @@ func TouchCopyBuffered(writer io.Writer, reader io.Reader, bufferSize int) error
 	var err error
 
 	// a single sequential copy never needs the backend's local write buffer
-	defer writebuffer.EnableEphemeralStreaming(writer)()
+	defer BeginSequentialWrite(writer)()
 
 	if bufferSize <= 0 {
 		// Use TouchCopyMinBufferSize

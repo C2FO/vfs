@@ -123,6 +123,7 @@ See: https://github.com/googleapis/google-cloud-go/tree/master/storage
   - [func \(c \*Copier\) Run\(ctx context.Context\) \(\*storage.ObjectAttrs, error\)](<#Copier.Run>)
 - [type CopierWrapper](<#CopierWrapper>)
 - [type File](<#File>)
+  - [func \(f \*File\) BeginSequentialWrite\(\) \(end func\(\)\)](<#File.BeginSequentialWrite>)
   - [func \(f \*File\) Close\(\) error](<#File.Close>)
   - [func \(f \*File\) CopyToFile\(file vfs.File\) \(err error\)](<#File.CopyToFile>)
   - [func \(f \*File\) CopyToLocation\(location vfs.Location\) \(vfs.File, error\)](<#File.CopyToLocation>)
@@ -336,6 +337,15 @@ type File struct {
     // contains filtered or unexported fields
 }
 ```
+
+<a name="File.BeginSequentialWrite"></a>
+### func \(\*File\) BeginSequentialWrite
+
+```go
+func (f *File) BeginSequentialWrite() (end func())
+```
+
+BeginSequentialWrite implements utils.SequentialWriter. When the file has not been written, seeked or read and was not explicitly opened with newfile.WithWriteBuffer, writes until the returned function is called skip the local temporary file. Such a file cannot be sought or read until it is closed.
 
 <a name="File.Close"></a>
 ### func \(\*File\) Close

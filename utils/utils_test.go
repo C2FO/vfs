@@ -8,14 +8,12 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
 
 	"github.com/c2fo/vfs/v7"
 	_os "github.com/c2fo/vfs/v7/backend/os"
-	"github.com/c2fo/vfs/v7/internal/writebuffer"
 	"github.com/c2fo/vfs/v7/mocks"
 	"github.com/c2fo/vfs/v7/utils"
 	"github.com/c2fo/vfs/v7/utils/authority"
@@ -762,20 +760,12 @@ func (w *streamTrackingWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-var registerStreamTrackingOnce sync.Once
+func (w *streamTrackingWriter) BeginSequentialWrite() func() {
+	w.enabled = true
+	return func() { w.enabled = false; w.resets++ }
+}
 
-func (s *utilsSuite) TestTouchCopyBufferedEnablesEphemeralStreaming() {
-	registerStreamTrackingOnce.Do(func() {
-		writebuffer.Register(func(w io.Writer) (func(), bool) {
-			t, ok := w.(*streamTrackingWriter)
-			if !ok {
-				return nil, false
-			}
-			t.enabled = true
-			return func() { t.enabled = false; t.resets++ }, true
-		})
-	})
-
+func (s *utilsSuite) TestTouchCopyBufferedBeginsSequentialWrite() {
 	tests := []struct {
 		name    string
 		content string

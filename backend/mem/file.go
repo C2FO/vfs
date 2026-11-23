@@ -11,7 +11,6 @@ import (
 
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/backend"
-	"github.com/c2fo/vfs/v7/internal/writebuffer"
 	"github.com/c2fo/vfs/v7/options"
 	"github.com/c2fo/vfs/v7/utils"
 )
@@ -304,7 +303,7 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 // writeContents writes contents to target as one sequential write, letting backends that stage writes locally skip
 // their temporary buffer.
 func writeContents(target vfs.File, contents []byte) error {
-	defer writebuffer.EnableEphemeralStreaming(target)()
+	defer utils.BeginSequentialWrite(target)()
 	_, err := target.Write(contents)
 	return err
 }
