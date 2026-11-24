@@ -123,6 +123,7 @@ See: https://github.com/googleapis/google-cloud-go/tree/master/storage
   - [func \(c \*Copier\) Run\(ctx context.Context\) \(\*storage.ObjectAttrs, error\)](<#Copier.Run>)
 - [type CopierWrapper](<#CopierWrapper>)
 - [type File](<#File>)
+  - [func \(f \*File\) AbortWrite\(err error\)](<#File.AbortWrite>)
   - [func \(f \*File\) BeginSequentialWrite\(\) \(end func\(\)\)](<#File.BeginSequentialWrite>)
   - [func \(f \*File\) Close\(\) error](<#File.Close>)
   - [func \(f \*File\) CopyToFile\(file vfs.File\) \(err error\)](<#File.CopyToFile>)
@@ -337,6 +338,15 @@ type File struct {
     // contains filtered or unexported fields
 }
 ```
+
+<a name="File.AbortWrite"></a>
+### func \(\*File\) AbortWrite
+
+```go
+func (f *File) AbortWrite(err error)
+```
+
+AbortWrite implements utils.WriteAborter. When err is non\-nil and a write has started on f \(and has not already failed\), it cancels the in\-flight GCS upload, removes any local temporary file, and latches err so subsequent operations and Close report it without committing a partial object.
 
 <a name="File.BeginSequentialWrite"></a>
 ### func \(\*File\) BeginSequentialWrite

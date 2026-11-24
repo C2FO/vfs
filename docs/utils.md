@@ -14,6 +14,7 @@ Package utils provides utility functions for working with file paths, URIs, and 
 
 - [Constants](<#constants>)
 - [Variables](<#variables>)
+- [func AbortWrite\(w io.Writer, err error\)](<#AbortWrite>)
 - [func BeginSequentialWrite\(w io.Writer\) \(end func\(\)\)](<#BeginSequentialWrite>)
 - [func EncodeURI\(scheme, username, hostport, path string\) string](<#EncodeURI>)
 - [func EnsureLeadingSlash\(dir string\) string](<#EnsureLeadingSlash>)
@@ -26,7 +27,7 @@ Package utils provides utility functions for working with file paths, URIs, and 
 - [func RemoveTrailingSlash\(path string\) string](<#RemoveTrailingSlash>)
 - [func SeekTo\(length, position, offset int64, whence int\) \(int64, error\)](<#SeekTo>)
 - [func TouchCopy\(writer io.Writer, reader io.Reader\) error](<#TouchCopy>)
-- [func TouchCopyBuffered\(writer io.Writer, reader io.Reader, bufferSize int\) error](<#TouchCopyBuffered>)
+- [func TouchCopyBuffered\(writer io.Writer, reader io.Reader, bufferSize int\) \(err error\)](<#TouchCopyBuffered>)
 - [func UpdateLastModifiedByMoving\(file vfs.File\) error](<#UpdateLastModifiedByMoving>)
 - [func ValidateAbsoluteFilePath\(name string\) error](<#ValidateAbsoluteFilePath>)
 - [func ValidateAbsoluteLocationPath\(name string\) error](<#ValidateAbsoluteLocationPath>)
@@ -47,6 +48,7 @@ Package utils provides utility functions for working with file paths, URIs, and 
 - [func WrapTouchError\(err error\) error](<#WrapTouchError>)
 - [func WrapWriteError\(err error\) error](<#WrapWriteError>)
 - [type SequentialWriter](<#SequentialWriter>)
+- [type WriteAborter](<#WriteAborter>)
 
 
 ## Constants
@@ -78,6 +80,15 @@ var (
     ErrBadPrefix = errors.New("prefix is invalid - may not include leading or trailing slashes and may not be empty")
 )
 ```
+
+<a name="AbortWrite"></a>
+## func AbortWrite
+
+```go
+func AbortWrite(w io.Writer, err error)
+```
+
+AbortWrite calls WriteAborter.AbortWrite when err is non\-nil and w implements WriteAborter. Otherwise it does nothing. Callers streaming from a fallible reader into an s3 or gs file \(for example with io.Copy and a deferred Close\) can call AbortWrite on copy failure so Close does not commit a partial object.
 
 <a name="BeginSequentialWrite"></a>
 ## func BeginSequentialWrite
@@ -195,12 +206,12 @@ Deprecated: Use TouchCopyBuffer Instead
 ## func TouchCopyBuffered
 
 ```go
-func TouchCopyBuffered(writer io.Writer, reader io.Reader, bufferSize int) error
+func TouchCopyBuffered(writer io.Writer, reader io.Reader, bufferSize int) (err error)
 ```
 
 TouchCopyBuffered is a wrapper around io.CopyBuffer which ensures that even empty source files \(reader\) will get written as an empty file. It guarantees a Write\(\) call on the target file. bufferSize is in bytes and if is less than TouchCopyMinBufferSize will result in a buffer of size TouchCopyMinBufferSize bytes. If bufferSize is \> TouchCopyMinBufferSize it will result in a buffer of size bufferSize bytes
 
-When writer is an s3 or gs file that has not been written, seeked or read yet, the copy streams to the remote without a local temporary file. Such a file cannot be sought or read until it is closed, so callers must Close writer after the copy, as every VFS CopyToFile implementation does.
+When writer is an s3 or gs file that has not been written, seeked or read yet, the copy streams to the remote without a local temporary file, and a mid\-copy read or write failure abandons the upload so Close will not commit a partial object. Such a file cannot be sought or read until it is closed, so callers must Close writer after the copy, as every VFS CopyToFile implementation does.
 
 <a name="UpdateLastModifiedByMoving"></a>
 ## func UpdateLastModifiedByMoving
@@ -384,6 +395,19 @@ type SequentialWriter interface {
     // be sought or read until it is closed. It returns a function that ends the hint, which is always non-nil and safe
     // to call even when the file ignored the hint (for example because it was already written to).
     BeginSequentialWrite() (end func())
+}
+```
+
+<a name="WriteAborter"></a>
+## type WriteAborter
+
+WriteAborter is implemented by files \(for example s3 and gs\) whose in\-flight upload can be abandoned when a caller's write stream stops early with an error, so a subsequent Close reports err instead of committing a truncated object.
+
+```go
+type WriteAborter interface {
+    // AbortWrite abandons any active write session on the file and latches err so subsequent operations and Close
+    // report it without committing partial data. It is a no-op when err is nil or no write has started.
+    AbortWrite(err error)
 }
 ```
 

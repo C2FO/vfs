@@ -1,6 +1,8 @@
 package utils_test
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -748,11 +750,12 @@ func (s *utilsSuite) TestTouchCopy() {
 	s.Require().Error(err, "expected error running TouchCopy() using non-existent reader")
 }
 
-// streamTrackingWriter records whether the write buffer hook claimed it and whether it was reset.
+// streamTrackingWriter records whether the write buffer hook claimed it, whether it was reset, and any abort error.
 type streamTrackingWriter struct {
 	enabledDuringWrite []bool
 	enabled            bool
 	resets             int
+	abortErr           error
 }
 
 func (w *streamTrackingWriter) Write(p []byte) (int, error) {
@@ -762,21 +765,90 @@ func (w *streamTrackingWriter) Write(p []byte) (int, error) {
 
 func (w *streamTrackingWriter) BeginSequentialWrite() func() {
 	w.enabled = true
-	return func() { w.enabled = false; w.resets++ }
+	return func() {
+		w.enabled = false
+		w.resets++
+	}
+}
+
+func (w *streamTrackingWriter) AbortWrite(err error) {
+	w.abortErr = err
+}
+
+type errAfterChunkReader struct {
+	chunk string
+	err   error
+	sent  bool
+}
+
+func (r *errAfterChunkReader) Read(p []byte) (int, error) {
+	if !r.sent {
+		r.sent = true
+		return copy(p, r.chunk), nil
+	}
+	return 0, r.err
+}
+
+type nilEndWriter struct{ io.Writer }
+
+func (nilEndWriter) BeginSequentialWrite() func() { return nil }
+
+func (s *utilsSuite) TestBeginSequentialWriteAndAbortWrite() {
+	tests := []struct {
+		name   string
+		writer io.Writer
+	}{
+		{name: "writer without the interface gets a no-op end", writer: &bytes.Buffer{}},
+		{name: "writer returning a nil end gets a no-op end", writer: nilEndWriter{Writer: io.Discard}},
+	}
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			end := utils.BeginSequentialWrite(tt.writer)
+			s.Require().NotNil(end)
+			s.NotPanics(end)
+			s.NotPanics(func() { utils.AbortWrite(tt.writer, errors.New("ignored")) })
+		})
+	}
+
+	boom := errors.New("boom")
+	tracked := &streamTrackingWriter{}
+	end := utils.BeginSequentialWrite(tracked)
+	s.True(tracked.enabled)
+	end()
+	s.False(tracked.enabled)
+
+	utils.AbortWrite(tracked, nil)
+	s.Require().NoError(tracked.abortErr)
+	utils.AbortWrite(tracked, boom)
+	s.Require().ErrorIs(tracked.abortErr, boom)
 }
 
 func (s *utilsSuite) TestTouchCopyBufferedBeginsSequentialWrite() {
+	boom := errors.New("read failed")
 	tests := []struct {
-		name    string
-		content string
+		name        string
+		reader      io.Reader
+		expectedErr error
 	}{
-		{name: "non-empty copy streams then resets", content: "some content"},
-		{name: "empty copy streams the zero-byte write then resets"},
+		{name: "non-empty copy streams then resets", reader: strings.NewReader("some content")},
+		{name: "empty copy streams the zero-byte write then resets", reader: strings.NewReader("")},
+		{
+			name:        "mid-copy reader error aborts the writer",
+			reader:      &errAfterChunkReader{chunk: "partial", err: boom},
+			expectedErr: boom,
+		},
 	}
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			w := &streamTrackingWriter{}
-			s.Require().NoError(utils.TouchCopyBuffered(w, strings.NewReader(tt.content), 0))
+			err := utils.TouchCopyBuffered(w, tt.reader, 0)
+			if tt.expectedErr != nil {
+				s.Require().ErrorIs(err, tt.expectedErr)
+				s.Require().ErrorIs(w.abortErr, tt.expectedErr)
+			} else {
+				s.Require().NoError(err)
+				s.Require().NoError(w.abortErr)
+			}
 			s.Require().NotEmpty(w.enabledDuringWrite)
 			for _, enabled := range w.enabledDuringWrite {
 				s.True(enabled, "write buffer hook should be active during the copy")

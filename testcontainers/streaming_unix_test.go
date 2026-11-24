@@ -3,6 +3,7 @@
 package testcontainers
 
 import (
+	"io"
 	"os"
 	"os/signal"
 	"syscall"
@@ -25,6 +26,14 @@ func (s *containerSuite) limitFileSize(limit uint64) func() {
 	}
 }
 
+func (s *containerSuite) writeWithFileSizeLimit(w io.Writer, data []byte, limit uint64) error {
+	restore := s.limitFileSize(limit)
+	defer restore()
+
+	_, err := w.Write(data)
+	return err
+}
+
 // TestBufferedWriteFailureCommitsNothing checks that when the local write buffer fails mid-stream, the error hints at
 // streaming and the partially streamed object is never committed to the bucket.
 func (s *containerSuite) TestBufferedWriteFailureCommitsNothing() {
@@ -37,9 +46,7 @@ func (s *containerSuite) TestBufferedWriteFailureCommitsNothing() {
 			// confirm the limit is enforced on this platform before relying on it
 			probe, err := os.CreateTemp(tmp, "probe")
 			s.Require().NoError(err)
-			restore := s.limitFileSize(limit)
-			_, probeErr := probe.Write(make([]byte, 2*limit))
-			restore()
+			probeErr := s.writeWithFileSizeLimit(probe, make([]byte, 2*limit), limit)
 			_ = probe.Close()
 			_ = os.Remove(probe.Name())
 			if probeErr == nil {
@@ -54,9 +61,7 @@ func (s *containerSuite) TestBufferedWriteFailureCommitsNothing() {
 			_, err = f.Write(make([]byte, limit/2))
 			s.Require().NoError(err)
 
-			restore = s.limitFileSize(limit)
-			_, err = f.Write(make([]byte, 2*limit))
-			restore()
+			err = s.writeWithFileSizeLimit(f, make([]byte, 2*limit), limit)
 			s.Require().Error(err)
 			s.Contains(err.Error(), "newfile.WithStreamingWrite()")
 			s.requireEmptyDir(tmp)

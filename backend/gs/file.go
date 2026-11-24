@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"slices"
 	"time"
 
 	"cloud.google.com/go/storage"
@@ -55,8 +56,11 @@ type File struct {
 func (f *File) Close() error {
 	defer func() {
 		// reset state
+		if f.cancelFunc != nil {
+			f.cancelFunc()
+			f.cancelFunc = nil
+		}
 		f.reader = nil
-		f.cancelFunc = nil
 		f.gcsWriter = nil
 		f.cursorPos = 0
 		f.seekCalled = false
@@ -84,12 +88,12 @@ func (f *File) Close() error {
 	if f.gcsWriter != nil {
 		// close gcsWriter
 		if err := f.gcsWriter.Close(); err != nil {
-			return utils.WrapCloseError(err)
+			return utils.WrapCloseError(f.cleanupTempFileOnErr(err))
 		}
 	} else if f.tempFileWriter != nil { // gcsWriter is nil but tempFileWriter is not nil (seek after write, write after seek)
 		// write tempFileWriter to gcs
 		if err := f.tempToGCS(); err != nil {
-			return utils.WrapCloseError(err)
+			return utils.WrapCloseError(f.cleanupTempFileOnErr(err))
 		}
 	}
 
@@ -143,20 +147,22 @@ func (f *File) tempToGCS() error {
 
 func (f *File) cleanupTempFile() error {
 	if f.tempFileWriter != nil {
-		err := f.tempFileWriter.Close()
-		if err != nil {
-			return err
-		}
-
-		err = os.Remove(f.tempFileWriter.Name())
-		if err != nil {
-			return err
-		}
-
+		name := f.tempFileWriter.Name()
+		closeErr := f.tempFileWriter.Close()
+		removeErr := os.Remove(name)
 		f.tempFileWriter = nil
+
+		return errors.Join(closeErr, removeErr)
 	}
 
 	return nil
+}
+
+func (f *File) cleanupTempFileOnErr(origErr error) error {
+	if cleanupErr := f.cleanupTempFile(); cleanupErr != nil {
+		return errors.Join(origErr, cleanupErr)
+	}
+	return origErr
 }
 
 // Read implements the standard for io.Reader.
@@ -187,6 +193,9 @@ func (f *File) Read(p []byte) (n int, err error) {
 }
 
 func (f *File) getReader() (io.ReadCloser, error) {
+	if f.writeErr != nil {
+		return nil, f.writeErr
+	}
 	if f.streaming {
 		return nil, vfs.ErrWriteBufferDisabled
 	}
@@ -217,6 +226,9 @@ func (f *File) getReader() (io.ReadCloser, error) {
 
 // Seek implements the standard for io.Seeker.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
+	if f.writeErr != nil {
+		return 0, utils.WrapSeekError(f.writeErr)
+	}
 	// without a local buffer the written bytes cannot be revisited; reject before touching the active upload
 	if f.streaming {
 		return 0, utils.WrapSeekError(vfs.ErrWriteBufferDisabled)
@@ -378,19 +390,19 @@ func (f *File) selectWriteMode() error {
 
 // startGCSWriter creates the cancelable GCS writer that streams to the object.
 func (f *File) startGCSWriter() error {
-	// setup cancelable context
-	ctx, cancel := context.WithCancel(f.location.fileSystem.ctx)
-	f.cancelFunc = cancel
-
 	// get object handle
 	handle, err := f.getObjectHandle()
 	if err != nil {
 		return err
 	}
 
+	// setup cancelable context
+	ctx, cancel := context.WithCancel(f.location.fileSystem.ctx)
+
 	// get gcsWriter
 	w := handle.NewWriter(ctx)
 	if w == nil {
+		cancel()
 		return errors.New("failed to create GCS writer")
 	}
 
@@ -402,7 +414,7 @@ func (f *File) startGCSWriter() error {
 		}
 	}
 
-	// set gcsWriter
+	f.cancelFunc = cancel
 	f.gcsWriter = w
 
 	return nil
@@ -432,12 +444,12 @@ func (f *File) initWriters() error {
 		// *decision* to copy depends on seekCalled/readCalled, not the resulting offset.
 		if f.seekCalled || f.readCalled {
 			if err := f.copyToLocalTempReader(tmpFile); err != nil {
-				return err
+				return f.cleanupTempFileOnErr(err)
 			}
 
 			// seek to cursorPos
 			if _, err := f.tempFileWriter.Seek(f.cursorPos, 0); err != nil {
-				return err
+				return f.cleanupTempFileOnErr(err)
 			}
 		}
 	}
@@ -446,7 +458,7 @@ func (f *File) initWriters() error {
 	if f.gcsWriter == nil && !f.seekCalled && !f.readCalled {
 		if err := f.startGCSWriter(); err != nil {
 			f.streaming = false
-			return err
+			return f.cleanupTempFileOnErr(err)
 		}
 	}
 
@@ -523,13 +535,19 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 
 	// do native copy if same location/auth
 	if tf, ok := file.(*File); ok {
-		// If the target file has no newfile options, use the source file's options (used if not same auth)
-		if len(f.opts) == 0 {
-			tf.opts = f.opts
-		}
-
 		if f.isSameAuth(&tf.location.fileSystem.options) {
 			return f.copyWithinGCSToFile(tf)
+		}
+
+		// Cross-auth copy streams through TouchCopyBuffered: if the target has no ContentType option of its own,
+		// inherit any ContentType from the source for the duration of this copy without mutating tf.opts permanently
+		// or copying non-metadata options such as WithWriteBuffer/WithStreamingWrite.
+		if contentTypeOption(tf.opts) == nil {
+			if ct := contentTypeOption(f.opts); ct != nil {
+				origOpts := tf.opts
+				tf.opts = append(slices.Clone(tf.opts), ct)
+				defer func() { tf.opts = origOpts }()
+			}
 		}
 	}
 
@@ -859,6 +877,16 @@ func (f *File) getObjectAttrs() (*storage.ObjectAttrs, error) {
 	return handle.Attrs(f.location.fileSystem.ctx)
 }
 
+func contentTypeOption(opts []options.NewFileOption) *newfile.ContentType {
+	var ct *newfile.ContentType
+	for _, o := range opts {
+		if c, ok := o.(*newfile.ContentType); ok {
+			ct = c
+		}
+	}
+	return ct
+}
+
 func (f *File) copyWithinGCSToFile(targetFile *File) error {
 	tHandle, err := targetFile.getObjectHandle()
 	if err != nil {
@@ -874,7 +902,13 @@ func (f *File) copyWithinGCSToFile(targetFile *File) error {
 	if gerr != nil {
 		return gerr
 	}
-	copier.ContentType(attrs.ContentType)
+	contentType := attrs.ContentType
+	if ct := contentTypeOption(targetFile.opts); ct != nil {
+		contentType = string(*ct)
+	} else if ct := contentTypeOption(f.opts); ct != nil {
+		contentType = string(*ct)
+	}
+	copier.ContentType(contentType)
 
 	// Just copy content.
 	_, cerr := copier.Run(f.location.fileSystem.ctx)

@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- `utils.WriteAborter` and `utils.AbortWrite` so callers streaming into an `s3` or `gs` file can abandon an in-flight upload when a source read fails before `Close`, preventing a deferred `Close` from committing a partial object; `s3.File` and `gs.File` implement `AbortWrite`.
+
+### Fixed
+- `s3`, `gs`: `utils.TouchCopyBuffered` and `mem.File.CopyToFile` now abort any active upload on the target file when a copy fails mid-stream, preventing deferred `Close` calls from committing truncated objects or leaking upload goroutines, and `BeginSequentialWrite` is now safe when nested ([#412](https://github.com/C2FO/vfs/issues/412)).
+- `s3`, `gs`: `Read` and `Seek` after a latched write error now fail with that error instead of reading stale remote data or opening an HTTP reader that `Close` would leak, and `cleanupTempFile` removes and clears the temporary file handle even when closing the handle fails ([#412](https://github.com/C2FO/vfs/issues/412)).
+- `gs`: `File` now cancels its per-write context on `Close` and removes any local temporary file when `Write` or `Close` fails ([#412](https://github.com/C2FO/vfs/issues/412)).
+- `gs`: `File.CopyToFile` no longer clears the target file's `NewFileOption`s when the source file has none, and now honors target `newfile.WithContentType` (falling back to source `newfile.WithContentType`) on both native and cross-auth copies.
 
 ## [[v7.36.0](https://github.com/C2FO/vfs/releases/tag/v7.36.0)] - 2026-11-23
 ### Added
