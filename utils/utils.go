@@ -184,8 +184,8 @@ func TouchCopy(writer io.Writer, reader io.Reader) error {
 	return nil
 }
 
-// SequentialWriter is implemented by files that stage writes locally (for example s3 and gs) and can skip that staging
-// when the caller promises one sequential write stream followed by Close.
+// SequentialWriter is implemented by files that stage writes locally (for example s3, gs, and azure) and can skip that
+// staging when the caller promises one sequential write stream followed by Close.
 type SequentialWriter interface {
 	// BeginSequentialWrite tells the file that a single sequential write stream is about to start and that it will not
 	// be sought or read until it is closed. It returns a function that ends the hint, which is always non-nil and safe
@@ -204,8 +204,8 @@ func BeginSequentialWrite(w io.Writer) (end func()) {
 	return func() {}
 }
 
-// WriteAborter is implemented by files (for example s3 and gs) whose in-flight upload can be abandoned when a caller's
-// write stream stops early with an error, so a subsequent Close reports err instead of committing a truncated object.
+// WriteAborter is implemented by files (for example s3, gs, and azure) whose in-flight upload can be abandoned when a
+// caller's write stream stops early with an error, so a subsequent Close reports err instead of committing a truncated object.
 type WriteAborter interface {
 	// AbortWrite abandons any active write session on the file and latches err so subsequent operations and Close
 	// report it without committing partial data. It is a no-op when err is nil or no write has started.
@@ -213,8 +213,8 @@ type WriteAborter interface {
 }
 
 // AbortWrite calls WriteAborter.AbortWrite when err is non-nil and w implements WriteAborter. Otherwise it does
-// nothing. Callers streaming from a fallible reader into an s3 or gs file (for example with io.Copy and a deferred
-// Close) can call AbortWrite on copy failure so Close does not commit a partial object.
+// nothing. Callers streaming from a fallible reader into an s3, gs, or azure file (for example with io.Copy and a
+// deferred Close) can call AbortWrite on copy failure so Close does not commit a partial object.
 func AbortWrite(w io.Writer, err error) {
 	if err == nil {
 		return
@@ -229,7 +229,7 @@ func AbortWrite(w io.Writer, err error) {
 // bufferSize is in bytes and if is less than TouchCopyMinBufferSize will result in a buffer of size TouchCopyMinBufferSize
 // bytes. If bufferSize is > TouchCopyMinBufferSize it will result in a buffer of size bufferSize bytes
 //
-// When writer is an s3 or gs file that has not been written, seeked or read yet, the copy streams to the remote without a
+// When writer is an s3, gs, or azure file that has not been written, seeked or read yet, the copy streams to the remote without a
 // local temporary file, and a mid-copy read or write failure abandons the upload so Close will not commit a partial object.
 // Such a file cannot be sought or read until it is closed, so callers must Close writer after the copy, as every VFS
 // CopyToFile implementation does.

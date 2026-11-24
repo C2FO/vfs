@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- `azure`: opt-in streaming writes that skip the local temporary file via `newfile.WithStreamingWrite()`, `newfile.WithWriteBuffer()`, and the new `DisableWriteBuffer` field on `azure.Options`, matching `s3` and `gs`. With the buffer off, `Seek` or `Read` after `Write`, and `Write` after `Seek` or `Read`, return `vfs.ErrWriteBufferDisabled` until `Close`. `azure.File` now implements `utils.SequentialWriter` and `utils.WriteAborter`, and `azure/types.BlobStreamer` (`UploadStream` and `DownloadRange`, implemented by `*azure.DefaultClient`) enables streaming uploads and range downloads without changing `azure/types.Client` ([#414](https://github.com/C2FO/vfs/issues/414)).
+
+### Fixed
+- `azure`: `Read` and `Seek` now stream from Azure Blob Storage using byte-range requests instead of downloading the entire blob into a local temporary file first (including during `CopyToLocation` and `CopyToFile` seek validation), `Close` and local write-buffer error paths now remove temporary files from disk instead of leaking them in `/tmp` and abandon in-flight uploads without committing partial blobs, `CopyToLocation` and cross-auth `CopyToFile` propagate only `newfile.WithContentType` without leaking `WithWriteBuffer` or `WithStreamingWrite`, and `json.Marshal` on `azure.Options` no longer fails on the deprecated `RetryFunc` field ([#414](https://github.com/C2FO/vfs/issues/414)).
 
 ## [[v7.37.1](https://github.com/C2FO/vfs/releases/tag/v7.37.1)] - 2026-11-24
 ### Fixed

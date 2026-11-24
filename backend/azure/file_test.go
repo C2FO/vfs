@@ -72,7 +72,7 @@ func (s *FileTestSuite) TestSeek() {
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
 	s.Require().NoError(err, "The file should exist so no error should be returned")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
+	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{Size: new(int64(12))}, nil)
 	client.EXPECT().Download(mock.Anything).Return(io.NopCloser(strings.NewReader("Hello World!")), nil)
 	newOffset, err := f.Seek(6, io.SeekStart)
 	s.Require().NoError(err)
@@ -82,6 +82,7 @@ func (s *FileTestSuite) TestSeek() {
 	s.Require().NoError(err)
 	s.Equal(6, n)
 	s.Equal("World!", string(contents))
+	s.Require().NoError(f.Close())
 }
 
 func (s *FileTestSuite) TestWrite() {
@@ -97,6 +98,7 @@ func (s *FileTestSuite) TestWrite() {
 	n, err := f.Write([]byte(" Aaaaand, Goodbye!"))
 	s.Require().NoError(err)
 	s.Equal(18, n)
+	s.Require().NoError(f.(*File).cleanupTempFile())
 }
 
 func (s *FileTestSuite) TestRead_FileDoesNotExist() {
@@ -183,8 +185,7 @@ func (s *FileTestSuite) TestCopyToLocation() {
 	fs := NewFileSystem(WithClient(client))
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	targetLoc, _ := fs.NewLocation("test-container", "/new/folder/")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
-	client.EXPECT().Download(mock.Anything).Return(io.NopCloser(strings.NewReader("blah")), nil)
+	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{Size: new(int64(4))}, nil)
 	client.EXPECT().Copy(mock.Anything, mock.Anything).Return(nil)
 	copiedFile, err := source.CopyToLocation(targetLoc)
 	s.Require().NoError(err)
@@ -198,8 +199,7 @@ func (s *FileTestSuite) TestCopyToFile() {
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	target, _ := fs.NewFile("test-container", "/bar.txt")
 
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
-	client.EXPECT().Download(mock.Anything).Return(io.NopCloser(strings.NewReader("blah")), nil)
+	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{Size: new(int64(4))}, nil)
 	client.EXPECT().Copy(mock.Anything, mock.Anything).Return(nil)
 	err := source.CopyToFile(target)
 	s.Require().NoError(err)
@@ -207,14 +207,15 @@ func (s *FileTestSuite) TestCopyToFile() {
 
 func (s *FileTestSuite) TestCopyToFileBuffered() {
 	client := mocks.NewClient(s.T())
-	opts := Options{FileBufferSize: 2 * utils.TouchCopyMinBufferSize}
+	opts := Options{FileBufferSize: 2 * utils.TouchCopyMinBufferSize, AccountKey: "src-key"}
 	fs := NewFileSystem(WithOptions(opts), WithClient(client))
+	targetFS := NewFileSystem(WithOptions(Options{AccountKey: "dst-key"}), WithClient(client))
 	source, _ := fs.NewFile("test-container", "/foo.txt")
-	target, _ := fs.NewFile("test-container", "/bar.txt")
+	target, _ := targetFS.NewFile("test-container", "/bar.txt")
 
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
+	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{Size: new(int64(4))}, nil)
 	client.EXPECT().Download(mock.Anything).Return(io.NopCloser(strings.NewReader("blah")), nil)
-	client.EXPECT().Copy(mock.Anything, mock.Anything).Return(nil)
+	client.EXPECT().Upload(mock.Anything, mock.Anything, "").Return(nil)
 	err := source.CopyToFile(target)
 	s.Require().NoError(err)
 }
@@ -225,8 +226,7 @@ func (s *FileTestSuite) TestMoveToLocation() {
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	target, _ := fs.NewLocation("test-container", "/new/folder/")
 
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
-	client.EXPECT().Download(mock.Anything).Return(io.NopCloser(strings.NewReader("blah")), nil)
+	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{Size: new(int64(4))}, nil)
 	client.EXPECT().Copy(mock.Anything, mock.Anything).Return(nil)
 	client.EXPECT().Delete(mock.Anything).Return(nil)
 	movedFile, err := source.MoveToLocation(target)
@@ -240,8 +240,7 @@ func (s *FileTestSuite) TestMoveToFile() {
 	fs := NewFileSystem(WithClient(client))
 	source, _ := fs.NewFile("test-container", "/foo.txt")
 	target, _ := fs.NewFile("test-container", "/bar.txt")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
-	client.EXPECT().Download(mock.Anything).Return(io.NopCloser(strings.NewReader("blah")), nil)
+	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{Size: new(int64(4))}, nil)
 	client.EXPECT().Copy(mock.Anything, mock.Anything).Return(nil)
 	client.EXPECT().Delete(mock.Anything).Return(nil)
 	err := source.MoveToFile(target)
@@ -388,108 +387,59 @@ func (s *FileTestSuite) TestURI() {
 	s.Equal("az://folder/blah/file.txt", f.URI())
 }
 
-func (s *FileTestSuite) TestCheckTempFile() {
+func (s *FileTestSuite) TestReadStreamsWithoutTempFile() {
 	client := mocks.NewClient(s.T())
 	fs := NewFileSystem(WithClient(client))
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
-	s.Require().NoError(err, "The file should exist so no error should be returned")
+	s.Require().NoError(err)
 
 	azureFile, ok := f.(*File)
-	s.True(ok, "Type assertion should succeed so we expect ok to be true")
-	s.NotNil(azureFile)
+	s.Require().True(ok)
+	s.Nil(azureFile.tempFileWriter)
 
-	s.Nil(azureFile.tempFile, "No calls to checkTempFile have occurred so we expect tempFile to be nil")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
+	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{Size: new(int64(12))}, nil)
 	client.EXPECT().Download(mock.Anything).Return(io.NopCloser(strings.NewReader("Hello World!")), nil)
-	err = azureFile.checkTempFile(false)
-	s.Require().NoError(err, "Check temp file should create a local temp file so no error is expected")
-	s.NotNil(azureFile.tempFile, "After the call to checkTempFile we should have a non-nil tempFile")
 
-	contents, err := io.ReadAll(azureFile.tempFile)
-	s.Require().NoError(err, "No error should occur while reading the tempFile")
+	contents, err := io.ReadAll(f)
+	s.Require().NoError(err)
 	s.Equal("Hello World!", string(contents))
+	s.Nil(azureFile.tempFileWriter, "Read must stream without creating a local temp file")
+	s.Require().NoError(f.Close())
 }
 
-func (s *FileTestSuite) TestCheckTempFile_ReadFileDoesNotExist() {
+func (s *FileTestSuite) TestInitWriters_WriteDoesNotDownloadOrCheckExistence() {
 	client := mocks.NewClient(s.T())
 	fs := NewFileSystem(WithClient(client))
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
-	s.Require().NoError(err, "The file should exist so no error should be returned")
+	s.Require().NoError(err)
 
 	azureFile, ok := f.(*File)
-	s.True(ok, "Type assertion should succeed so we expect ok to be true")
-	s.NotNil(azureFile)
+	s.Require().True(ok)
+	s.Nil(azureFile.tempFileWriter)
 
-	s.Nil(azureFile.tempFile, "No calls to checkTempFile have occurred so we expect tempFile to be nil")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(nil, errBlobNotFound)
-	err = azureFile.checkTempFile(false)
-	s.Require().ErrorIs(err, os.ErrNotExist, "Reading a blob that does not exist should return os.ErrNotExist")
-	s.Nil(azureFile.tempFile, "No temp file should be created when the blob does not exist")
-}
+	// A buffered write must not download the blob or check its existence: no Properties
+	// or Download expectations are set, so mockery would fail if either were called.
+	s.Require().NoError(azureFile.initWriters())
+	s.NotNil(azureFile.tempFileWriter)
+	defer func() { _ = azureFile.cleanupTempFile() }()
 
-func (s *FileTestSuite) TestCheckTempFile_WriteFileDoesNotExist() {
-	client := mocks.NewClient(s.T())
-	fs := NewFileSystem(WithClient(client))
-
-	f, err := fs.NewFile("test-container", "/foo.txt")
-	s.Require().NoError(err, "The file should exist so no error should be returned")
-
-	azureFile, ok := f.(*File)
-	s.True(ok, "Type assertion should succeed so we expect ok to be true")
-	s.NotNil(azureFile)
-
-	s.Nil(azureFile.tempFile, "No calls to checkTempFile have occurred so we expect tempFile to be nil")
-	// The write path neither downloads nor checks existence, so no client calls
-	// are expected regardless of whether the blob exists.
-	err = azureFile.checkTempFile(true)
-	s.Require().NoError(err, "Writing a blob that does not exist should create an empty temp file")
-	s.NotNil(azureFile.tempFile, "After the call to checkTempFile we should have a non-nil tempFile")
-
-	contents, err := io.ReadAll(azureFile.tempFile)
-	s.Require().NoError(err, "No error should occur while reading the tempFile")
-	s.Empty(contents)
-}
-
-func (s *FileTestSuite) TestCheckTempFile_WriteDoesNotDownloadOrCheckExistence() {
-	client := mocks.NewClient(s.T())
-	fs := NewFileSystem(WithClient(client))
-
-	f, err := fs.NewFile("test-container", "/foo.txt")
-	s.Require().NoError(err, "The file should exist so no error should be returned")
-
-	azureFile, ok := f.(*File)
-	s.True(ok, "Type assertion should succeed so we expect ok to be true")
-	s.NotNil(azureFile)
-
-	s.Nil(azureFile.tempFile, "No calls to checkTempFile have occurred so we expect tempFile to be nil")
-	// A write must not download the blob or check its existence: no Properties or
-	// Download expectations are set, so mockery would fail if either were called.
-	err = azureFile.checkTempFile(true)
-	s.Require().NoError(err, "Write should create an empty temp file without contacting the server")
-	s.NotNil(azureFile.tempFile, "After the call to checkTempFile we should have a non-nil tempFile")
-
-	contents, err := io.ReadAll(azureFile.tempFile)
-	s.Require().NoError(err, "No error should occur while reading the tempFile")
+	contents, err := io.ReadAll(azureFile.tempFileWriter)
+	s.Require().NoError(err)
 	s.Empty(contents, "Write temp file should start empty")
 }
 
-func (s *FileTestSuite) TestCheckTempFile_DownloadError() {
+func (s *FileTestSuite) TestRead_DownloadError() {
 	client := mocks.NewClient(s.T())
 	fs := NewFileSystem(WithClient(client))
 
 	f, err := fs.NewFile("test-container", "/foo.txt")
-	s.Require().NoError(err, "The file should exist so no error should be returned")
+	s.Require().NoError(err)
 
-	azureFile, ok := f.(*File)
-	s.True(ok, "Type assertion should succeed so we expect ok to be true")
-	s.NotNil(azureFile)
-
-	s.Nil(azureFile.tempFile, "No calls to checkTempFile have occurred so we expect tempFile to be nil")
-	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{}, nil)
+	client.EXPECT().Properties("test-container", "/foo.txt").Return(&BlobProperties{Size: new(int64(5))}, nil)
 	client.EXPECT().Download(mock.Anything).Return(nil, errors.New("i always error"))
-	err = azureFile.checkTempFile(false)
+	_, err = f.Read(make([]byte, 5))
 	s.Require().Error(err, "The call to client.Download() errors so we expect to get an error")
 }
 

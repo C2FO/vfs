@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/c2fo/vfs/v7"
+	"github.com/c2fo/vfs/v7/backend/azure"
 	"github.com/c2fo/vfs/v7/backend/gs"
 	"github.com/c2fo/vfs/v7/backend/s3"
 	"github.com/c2fo/vfs/v7/options"
@@ -16,18 +17,18 @@ import (
 	"github.com/c2fo/vfs/v7/vfssimple"
 )
 
-// objectTargets returns the targets whose backends stage writes in a local temp file (s3 and gs).
+// objectTargets returns the targets whose backends stage writes in a local temp file (s3, gs, and az).
 func (s *containerSuite) objectTargets() []backendTarget {
 	var out []backendTarget
 	for _, tgt := range s.targets {
-		if tgt.scheme == "s3" || tgt.scheme == "gs" {
+		if tgt.scheme == "s3" || tgt.scheme == "gs" || tgt.scheme == "az" {
 			out = append(out, tgt)
 		}
 	}
 	return out
 }
 
-// unbufferedLocation returns a location on the same bucket as tgt whose filesystem has DisableWriteBuffer set.
+// unbufferedLocation returns a location on the same bucket/container as tgt whose filesystem has DisableWriteBuffer set.
 func (s *containerSuite) unbufferedLocation(tgt backendTarget) vfs.Location {
 	var fsys vfs.FileSystem
 	switch fs := tgt.location.FileSystem().(type) {
@@ -42,6 +43,10 @@ func (s *containerSuite) unbufferedLocation(tgt backendTarget) vfs.Location {
 		cli, err := fs.Client()
 		s.Require().NoError(err)
 		fsys = gs.NewFileSystem(gs.WithClient(cli), gs.WithOptions(gs.Options{DisableWriteBuffer: true}))
+	case *azure.FileSystem:
+		cli, err := fs.Client()
+		s.Require().NoError(err)
+		fsys = azure.NewFileSystem(azure.WithClient(cli), azure.WithOptions(azure.Options{DisableWriteBuffer: true}))
 	default:
 		s.FailNow("unexpected filesystem", "%T", fs)
 	}
@@ -266,7 +271,7 @@ func (s *containerSuite) TestTouchCreatesObjectWithoutTempFile() {
 	}
 }
 
-// TestCopyToLocationWithoutTempFile checks that non-native copies into s3 and gs stream without a local temp file.
+// TestCopyToLocationWithoutTempFile checks that non-native copies into s3, gs, and az stream without a local temp file.
 func (s *containerSuite) TestCopyToLocationWithoutTempFile() {
 	memLoc, err := vfssimple.NewLocation("mem://test/")
 	s.Require().NoError(err)

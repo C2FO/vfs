@@ -96,11 +96,15 @@ If ServiceURL is empty, it defaults to https://\<AccountName\>.blob.core.windows
   - [func \(a \*DefaultClient\) Delete\(file vfs.File\) error](<#DefaultClient.Delete>)
   - [func \(a \*DefaultClient\) DeleteAllVersions\(file vfs.File\) error](<#DefaultClient.DeleteAllVersions>)
   - [func \(a \*DefaultClient\) Download\(file vfs.File\) \(io.ReadCloser, error\)](<#DefaultClient.Download>)
+  - [func \(a \*DefaultClient\) DownloadRange\(ctx context.Context, file vfs.File, offset int64\) \(io.ReadCloser, error\)](<#DefaultClient.DownloadRange>)
   - [func \(a \*DefaultClient\) List\(l vfs.Location\) \(\[\]string, error\)](<#DefaultClient.List>)
   - [func \(a \*DefaultClient\) Properties\(containerURI, filePath string\) \(\*BlobProperties, error\)](<#DefaultClient.Properties>)
   - [func \(a \*DefaultClient\) SetMetadata\(file vfs.File, metadata map\[string\]\*string\) error](<#DefaultClient.SetMetadata>)
   - [func \(a \*DefaultClient\) Upload\(file vfs.File, content io.ReadSeeker, contentType string\) error](<#DefaultClient.Upload>)
+  - [func \(a \*DefaultClient\) UploadStream\(ctx context.Context, file vfs.File, content io.Reader, contentType string\) error](<#DefaultClient.UploadStream>)
 - [type File](<#File>)
+  - [func \(f \*File\) AbortWrite\(err error\)](<#File.AbortWrite>)
+  - [func \(f \*File\) BeginSequentialWrite\(\) \(end func\(\)\)](<#File.BeginSequentialWrite>)
   - [func \(f \*File\) Close\(\) error](<#File.Close>)
   - [func \(f \*File\) CopyToFile\(file vfs.File\) \(err error\)](<#File.CopyToFile>)
   - [func \(f \*File\) CopyToLocation\(location vfs.Location\) \(vfs.File, error\)](<#File.CopyToLocation>)
@@ -305,6 +309,15 @@ func (a *DefaultClient) Download(file vfs.File) (io.ReadCloser, error)
 
 Download returns an io.ReadCloser for the given vfs.File
 
+<a name="DefaultClient.DownloadRange"></a>
+### func \(\*DefaultClient\) DownloadRange
+
+```go
+func (a *DefaultClient) DownloadRange(ctx context.Context, file vfs.File, offset int64) (io.ReadCloser, error)
+```
+
+DownloadRange returns an io.ReadCloser for the given vfs.File starting at byte offset.
+
 <a name="DefaultClient.List"></a>
 ### func \(\*DefaultClient\) List
 
@@ -341,16 +354,43 @@ func (a *DefaultClient) Upload(file vfs.File, content io.ReadSeeker, contentType
 
 Upload uploads a new file to Azure Blob Storage
 
+<a name="DefaultClient.UploadStream"></a>
+### func \(\*DefaultClient\) UploadStream
+
+```go
+func (a *DefaultClient) UploadStream(ctx context.Context, file vfs.File, content io.Reader, contentType string) error
+```
+
+UploadStream streams content into a block blob without requiring a seekable reader.
+
 <a name="File"></a>
 ## type File
 
-File implements the vfs.File interface for Azure Blob Storage
+File implements the vfs.File interface for Azure Blob Storage.
 
 ```go
 type File struct {
     // contains filtered or unexported fields
 }
 ```
+
+<a name="File.AbortWrite"></a>
+### func \(\*File\) AbortWrite
+
+```go
+func (f *File) AbortWrite(err error)
+```
+
+AbortWrite implements utils.WriteAborter. When err is non\-nil and a write has started on f \(and has not already failed\), it cancels the in\-flight Azure upload, removes any local temporary file, and latches err so subsequent operations and Close report it without committing a partial blob.
+
+<a name="File.BeginSequentialWrite"></a>
+### func \(\*File\) BeginSequentialWrite
+
+```go
+func (f *File) BeginSequentialWrite() (end func())
+```
+
+BeginSequentialWrite implements utils.SequentialWriter. When the file has not been written, seeked, or read and was not explicitly opened with newfile.WithWriteBuffer, writes until the returned function is called skip the local temporary file. Such a file cannot be sought or read until it is closed.
 
 <a name="File.Close"></a>
 ### func \(\*File\) Close
@@ -359,7 +399,7 @@ type File struct {
 func (f *File) Close() error
 ```
 
-Close cleans up all the backing data structures used for reading/writing files. This includes closing the temp file, uploading the contents of the temp file to Azure Blob Storage \(if necessary\), and calling Seek\(0, 0\).
+Close commits any writes, either from the active Azure upload stream or from the local temp file \(when Seek or Read occurred before/after Write, or when using a custom Client that does not implement types.BlobStreamer\). It then closes and removes any local temporary file and resets the file's session state.
 
 <a name="File.CopyToFile"></a>
 ### func \(\*File\) CopyToFile
@@ -395,7 +435,7 @@ Delete deletes the file. If delete.AllVersions option is provided, each version 
 func (f *File) Exists() (bool, error)
 ```
 
-Exists returns true/false if the file exists/does not exist on Azure
+Exists returns true/false if the file exists/does not exist on Azure.
 
 <a name="File.LastModified"></a>
 ### func \(\*File\) LastModified
@@ -404,7 +444,7 @@ Exists returns true/false if the file exists/does not exist on Azure
 func (f *File) LastModified() (*time.Time, error)
 ```
 
-LastModified returns the last modified time as a time.Time
+LastModified returns the last modified time as a time.Time.
 
 <a name="File.Location"></a>
 ### func \(\*File\) Location
@@ -413,7 +453,7 @@ LastModified returns the last modified time as a time.Time
 func (f *File) Location() vfs.Location
 ```
 
-Location returns a Location instance for the files current location
+Location returns a Location instance for the file's current location.
 
 <a name="File.MoveToFile"></a>
 ### func \(\*File\) MoveToFile
@@ -440,7 +480,7 @@ MoveToLocation copies the receiver to the passed location. After the copy succee
 func (f *File) Name() string
 ```
 
-Name returns the name of the file
+Name returns the name of the file.
 
 <a name="File.Path"></a>
 ### func \(\*File\) Path
@@ -458,7 +498,7 @@ Path returns full path with leading slash.
 func (f *File) Read(p []byte) (n int, err error)
 ```
 
-Read implements the io.Reader interface. For this to work with Azure Blob Storage, a temporary local copy of the file is created and read operations are performed against that. The temp file is closed and flushed to Azure when f.Close\(\) is called.
+Read implements the io.Reader interface by streaming from Azure Blob Storage at the current cursor offset \(or from the local temp file when reading back uncommitted buffered writes\).
 
 <a name="File.Seek"></a>
 ### func \(\*File\) Seek
@@ -467,7 +507,7 @@ Read implements the io.Reader interface. For this to work with Azure Blob Storag
 func (f *File) Seek(offset int64, whence int) (int64, error)
 ```
 
-Seek implements the io.Seeker interface. For this to work with Azure Blob Storage, a temporary local copy of the file is created and operations are performed against that. The temp file is closed and flushed to Azure when f.Close\(\) is called.
+Seek implements the io.Seeker interface without downloading the blob to a local temporary file.
 
 <a name="File.Size"></a>
 ### func \(\*File\) Size
@@ -476,7 +516,7 @@ Seek implements the io.Seeker interface. For this to work with Azure Blob Storag
 func (f *File) Size() (uint64, error)
 ```
 
-Size returns the size of the blob
+Size returns the size of the blob.
 
 <a name="File.String"></a>
 ### func \(\*File\) String
@@ -485,7 +525,7 @@ Size returns the size of the blob
 func (f *File) String() string
 ```
 
-String returns the file URI
+String returns the file URI.
 
 <a name="File.Touch"></a>
 ### func \(\*File\) Touch
@@ -512,7 +552,7 @@ URI returns the File's URI as a string.
 func (f *File) Write(p []byte) (int, error)
 ```
 
-Write implements the io.Writer interface. Writes are performed against a temporary local file. The temp file is closed and flushed to Azure with f.Close\(\) is called.
+Write implements the io.Writer interface. Writes are not committed to Azure Blob Storage until Close\(\) is called.
 
 <a name="FileSystem"></a>
 ## type FileSystem
@@ -829,10 +869,17 @@ type Options struct {
     // RetryFunc holds the retry function
     //
     // Deprecated: This field is deprecated and will be removed in a future release.
-    RetryFunc vfs.Retry //nolint:staticcheck // Deprecated: This field is deprecated and will be removed in a future release.
+    RetryFunc vfs.Retry `json:"-"` //nolint:staticcheck // Deprecated: This field is deprecated and will be removed in a future release.
 
     // Buffer Size In Bytes Used with utils.TouchCopyBuffered
     FileBufferSize int
+
+    // DisableWriteBuffer streams writes straight to Azure Blob Storage instead of also mirroring them to a local
+    // temporary file, which is what normally makes Seek and Read after Write possible. With it set, Write cannot be
+    // combined with Seek or Read before Close (vfs.ErrWriteBufferDisabled), and local disk is not used for writes. It is
+    // unrelated to FileBufferSize, which only sizes the in-memory copy buffer. A single file can override this with
+    // newfile.WithWriteBuffer.
+    DisableWriteBuffer bool `json:"disableWriteBuffer,omitempty"`
     // contains filtered or unexported fields
 }
 ```

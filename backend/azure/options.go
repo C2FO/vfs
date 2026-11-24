@@ -36,10 +36,17 @@ type Options struct {
 	// RetryFunc holds the retry function
 	//
 	// Deprecated: This field is deprecated and will be removed in a future release.
-	RetryFunc vfs.Retry //nolint:staticcheck // Deprecated: This field is deprecated and will be removed in a future release.
+	RetryFunc vfs.Retry `json:"-"` //nolint:staticcheck // Deprecated: This field is deprecated and will be removed in a future release.
 
 	// Buffer Size In Bytes Used with utils.TouchCopyBuffered
 	FileBufferSize int
+
+	// DisableWriteBuffer streams writes straight to Azure Blob Storage instead of also mirroring them to a local
+	// temporary file, which is what normally makes Seek and Read after Write possible. With it set, Write cannot be
+	// combined with Seek or Read before Close (vfs.ErrWriteBufferDisabled), and local disk is not used for writes. It is
+	// unrelated to FileBufferSize, which only sizes the in-memory copy buffer. A single file can override this with
+	// newfile.WithWriteBuffer.
+	DisableWriteBuffer bool `json:"disableWriteBuffer,omitempty"`
 
 	tokenCredentialFactory TokenCredentialFactory
 }

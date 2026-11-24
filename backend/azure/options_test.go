@@ -2,6 +2,7 @@ package azure
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"os"
 	"testing"
 
@@ -64,6 +65,20 @@ func (s *OptionsTestSuite) TestCredentials_Anon() {
 	credential, err := options.Credential()
 	s.Require().NoError(err, "anon vars are present so no error")
 	s.Nil(credential, "when no env vars are set we should get a nil credential")
+}
+
+func (s *OptionsTestSuite) TestDisableWriteBufferJSON() {
+	b, err := json.Marshal(Options{DisableWriteBuffer: true})
+	s.Require().NoError(err)
+	s.Contains(string(b), `"disableWriteBuffer":true`)
+
+	b, err = json.Marshal(Options{})
+	s.Require().NoError(err)
+	s.NotContains(string(b), "disableWriteBuffer")
+
+	var o Options
+	s.Require().NoError(json.Unmarshal([]byte(`{"disableWriteBuffer":true}`), &o))
+	s.True(o.DisableWriteBuffer)
 }
 
 func TestOptions(t *testing.T) {

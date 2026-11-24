@@ -1,11 +1,13 @@
 package azure
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path"
+	"slices"
 	"strings"
 	"time"
 
@@ -13,70 +15,155 @@ import (
 
 	"github.com/c2fo/vfs/v7"
 	"github.com/c2fo/vfs/v7/backend"
+	"github.com/c2fo/vfs/v7/backend/azure/types"
 	"github.com/c2fo/vfs/v7/options"
 	"github.com/c2fo/vfs/v7/options/delete"
 	"github.com/c2fo/vfs/v7/options/newfile"
 	"github.com/c2fo/vfs/v7/utils"
 )
 
-// File implements the vfs.File interface for Azure Blob Storage
+// File implements the vfs.File interface for Azure Blob Storage.
 type File struct {
 	location *Location
 	name     string
 	opts     []options.NewFileOption
-	tempFile *os.File
-	isDirty  bool
+
+	// seek-related fields
+	cursorPos  int64
+	seekCalled bool
+
+	// read-related fields
+	reader     io.ReadCloser
+	readCalled bool
+
+	// write-related fields
+	tempFileWriter     *os.File
+	azWriter           *io.PipeWriter
+	cancelFunc         context.CancelFunc
+	azWriterCompleteCh chan error
+	writeCalled        bool
+
+	// streaming is true once a write began without a local temp file; Seek and Read are rejected until Close.
+	streaming bool
+	// ephemeralStream is set by internal copy helpers to stream a single sequential write without a temp file.
+	ephemeralStream bool
+	// writeErr latches a local write buffer failure; the upload was aborted and Close reports it without committing.
+	writeErr error
 }
 
-// Close cleans up all the backing data structures used for reading/writing files.  This includes closing the
-// temp file, uploading the contents of the temp file to Azure Blob Storage (if necessary), and calling Seek(0, 0).
+// Close commits any writes, either from the active Azure upload stream or from the local temp file (when Seek or Read
+// occurred before/after Write, or when using a custom Client that does not implement types.BlobStreamer). It then
+// closes and removes any local temporary file and resets the file's session state.
 func (f *File) Close() error {
-	if f.tempFile != nil {
-		defer func() {
-			_ = f.tempFile.Close()
-			f.tempFile = nil
-			f.isDirty = false
-		}()
-
-		client, err := f.location.fileSystem.Client()
-		if err != nil {
-			return utils.WrapCloseError(err)
+	defer func() {
+		if f.cancelFunc != nil {
+			f.cancelFunc()
+			f.cancelFunc = nil
 		}
+		f.reader = nil
+		f.azWriter = nil
+		f.azWriterCompleteCh = nil
+		f.cursorPos = 0
+		f.seekCalled = false
+		f.readCalled = false
+		f.writeCalled = false
+		f.streaming = false
+		f.ephemeralStream = false
+		f.writeErr = nil
+	}()
 
-		if _, err := f.Seek(0, 0); err != nil {
-			return utils.WrapCloseError(err)
+	// A failed local write already aborted the upload and removed the temp file; never commit a partial blob.
+	if f.writeErr != nil {
+		return utils.WrapCloseError(f.writeErr)
+	}
+
+	// Clean up reader unless it is the active tempFileWriter handle.
+	if f.reader != nil && f.reader != f.tempFileWriter {
+		if err := f.reader.Close(); err != nil {
+			f.reader = nil
+			f.cancelAzWriter()
+			return utils.WrapCloseError(f.cleanupTempFileOnErr(err))
 		}
+		f.reader = nil
+	}
 
-		if f.isDirty {
-			var contentType string
-			for _, o := range f.opts {
-				switch o := o.(type) {
-				case *newfile.ContentType:
-					contentType = *(*string)(o)
-				default:
-				}
+	// Finalize writer.
+	if f.azWriter != nil {
+		if err := f.azWriter.Close(); err != nil {
+			f.cancelAzWriter()
+			return utils.WrapCloseError(f.cleanupTempFileOnErr(err))
+		}
+		if f.azWriterCompleteCh != nil {
+			if err := <-f.azWriterCompleteCh; err != nil {
+				return utils.WrapCloseError(f.cleanupTempFileOnErr(err))
 			}
-
-			if err := client.Upload(f, f.tempFile, contentType); err != nil {
-				return utils.WrapCloseError(err)
-			}
+		}
+	} else if f.tempFileWriter != nil && f.writeCalled {
+		if err := f.tempToAzure(); err != nil {
+			return utils.WrapCloseError(f.cleanupTempFileOnErr(err))
 		}
 	}
+
+	if f.tempFileWriter != nil {
+		if err := f.cleanupTempFile(); err != nil {
+			return utils.WrapCloseError(err)
+		}
+	}
+
 	return nil
 }
 
-// Read implements the io.Reader interface.  For this to work with Azure Blob Storage, a temporary local copy of
-// the file is created and read operations are performed against that.  The temp file is closed and flushed to Azure
-// when f.Close() is called.
+func (f *File) tempToAzure() error {
+	client, err := f.location.fileSystem.Client()
+	if err != nil {
+		return err
+	}
+
+	if _, err := f.tempFileWriter.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
+
+	contentType := f.resolveContentType()
+	if streamer, ok := client.(types.BlobStreamer); ok {
+		return streamer.UploadStream(context.Background(), f, f.tempFileWriter, contentType)
+	}
+
+	return client.Upload(f, f.tempFileWriter, contentType)
+}
+
+func (f *File) cleanupTempFile() error {
+	if f.tempFileWriter != nil {
+		name := f.tempFileWriter.Name()
+		closeErr := f.tempFileWriter.Close()
+		removeErr := os.Remove(name)
+		f.tempFileWriter = nil
+
+		return errors.Join(closeErr, removeErr)
+	}
+
+	return nil
+}
+
+func (f *File) cleanupTempFileOnErr(origErr error) error {
+	if cleanupErr := f.cleanupTempFile(); cleanupErr != nil {
+		return errors.Join(origErr, cleanupErr)
+	}
+	return origErr
+}
+
+// Read implements the io.Reader interface by streaming from Azure Blob Storage at the current cursor offset (or from
+// the local temp file when reading back uncommitted buffered writes).
 func (f *File) Read(p []byte) (n int, err error) {
-	if err := f.checkTempFile(false); err != nil {
+	r, err := f.getReader()
+	if err != nil {
 		return 0, utils.WrapReadError(err)
 	}
-	read, err := f.tempFile.Read(p)
+
+	read, err := r.Read(p)
+	f.cursorPos += int64(read)
+	f.readCalled = true
+
 	if err != nil {
-		// if we got io.EOF, we'll return the read and the EOF error
-		// because io.Copy looks for EOF to determine if it's done
-		// and doesn't support error wrapping
 		if errors.Is(err, io.EOF) {
 			return read, io.EOF
 		}
@@ -86,43 +173,373 @@ func (f *File) Read(p []byte) (n int, err error) {
 	return read, nil
 }
 
-// Seek implements the io.Seeker interface.  For this to work with Azure Blob Storage, a temporary local copy of
-// the file is created and operations are performed against that.  The temp file is closed and flushed to Azure
-// when f.Close() is called.
+func (f *File) getReader() (io.ReadCloser, error) {
+	if f.writeErr != nil {
+		return nil, f.writeErr
+	}
+	if f.streaming {
+		return nil, vfs.ErrWriteBufferDisabled
+	}
+	if f.writeCalled && f.tempFileWriter != nil {
+		if err := f.closeRemoteReader(); err != nil {
+			return nil, err
+		}
+		f.reader = f.tempFileWriter
+		return f.reader, nil
+	}
+	if f.reader != nil {
+		return f.reader, nil
+	}
+
+	r, err := f.openRemoteReader()
+	if err != nil {
+		return nil, err
+	}
+	f.reader = r
+
+	return f.reader, nil
+}
+
+func (f *File) openRemoteReader() (io.ReadCloser, error) {
+	client, err := f.location.fileSystem.Client()
+	if err != nil {
+		return nil, err
+	}
+
+	props, err := client.Properties(f.Location().Authority().String(), f.Path())
+	if err != nil {
+		return nil, mapBlobError(err)
+	}
+
+	if props != nil && props.Size != nil && (*props.Size == 0 || f.cursorPos >= *props.Size) {
+		return io.NopCloser(strings.NewReader("")), nil
+	}
+
+	if streamer, ok := client.(types.BlobStreamer); ok {
+		r, err := streamer.DownloadRange(context.Background(), f, f.cursorPos)
+		if err != nil {
+			return nil, mapBlobError(err)
+		}
+		return r, nil
+	}
+
+	return f.downloadWithOffset(client)
+}
+
+func (f *File) downloadWithOffset(client types.Client) (io.ReadCloser, error) {
+	r, err := client.Download(f)
+	if err != nil {
+		return nil, mapBlobError(err)
+	}
+	if f.cursorPos > 0 {
+		if _, err := io.CopyN(io.Discard, r, f.cursorPos); err != nil {
+			_ = r.Close()
+			if errors.Is(err, io.EOF) {
+				return io.NopCloser(strings.NewReader("")), nil
+			}
+			return nil, err
+		}
+	}
+	return r, nil
+}
+
+func mapBlobError(err error) error {
+	if bloberror.HasCode(err, bloberror.BlobNotFound) {
+		return os.ErrNotExist
+	}
+	return err
+}
+
+// Seek implements the io.Seeker interface without downloading the blob to a local temporary file.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
-	if err := f.checkTempFile(false); err != nil {
-		return 0, utils.WrapSeekError(err)
+	if f.writeErr != nil {
+		return 0, utils.WrapSeekError(f.writeErr)
 	}
-	pos, err := f.tempFile.Seek(offset, whence)
+	// Without a local buffer the written bytes cannot be revisited; reject before touching the active upload.
+	if f.streaming {
+		return 0, utils.WrapSeekError(vfs.ErrWriteBufferDisabled)
+	}
+
+	length, err := f.seekLength()
 	if err != nil {
 		return 0, utils.WrapSeekError(err)
 	}
-	return pos, nil
+
+	pos, err := utils.SeekTo(int64(length), f.cursorPos, offset, whence)
+	if err != nil {
+		return 0, utils.WrapSeekError(err)
+	}
+
+	if err := f.closeRemoteReader(); err != nil {
+		return 0, utils.WrapSeekError(err)
+	}
+
+	f.cancelAzWriter()
+
+	if f.tempFileWriter != nil {
+		if _, err := f.tempFileWriter.Seek(pos, io.SeekStart); err != nil {
+			return 0, utils.WrapSeekError(err)
+		}
+	}
+
+	f.cursorPos = pos
+	f.seekCalled = true
+
+	return f.cursorPos, nil
 }
 
-// Write implements the io.Writer interface.  Writes are performed against a temporary local file.  The temp file is
-// closed and flushed to Azure with f.Close() is called.
+func (f *File) seekLength() (uint64, error) {
+	switch {
+	case f.writeCalled && f.tempFileWriter != nil:
+		fi, err := f.tempFileWriter.Stat()
+		if err != nil {
+			return 0, err
+		}
+		return uint64(fi.Size()), nil
+	case f.writeCalled:
+		return uint64(f.cursorPos), nil
+	default:
+		return f.blobSize()
+	}
+}
+
+func (f *File) closeRemoteReader() error {
+	if f.reader == nil {
+		return nil
+	}
+	if f.reader != f.tempFileWriter {
+		if err := f.reader.Close(); err != nil {
+			return err
+		}
+	}
+	f.reader = nil
+	return nil
+}
+
+func (f *File) cancelAzWriter() {
+	if f.azWriter == nil {
+		return
+	}
+	if f.cancelFunc != nil {
+		f.cancelFunc()
+		f.cancelFunc = nil
+	}
+	_ = f.azWriter.CloseWithError(context.Canceled)
+	f.azWriter = nil
+	if f.azWriterCompleteCh != nil {
+		<-f.azWriterCompleteCh //nolint:errcheck // upload was intentionally canceled on Seek
+		f.azWriterCompleteCh = nil
+	}
+}
+
+// Write implements the io.Writer interface. Writes are not committed to Azure Blob Storage until Close() is called.
 func (f *File) Write(p []byte) (int, error) {
-	if err := f.checkTempFile(true); err != nil {
+	if f.writeErr != nil {
+		return 0, utils.WrapWriteError(f.writeErr)
+	}
+
+	if err := f.initWriters(); err != nil {
 		return 0, utils.WrapWriteError(err)
 	}
 
-	n, err := f.tempFile.Write(p)
+	// Streaming mode: write straight to the Azure upload pipe without a local temp file.
+	if f.tempFileWriter == nil {
+		written, err := f.azWriter.Write(p)
+		f.cursorPos += int64(written)
+		if err != nil {
+			return written, utils.WrapWriteError(err)
+		}
+		f.writeCalled = true
+
+		return written, nil
+	}
+
+	written, err := f.tempFileWriter.Write(p)
 	if err != nil {
-		return 0, utils.WrapWriteError(err)
+		return 0, utils.WrapWriteError(f.abortWrite(errLocalWriteBuffer(err)))
 	}
 
-	f.isDirty = true
+	if f.azWriter != nil {
+		azWritten, err := f.azWriter.Write(p)
+		if err != nil {
+			return 0, utils.WrapWriteError(err)
+		}
+		if written != azWritten {
+			return 0, utils.WrapWriteError(
+				fmt.Errorf("local write and azure write are different sizes: local=%d, azure=%d", written, azWritten),
+			)
+		}
+	}
 
-	return n, nil
+	f.cursorPos += int64(written)
+	f.writeCalled = true
+
+	return written, nil
 }
 
-// String returns the file URI
+// abortWrite tears down an in-flight write after a local buffer or copy failure: it cancels the upload so no partial
+// blob is committed, removes the temp file, and latches err so later operations and Close report it.
+func (f *File) abortWrite(err error) error {
+	hadWriter := f.azWriter != nil
+	if f.cancelFunc != nil {
+		f.cancelFunc()
+		f.cancelFunc = nil
+	}
+	if f.azWriter != nil {
+		_ = f.azWriter.CloseWithError(err)
+		f.azWriter = nil
+	}
+	if hadWriter && f.azWriterCompleteCh != nil {
+		<-f.azWriterCompleteCh //nolint:errcheck // upload was just canceled, so its error is expected
+		f.azWriterCompleteCh = nil
+	}
+	if r, ok := f.reader.(*os.File); ok && r == f.tempFileWriter {
+		f.reader = nil
+	}
+	if f.reader != nil {
+		if closeErr := f.reader.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
+		f.reader = nil
+	}
+	if cleanupErr := f.cleanupTempFile(); cleanupErr != nil {
+		err = errors.Join(err, cleanupErr)
+	}
+	f.writeErr = err
+
+	return err
+}
+
+func (f *File) selectWriteMode() error {
+	if f.tempFileWriter != nil || f.streaming {
+		return nil
+	}
+	explicitlyUnbuffered := !newfile.UseWriteBuffer(!f.location.fileSystem.options.DisableWriteBuffer, f.opts)
+	if !explicitlyUnbuffered && !f.ephemeralStream {
+		return nil
+	}
+	if f.seekCalled || f.readCalled {
+		return vfs.ErrWriteBufferDisabled
+	}
+
+	client, err := f.location.fileSystem.Client()
+	if err != nil {
+		return err
+	}
+	if _, ok := client.(types.BlobStreamer); !ok {
+		if explicitlyUnbuffered {
+			return errors.New("streaming writes require an azure Client that implements types.BlobStreamer")
+		}
+		f.ephemeralStream = false
+		return nil
+	}
+
+	f.streaming = true
+	return nil
+}
+
+func (f *File) initWriters() error {
+	if err := f.selectWriteMode(); err != nil {
+		return err
+	}
+
+	if f.tempFileWriter == nil && !f.streaming {
+		tmpFile, err := os.CreateTemp("", fmt.Sprintf("vfs_azure_%s.%d", path.Base(f.Name()), time.Now().UnixNano()))
+		if err != nil {
+			return f.abortWrite(errLocalWriteBuffer(err))
+		}
+		f.tempFileWriter = tmpFile
+
+		// If Seek or Read preceded this first Write, close any open remote reader, download the existing blob
+		// into the temp file, and reposition to cursorPos so the write edits rather than replaces the blob.
+		if f.seekCalled || f.readCalled {
+			if err := f.closeRemoteReader(); err != nil {
+				return f.cleanupTempFileOnErr(err)
+			}
+			if err := f.copyToLocalTempReader(tmpFile); err != nil {
+				return f.cleanupTempFileOnErr(err)
+			}
+			if _, err := f.tempFileWriter.Seek(f.cursorPos, io.SeekStart); err != nil {
+				return f.cleanupTempFileOnErr(err)
+			}
+		}
+	}
+
+	if f.azWriter == nil && !f.seekCalled && !f.readCalled {
+		client, err := f.location.fileSystem.Client()
+		if err != nil {
+			f.streaming = false
+			return f.cleanupTempFileOnErr(err)
+		}
+		if streamer, ok := client.(types.BlobStreamer); ok {
+			f.azWriter = f.startAzWriter(streamer)
+		}
+	}
+
+	return nil
+}
+
+func (f *File) startAzWriter(streamer types.BlobStreamer) *io.PipeWriter {
+	ctx, cancel := context.WithCancel(context.Background())
+	f.cancelFunc = cancel
+	completeCh := make(chan error, 1)
+	f.azWriterCompleteCh = completeCh
+	pr, pw := io.Pipe()
+	contentType := f.resolveContentType()
+
+	go func() {
+		err := streamer.UploadStream(ctx, f, pr, contentType)
+		if err != nil {
+			_ = pr.CloseWithError(err)
+		}
+		completeCh <- err
+	}()
+
+	return pw
+}
+
+func (f *File) copyToLocalTempReader(tmpFile *os.File) error {
+	client, err := f.location.fileSystem.Client()
+	if err != nil {
+		return err
+	}
+
+	var reader io.ReadCloser
+	if streamer, ok := client.(types.BlobStreamer); ok {
+		reader, err = streamer.DownloadRange(context.Background(), f, 0)
+	} else {
+		reader, err = client.Download(f)
+	}
+	if err != nil {
+		if bloberror.HasCode(err, bloberror.BlobNotFound) {
+			return os.ErrNotExist
+		}
+		return err
+	}
+
+	buffer := make([]byte, utils.TouchCopyMinBufferSize)
+	if _, err := io.CopyBuffer(tmpFile, reader, buffer); err != nil {
+		_ = reader.Close()
+		return err
+	}
+
+	if err := reader.Close(); err != nil {
+		return err
+	}
+
+	if _, err := tmpFile.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// String returns the file URI.
 func (f *File) String() string {
 	return f.URI()
 }
 
-// Exists returns true/false if the file exists/does not exist on Azure
+// Exists returns true/false if the file exists/does not exist on Azure.
 func (f *File) Exists() (bool, error) {
 	client, err := f.location.fileSystem.Client()
 	if err != nil {
@@ -138,7 +555,7 @@ func (f *File) Exists() (bool, error) {
 	return true, nil
 }
 
-// Location returns a Location instance for the files current location
+// Location returns a Location instance for the file's current location.
 func (f *File) Location() vfs.Location {
 	return f.location
 }
@@ -147,7 +564,12 @@ func (f *File) Location() vfs.Location {
 // name at the given location. If the given location is also azure, the azure API for copying
 // files will be utilized, otherwise, standard io.Copy will be done to the new file.
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
-	newFile, err := location.NewFile(utils.RemoveLeadingSlash(f.Name()), f.opts...)
+	var newFileOpts []options.NewFileOption
+	if ct := contentTypeOption(f.opts); ct != nil {
+		newFileOpts = append(newFileOpts, ct)
+	}
+
+	newFile, err := location.NewFile(utils.RemoveLeadingSlash(f.Name()), newFileOpts...)
 	if err != nil {
 		return nil, utils.WrapCopyToLocationError(err)
 	}
@@ -161,13 +583,9 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 // CopyToFile puts the contents of the receiver (f *File) into the passed vfs.File parameter.
 func (f *File) CopyToFile(file vfs.File) (err error) {
-	// Close file (f) reader regardless of an error
 	defer func() {
-		// close writer
 		wErr := file.Close()
-		// close reader
 		rErr := f.Close()
-		//
 		if err == nil {
 			if wErr != nil {
 				err = utils.WrapCopyToFileError(wErr)
@@ -177,13 +595,11 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 		}
 	}()
 
-	// validate seek is at 0,0 before doing copy
 	if verr := backend.ValidateCopySeekPosition(f); verr != nil {
 		return utils.WrapCopyToFileError(verr)
 	}
 
-	azFile, ok := file.(*File)
-	if ok {
+	if azFile, ok := file.(*File); ok {
 		if f.isSameAuth(azFile) {
 			client, err := f.location.fileSystem.Client()
 			if err != nil {
@@ -191,9 +607,19 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 			}
 			return client.Copy(f, file)
 		}
+
+		// Cross-auth copy streams through TouchCopyBuffered: if the target has no ContentType option of its own,
+		// inherit any ContentType from the source for the duration of this copy without mutating azFile.opts
+		// permanently or copying non-metadata options such as WithWriteBuffer/WithStreamingWrite.
+		if contentTypeOption(azFile.opts) == nil {
+			if ct := contentTypeOption(f.opts); ct != nil {
+				origOpts := azFile.opts
+				azFile.opts = append(slices.Clone(azFile.opts), ct)
+				defer func() { azFile.opts = origOpts }()
+			}
+		}
 	}
 
-	// Otherwise, use TouchCopyBuffered using io.CopyBuffer
 	fileBufferSize := max(f.location.fileSystem.options.FileBufferSize, 0)
 
 	if terr := utils.TouchCopyBuffered(file, f, fileBufferSize); terr != nil {
@@ -207,7 +633,7 @@ func (f *File) CopyToFile(file vfs.File) (err error) {
 	return nil
 }
 
-// MoveToLocation copies the receiver to the passed location.  After the copy succeeds, the original is deleted.
+// MoveToLocation copies the receiver to the passed location. After the copy succeeds, the original is deleted.
 func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 	newFile, err := f.CopyToLocation(location)
 	if err != nil {
@@ -260,7 +686,7 @@ func (f *File) Delete(opts ...options.DeleteOption) error {
 	return nil
 }
 
-// LastModified returns the last modified time as a time.Time
+// LastModified returns the last modified time as a time.Time.
 func (f *File) LastModified() (*time.Time, error) {
 	client, err := f.location.fileSystem.Client()
 	if err != nil {
@@ -273,15 +699,29 @@ func (f *File) LastModified() (*time.Time, error) {
 	return props.LastModified, nil
 }
 
-// Size returns the size of the blob
+// Size returns the size of the blob.
 func (f *File) Size() (uint64, error) {
-	client, err := f.location.fileSystem.Client()
+	size, err := f.blobSize()
 	if err != nil {
 		return 0, utils.WrapSizeError(err)
 	}
+	return size, nil
+}
+
+func (f *File) blobSize() (uint64, error) {
+	client, err := f.location.fileSystem.Client()
+	if err != nil {
+		return 0, err
+	}
 	props, err := client.Properties(f.Location().Authority().String(), f.Path())
 	if err != nil {
-		return 0, utils.WrapSizeError(err)
+		if bloberror.HasCode(err, bloberror.BlobNotFound) {
+			return 0, os.ErrNotExist
+		}
+		return 0, err
+	}
+	if props == nil || props.Size == nil {
+		return 0, nil
 	}
 	return uint64(*props.Size), nil
 }
@@ -291,12 +731,12 @@ func (f *File) Path() string {
 	return f.name
 }
 
-// Name returns the name of the file
+// Name returns the name of the file.
 func (f *File) Name() string {
 	return path.Base(f.name)
 }
 
-// Touch creates a zero-length file on the vfs.File if no File exists.  If the file exists, Touch updates the file's
+// Touch creates a zero-length file on the vfs.File if no File exists. If the file exists, Touch updates the file's
 // last modified parameter.
 func (f *File) Touch() error {
 	exists, err := f.Exists()
@@ -310,16 +750,7 @@ func (f *File) Touch() error {
 	}
 
 	if !exists {
-		var contentType string
-		for _, o := range f.opts {
-			switch o := o.(type) {
-			case *newfile.ContentType:
-				contentType = *(*string)(o)
-			default:
-			}
-		}
-
-		return client.Upload(f, strings.NewReader(""), contentType)
+		return client.Upload(f, strings.NewReader(""), f.resolveContentType())
 	}
 
 	props, err := client.Properties(f.Location().Authority().String(), f.Path())
@@ -345,72 +776,21 @@ func (f *File) URI() string {
 	return utils.GetFileURI(f)
 }
 
-// checkTempFile lazily initializes the local temp file that backs Read, Seek,
-// and Write operations. It only does work the first time it is called for a
-// given File (when f.tempFile is nil); the isWrite flag then selects how that
-// initial temp file is seeded so the backend behaves consistently with the
-// other backends (e.g. s3):
-//   - Write (isWrite=true) seeds an empty temp file without downloading the
-//     existing blob, so a write that does not first Seek replaces the blob
-//     rather than overwriting downloaded content in place. (A prior Read/Seek
-//     will have already populated the temp file, so read-modify-write still
-//     works.)
-//   - Read/Seek (isWrite=false) require the existing remote content, so a blob
-//     that does not exist returns os.ErrNotExist rather than silently operating
-//     on an empty temp file.
-func (f *File) checkTempFile(isWrite bool) error {
-	if f.tempFile != nil {
-		return nil
+func (f *File) resolveContentType() string {
+	if ct := contentTypeOption(f.opts); ct != nil {
+		return string(*ct)
 	}
+	return ""
+}
 
-	// Writes start from an empty temp file and need neither the client nor an
-	// existence check.
-	if isWrite {
-		tf, err := os.CreateTemp("", fmt.Sprintf("%s.%d", path.Base(f.Name()), time.Now().UnixNano()))
-		if err != nil {
-			return err
+func contentTypeOption(opts []options.NewFileOption) *newfile.ContentType {
+	var ct *newfile.ContentType
+	for _, o := range opts {
+		if c, ok := o.(*newfile.ContentType); ok {
+			ct = c
 		}
-		f.tempFile = tf
-		return nil
 	}
-
-	client, err := f.location.fileSystem.Client()
-	if err != nil {
-		return err
-	}
-
-	exists, err := f.Exists()
-	if err != nil {
-		return err
-	}
-	if !exists {
-		return os.ErrNotExist
-	}
-
-	reader, err := client.Download(f)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = reader.Close() }()
-
-	tf, err := os.CreateTemp("", fmt.Sprintf("%s.%d", path.Base(f.Name()), time.Now().UnixNano()))
-	if err != nil {
-		return err
-	}
-
-	buffer := make([]byte, utils.TouchCopyMinBufferSize)
-	if _, err := io.CopyBuffer(tf, reader, buffer); err != nil {
-		_ = tf.Close()
-		return err
-	}
-
-	if _, err := tf.Seek(0, 0); err != nil {
-		_ = tf.Close()
-		return err
-	}
-
-	f.tempFile = tf
-	return nil
+	return ct
 }
 
 func (f *File) isSameAuth(target *File) bool {
