@@ -355,10 +355,17 @@ func (ts *writeBufferTestSuite) TestTempWriteFailureAbortsUpload() {
 	ts.Nil(f.gcsWriter)
 	ts.Empty(ts.tempFiles(), "temp file should be removed immediately")
 
-	// later writes fail with the latched error
+	// later writes, seeks, and reads fail with the latched error rather than touching the remote object
 	_, err = f.Write([]byte("ghi"))
 	ts.Require().Error(err)
 	ts.Contains(err.Error(), "newfile.WithStreamingWrite()")
+	_, err = f.Seek(0, io.SeekStart)
+	ts.Require().Error(err)
+	ts.Contains(err.Error(), "newfile.WithStreamingWrite()")
+	_, err = f.Read(make([]byte, 1))
+	ts.Require().Error(err)
+	ts.Contains(err.Error(), "newfile.WithStreamingWrite()")
+	ts.Nil(f.reader, "aborted handle must not open a remote reader")
 
 	// Close reports the failure without committing and resets state
 	err = f.Close()
@@ -463,6 +470,179 @@ func (ts *writeBufferTestSuite) TestAbortWriteClosesNetworkReader() {
 	ts.True(reader.closed, "a network reader must be closed when the write is aborted")
 	ts.Nil(f.reader)
 	ts.Require().Error(f.writeErr)
+}
+
+func (ts *writeBufferTestSuite) TestTouchCopyBufferedReaderErrorAbortsUpload() {
+	f := ts.newFile(Options{}, "/copy-aborted.txt")
+	boom := errors.New("source connection reset")
+
+	err := utils.TouchCopyBuffered(f, &partialErrReader{chunk: "partial", err: boom}, 0)
+	ts.Require().ErrorIs(err, boom)
+	ts.False(f.ephemeralStream)
+	ts.Nil(f.gcsWriter, "in-flight upload must be torn down when the copy fails")
+	ts.Empty(ts.tempFiles())
+
+	closeErr := f.Close()
+	ts.Require().ErrorIs(closeErr, boom)
+
+	for range 15 {
+		ts.Require().False(ts.objectExists("copy-aborted.txt"), "no truncated object may be committed after a failed copy")
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+func (ts *writeBufferTestSuite) TestNestedBeginSequentialWrite() {
+	f := ts.newFile(Options{}, "/nested.txt")
+
+	outerEnd := utils.BeginSequentialWrite(f)
+	innerEnd := utils.BeginSequentialWrite(f)
+	utils.AbortWrite(f, errors.New("before first write"))
+	innerEnd()
+	ts.True(f.ephemeralStream, "inner end must not clear the outer sequential write scope")
+	ts.Require().NoError(f.writeErr)
+
+	_, err := f.Write([]byte("streamed"))
+	ts.Require().NoError(err)
+	ts.Empty(ts.tempFiles())
+
+	outerEnd()
+	ts.False(f.ephemeralStream)
+	ts.Require().NoError(f.Close())
+	ts.Equal("streamed", ts.objectContents("nested.txt"))
+}
+
+func (ts *writeBufferTestSuite) TestCleanupTempFileRemovesWhenAlreadyClosed() {
+	f := ts.newFile(Options{}, "/f.txt")
+	tmp, err := os.CreateTemp(ts.tmpDir, "vfs_gcs_closed")
+	ts.Require().NoError(err)
+	ts.Require().NoError(tmp.Close())
+	f.tempFileWriter = tmp
+
+	err = f.cleanupTempFile()
+	ts.Require().ErrorIs(err, os.ErrClosed)
+	ts.Nil(f.tempFileWriter, "tempFileWriter must be cleared even when Close fails")
+	ts.Empty(ts.tempFiles(), "temp file must still be removed when Close fails")
+}
+
+func (ts *writeBufferTestSuite) TestCloseCancelsWriteContext() {
+	f := ts.newFile(Options{DisableWriteBuffer: true}, "/ctx.txt")
+	_, err := f.Write([]byte("hello"))
+	ts.Require().NoError(err)
+	ts.Require().NotNil(f.cancelFunc)
+
+	var canceled bool
+	orig := f.cancelFunc
+	f.cancelFunc = func() {
+		canceled = true
+		orig()
+	}
+
+	ts.Require().NoError(f.Close())
+	ts.True(canceled, "Close must cancel the per-write context to release parent context resources")
+	ts.Equal("hello", ts.objectContents("ctx.txt"))
+}
+
+func (ts *writeBufferTestSuite) TestInitWritersErrorCleansUpTempFile() {
+	f := ts.newFile(Options{}, "/"+wbSeedObject)
+	_, err := f.Seek(0, io.SeekStart)
+	ts.Require().NoError(err)
+
+	// remove the remote object so copyToLocalTempReader fails after CreateTemp succeeded
+	ts.Require().NoError(ts.server.Client().Bucket(wbBucket).Object(wbSeedObject).Delete(context.Background()))
+
+	_, err = f.Write([]byte("patch"))
+	ts.Require().Error(err)
+	ts.Nil(f.tempFileWriter, "failed initWriters must clean up tempFileWriter")
+	ts.Empty(ts.tempFiles(), "failed initWriters must remove the temp file")
+
+	// Close must not upload an empty temp file
+	ts.Require().NoError(f.Close())
+	ts.False(ts.objectExists(wbSeedObject))
+}
+
+func (ts *writeBufferTestSuite) TestCopyToFilePreservesTargetOptionsAndPropagatesContentType() {
+	tests := []struct {
+		name                string
+		sameAuth            bool
+		srcOpts             []options.NewFileOption
+		dstOpts             []options.NewFileOption
+		expectedContentType string
+		expectedBuffered    bool
+	}{
+		{
+			name:                "cross-auth: plain source preserves target WithWriteBuffer and ContentType",
+			srcOpts:             nil,
+			dstOpts:             []options.NewFileOption{newfile.WithWriteBuffer(), newfile.WithContentType("application/json")},
+			expectedContentType: "application/json",
+			expectedBuffered:    true,
+		},
+		{
+			name:                "cross-auth: source ContentType propagates even when target has streaming option",
+			srcOpts:             []options.NewFileOption{newfile.WithContentType("text/csv"), newfile.WithWriteBuffer()},
+			dstOpts:             []options.NewFileOption{newfile.WithStreamingWrite()},
+			expectedContentType: "text/csv",
+			expectedBuffered:    false,
+		},
+		{
+			name:                "cross-auth: target ContentType overrides source ContentType",
+			srcOpts:             []options.NewFileOption{newfile.WithContentType("text/csv")},
+			dstOpts:             []options.NewFileOption{newfile.WithContentType("text/plain")},
+			expectedContentType: "text/plain",
+			expectedBuffered:    false,
+		},
+		{
+			name:                "same-auth: target ContentType is honored on native copy",
+			sameAuth:            true,
+			srcOpts:             nil,
+			dstOpts:             []options.NewFileOption{newfile.WithContentType("application/json")},
+			expectedContentType: "application/json",
+		},
+		{
+			name:                "same-auth: source ContentType option propagates when target has none",
+			sameAuth:            true,
+			srcOpts:             []options.NewFileOption{newfile.WithContentType("text/csv")},
+			dstOpts:             nil,
+			expectedContentType: "text/csv",
+		},
+	}
+
+	for i := range tests {
+		tt := &tests[i]
+		ts.Run(tt.name, func() {
+			dstCreds := "dst"
+			if tt.sameAuth {
+				dstCreds = "src"
+			}
+			src := ts.newFile(Options{CredentialFile: "src"}, "/"+wbSeedObject, tt.srcOpts...)
+			dstKey := "/copy-opts/" + strings.NewReplacer(" ", "_", ":", "").Replace(tt.name) + ".txt"
+			dst := ts.newFile(Options{CredentialFile: dstCreds}, dstKey, tt.dstOpts...)
+			origDstOptsLen := len(dst.opts)
+
+			ts.Require().NoError(src.CopyToFile(dst))
+
+			ts.Len(dst.opts, origDstOptsLen, "CopyToFile must not permanently mutate target opts")
+			ts.Equal(tt.expectedBuffered, newfile.UseWriteBuffer(false, dst.opts))
+			ts.Equal(wbSeedContents, ts.objectContents(dstKey[1:]))
+
+			attrs, err := ts.server.Client().Bucket(wbBucket).Object(dstKey[1:]).Attrs(context.Background())
+			ts.Require().NoError(err)
+			ts.Equal(tt.expectedContentType, attrs.ContentType)
+		})
+	}
+}
+
+type partialErrReader struct {
+	chunk string
+	err   error
+	sent  bool
+}
+
+func (r *partialErrReader) Read(p []byte) (int, error) {
+	if !r.sent {
+		r.sent = true
+		return copy(p, r.chunk), nil
+	}
+	return 0, r.err
 }
 
 // closeTracker is a reader whose Close is observable.

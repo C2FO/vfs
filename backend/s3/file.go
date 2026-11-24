@@ -403,17 +403,12 @@ func (f *File) Read(p []byte) (n int, err error) {
 
 func (f *File) cleanupTempFile() error {
 	if f.tempFileWriter != nil {
-		err := f.tempFileWriter.Close()
-		if err != nil {
-			return err
-		}
-
-		err = os.Remove(f.tempFileWriter.Name())
-		if err != nil {
-			return err
-		}
-
+		name := f.tempFileWriter.Name()
+		closeErr := f.tempFileWriter.Close()
+		removeErr := os.Remove(name)
 		f.tempFileWriter = nil
+
+		return errors.Join(closeErr, removeErr)
 	}
 
 	return nil
@@ -421,6 +416,9 @@ func (f *File) cleanupTempFile() error {
 
 // Seek implements the standard for io.Seeker.
 func (f *File) Seek(offset int64, whence int) (int64, error) {
+	if f.writeErr != nil {
+		return 0, utils.WrapSeekError(f.writeErr)
+	}
 	// without a local buffer the written bytes cannot be revisited; reject before touching the active upload
 	if f.streaming {
 		return 0, utils.WrapSeekError(vfs.ErrWriteBufferDisabled)
@@ -776,6 +774,9 @@ func waitUntilFileExists(file vfs.File, retries int) error {
 }
 
 func (f *File) getReader() (io.ReadCloser, error) {
+	if f.writeErr != nil {
+		return nil, f.writeErr
+	}
 	if f.streaming {
 		return nil, vfs.ErrWriteBufferDisabled
 	}
@@ -861,6 +862,7 @@ func (f *File) abortWrite(err error) error {
 	if cleanupErr := f.cleanupTempFile(); cleanupErr != nil {
 		err = errors.Join(err, cleanupErr)
 	}
+	f.readEOFSeen = false
 	f.writeErr = err
 
 	return err

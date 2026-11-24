@@ -1,6 +1,7 @@
 package mem
 
 import (
+	"errors"
 	"io"
 	"io/fs"
 	"os"
@@ -424,31 +425,62 @@ type streamTrackingFile struct {
 	enabled            bool
 	enabledDuringWrite bool
 	resets             int
+	writeErr           error
+	abortErr           error
 }
 
 func (f *streamTrackingFile) Write(p []byte) (int, error) {
 	f.enabledDuringWrite = f.enabled
+	if f.writeErr != nil {
+		return 0, f.writeErr
+	}
 	return f.File.Write(p)
 }
 
 func (f *streamTrackingFile) BeginSequentialWrite() func() {
 	f.enabled = true
-	return func() { f.enabled = false; f.resets++ }
+	return func() {
+		f.enabled = false
+		f.resets++
+	}
+}
+
+func (f *streamTrackingFile) AbortWrite(err error) {
+	f.abortErr = err
 }
 
 func (s *memFileTest) TestCopyToFileBeginsSequentialWrite() {
-	osFile, err := backend.Backend(_os.Scheme).NewFile("", filepath.Join(s.T().TempDir(), "target.txt"))
-	s.Require().NoError(err)
-	target := &streamTrackingFile{File: osFile}
-
-	_, err = s.testFile.Write([]byte("hello world"))
+	_, err := s.testFile.Write([]byte("hello world"))
 	s.Require().NoError(err)
 	s.Require().NoError(s.testFile.Close())
 
-	s.Require().NoError(s.testFile.CopyToFile(target))
-	s.True(target.enabledDuringWrite, "write buffer hook should be active during the write")
-	s.False(target.enabled)
-	s.Equal(1, target.resets)
+	boom := errors.New("write failed")
+	tests := []struct {
+		name     string
+		writeErr error
+	}{
+		{name: "successful copy does not abort"},
+		{name: "failed write aborts target", writeErr: boom},
+	}
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			osFile, err := backend.Backend(_os.Scheme).NewFile("", filepath.Join(s.T().TempDir(), "target.txt"))
+			s.Require().NoError(err)
+			target := &streamTrackingFile{File: osFile, writeErr: tt.writeErr}
+
+			err = s.testFile.CopyToFile(target)
+			if tt.writeErr != nil {
+				s.Require().ErrorIs(err, tt.writeErr)
+				s.Require().ErrorIs(target.abortErr, tt.writeErr)
+			} else {
+				s.Require().NoError(err)
+				s.Require().NoError(target.abortErr)
+			}
+			s.True(target.enabledDuringWrite, "write buffer hook should be active during the write")
+			s.False(target.enabled)
+			s.Equal(1, target.resets)
+		})
+	}
 }
 
 // TestCopyToFileOS tests "CopyToFile()" between one file in the in-memory FileSystem and the other in the os FileSystem

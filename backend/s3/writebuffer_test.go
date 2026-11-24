@@ -376,10 +376,17 @@ func (ts *writeBufferTestSuite) TestTempWriteFailureAbortsUpload() {
 	ts.Nil(f.s3WriterCompleteCh)
 	ts.Empty(ts.tempFiles(), "temp file should be removed immediately")
 
-	// later writes fail with the latched error
+	// later writes, seeks, and reads fail with the latched error rather than touching the remote object
 	_, err = f.Write([]byte("ghi"))
 	ts.Require().Error(err)
 	ts.Contains(err.Error(), "newfile.WithStreamingWrite()")
+	_, err = f.Seek(0, io.SeekStart)
+	ts.Require().Error(err)
+	ts.Contains(err.Error(), "newfile.WithStreamingWrite()")
+	_, err = f.Read(make([]byte, 1))
+	ts.Require().Error(err)
+	ts.Contains(err.Error(), "newfile.WithStreamingWrite()")
+	ts.Nil(f.reader, "aborted handle must not open a remote reader")
 
 	// Close reports the failure without committing and resets state
 	err = f.Close()
@@ -562,6 +569,86 @@ func (ts *writeBufferTestSuite) TestCloseReportsUploadErrorWhenNoWriteSucceeded(
 	err := f.Close()
 	ts.Require().Error(err)
 	ts.Contains(err.Error(), "access denied")
+}
+
+func (ts *writeBufferTestSuite) TestTouchCopyBufferedReaderErrorAbortsUpload() {
+	// PutObject fails on context cancellation without recording a committed upload
+	client := mocks.NewClient(ts.T())
+	var committed bool
+	client.EXPECT().PutObject(matchContext, mock.IsType((*s3.PutObjectInput)(nil)), mock.Anything, mock.Anything).
+		RunAndReturn(func(ctx context.Context, input *s3.PutObjectInput, _ ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+			_, err := io.ReadAll(input.Body)
+			if err != nil {
+				return nil, err
+			}
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
+			committed = true
+			return &s3.PutObjectOutput{}, nil
+		}).Maybe()
+
+	f := ts.newFile(client, Options{})
+	boom := errors.New("source connection reset")
+	err := utils.TouchCopyBuffered(f, &partialErrReader{chunk: "partial", err: boom}, 0)
+	ts.Require().ErrorIs(err, boom)
+	ts.False(f.ephemeralStream)
+	ts.Nil(f.s3Writer, "in-flight upload must be torn down when the copy fails")
+	ts.Nil(f.s3WriterCompleteCh, "upload goroutine must be drained even before Close")
+	ts.Empty(ts.tempFiles())
+
+	closeErr := f.Close()
+	ts.Require().ErrorIs(closeErr, boom)
+	ts.False(committed, "Close must not commit a partial object after a failed copy")
+}
+
+func (ts *writeBufferTestSuite) TestNestedBeginSequentialWrite() {
+	client, capture := ts.newClient()
+	f := ts.newFile(client, Options{})
+
+	outerEnd := utils.BeginSequentialWrite(f)
+	innerEnd := utils.BeginSequentialWrite(f)
+	// inner ends before any Write ran; outer scope must remain active and AbortWrite before any Write is a no-op
+	utils.AbortWrite(f, errors.New("before first write"))
+	innerEnd()
+	ts.True(f.ephemeralStream, "inner end must not clear the outer sequential write scope")
+	ts.Require().NoError(f.writeErr)
+
+	_, err := f.Write([]byte("streamed"))
+	ts.Require().NoError(err)
+	ts.Empty(ts.tempFiles())
+
+	outerEnd()
+	ts.False(f.ephemeralStream)
+	ts.Require().NoError(f.Close())
+	ts.Equal("streamed", capture.contents())
+}
+
+func (ts *writeBufferTestSuite) TestCleanupTempFileRemovesWhenAlreadyClosed() {
+	f := ts.newFile(mocks.NewClient(ts.T()), Options{})
+	tmp, err := os.CreateTemp(ts.tmpDir, "vfs_s3_closed")
+	ts.Require().NoError(err)
+	ts.Require().NoError(tmp.Close())
+	f.tempFileWriter = tmp
+
+	err = f.cleanupTempFile()
+	ts.Require().ErrorIs(err, os.ErrClosed)
+	ts.Nil(f.tempFileWriter, "tempFileWriter must be cleared even when Close fails")
+	ts.Empty(ts.tempFiles(), "temp file must still be removed when Close fails")
+}
+
+type partialErrReader struct {
+	chunk string
+	err   error
+	sent  bool
+}
+
+func (r *partialErrReader) Read(p []byte) (int, error) {
+	if !r.sent {
+		r.sent = true
+		return copy(p, r.chunk), nil
+	}
+	return 0, r.err
 }
 
 // closeTracker is a reader whose Close is observable.

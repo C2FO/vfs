@@ -302,9 +302,10 @@ func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
 
 // writeContents writes contents to target as one sequential write, letting backends that stage writes locally skip
 // their temporary buffer.
-func writeContents(target vfs.File, contents []byte) error {
+func writeContents(target vfs.File, contents []byte) (err error) {
 	defer utils.BeginSequentialWrite(target)()
-	_, err := target.Write(contents)
+	defer func() { utils.AbortWrite(target, err) }()
+	_, err = target.Write(contents)
 	return err
 }
 
