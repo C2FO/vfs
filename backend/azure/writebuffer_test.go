@@ -2,6 +2,7 @@ package azure
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/xml"
 	"errors"
@@ -1040,10 +1041,59 @@ func (ts *WriteBufferTestSuite) TestTouchCopyBufferedReaderErrorAbortsUpload() {
 	closeErr := f.Close()
 	ts.Require().ErrorIs(closeErr, boom)
 
+	ts.fake.mu.Lock()
+	stagedCount := len(ts.fake.stagedBlocks[wbContainer+"/copy-aborted.txt"])
+	ts.fake.mu.Unlock()
+	ts.GreaterOrEqual(stagedCount, 1, "at least one block should have been staged before the reader failed")
+
 	for range 15 {
 		ts.Require().False(ts.blobExists("copy-aborted.txt"), "no truncated blob may be committed after a failed copy")
 		time.Sleep(10 * time.Millisecond)
 	}
+}
+
+func (ts *WriteBufferTestSuite) TestBufferedAzureWriteFailurePreventsSeekAndCloseCommit() {
+	uploadErr := errors.New("azure upload stream failed")
+	uploadDone := make(chan struct{})
+	client := &funcBlobStreamer{
+		Client: mocks.NewClient(ts.T()),
+		uploadStreamFn: func(_ context.Context, _ vfs.File, r io.Reader, _ string) error {
+			defer close(uploadDone)
+			buf := make([]byte, 5)
+			_, _ = io.ReadFull(r, buf)
+			return uploadErr
+		},
+	}
+
+	fsys := NewFileSystem(WithClient(client))
+	raw, err := fsys.NewFile(wbContainer, "/az-write-fail.txt")
+	ts.Require().NoError(err)
+	f := raw.(*File)
+
+	// First Write succeeds (buffered into temp file and consumed by UploadStream).
+	_, err = f.Write([]byte("hello"))
+	ts.Require().NoError(err)
+
+	// Wait until UploadStream returns uploadErr and startAzWriter closes the pipe with uploadErr.
+	<-uploadDone
+	var writeErr error
+	for range 20 {
+		_, writeErr = f.Write([]byte("-more"))
+		if writeErr != nil {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	ts.Require().ErrorIs(writeErr, uploadErr)
+	ts.Empty(ts.tempFiles(), "local temp buffer must be removed when azure write fails")
+
+	// Subsequent Seek and Close must preserve the latched error and must NOT restart Upload / commit the blob.
+	// (client.Client has no Upload expectation, so any attempt to commit via tempToAzure would fail the test.)
+	_, seekErr := f.Seek(0, io.SeekStart)
+	ts.Require().ErrorIs(seekErr, uploadErr)
+
+	closeErr := f.Close()
+	ts.Require().ErrorIs(closeErr, uploadErr)
 }
 
 func (ts *WriteBufferTestSuite) TestNestedBeginSequentialWrite() {
@@ -1200,13 +1250,13 @@ func (ts *WriteBufferTestSuite) TestCustomNonStreamingClientFallbackAndRejection
 type partialErrReader struct {
 	chunk string
 	err   error
-	sent  bool
 }
 
 func (r *partialErrReader) Read(p []byte) (int, error) {
-	if !r.sent {
-		r.sent = true
-		return copy(p, r.chunk), nil
+	if r.chunk != "" {
+		n := copy(p, r.chunk)
+		r.chunk = r.chunk[n:]
+		return n, nil
 	}
 	return 0, r.err
 }
@@ -1228,6 +1278,20 @@ type errCloseReader struct {
 
 func (r *errCloseReader) Close() error {
 	return r.err
+}
+
+type funcBlobStreamer struct {
+	*mocks.Client
+	uploadStreamFn  func(ctx context.Context, file vfs.File, r io.Reader, contentType string) error
+	downloadRangeFn func(ctx context.Context, file vfs.File, offset int64) (io.ReadCloser, error)
+}
+
+func (f *funcBlobStreamer) UploadStream(ctx context.Context, file vfs.File, r io.Reader, contentType string) error {
+	return f.uploadStreamFn(ctx, file, r, contentType)
+}
+
+func (f *funcBlobStreamer) DownloadRange(ctx context.Context, file vfs.File, offset int64) (io.ReadCloser, error) {
+	return f.downloadRangeFn(ctx, file, offset)
 }
 
 func TestWriteBufferTestSuite(t *testing.T) {

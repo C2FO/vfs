@@ -362,12 +362,12 @@ func (f *File) Write(p []byte) (int, error) {
 	if f.azWriter != nil {
 		azWritten, err := f.azWriter.Write(p)
 		if err != nil {
-			return 0, utils.WrapWriteError(err)
+			return 0, utils.WrapWriteError(f.abortWrite(err))
 		}
 		if written != azWritten {
-			return 0, utils.WrapWriteError(
+			return 0, utils.WrapWriteError(f.abortWrite(
 				fmt.Errorf("local write and azure write are different sizes: local=%d, azure=%d", written, azWritten),
-			)
+			))
 		}
 	}
 
