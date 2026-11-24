@@ -51,7 +51,7 @@ func WithStreamingWrite() options.NewFileOption
 
 WithStreamingWrite returns the StreamingWrite implementation of NewFileOption.
 
-Backends that stage writes in a local temporary file so that Seek or Read can follow Write \(s3 and gs\) skip that local file and stream bytes directly to the remote object. Calling Seek or Read after Write, or Write after Seek or Read, before Close then fails with vfs.ErrWriteBufferDisabled. Backends that do not stage writes ignore the option.
+Backends that stage writes in a local temporary file so that Seek or Read can follow Write \(s3, gs, and azure\) skip that local file and stream bytes directly to the remote object. Calling Seek or Read after Write, or Write after Seek or Read, before Close then fails with vfs.ErrWriteBufferDisabled. Backends that do not stage writes ignore the option.
 
 <a name="WithWriteBuffer"></a>
 ## func WithWriteBuffer

@@ -109,17 +109,17 @@ Directory reads use `list.Entries`, so they include subdirectories and cost no p
 
 ## Streaming writes without local temp files
 
-The `s3` and `gs` backends mirror every `Write` to a local temporary file so that `Seek` or `Read` can follow `Write` before `Close`. That costs local disk, so writing a file larger than the available temp space fails, even though the bytes only need to go to the bucket. If you only write sequentially, turn the temp file off:
+The `s3`, `gs`, and `azure` backends mirror every `Write` to a local temporary file so that `Seek` or `Read` can follow `Write` before `Close`. That costs local disk, so writing a file larger than the available temp space fails, even though the bytes only need to go to the bucket or container. If you only write sequentially, turn the temp file off:
 
 ```go
 // for one file
 f, err := loc.NewFile("big.bin", newfile.WithStreamingWrite())
 
 // or for every file on a filesystem
-fs := s3.NewFileSystem(s3.WithOptions(s3.Options{DisableWriteBuffer: true}))  // gs.Options has the same field
+fs := s3.NewFileSystem(s3.WithOptions(s3.Options{DisableWriteBuffer: true}))  // gs.Options and azure.Options have the same field
 ```
 
-With the buffer off, bytes stream straight to the object and are committed on `Close`, as before. `Seek` or `Read` after `Write`, and `Write` after `Seek` or `Read`, return `vfs.ErrWriteBufferDisabled` until `Close`. A file can opt back in with `newfile.WithWriteBuffer()`; when both options are passed the last one wins. Other backends ignore these options. Copies and moves into `s3` or `gs` from another backend, and `s3` `Touch`, never use a temp file.
+With the buffer off, bytes stream straight to the object and are committed on `Close`, as before. `Seek` or `Read` after `Write`, and `Write` after `Seek` or `Read`, return `vfs.ErrWriteBufferDisabled` until `Close`. A file can opt back in with `newfile.WithWriteBuffer()`; when both options are passed the last one wins. Other backends ignore these options. Copies and moves into `s3`, `gs`, or `azure` from another backend, and `s3` and `azure` `Touch`, never use a temp file.
 
 ## Advanced Usage
 * See the [GoDoc](https://pkg.go.dev/github.com/c2fo/vfs/v7) for deeper technical details, backend-specific options, and additional APIs.

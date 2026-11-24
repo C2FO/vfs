@@ -22,10 +22,15 @@ import (
 
 type Client = types.Client
 
+const defaultUploadStreamBlockSize = 8 * 1024 * 1024
+
+var _ types.BlobStreamer = (*DefaultClient)(nil)
+
 // DefaultClient is the main implementation that actually makes the calls to Azure Blob Storage
 type DefaultClient struct {
-	serviceURL *url.URL
-	credential any
+	serviceURL            *url.URL
+	credential            any
+	uploadStreamBlockSize int64
 }
 
 // NewClient initializes a new DefaultClient
@@ -96,17 +101,13 @@ func (a *DefaultClient) Upload(file vfs.File, content io.ReadSeeker, contentType
 		return err
 	}
 	blobURL := cli.NewBlockBlobClient(utils.RemoveLeadingSlash(file.Path()))
-	body, ok := content.(io.ReadSeekCloser)
-	if !ok {
-		body = streaming.NopCloser(content)
-	}
 	var opts *blockblob.UploadOptions
 	if contentType != "" {
 		opts = &blockblob.UploadOptions{
 			HTTPHeaders: &blob.HTTPHeaders{BlobContentType: &contentType},
 		}
 	}
-	_, err = blobURL.Upload(context.Background(), body, opts)
+	_, err = blobURL.Upload(context.Background(), streaming.NopCloser(content), opts)
 	return err
 }
 
@@ -121,14 +122,46 @@ func (a *DefaultClient) SetMetadata(file vfs.File, metadata map[string]*string) 
 	return err
 }
 
+// UploadStream streams content into a block blob without requiring a seekable reader.
+func (a *DefaultClient) UploadStream(ctx context.Context, file vfs.File, content io.Reader, contentType string) error {
+	cli, err := a.newContainerClient(file.Location().Authority().String())
+	if err != nil {
+		return err
+	}
+	blobURL := cli.NewBlockBlobClient(utils.RemoveLeadingSlash(file.Path()))
+	blockSize := a.uploadStreamBlockSize
+	if blockSize <= 0 {
+		blockSize = defaultUploadStreamBlockSize
+	}
+	opts := &blockblob.UploadStreamOptions{
+		BlockSize: blockSize,
+	}
+	if contentType != "" {
+		opts.HTTPHeaders = &blob.HTTPHeaders{BlobContentType: new(contentType)}
+	}
+	_, err = blobURL.UploadStream(ctx, content, opts)
+	return err
+}
+
 // Download returns an io.ReadCloser for the given vfs.File
 func (a *DefaultClient) Download(file vfs.File) (io.ReadCloser, error) {
+	return a.DownloadRange(context.Background(), file, 0)
+}
+
+// DownloadRange returns an io.ReadCloser for the given vfs.File starting at byte offset.
+func (a *DefaultClient) DownloadRange(ctx context.Context, file vfs.File, offset int64) (io.ReadCloser, error) {
 	cli, err := a.newContainerClient(file.Location().Authority().String())
 	if err != nil {
 		return nil, err
 	}
 	blobURL := cli.NewBlockBlobClient(utils.RemoveLeadingSlash(file.Path()))
-	get, err := blobURL.DownloadStream(context.Background(), nil)
+	var opts *blob.DownloadStreamOptions
+	if offset > 0 {
+		opts = &blob.DownloadStreamOptions{
+			Range: blob.HTTPRange{Offset: offset},
+		}
+	}
+	get, err := blobURL.DownloadStream(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
