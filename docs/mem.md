@@ -135,7 +135,7 @@ CopyToFile copies the receiver file into the target file. Additionally, after th
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error)
 ```
 
-CopyToLocation copies the current file to the given location. If file exists at given location contents are simply overwritten using "CopyToFile", otherwise a newFile is made, takes the contents of the current file, and ends up at the given location
+CopyToLocation copies the current file to the given location. If a file exists at the given location, its contents are overwritten using CopyToFile; otherwise a new file is created at the given location with the receiver's contents.
 
 <a name="File.Delete"></a>
 ### func \(\*File\) Delete

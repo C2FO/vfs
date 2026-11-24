@@ -394,6 +394,266 @@ func (s *memFileTest) TestCopyToLocationOS() {
 	s.Require().NoError(copiedFile.Close())
 }
 
+// TestCopyToLocationSamePath verifies CopyToLocation writes to the target location even when its path matches the
+// source file's path in mem, across different backends, different mem filesystems, different volumes, and self-copies.
+func (s *memFileTest) TestCopyToLocationSamePath() {
+	const payload = "hello same path"
+
+	writeAndClose := func(f vfs.File, data string) {
+		_, err := f.Write([]byte(data))
+		s.Require().NoError(err)
+		s.Require().NoError(f.Close())
+	}
+	readAndClose := func(f vfs.File) string {
+		data, err := io.ReadAll(f)
+		s.Require().NoError(err)
+		s.Require().NoError(f.Close())
+		return string(data)
+	}
+
+	tests := []struct {
+		name  string
+		setup func() (src vfs.File, dstLoc vfs.Location, wantScheme string, wantAuth string)
+	}{
+		{
+			name: "non-mem os target at matching path",
+			setup: func() (vfs.File, vfs.Location, string, string) {
+				osLoc, err := backend.Backend(_os.Scheme).NewLocation("", s.T().TempDir()+"/")
+				s.Require().NoError(err)
+				srcFS := NewFileSystem()
+				srcLoc, err := srcFS.NewLocation("", osLoc.Path())
+				s.Require().NoError(err)
+				srcFile, err := srcLoc.NewFile("a.txt")
+				s.Require().NoError(err)
+				writeAndClose(srcFile, payload)
+				return srcFile, osLoc, _os.Scheme, osLoc.Authority().String()
+			},
+		},
+		{
+			name: "non-mem os target at matching path overwrites existing file",
+			setup: func() (vfs.File, vfs.Location, string, string) {
+				osLoc, err := backend.Backend(_os.Scheme).NewLocation("", s.T().TempDir()+"/")
+				s.Require().NoError(err)
+				existing, err := osLoc.NewFile("a.txt")
+				s.Require().NoError(err)
+				writeAndClose(existing, "stale")
+
+				srcFS := NewFileSystem()
+				srcLoc, err := srcFS.NewLocation("", osLoc.Path())
+				s.Require().NoError(err)
+				srcFile, err := srcLoc.NewFile("a.txt")
+				s.Require().NoError(err)
+				writeAndClose(srcFile, payload)
+				return srcFile, osLoc, _os.Scheme, osLoc.Authority().String()
+			},
+		},
+		{
+			name: "different mem FileSystem at same volume and root path",
+			setup: func() (vfs.File, vfs.Location, string, string) {
+				srcFS := NewFileSystem()
+				dstFS := NewFileSystem()
+				srcFile, err := srcFS.NewFile("", "/a.txt")
+				s.Require().NoError(err)
+				writeAndClose(srcFile, payload)
+				dstLoc, err := dstFS.NewLocation("", "/")
+				s.Require().NoError(err)
+				return srcFile, dstLoc, Scheme, ""
+			},
+		},
+		{
+			name: "different mem FileSystem at same volume and root path overwrites existing file",
+			setup: func() (vfs.File, vfs.Location, string, string) {
+				srcFS := NewFileSystem()
+				dstFS := NewFileSystem()
+				srcFile, err := srcFS.NewFile("", "/a.txt")
+				s.Require().NoError(err)
+				writeAndClose(srcFile, payload)
+				existing, err := dstFS.NewFile("", "/a.txt")
+				s.Require().NoError(err)
+				writeAndClose(existing, "old contents")
+				dstLoc, err := dstFS.NewLocation("", "/")
+				s.Require().NoError(err)
+				return srcFile, dstLoc, Scheme, ""
+			},
+		},
+		{
+			name: "same mem FileSystem different volume at root path",
+			setup: func() (vfs.File, vfs.Location, string, string) {
+				memFS := NewFileSystem()
+				srcFile, err := memFS.NewFile("volA", "/a.txt")
+				s.Require().NoError(err)
+				writeAndClose(srcFile, payload)
+				dstLoc, err := memFS.NewLocation("volB", "/")
+				s.Require().NoError(err)
+				return srcFile, dstLoc, Scheme, "volB"
+			},
+		},
+		{
+			name: "same mem FileSystem same volume and path preserves contents",
+			setup: func() (vfs.File, vfs.Location, string, string) {
+				memFS := NewFileSystem()
+				srcFile, err := memFS.NewFile("volA", "/a.txt")
+				s.Require().NoError(err)
+				writeAndClose(srcFile, payload)
+				return srcFile, srcFile.Location(), Scheme, "volA"
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			src, dstLoc, wantScheme, wantAuth := tt.setup()
+
+			copied, err := src.CopyToLocation(dstLoc)
+			s.Require().NoError(err)
+			s.Require().NotNil(copied)
+			s.Same(dstLoc.FileSystem(), copied.Location().FileSystem())
+			s.Equal(wantScheme, copied.Location().FileSystem().Scheme())
+			s.Equal(wantAuth, copied.Location().Authority().String())
+			s.Equal(payload, readAndClose(copied))
+			s.Equal(payload, readAndClose(src))
+
+			reopened, err := dstLoc.NewFile("a.txt")
+			s.Require().NoError(err)
+			exists, err := reopened.Exists()
+			s.Require().NoError(err)
+			s.True(exists, "destination file should exist at dstLoc")
+			s.Equal(payload, readAndClose(reopened))
+		})
+	}
+
+	s.Run("nil location returns error", func() {
+		_, err := s.testFile.CopyToLocation(nil)
+		s.Require().ErrorIs(err, errNilReference)
+	})
+}
+
+// TestCopyToFileMemTargetOverwriteAndErrorAtomicity verifies CopyToFile overwrites a previously seeked/read mem target
+// cleanly and does not truncate an existing mem target if the write fails before Close.
+func (s *memFileTest) TestCopyToFileMemTargetOverwriteAndErrorAtomicity() {
+	s.Run("overwrites mem target that had prior Read/Seek cursor state", func() {
+		memFS := NewFileSystem()
+		src, err := memFS.NewFile("", "/src.txt")
+		s.Require().NoError(err)
+		_, err = src.Write([]byte("short"))
+		s.Require().NoError(err)
+		s.Require().NoError(src.Close())
+
+		dst, err := memFS.NewFile("", "/dst.txt")
+		s.Require().NoError(err)
+		_, err = dst.Write([]byte("much longer existing content"))
+		s.Require().NoError(err)
+		s.Require().NoError(dst.Close())
+
+		// Advance cursor on dst without closing before passing dst to CopyToFile.
+		_, err = dst.Seek(5, io.SeekStart)
+		s.Require().NoError(err)
+		buf := make([]byte, 4)
+		_, err = dst.Read(buf)
+		s.Require().NoError(err)
+
+		s.Require().NoError(src.CopyToFile(dst))
+
+		got, err := io.ReadAll(dst)
+		s.Require().NoError(err)
+		s.Require().NoError(dst.Close())
+		s.Equal("short", string(got))
+	})
+
+	s.Run("failed write leaves existing mem target contents intact", func() {
+		memFS := NewFileSystem()
+		src, err := memFS.NewFile("", "/src.txt")
+		s.Require().NoError(err)
+		_, err = src.Write([]byte("replacement"))
+		s.Require().NoError(err)
+		s.Require().NoError(src.Close())
+
+		dst, err := memFS.NewFile("", "/dst.txt")
+		s.Require().NoError(err)
+		_, err = dst.Write([]byte("keep me"))
+		s.Require().NoError(err)
+		s.Require().NoError(dst.Close())
+
+		boom := errors.New("simulated target write failure")
+		failingTarget := &streamTrackingFile{File: dst, writeErr: boom}
+		err = src.CopyToFile(failingTarget)
+		s.Require().ErrorIs(err, boom)
+
+		reopened, err := memFS.NewFile("", "/dst.txt")
+		s.Require().NoError(err)
+		got, err := io.ReadAll(reopened)
+		s.Require().NoError(err)
+		s.Require().NoError(reopened.Close())
+		s.Equal("keep me", string(got))
+	})
+}
+
+// TestMoveToLocationCrossFileSystemSamePath verifies MoveToLocation moves across distinct mem FileSystems and to os
+// locations even when source and destination share the same path.
+func (s *memFileTest) TestMoveToLocationCrossFileSystemSamePath() {
+	const payload = "moved across fs"
+
+	s.Run("different mem FileSystem overwrites existing file at root", func() {
+		srcFS := NewFileSystem()
+		dstFS := NewFileSystem()
+
+		srcFile, err := srcFS.NewFile("", "/a.txt")
+		s.Require().NoError(err)
+		_, err = srcFile.Write([]byte(payload))
+		s.Require().NoError(err)
+		s.Require().NoError(srcFile.Close())
+
+		existing, err := dstFS.NewFile("", "/a.txt")
+		s.Require().NoError(err)
+		_, err = existing.Write([]byte("stale"))
+		s.Require().NoError(err)
+		s.Require().NoError(existing.Close())
+
+		dstLoc, err := dstFS.NewLocation("", "/")
+		s.Require().NoError(err)
+
+		moved, err := srcFile.MoveToLocation(dstLoc)
+		s.Require().NoError(err)
+		s.Equal(dstFS, moved.Location().FileSystem())
+
+		srcExists, err := srcFile.Exists()
+		s.Require().NoError(err)
+		s.False(srcExists)
+
+		got, err := io.ReadAll(moved)
+		s.Require().NoError(err)
+		s.Require().NoError(moved.Close())
+		s.Equal(payload, string(got))
+	})
+
+	s.Run("non-mem os target at matching path", func() {
+		osLoc, err := backend.Backend(_os.Scheme).NewLocation("", s.T().TempDir()+"/")
+		s.Require().NoError(err)
+
+		srcFS := NewFileSystem()
+		srcLoc, err := srcFS.NewLocation("", osLoc.Path())
+		s.Require().NoError(err)
+		srcFile, err := srcLoc.NewFile("a.txt")
+		s.Require().NoError(err)
+		_, err = srcFile.Write([]byte(payload))
+		s.Require().NoError(err)
+		s.Require().NoError(srcFile.Close())
+
+		moved, err := srcFile.MoveToLocation(osLoc)
+		s.Require().NoError(err)
+		s.Equal(_os.Scheme, moved.Location().FileSystem().Scheme())
+
+		srcExists, err := srcFile.Exists()
+		s.Require().NoError(err)
+		s.False(srcExists)
+
+		got, err := io.ReadAll(moved)
+		s.Require().NoError(err)
+		s.Require().NoError(moved.Close())
+		s.Equal(payload, string(got))
+	})
+}
+
 // TestCopyToFile tests "CopyToFile()" between two files both in the in-memory FileSystem
 func (s *memFileTest) TestCopyToFile() {
 	expectedText := "hello world"
