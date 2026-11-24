@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [[v7.37.1](https://github.com/C2FO/vfs/releases/tag/v7.37.1)] - 2026-11-24
 ### Fixed
 - `mem`: `File.CopyToLocation` and `File.MoveToLocation` now resolve the destination through the target `Location.NewFile` instead of inspecting `fsMap` directly (fixing same-path copies to other backends, filesystems, or volumes overwriting the source file, and avoiding reading the target map under the source filesystem's lock), and `File.CopyToFile` no longer clears a `mem` target's stored bytes before `Close` commits ([#413](https://github.com/C2FO/vfs/issues/413)).
 
