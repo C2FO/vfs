@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [[v7.38.0](https://github.com/C2FO/vfs/releases/tag/v7.38.0)] - 2026-11-24
 ### Added
 - `azure`: opt-in streaming writes that skip the local temporary file via `newfile.WithStreamingWrite()`, `newfile.WithWriteBuffer()`, and the new `DisableWriteBuffer` field on `azure.Options`, matching `s3` and `gs`. With the buffer off, `Seek` or `Read` after `Write`, and `Write` after `Seek` or `Read`, return `vfs.ErrWriteBufferDisabled` until `Close`. `azure.File` now implements `utils.SequentialWriter` and `utils.WriteAborter`, and `azure/types.BlobStreamer` (`UploadStream` and `DownloadRange`, implemented by `*azure.DefaultClient`) enables streaming uploads and range downloads without changing `azure/types.Client` ([#414](https://github.com/C2FO/vfs/issues/414)).
 
