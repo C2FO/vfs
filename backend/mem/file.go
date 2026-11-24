@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"math"
 	"path"
+	"slices"
 	"sync"
 	"time"
 
@@ -256,37 +257,19 @@ func (f *File) Location() vfs.Location {
 	return new(*f.memFile.location)
 }
 
-// CopyToLocation copies the current file to the given location.  If file exists
-// at given location contents are simply overwritten using "CopyToFile", otherwise
-// a newFile is made, takes the contents of the current file, and ends up at
-// the given location
+// CopyToLocation copies the current file to the given location. If a file exists
+// at the given location, its contents are overwritten using CopyToFile; otherwise
+// a new file is created at the given location with the receiver's contents.
 func (f *File) CopyToLocation(location vfs.Location) (vfs.File, error) {
+	if f == nil || location == nil {
+		return nil, errNilReference
+	}
 	if ok, err := f.Exists(); !ok {
 		if err != nil {
 			return nil, utils.WrapCopyToLocationError(err)
 		}
 		return nil, fs.ErrNotExist
 	}
-	testPath := path.Join(path.Clean(location.Path()), f.Name())
-	thisLoc := f.memFile.location
-	mapRef := thisLoc.fileSystem.fsMap
-	vol := thisLoc.Authority().String()
-	// making sure that this authority has keys at all
-	if _, ok := mapRef[vol]; ok {
-		// if file w/name exists @ loc, simply copy contents over
-		if _, ok2 := mapRef[vol][testPath]; ok2 {
-			// casting fsObject to a file
-			memFile := mapRef[vol][testPath].i.(*memFile)
-			file := deepCopy(memFile)
-
-			cerr := f.CopyToFile(file)
-
-			if cerr != nil {
-				return nil, utils.WrapCopyToLocationError(cerr)
-			}
-			return file, nil
-		}
-	} // end outer-if
 
 	newFile, err := location.NewFile(f.Name())
 	if err != nil {
@@ -343,11 +326,22 @@ func (f *File) CopyToFile(target vfs.File) (err error) {
 		return utils.WrapCopyToFileError(err)
 	}
 
-	if target.Location().FileSystem().Scheme() == "mem" {
-		target.(*File).memFile.contents = make([]byte, 0)
+	f.memFile.Lock()
+	contents := slices.Clone(f.memFile.contents)
+	f.memFile.Unlock()
+
+	if memTarget, ok := target.(*File); ok {
+		// Reset any open-handle cursor/mode state so Write enters truncate mode and Close
+		// replaces memFile.contents atomically without exposing an empty slice mid-copy.
+		memTarget.seekCalled = false
+		memTarget.readCalled = false
+		memTarget.readWriteSeeker = nil
+		memTarget.writeMode = none
+		memTarget.isOpen = false
+		memTarget.cursor = 0
 	}
 
-	if err := writeContents(target, f.memFile.contents); err != nil {
+	if err := writeContents(target, contents); err != nil {
 		return utils.WrapCopyToFileError(err)
 	}
 	cerr := target.Close()
@@ -371,44 +365,10 @@ func (f *File) MoveToLocation(location vfs.Location) (vfs.File, error) {
 		return nil, fs.ErrNotExist
 	}
 
-	// if the underling FileSystem is in-memory, then this is the native way of
-	// replacing a file with the same name as "f" at the location
-	if location.FileSystem().Scheme() == "mem" {
-		// this is a potential path to a file that can be fed into the objMap portion of fsMap
-		testPath := path.Join(location.Path(), f.Name())
-		loc := location.(*Location)
-		// mapRef just makes it easier to refer to "loc.fileSystem.fsMap"
-		mapRef := loc.fileSystem.fsMap
-		vol := loc.Authority().String()
-		f.memFile.location.fileSystem.mu.Lock()
-		// this checks if the specified authority has any keys
-		if _, ok := mapRef[vol]; ok {
-			// this block checks if the file already exists at location, if it does, deletes it and inserts the file we have
-			if _, ok2 := mapRef[vol][testPath]; ok2 {
-				memFile := mapRef[vol][testPath].i.(*memFile)
-				f.memFile.location.fileSystem.mu.Unlock()
-				file := deepCopy(memFile)
-				err := f.CopyToFile(file)
-				if err != nil {
-					return nil, utils.WrapMoveToLocationError(err)
-				}
-
-				err = f.Delete()
-				if err != nil {
-					return nil, utils.WrapMoveToLocationError(err)
-				}
-
-				return file, nil
-			}
-		}
-		f.memFile.location.fileSystem.mu.Unlock()
-	}
-	// if the file doesn't yet exist at the location, create it there
 	newFile, err := location.NewFile(f.Name())
 	if err != nil {
 		return nil, utils.WrapMoveToLocationError(err)
 	}
-	// copying over the data
 	err = f.MoveToFile(newFile)
 	if err != nil {
 		return nil, utils.WrapMoveToLocationError(err)
